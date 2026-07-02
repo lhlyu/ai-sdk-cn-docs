@@ -1,0 +1,171 @@
+---
+title: 编码智能体
+description: 了解如何设置 AI SDK 以用于编码智能体，包括安装技能、访问捆绑文档以及使用 DevTools。
+---
+
+# 编码智能体入门
+
+本页说明如何在编码智能体（如 Claude Code、Codex、OpenCode、Cursor 或任何其他 AI 辅助开发环境）中充分利用 AI SDK。
+
+## 安装 AI SDK 技能
+
+让编码智能体深入了解 AI SDK 的最快方法是安装官方 AI SDK 技能。技能是轻量级的 Markdown 文件，可按需将专门指令加载到智能体的上下文中——这样你的智能体就能确切知道如何使用 SDK，无需你额外解释。
+
+使用 `npx skills add` 安装 AI SDK 技能：
+
+```bash
+npx skills add vercel/ai
+```
+
+这会将技能安装到智能体的特定技能目录中（例如 `.claude/skills`、`.codex/skills`）。如果你选择了多个智能体，CLI 会创建符号链接，以便每个智能体都能发现该技能。使用 `-a` 可直接指定智能体——例如，`-a amp` 会安装到通用的 `.agents/skills` 目录。使用 `-y` 可进行非交互式安装。
+
+安装后，任何支持 [Agent Skills](https://agentskills.io) 格式的智能体在处理 AI SDK 任务时都会自动发现并加载该技能。
+
+<Note>
+  Agent Skills 采用**渐进式披露**：启动时，你的智能体仅加载技能的名称和描述。只有在任务需要时，完整指令才会被拉入上下文，从而保持智能体的快速和专注。
+</Note>
+
+## `node_modules` 中的文档和源代码
+
+安装 `ai` 包后，你已经在本地 `node_modules` 中拥有了完整的 AI SDK 文档和源代码。你的编码智能体可以直接读取这些内容——无需互联网访问。
+
+如果尚未安装 `ai` 包，请执行以下操作：
+
+<div className="my-4">
+  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+    <Tab>
+      <Snippet text="pnpm add ai" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="npm install ai" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="yarn add ai" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="bun add ai" dark />
+    </Tab>
+  </Tabs>
+</div>
+
+安装后，你的智能体可以引用捆绑的源代码和文档，路径如下：
+
+```
+node_modules/ai/src/              # 按模块组织的完整源代码
+node_modules/ai/docs/             # 包含示例的官方文档
+```
+
+这意味着你的智能体可以直接从已安装的包中查找准确的 API 签名、实现和用法示例——确保它始终使用项目中实际安装的 SDK 版本。
+
+## 安装 DevTools
+
+AI SDK DevTools 让你在开发过程中全面了解 AI SDK 调用。它捕获 LLM 请求、响应、工具调用、令牌使用和多步骤交互，并在本地 Web UI 中显示。
+
+<Note type="warning">
+  AI SDK DevTools 是实验性功能，仅用于本地开发。请勿在生产环境中使用。
+</Note>
+
+安装 DevTools 包：
+
+<div className="my-4">
+  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+    <Tab>
+      <Snippet text="pnpm add @ai-sdk/devtools" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="npm install @ai-sdk/devtools" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="yarn add @ai-sdk/devtools" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="bun add @ai-sdk/devtools" dark />
+    </Tab>
+  </Tabs>
+</div>
+
+### 注册集成
+
+全局注册 `DevToolsTelemetry`，以捕获所有 AI SDK 调用：
+
+```ts
+import { registerTelemetry } from 'ai';
+import { DevToolsTelemetry } from '@ai-sdk/devtools';
+
+registerTelemetry(DevToolsTelemetry());
+```
+
+集成注册后，所有 AI SDK 调用将自动启用[遥测](/docs/ai-sdk-core/telemetry)：
+
+```ts
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: '美国有哪些城市？',
+});
+```
+
+### 启动查看器
+
+在单独的终端中启动 DevTools 查看器：
+
+```bash
+npx @ai-sdk/devtools
+```
+
+打开 [http://localhost:4983](http://localhost:4983) 实时检查你的 AI SDK 交互。
+
+## 检查工具调用和输出
+
+DevTools 会捕获并显示每次调用的以下信息：
+
+- **输入参数和提示词** — 发送给 LLM 的完整输入
+- **输出内容和工具调用** — 生成的文本和工具调用
+- **令牌使用和时序** — 每个步骤的资源消耗和延迟
+- **原始提供商数据** — 完整的请求和响应负载
+
+对于多步骤智能体交互，DevTools 将所有内容分组为**运行**（完整交互）和**步骤**（其中的每个 LLM 调用），从而轻松追踪智能体的操作及其原因。
+
+你还可以在开发过程中直接在代码中记录工具结果：
+
+```ts
+import { streamText, tool, isStepCount } from 'ai';
+import { z } from 'zod';
+
+const result = streamText({
+  model,
+  prompt: "纽约的摄氏温度是多少？",
+  tools: {
+    weather: tool({
+      description: '获取某个地点（华氏度）的天气',
+      inputSchema: z.object({
+        location: z.string().describe('要获取天气的地点'),
+      }),
+      execute: async ({ location }) => ({
+        location,
+        temperature: Math.round(Math.random() * (90 - 32) + 32),
+      }),
+    }),
+  },
+  stopWhen: isStepCount(5),
+  onStepEnd: async ({ toolResults }) => {
+    if (toolResults.length) {
+      console.log(JSON.stringify(toolResults, null, 2));
+    }
+  },
+});
+```
+
+`onStepEnd` 回调在每个 LLM 步骤后触发，并将任何工具结果打印到终端——适用于无需打开 DevTools UI 的快速调试。
+
+<Note>
+  DevTools 将所有 AI 交互存储在本地 `.devtools/generations.json` 文件中。它会自动将 `.devtools` 添加到你的 `.gitignore` 中，以防止提交敏感的交互数据。
+</Note>
+
+## 下一步
+
+- 了解 [Agent Skills](https://agentskills.io/specification) 以掌握完整的技能格式。
+- 阅读 [DevTools 参考](/docs/ai-sdk-core/devtools) 以获取捕获数据和配置选项的完整列表。
+- 探索[工具与工具调用](/docs/ai-sdk-core/tools-and-tool-calling) 以构建能够执行实际操作的智能体。
+- 查看[为智能体添加技能](/cookbook/guides/agent-skills) 食谱指南，获取逐步集成教程。

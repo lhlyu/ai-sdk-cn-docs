@@ -1,0 +1,41 @@
+---
+title: 使用图像提示词流式传输文本
+description: 了解如何使用 AI SDK 和 Node 通过图像提示词流式传输文本
+tags: ['node', '流式传输', '多模态']
+---
+
+# 使用图像提示词流式传输文本
+
+视觉语言模型可以分析图像并结合文本提示词生成关于视觉内容的响应。这种多模态方法支持丰富的交互，例如你可以询问图像相关问题、请求描述或分析视觉细节。图像和文本输入的组合使得更复杂的 AI 应用成为可能，如视觉问答和图像分析。
+
+```ts
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+import 'dotenv/config';
+import fs from 'node:fs';
+
+async function main() {
+  const result = streamText({
+    model: __MODEL__,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: '详细描述这张图片。' },
+          {
+            type: 'file',
+            mediaType: 'image',
+            data: fs.readFileSync('./data/comic-cat.png'),
+          },
+        ],
+      },
+    ],
+  });
+
+  for await (const textPart of result.textStream) {
+    process.stdout.write(textPart);
+  }
+}
+
+main().catch(console.error);
+```

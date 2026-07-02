@@ -1,0 +1,226 @@
+---
+title: 语音转文字
+description: 了解如何使用 AI SDK 将音频转换为文字。
+---
+
+# 语音转文字
+
+AI SDK 提供了 [`transcribe`](/docs/reference/ai-sdk-core/transcribe)
+函数，用于使用语音转文字模型将音频转换为文字。
+
+```ts
+import { transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+});
+```
+
+`audio` 属性可以是 `Uint8Array`、`ArrayBuffer`、`Buffer`、`string`（base64 编码的音频数据）或 `URL`。
+
+要访问生成的转录文本：
+
+```ts
+const text = transcript.text; // 转录文本，例如 "Hello, world!"
+const segments = transcript.segments; // 包含开始和结束时间的片段数组（如果可用）
+const language = transcript.language; // 转录文本的语言，例如 "en"（如果可用）
+const durationInSeconds = transcript.durationInSeconds; // 转录文本的时长（秒）（如果可用）
+```
+
+## 设置
+
+### 提供商特定设置
+
+语音转文字模型通常具有提供商或模型特定的设置，你可以使用 `providerOptions` 参数进行设置。
+
+```ts highlight="8-12"
+import { transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    openai: {
+      timestampGranularities: ['word'],
+    },
+  },
+});
+```
+
+### 下载大小限制
+
+当 `audio` 是 URL 时，SDK 会以默认的 **2 GiB** 大小限制下载文件。
+你可以使用 `createDownload` 自定义此限制：
+
+```ts highlight="1,8"
+import { transcribe, createDownload } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: new URL('https://example.com/audio.mp3'),
+  download: createDownload({ maxBytes: 50 * 1024 * 1024 }), // 50 MB 限制
+});
+```
+
+你也可以提供完全自定义的下载函数：
+
+```ts highlight="6-12"
+import { transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: new URL('https://example.com/audio.mp3'),
+  download: async ({ url }) => {
+    const res = await myAuthenticatedFetch(url);
+    return {
+      data: new Uint8Array(await res.arrayBuffer()),
+      mediaType: res.headers.get('content-type') ?? undefined,
+    };
+  },
+});
+```
+
+如果下载超过大小限制，会抛出 `DownloadError`：
+
+```ts
+import { transcribe, DownloadError } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+try {
+  await transcribe({
+    model: openai.transcription('whisper-1'),
+    audio: new URL('https://example.com/audio.mp3'),
+  });
+} catch (error) {
+  if (DownloadError.isInstance(error)) {
+    console.log('下载失败：', error.message);
+  }
+}
+```
+
+### 中止信号与超时
+
+`transcribe` 接受一个可选的 `abortSignal` 参数，类型为
+[`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
+你可以用它来中止转录过程或设置超时。
+
+当与 URL 下载结合使用时，这尤其有助于防止长时间运行的请求：
+
+```ts highlight="8"
+import { openai } from '@ai-sdk/openai';
+import { transcribe } from 'ai';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: new URL('https://example.com/audio.mp3'),
+  abortSignal: AbortSignal.timeout(5000), // 5 秒后中止
+});
+```
+
+### 自定义请求头
+
+`transcribe` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，
+你可以用它来向转录请求添加自定义请求头。
+
+```ts highlight="8"
+import { openai } from '@ai-sdk/openai';
+import { transcribe } from 'ai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+  headers: { 'X-Custom-Header': 'custom-value' },
+});
+```
+
+### 警告
+
+警告（例如不支持的参数）可通过 `warnings` 属性获取。
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { transcribe } from 'ai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+});
+
+const warnings = transcript.warnings;
+```
+
+### 错误处理
+
+当 `transcribe` 无法生成有效的转录文本时，会抛出 [`AI_NoTranscriptGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-transcript-generated-error)。
+
+此错误可能由以下任一原因引起：
+
+- 模型未能生成响应
+- 模型生成了无法解析的响应
+
+该错误会保留以下信息以帮助你记录问题：
+
+- `responses`：关于语音转文字模型响应的元数据，包括时间戳、模型和请求头。
+- `cause`：错误的原因。你可以用它来进行更详细的错误处理。
+
+```ts
+import { transcribe, NoTranscriptGeneratedError } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+try {
+  await transcribe({
+    model: openai.transcription('whisper-1'),
+    audio: await readFile('audio.mp3'),
+  });
+} catch (error) {
+  if (NoTranscriptGeneratedError.isInstance(error)) {
+    console.log('NoTranscriptGeneratedError');
+    console.log('原因：', error.cause);
+    console.log('响应：', error.responses);
+  }
+}
+```
+
+## 语音转文字模型
+
+| 提供商                                                                        | 模型                     |
+| ------------------------------------------------------------------------------- | ------------------------ |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)               | `whisper-1`              |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)               | `gpt-4o-transcribe`      |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)               | `gpt-4o-mini-transcribe` |
+| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models)       | `scribe_v1`              |
+| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models)       | `scribe_v1_experimental` |
+| [Groq](/providers/ai-sdk-providers/groq#transcription-models)                   | `whisper-large-v3-turbo` |
+| [Groq](/providers/ai-sdk-providers/groq#transcription-models)                   | `whisper-large-v3`       |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)          | `whisper-1`              |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)          | `gpt-4o-transcribe`      |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)          | `gpt-4o-mini-transcribe` |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)                | `machine`                |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)                | `low_cost`               |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)                | `fusion`                 |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `base` (+ 变体)      |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `enhanced` (+ 变体)  |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `nova` (+ 变体)      |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `nova-2` (+ 变体)    |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `nova-3` (+ 变体)    |
+| [Gladia](/providers/ai-sdk-providers/gladia#transcription-models)               | `default`                |
+| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models)       | `best`                   |
+| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models)       | `nano`                   |
+| [Fal](/providers/ai-sdk-providers/fal#transcription-models)                     | `whisper`                |
+| [Fal](/providers/ai-sdk-providers/fal#transcription-models)                     | `wizper`                 |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models) | `chirp_2`                |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models) | `chirp_3`                |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models) | `telephony`              |
+| [xAI](/providers/ai-sdk-providers/xai#transcription-models)                     | `default`                |
+
+以上是 AI SDK 提供商支持的语音转文字模型的一小部分。更多信息，请参阅相应提供商的文档。

@@ -1,0 +1,967 @@
+---
+title: 将 AI SDK 6.x 迁移到 7.0
+description: 了解如何将 AI SDK 6.x 升级到 7.0。
+---
+
+# 将 AI SDK 6.x 迁移到 7.0
+
+使用以下命令添加迁移技能：
+
+```bash
+npx skills add vercel/ai --skill migrate-ai-sdk-v6-to-v7
+```
+
+然后询问你的智能体：
+
+```txt
+使用 migrate-ai-sdk-v6-to-v7 技能，将我的应用从 AI SDK v6 迁移到 v7。
+```
+
+## 推荐的迁移流程
+
+1. 备份你的项目。如果你使用版本控制系统，请确保所有之前的版本都已提交。
+1. 升级到 AI SDK 7.0。
+1. 遵循下面的破坏性变更指南。
+1. 验证你的项目按预期工作。
+1. 提交你的更改。
+
+一个示例升级命令如下：
+
+```
+pnpm install ai @ai-sdk/react @ai-sdk/openai @ai-sdk/otel
+```
+
+## Codemod
+
+AI SDK 提供了 Codemod 转换，以帮助你在功能被弃用、移除或以其他方式更改时升级代码库。
+
+Codemod 是自动在你的代码库上运行的转换。它们允许你轻松地应用许多更改，而无需手动检查每个文件。
+
+你可以通过从项目根目录运行以下命令来运行所有 v7 codemod（v6 -> v7 迁移）：
+
+```sh
+npx @ai-sdk/codemod v7
+```
+
+可以通过指定 codemod 的名称来运行单个 codemod：
+
+```sh
+npx @ai-sdk/codemod <codemod-name> <path>
+```
+
+例如，要运行特定的 v7 codemod：
+
+```sh
+npx @ai-sdk/codemod v7/rename-system-to-instructions src/
+```
+
+<Note>
+  Codemod 旨在作为帮助你完成升级过程的工具。它们可能无法涵盖你需要进行的所有更改。你可能需要手动进行额外的更改。
+</Note>
+
+## Codemod 表格
+
+| Codemod 名称                                                           | 描述                                                                                         |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `remove-experimental-custom-provider`                                  | 将 `experimental_customProvider` 替换为 `customProvider`                                        |
+| `remove-experimental-generate-image`                                   | 将 `experimental_generateImage` 和 `Experimental_GenerateImageResult` 替换为稳定名称           |
+| `replace-experimental-output-with-output`                              | 将 `experimental_output` 选项和结果访问替换为 `output`                                          |
+| `remove-experimental-prepare-step`                                     | 将 `experimental_prepareStep` 替换为 `prepareStep`                                              |
+| `replace-cached-input-tokens`                                          | 将 `usage.cachedInputTokens` 替换为 `usage.inputTokenDetails.cacheReadTokens`                   |
+| `replace-reasoning-tokens`                                             | 将 `usage.reasoningTokens` 替换为 `usage.outputTokenDetails.reasoningTokens`                    |
+| `remove-experimental-active-tools`                                     | 将 `experimental_activeTools` 替换为 `activeTools`                                              |
+| `remove-tool-call-options-type`                                        | 将已移除的 `ToolCallOptions` 类型替换为 `ToolExecutionOptions`                                   |
+| `remove-is-tool-or-dynamic-tool-uipart`                                | 将 `isToolOrDynamicToolUIPart` 替换为 `isToolUIPart`                                            |
+| `remove-media-content-part-type`                                       | 将类型为 `'media'` 的工具结果内容部分替换为 `type: 'file-data'`                                  |
+| `replace-anthropic-cache-creation-input-tokens`                        | 将 Anthropic `cacheCreationInputTokens` 元数据访问替换为标准 usage 字段                          |
+| `rename-experimental-transcribe`                                       | 将 `experimental_transcribe` 和 `Experimental_TranscriptionResult` 重命名为稳定名称              |
+| `rename-experimental-generate-speech`                                  | 将 `experimental_generateSpeech` 和 `Experimental_SpeechResult` 重命名为稳定名称                 |
+| `rename-call-settings-type`                                            | 将 `CallSettings` 替换为 `LanguageModelCallOptions & Omit<RequestOptions, 'timeout'>`           |
+| `rename-step-count-is`                                                 | 将 `stepCountIs` 重命名为 `isStepCount`                                                         |
+| `rename-system-to-instructions`                                        | 将 `system` 提示词选项、生命周期字段和修复工具调用字段重命名为 `instructions`                      |
+| `rename-experimental-on-start-to-on-start`                             | 将 `experimental_onStart` 重命名为 `onStart`                                                    |
+| `rename-experimental-on-step-start-to-on-step-start`                   | 将 `experimental_onStepStart` 重命名为 `onStepStart`                                            |
+| `rename-on-finish-to-on-end`                                           | 将 `onFinish` 回调重命名为 `onEnd`                                                              |
+| `rename-on-step-finish-to-on-step-end`                                 | 将 `onStepFinish` 回调重命名为 `onStepEnd`                                                      |
+| `rename-experimental-on-finish-to-on-end`                              | 将 `experimental_onFinish` 回调重命名为 `onEnd`                                                 |
+| `rename-experimental-telemetry-to-telemetry`                           | 将 `experimental_telemetry` 选项重命名为 `telemetry`                                            |
+| `rename-on-rerank-finish-to-on-rerank-end`                             | 将遥测 `onRerankFinish` 回调重命名为 `onRerankEnd`                                              |
+| `rename-on-embed-finish-to-on-embed-end`                               | 将遥测 `onEmbedFinish` 回调重命名为 `onEmbedEnd`                                                |
+| `rename-full-stream-to-stream`                                         | 将 `streamText` 结果的 `fullStream` 访问重命名为 `stream`                                        |
+| `move-include-raw-chunks-to-include`                                   | 将 `includeRawChunks` 移动到 `include.rawChunks`                                                |
+| `rename-experimental-include-to-include`                               | 将 `experimental_include` 重命名为 `include`                                                    |
+| `rename-experimental-on-tool-call-start-to-on-tool-execution-start`    | 将 `experimental_onToolCallStart` 重命名为 `onToolExecutionStart`                               |
+| `rename-experimental-on-tool-call-finish-to-on-tool-execution-end`     | 将 `experimental_onToolCallFinish` 重命名为 `onToolExecutionEnd`                                |
+| `rename-experimental-context-to-context`                               | 将工具回调 `experimental_context` 访问重命名为 `context`                                        |
+| `rename-google-generative-ai-to-google`                                | 将包含 `GoogleGenerativeAI` 的 Google 提供商类型、类和函数重命名为 `Google`                      |
+| `replace-image-message-part-with-file`                                 | 使用 `mediaType: 'image'` 的文件部分替换图像消息部分                                            |
+
+## 所有包
+
+### 最低 Node.js 版本
+
+AI SDK 7.0 需要 **Node.js 22** 或更高版本。该 SDK 在 Node.js **22**、**24** 和 **26** 上进行了测试。
+
+Node.js 18 和 20 不再受支持。Node.js 22 于 **2026 年 4 月 30 日** 达到维护结束日期；对于生产工作负载，建议使用 **Node.js 24 (LTS)** 或 **Node.js 26**。请参阅 [Node.js 发布计划](https://nodejs.org/en/about/previous-releases) 了解当前状态和支持时间线。
+
+如果你强制执行最低 Node.js 版本，请更新 `package.json` 中的 `engines` 字段：
+
+```json filename="package.json"
+{
+  "engines": {
+    "node": ">=22"
+  }
+}
+```
+
+### 仅 ESM — CommonJS 支持已移除
+
+所有 AI SDK 包现在仅支持 ESM。不再支持 `require()` 函数。
+
+如果你的项目使用 CommonJS (`require()`)，请切换到 ESM `import` 语法：
+
+```tsx filename="之前 (CommonJS)"
+const { generateText } = require('ai');
+const { openai } = require('@ai-sdk/openai');
+```
+
+```tsx filename="之后 (ESM)"
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+```
+
+如果你的 `package.json` 尚未包含 `"type": "module"`，请添加它或将文件重命名为使用 `.mjs` 扩展名。
+
+## AI SDK Core
+
+### Core API 重命名和移除
+
+#### 提供商管理：移除已弃用的 `experimental_customProvider`
+
+已弃用的 `experimental_customProvider` 导出已在 AI SDK 7 中移除。将其替换为 `customProvider`。
+
+```tsx filename="AI SDK 6"
+import { experimental_customProvider } from 'ai';
+
+export const myProvider = experimental_customProvider({
+  languageModels: {
+    // ...
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+import { customProvider } from 'ai';
+
+export const myProvider = customProvider({
+  languageModels: {
+    // ...
+  },
+});
+```
+
+这只是一个导入和符号的重命名。`customProvider` 的选项和行为保持不变。
+
+#### 移除已弃用的 `experimental_generateImage` 导出
+
+已弃用的 `experimental_generateImage` 导出已在 AI SDK 7 中移除。将其替换为 `generateImage`。
+
+已弃用的 `Experimental_GenerateImageResult` 类型导出也已移除。将其替换为 `GenerateImageResult`。
+
+```tsx filename="AI SDK 6"
+import {
+  experimental_generateImage,
+  type Experimental_GenerateImageResult,
+} from 'ai';
+
+const result: Experimental_GenerateImageResult =
+  await experimental_generateImage({
+    model: yourImageModel,
+    prompt: '一只吃竹子的小熊猫',
+  });
+```
+
+```tsx filename="AI SDK 7"
+import { generateImage, type GenerateImageResult } from 'ai';
+
+const result: GenerateImageResult = await generateImage({
+  model: yourImageModel,
+  prompt: '一只吃竹子的小熊猫',
+});
+```
+
+#### `experimental_transcribe` 重命名为 `transcribe`
+
+转录 API 已从实验状态毕业，并已重命名为 `transcribe`。`Experimental_TranscriptionResult` 类型也已重命名为 `TranscriptionResult`。
+
+```tsx filename="AI SDK 6"
+import {
+  experimental_transcribe as transcribe,
+  type Experimental_TranscriptionResult,
+} from 'ai';
+
+const result: Experimental_TranscriptionResult = await transcribe({
+  model: yourTranscriptionModel,
+  audio,
+});
+```
+
+```tsx filename="AI SDK 7"
+import { transcribe, type TranscriptionResult } from 'ai';
+
+const result: TranscriptionResult = await transcribe({
+  model: yourTranscriptionModel,
+  audio,
+});
+```
+
+旧名称在 AI SDK 7 中继续作为弃用别名工作，并将在未来的主要版本中移除。
+
+#### `experimental_generateSpeech` 重命名为 `generateSpeech`
+
+语音生成函数已从实验状态毕业，并已重命名为 `generateSpeech`。`Experimental_SpeechResult` 类型也已重命名为 `SpeechResult`。
+
+```tsx filename="AI SDK 6"
+import { experimental_generateSpeech as generateSpeech } from 'ai';
+
+const result = await generateSpeech({
+  model: yourSpeechModel,
+  text: '你好',
+});
+```
+
+```tsx filename="AI SDK 7"
+import { generateSpeech } from 'ai';
+
+const result = await generateSpeech({
+  model: yourSpeechModel,
+  text: '你好',
+});
+```
+
+旧的 `experimental_generateSpeech` 和 `Experimental_SpeechResult` 导出在 AI SDK 7 中继续作为弃用别名工作，并将在未来的主要版本中移除。
+
+#### 结构化输出：移除已弃用的 `experimental_output` 选项和结果
+
+已弃用的 `experimental_output` 选项已在 AI SDK 7 中移除。将所有剩余用法替换为 `output`。
+
+已弃用的 `generateText()` 结果属性 `experimental_output` 也已移除。请改为读取 `result.output`。
+
+此名称在 AI SDK 6 中已被弃用，因此如果你已经迁移到 `output`，则无需更改。否则，请同时更新调用选项和任何结果访问：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  experimental_output: Output.object({
+    schema: recipeSchema,
+  }),
+  prompt: '生成一个食谱。',
+});
+
+console.log(result.experimental_output);
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  output: Output.object({
+    schema: recipeSchema,
+  }),
+  prompt: '生成一个食谱。',
+});
+
+console.log(result.output);
+```
+
+#### `CallSettings` 重命名为 `LanguageModelCallOptions` 和 `RequestOptions`
+
+`CallSettings` 已拆分为 `LanguageModelCallOptions`（面向模型的选项）和 `RequestOptions`（传输选项）。在自定义包装器或辅助函数中替换用法：
+
+- `CallSettings` → `LanguageModelCallOptions & Omit<RequestOptions, 'timeout'>`（注意：`CallSettings` 从未包含 `timeout`）
+
+已弃用的 `CallSettings` 类型在 AI SDK 7 中仍然可用。
+
+#### 停止条件辅助函数重命名：`stepCountIs` -> `isStepCount`
+
+在工具循环停止条件中重命名导入和用法：
+
+```tsx filename="之前"
+import { stepCountIs } from 'ai';
+
+stopWhen: stepCountIs(3);
+```
+
+```tsx filename="之后"
+import { isStepCount } from 'ai';
+
+stopWhen: isStepCount(3);
+```
+
+### 提示词和步骤准备
+
+#### `system` 重命名为 `instructions`
+
+用于系统指令的顶级提示词选项已从 `system` 重命名为 `instructions`。
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  system: '你是一个有帮助的助手。',
+  prompt: '你好！',
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  instructions: '你是一个有帮助的助手。',
+  prompt: '你好！',
+});
+```
+
+这适用于接受 `prompt` 或 `messages` 的 AI SDK 函数，包括 `generateText`、`streamText`、`generateObject`、`streamObject` 和 `streamUI`。
+
+相同的重命名适用于 `generateText` 和 `streamText` 的 `prepareStep` 结果，以及传递给 `experimental_repairToolCall` 的选项：
+
+```tsx filename="AI SDK 6"
+const result = streamText({
+  model: yourModel,
+  prompt: '你好！',
+  prepareStep: () => ({
+    system: '此步骤使用简洁的答案。',
+  }),
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = streamText({
+  model: yourModel,
+  prompt: '你好！',
+  prepareStep: () => ({
+    instructions: '此步骤使用简洁的答案。',
+  }),
+});
+```
+
+`system` 选项仍然作为弃用回退被接受。当同时提供 `instructions` 和 `system` 时，`instructions` 优先。
+
+#### `prepareStep` 指令向前传递
+
+在 AI SDK 7 中，从 `prepareStep` 返回的指令将在后续步骤中使用，直到 `prepareStep` 返回另一个 `instructions` 或 `system` 覆盖。这与从 `prepareStep` 返回的 `messages` 向前传递的方式相匹配。
+
+在 AI SDK 6 中，`prepareStep` 指令覆盖仅适用于当前步骤。后续步骤会回退到顶级 `system` 指令，除非它们返回自己的覆盖。
+
+如果你的 `prepareStep` 逻辑依赖于仅一步的指令覆盖，请为每个步骤显式返回所需的指令：
+
+```tsx filename="AI SDK 7"
+const result = streamText({
+  model: yourModel,
+  instructions: '使用默认行为。',
+  prompt: '你好！',
+  prepareStep: ({ stepNumber, initialInstructions }) => ({
+    instructions:
+      stepNumber === 0
+        ? '为第一步使用特殊指令。'
+        : initialInstructions,
+  }),
+});
+```
+
+`prepareStep` 回调接收 `instructions`（当前步骤的指令状态）和 `initialInstructions`（原始调用中的顶级指令值）。
+
+如果你的工具调用修复函数将当前系统指令转发给另一个模型调用，请读取并传递 `instructions` 而不是 `system`：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  tools,
+  prompt: '你好！',
+  experimental_repairToolCall: async ({ system, messages }) => {
+    return repairWithModel({ system, messages });
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  tools,
+  prompt: '你好！',
+  experimental_repairToolCall: async ({ instructions, messages }) => {
+    return repairWithModel({ instructions, messages });
+  },
+});
+```
+
+`generateText`、`streamText` 和智能体的生命周期回调事件也使用 `instructions` 而不是 `system`：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  experimental_onStart: ({ system }) => {
+    console.log(system);
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onStart: ({ instructions }) => {
+    console.log(instructions);
+  },
+});
+```
+
+#### 提示消息：`prompt` 或 `messages` 中的系统消息默认被拒绝
+
+AI SDK 7 默认拒绝 `prompt` 或 `messages` 字段中的系统消息。系统指令通常应通过顶级 `instructions` 选项传递。
+
+这可能会破坏包含 `{ role: 'system' }` 消息的旧持久化聊天或自定义提示数组：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '你好！' },
+  ],
+});
+```
+
+尽可能将系统指令移动到 `instructions` 选项：
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  instructions: '你是一个有帮助的助手。',
+  messages: [{ role: 'user', content: '你好！' }],
+});
+```
+
+如果你需要保留已包含系统消息的现有聊天历史，请使用 `allowSystemInMessages: true` 选择加入之前的行为：
+
+<Note type="warning">
+  仅对受信任的消息使用 `allowSystemInMessages`。如果用户可以提交或编辑这些消息，他们可能会注入一条系统消息来覆盖或设置系统提示。在大多数情况下，系统指令应仅通过受信任的服务器端代码使用 `instructions` 属性设置。
+</Note>
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  allowSystemInMessages: true,
+  messages: persistedMessages,
+});
+```
+
+这适用于接受 `prompt` 或 `messages` 的 AI SDK 函数，包括 `generateText`、`streamText`、`generateObject`、`streamObject` 和 `streamUI`。
+
+#### 移除已弃用的 `experimental_prepareStep` 选项
+
+已弃用的 `experimental_prepareStep` 选项已在 AI SDK 7 中移除。将所有剩余用法替换为 `prepareStep`。
+
+此选项在 AI SDK 5 中已被弃用，因此如果你已经迁移到 `prepareStep`，则无需更改。否则，请更新 `generateText` 调用：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  tools: { weather },
+  experimental_prepareStep: ({ stepNumber }) => {
+    console.log('准备步骤', stepNumber);
+    return {
+      activeTools: ['weather'],
+    };
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  tools: { weather },
+  prepareStep: ({ stepNumber }) => {
+    console.log('准备步骤', stepNumber);
+    return {
+      activeTools: ['weather'],
+    };
+  },
+});
+```
+
+#### `prepareStep` 消息覆盖向前传递
+
+当 `prepareStep` 返回 `messages` 时，这些消息现在被用作后续步骤的基础。下一步接收这些消息加上上一步的响应消息。
+
+在 AI SDK 6 中，`messages` 覆盖仅适用于当前步骤。要保持该行为，请在 `prepareStep` 内部从 `initialMessages` 和 `responseMessages` 重建当前步骤的消息：
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  tools: { weather },
+  prepareStep: ({ initialMessages, responseMessages }) => {
+    return {
+      messages: [
+        ...initialMessages,
+        ...responseMessages,
+        // 在此处添加任何仅一步的消息更改
+      ],
+    };
+  },
+});
+```
+
+### 生命周期事件
+
+#### `experimental_onStart` 重命名为 `onStart`
+
+`generateText`、`streamText` 和智能体的生成开始回调已从 `experimental_onStart` 重命名为 `onStart`。
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  experimental_onStart: () => {
+    console.log('生成已开始');
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onStart: () => {
+    console.log('生成已开始');
+  },
+});
+```
+
+#### `experimental_onStepStart` 重命名为 `onStepStart`
+
+`generateText`、`streamText` 和智能体的每步开始回调已从 `experimental_onStepStart` 重命名为 `onStepStart`。
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  experimental_onStepStart: ({ stepNumber }) => {
+    console.log(`步骤 ${stepNumber} 已开始`);
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onStepStart: ({ stepNumber }) => {
+    console.log(`步骤 ${stepNumber} 已开始`);
+  },
+});
+```
+
+#### `onFinish` 重命名为 `onEnd`
+
+`generateText`、`streamText` 和智能体的最终生命周期回调已从 `onFinish` 重命名为 `onEnd`。
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onFinish: ({ text }) => {
+    console.log(text);
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onEnd: ({ text }) => {
+    console.log(text);
+  },
+});
+```
+
+相同的重命名适用于 `streamText`、`Agent.generate()`、`Agent.stream()` 和 `ToolLoopAgent` 设置。`onFinish` 选项仍然作为弃用别名被接受。当同时提供 `onEnd` 和 `onFinish` 时，`onEnd` 优先。
+
+#### `onStepFinish` 重命名为 `onStepEnd`
+
+每步生命周期回调已从 `onStepFinish` 重命名为 `onStepEnd`。
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onStepFinish: ({ stepNumber, usage }) => {
+    console.log(`步骤 ${stepNumber} 使用了 ${usage.totalTokens} 个令牌`);
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+  onStepEnd: ({ stepNumber, usage }) => {
+    console.log(`步骤 ${stepNumber} 使用了 ${usage.totalTokens} 个令牌`);
+  },
+});
+```
+
+这适用于 `generateText`、`streamText`、`generateObject`、`streamObject`、智能体、工作流智能体和 UI 消息流辅助函数。遥测集成应实现 `onStepEnd`。
+
+`onStepFinish` 选项仍然作为面向用户的回调的弃用别名被接受。当同时提供 `onStepEnd` 和 `onStepFinish` 时，`onStepEnd` 优先。
+
+#### 嵌入回调
+
+用于完成的 `embed` 和 `embedMany` 操作的每次调用回调选项已从 `experimental_onFinish` 重命名为 `onEnd`。
+
+```tsx filename="AI SDK 6"
+const result = await embed({
+  model: yourEmbeddingModel,
+  value,
+  experimental_onFinish(event) {
+    console.log('嵌入完成：', event.usage.tokens);
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await embed({
+  model: yourEmbeddingModel,
+  value,
+  onEnd(event) {
+    console.log('嵌入结束：', event.usage.tokens);
+  },
+});
+```
+
+#### 重排序回调
+
+用于完成的 `rerank` 操作的每次调用回调选项已从 `experimental_onFinish` 重命名为 `onEnd`。
+
+```tsx filename="AI SDK 6"
+const result = await rerank({
+  model: yourRerankingModel,
+  documents,
+  query,
+  experimental_onFinish(event) {
+    console.log('重排序完成：', event.ranking.length);
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await rerank({
+  model: yourRerankingModel,
+  documents,
+  query,
+  onEnd(event) {
+    console.log('重排序结束：', event.ranking.length);
+  },
+});
+```
+
+### 使用情况和结果形状更改
+
+#### `cachedInputTokens` 和 `reasoningTokens` 已从 `LanguageModelUsage` 中移除
+
+已弃用的顶级 `cachedInputTokens` 和 `reasoningTokens` 字段已从 `LanguageModelUsage` 中移除。
+
+请改用 `inputTokenDetails.cacheReadTokens` 和 `outputTokenDetails.reasoningTokens`：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+});
+
+console.log(result.usage.cachedInputTokens);
+console.log(result.usage.reasoningTokens);
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好！',
+});
+
+console.log(result.usage.inputTokenDetails.cacheReadTokens);
+console.log(result.usage.outputTokenDetails.reasoningTokens);
+```
+
+### 遥测
+
+#### OpenTelemetry 已移至 `@ai-sdk/otel`
+
+OpenTelemetry span 收集不再内置于 `ai` 包中。要继续接收 OpenTelemetry 跟踪，你必须安装新的 `@ai-sdk/otel` 包并全局注册 `OpenTelemetry` 实例。
+
+```bash
+pnpm install @ai-sdk/otel
+```
+
+以前，当启用 `experimental_telemetry` 时，OpenTelemetry span 会自动发出：
+
+```tsx filename="AI SDK 6"
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: { isEnabled: true },
+});
+```
+
+现在，你必须安装 `@ai-sdk/otel` 并在应用程序启动时注册一次 `OpenTelemetry` 实例。对于 Next.js，请将其放在你的 `instrumentation.ts` 文件中，与你的 OpenTelemetry 提供商设置一起：
+
+```tsx filename="instrumentation"
+import { registerTelemetry } from 'ai';
+import { OpenTelemetry } from '@ai-sdk/otel';
+
+registerTelemetry(new OpenTelemetry());
+
+// ... 你的 OpenTelemetry 提供商设置（例如 registerOTel、NodeTracerProvider）
+```
+
+对于 Node.js 应用程序（没有 Next.js），在入口文件的顶层注册集成。
+
+这适用于所有接受 `experimental_telemetry` 的 AI SDK 函数，包括 `generateText`、`streamText`、`ToolLoopAgent`、`embed`、`embedMany` 和 `rerank`。
+
+#### 注册集成后默认启用
+
+在 AI SDK 6 中，遥测是选择加入的——你必须在每次调用时设置 `experimental_telemetry: { isEnabled: true }` 才能发出事件。在 AI SDK 7 中，遥测是选择退出的：一旦你注册了一个遥测集成（例如 `OpenTelemetry` 或 `DevToolsTelemetry`），所有 AI SDK 调用默认都会发出遥测事件。
+
+```tsx filename="AI SDK 6"
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: { isEnabled: true },
+});
+```
+
+```tsx filename="AI SDK 7"
+import { generateText } from 'ai';
+import { registerTelemetry } from 'ai';
+import { OpenTelemetry } from '@ai-sdk/otel';
+
+registerTelemetry(new OpenTelemetry());
+
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+});
+```
+
+你可以安全地从所有调用中移除 `experimental_telemetry: { isEnabled: true }`。如果你已经传递了其他字段，如 `functionId` 或 `integrations`，请保留它们——只有 `isEnabled: true` 是多余的：
+
+```tsx filename="AI SDK 6"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: {
+    isEnabled: true,
+    functionId: 'my-awesome-function',
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: {
+    functionId: 'my-awesome-function',
+  },
+});
+```
+
+要为特定调用选择退出遥测，请设置 `isEnabled: false`：
+
+```tsx
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: { isEnabled: false },
+});
+```
+
+要全局禁用遥测，请不要注册任何遥测集成。
+
+这适用于所有接受 `experimental_telemetry` 的 AI SDK 函数，包括 `generateText`、`streamText`、`ToolLoopAgent`、`embed`、`embedMany` 和 `rerank`。
+
+#### `tracer` 属性已从 `experimental_telemetry` 中移除
+
+`experimental_telemetry` 上的 `tracer` 属性已被移除。如果你传递了自定义的 OpenTelemetry `Tracer`，请将其传递给 `OpenTelemetry` 构造函数：
+
+```tsx filename="AI SDK 6"
+import { generateText } from 'ai';
+import { trace } from '@opentelemetry/api';
+
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: {
+    isEnabled: true,
+    tracer: trace.getTracer('my-app'),
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+import { registerTelemetry } from 'ai';
+import { OpenTelemetry } from '@ai-sdk/otel';
+import { trace } from '@opentelemetry/api';
+
+registerTelemetry(
+  new OpenTelemetry({
+    tracer: trace.getTracer('my-app'),
+  }),
+);
+```
+
+这适用于所有接受 `experimental_telemetry` 的 AI SDK 函数，包括 `streamText`、`generateObject`、`streamObject`、`embed` 和 `embedMany`。
+
+如果你没有传递自定义 `tracer`（依赖于默认的全局 tracer），则无需更改——`OpenTelemetry` 默认全局注册，并在未提供自定义 tracer 时使用 `trace.getTracer('ai')`。
+
+#### `experimental_telemetry` 重命名为 `telemetry`
+
+遥测选项已从实验状态毕业，并已重命名为 `telemetry`。旧名称 `experimental_telemetry` 在 AI SDK 7 中继续作为弃用别名工作，并将在未来的主要版本中移除。
+
+```tsx filename="AI SDK 6"
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  experimental_telemetry: {
+    functionId: 'story-agent',
+  },
+});
+```
+
+```tsx filename="AI SDK 7"
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  prompt: '你好',
+  telemetry: {
+    functionId: 'story-agent',
+  },
+});
+```
+
+这适用于所有接受遥测配置的 AI SDK 函数和智能体，包括 `generateText`、`streamText`、`generateObject`、`streamObject`、`embed`、`embedMany`、`rerank`、`ToolLoopAgent` 和 `WorkflowAgent`。
+
+除了重命名之外，没有行为变化。你可以逐步迁移——在弃用窗口期内，同一代码库中混合使用 `telemetry` 和 `experimental_telemetry` 是受支持的。
+
+#### `onRerankFinish` 重命名为 `onRerankEnd`
+
+用于单个重排序模型调用的遥测集成回调已从 `onRerankFinish` 重命名为 `onRerankEnd`。
+
+这也适用于在 `AI_SDK_TELEMETRY_TRACING_CHANNEL` 上发出的 `type` 字段：跟踪通道订阅者现在接收 `onRerankEnd` 而不是 `onRerankFinish`。
+
+更新遥测集成和跟踪通道订阅者以使用 `onRerankEnd`。
+
+```tsx filename="AI SDK 6"
+import type { Telemetry } from 'ai';
+
+const telemetry: Telemetry = {
+  onRerankFinish(event) {
+    console.log('重排序完成：', event.ranking.length);
+  },
+};
+```
+
+```tsx filename="AI SDK 7"
+import type { Telemetry } from 'ai';
+
+const telemetry: Telemetry = {
+  onRerankEnd(event) {
+    console.log('重排序结束：', event.ranking.length);
+  },
+};
+```
+
+#### `onEmbedFinish` 重命名为 `onEmbedEnd`
+
+用于单个嵌入模型调用的遥测集成回调已从 `onEmbedFinish` 重命名为 `onEmbedEnd`。
+
+这也适用于在 `AI_SDK_TELEMETRY_TRACING_CHANNEL` 上发出的 `type` 字段：跟踪通道订阅者现在接收 `onEmbedEnd` 而不是 `onEmbedFinish`。
+
+更新遥测集成和跟踪通道订阅者以使用 `onEmbedEnd`。
+
+```tsx filename="AI SDK 6"
+import type { Telemetry } from 'ai';
+
+const telemetry: Telemetry = {
+  onEmbedFinish(event) {
+    console.log('嵌入完成：', event.embeddings.length);
+  },
+};
+```
+
+```tsx filename="AI SDK 7"
+import type { Telemetry } from 'ai';
+
+const telemetry: Telemetry = {
+  onEmbedEnd(event) {
+    console.log('嵌入结束：', event.embeddings.length);
+  },
+};
+```
+
+### 流式传输和包含选项
+
+#### `StreamTextResult.fullStream` 重命名为 `stream`
+
+`streamText` 返回的完整事件流已从 `fullStream` 重命名为 `stream`。
+
+```tsx filename="AI SDK 6"
+const result = streamText({
+  model: yourModel,
+  prompt: '你好！',
+});
+
+for await (const part of result.fullStream) {
+  console.log(part);
+}
+```
+
+```tsx filename="AI SDK 7"
+const result = streamText({
+  model: yourModel,
+  prompt: '你好！',
+});
+
+for await (const part of result.stream) {
+  console.log(part);
+}
+```
+
+`fullStream` 属性仍然作为 `stream` 的弃用别名可用。
+
+#### `streamText` `onChunk` 接收所有流部分
+
+在 AI SDK 7 中，`streamText` 为流发出的每个 `TextStreamPart` 调用 `onChunk`。在 AI SDK 6 中，`onChunk` 仅接收流部分的子集，例如文本增量、推理增量、来源、工具调用、工具输入增量、工具结果、自定义部分和原始块。
+
+更新假设旧子集的处理程序，以保护它们处理的块类型：
+
+```tsx filename="AI SDK 7"
+const result = streamText({
+  model: yourModel,
+  prompt: '你好',
+  onChunk({ chunk }) {
+    if (chunk.type === 'text-delta') {
+      console.log(chunk.text);
+    }
+  },
+});
+```
+
+`onChunk` 现在还可以接收生命周期、边界和终端部分，例如 `start`、`start-step`、`text-start`、`text-end`、`reasoning-start`、`reasoning-end`、`tool-input-end`、`finish-step`

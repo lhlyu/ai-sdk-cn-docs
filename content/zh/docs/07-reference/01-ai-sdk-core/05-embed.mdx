@@ -1,0 +1,304 @@
+---
+title: embed
+description: embed 的 API 参考文档。
+---
+
+# `embed()`
+
+使用嵌入模型为单个值生成嵌入。
+
+适用于需要嵌入单个值以检索相似项或在下游任务中使用嵌入的场景。
+
+```ts
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+});
+```
+
+## 导入
+
+<Snippet text={`import { embed } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'EmbeddingModel',
+      description:
+        "要使用的嵌入模型。示例：openai.embeddingModel('text-embedding-3-small')",
+    },
+    {
+      name: 'value',
+      type: 'VALUE',
+      description: '要嵌入的值。类型取决于模型。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description:
+        '最大重试次数。设为 0 可禁用重试。默认值：2。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description:
+        '可选的终止信号，用于取消调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description:
+        '随请求发送的额外 HTTP 标头。仅适用于基于 HTTP 的提供商。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description:
+        '提供商特定的选项，会透传给提供商。',
+    },
+    {
+      name: 'telemetry',
+      type: 'TelemetryOptions',
+      isOptional: true,
+      description: '遥测配置。',
+      properties: [
+        {
+          type: 'TelemetryOptions',
+          parameters: [
+            {
+              name: 'isEnabled',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                '启用或禁用遥测。默认启用。设为 `false` 可选择退出。',
+            },
+            {
+              name: 'recordInputs',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                '启用或禁用输入记录。默认启用。',
+            },
+            {
+              name: 'recordOutputs',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                '启用或禁用输出记录。默认启用。',
+            },
+            {
+              name: 'functionId',
+              type: 'string',
+              isOptional: true,
+              description:
+                '此函数的标识符。用于按函数分组遥测数据。',
+            },
+            {
+              name: 'integrations',
+              isOptional: true,
+              type: 'Telemetry | Telemetry[]',
+              description:
+                '每次调用的遥测集成，用于接收生命周期事件。提供时，它们会替换此调用中任何全局注册的集成。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'onStart',
+      type: '(event: EmbedStartEvent) => PromiseLike<void> | void',
+      isOptional: true,
+      description:
+        '嵌入操作开始时的回调，在调用嵌入模型之前触发。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+      properties: [
+        {
+          type: 'EmbedStartEvent',
+          parameters: [
+            {
+              name: 'callId',
+              type: 'string',
+              description: '此嵌入调用的唯一标识符。',
+            },
+            {
+              name: 'operationId',
+              type: 'string',
+              description: "标识操作类型（'ai.embed'）。",
+            },
+            {
+              name: 'model',
+              type: '{ provider: string; modelId: string }',
+              description: '正在使用的嵌入模型。',
+            },
+            {
+              name: 'value',
+              type: 'string | Array<string>',
+              description: '正在嵌入的值。',
+            },
+            {
+              name: 'maxRetries',
+              type: 'number',
+              description: '失败请求的最大重试次数。',
+            },
+            {
+              name: 'abortSignal',
+              type: 'AbortSignal | undefined',
+              description: '用于取消操作的终止信号。',
+            },
+            {
+              name: 'headers',
+              type: 'Record<string, string | undefined> | undefined',
+              description: '随请求发送的额外 HTTP 标头。',
+            },
+            {
+              name: 'providerOptions',
+              type: 'ProviderOptions | undefined',
+              description: '额外的提供商特定选项。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'onEnd',
+      type: '(event: EmbedEndEvent) => PromiseLike<void> | void',
+      isOptional: true,
+      description:
+        '嵌入操作完成时的回调，在嵌入模型返回结果后触发。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+      properties: [
+        {
+          type: 'EmbedEndEvent',
+          parameters: [
+            {
+              name: 'callId',
+              type: 'string',
+              description: '此嵌入调用的唯一标识符。',
+            },
+            {
+              name: 'operationId',
+              type: 'string',
+              description: "标识操作类型（'ai.embed'）。",
+            },
+            {
+              name: 'model',
+              type: '{ provider: string; modelId: string }',
+              description: '已使用的嵌入模型。',
+            },
+            {
+              name: 'value',
+              type: 'string | Array<string>',
+              description: '已嵌入的值。',
+            },
+            {
+              name: 'embedding',
+              type: 'Embedding | Array<Embedding>',
+              description: '生成的嵌入向量。',
+            },
+            {
+              name: 'usage',
+              type: 'EmbeddingModelUsage',
+              description: '嵌入操作的令牌使用情况。',
+            },
+            {
+              name: 'warnings',
+              type: 'Array<Warning>',
+              description: '来自嵌入模型的警告。',
+            },
+            {
+              name: 'providerMetadata',
+              type: 'ProviderMetadata | undefined',
+              description: '可选的提供商特定元数据。',
+            },
+            {
+              name: 'response',
+              type: '{ headers?: Record<string, string>; body?: unknown } | undefined',
+              description: '可选的响应数据，包括标头和主体。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'value',
+      type: 'VALUE',
+      description: '已嵌入的值。',
+    },
+    {
+      name: 'embedding',
+      type: 'number[]',
+      description: '值的嵌入。',
+    },
+    {
+      name: 'usage',
+      type: 'EmbeddingModelUsage',
+      description: '生成嵌入的令牌使用情况。',
+      properties: [
+        {
+          type: 'EmbeddingModelUsage',
+          parameters: [
+            {
+              name: 'tokens',
+              type: 'number',
+              description: '嵌入中使用的令牌数量。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description:
+        '来自模型提供商的警告（例如不支持的设置）。',
+    },
+    {
+      name: 'response',
+      type: 'Response',
+      isOptional: true,
+      description: '可选的响应数据。',
+      properties: [
+        {
+          type: 'Response',
+          parameters: [
+            {
+              name: 'headers',
+              isOptional: true,
+              type: 'Record<string, string>',
+              description: '响应标头。',
+            },
+            {
+              name: 'body',
+              type: 'unknown',
+              isOptional: true,
+              description: '响应主体。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      isOptional: true,
+      description:
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。具体细节取决于提供商。',
+    },
+  ]}
+/>

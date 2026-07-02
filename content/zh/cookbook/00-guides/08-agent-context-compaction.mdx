@@ -1,0 +1,185 @@
+---
+title: 压缩智能体上下文
+description: 了解如何通过 prepareStep 在步骤间变更消息状态来压缩智能体上下文。
+tags: ['agent', 'context', 'compaction', 'prepareStep']
+---
+
+# 压缩智能体上下文
+
+在本指南中，你将学习如何通过从 `prepareStep` 返回新的 `messages` 数组来压缩智能体的上下文。
+
+示例使用了内置辅助函数 `pruneMessages`，它会移除选定的消息和消息片段。你可以使用任何你想要的压缩逻辑。核心行为是 `prepareStep` 可以变更后续步骤接收到的消息状态。
+
+## 从不断增长的智能体循环开始
+
+调用工具的智能体会积累大量消息历史记录。每次工具调用和工具结果都会成为下一步上下文的一部分。
+
+此示例使用了一个返回长结果的工具：
+
+```ts
+import { ToolLoopAgent, isStepCount, tool } from 'ai';
+import { z } from 'zod';
+__PROVIDER_IMPORT__;
+
+const readDocument = tool({
+  description: '按名称读取文档',
+  inputSchema: z.object({
+    name: z.string(),
+  }),
+  execute: async ({ name }) => {
+    return {
+      name,
+      text: await loadLargeDocument(name),
+    };
+  },
+});
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  tools: {
+    readDocument,
+  },
+  stopWhen: isStepCount(10),
+});
+
+const result = await agent.generate({
+  prompt: '读取项目文档并总结迁移计划。',
+});
+```
+
+这可以工作，但每次工具调用后消息列表都会增长。如果智能体读取了几个大型文档，后续步骤可能会发送模型不再需要完整内容的旧工具结果。
+
+## 添加压缩触发器
+
+你可以决定何时进行压缩。
+
+此示例使用简单的令牌估算：
+
+```ts
+import type { ModelMessage } from 'ai';
+
+const COMPACT_AFTER_TOKENS = 100_000;
+
+const estimateTokens = (messages: ModelMessage[]) => {
+  return JSON.stringify(messages).length / 4;
+};
+```
+
+如果需要更精确的核算，请使用真实的令牌化器或提供商使用数据。对于此模式，确切的触发器并不重要。
+
+## 在 prepareStep 中压缩消息
+
+`prepareStep` 在每个模型步骤之前运行。它接收将发送给该步骤模型的消息。
+
+当你返回新的 `messages` 数组时，SDK 会将其用于当前步骤，并作为后续步骤的基础。
+
+```ts
+import {
+  ToolLoopAgent,
+  isStepCount,
+  pruneMessages,
+  tool,
+  type ModelMessage,
+} from 'ai';
+import { z } from 'zod';
+__PROVIDER_IMPORT__;
+
+const COMPACT_AFTER_TOKENS = 100_000;
+
+const estimateTokens = (messages: ModelMessage[]) => {
+  return JSON.stringify(messages).length / 4;
+};
+
+const readDocument = tool({
+  description: '按名称读取文档',
+  inputSchema: z.object({
+    name: z.string(),
+  }),
+  execute: async ({ name }) => {
+    return {
+      name,
+      text: await loadLargeDocument(name),
+    };
+  },
+});
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  tools: {
+    readDocument,
+  },
+  stopWhen: isStepCount(10),
+  prepareStep: ({ messages }) => {
+    if (estimateTokens(messages) > COMPACT_AFTER_TOKENS) {
+      return {
+        messages: pruneMessages({
+          messages,
+          reasoning: 'all',
+          toolCalls: 'before-last-3-messages',
+          emptyMessages: 'remove',
+        }),
+      };
+    }
+  },
+});
+
+const result = await agent.generate({
+  prompt: '读取项目文档并总结迁移计划。',
+});
+```
+
+`pruneMessages` 只是压缩的一种方式。当你需要不同的消息结构时，可以用自己的逻辑替换它。
+
+## 理解持久化内容
+
+`messages` 参数是循环的当前消息状态。如果 `prepareStep` 返回 `messages`，则更改后的列表会持久化到后续步骤。随着循环继续，新的助手和工具响应消息会被追加。
+
+如果你想从原始输入加上到目前为止的模型响应构建一个步骤，请使用 `initialMessages` 和 `responseMessages`：
+
+```ts
+prepareStep: ({ initialMessages, responseMessages, stepNumber }) => {
+  if (stepNumber > 0) {
+    return {
+      messages: [...initialMessages, ...responseMessages.slice(-10)],
+    };
+  }
+};
+```
+
+当你不想让之前的 `messages` 覆盖成为下一步的起点时，这很有用。
+
+## 将相同模式用于核心函数
+
+相同的 `prepareStep` 行为也适用于 `generateText` 和 `streamText`：
+
+```ts
+import { generateText, isStepCount, pruneMessages } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  prompt: '读取项目文档并总结迁移计划。',
+  tools: {
+    readDocument,
+  },
+  stopWhen: isStepCount(10),
+  prepareStep: ({ messages }) => {
+    if (estimateTokens(messages) > COMPACT_AFTER_TOKENS) {
+      return {
+        messages: pruneMessages({
+          messages,
+          reasoning: 'all',
+          toolCalls: 'before-last-3-messages',
+          emptyMessages: 'remove',
+        }),
+      };
+    }
+  },
+});
+```
+
+## 了解更多
+
+- [循环控制](/docs/agents/loop-control) 了解智能体的 `prepareStep`
+- [工具与工具调用](/docs/ai-sdk-core/tools-and-tool-calling#preparestep-callback) 了解 AI SDK Core 的 `prepareStep`
+- [`pruneMessages`](/docs/reference/ai-sdk-ui/prune-messages) 了解内置消息修剪选项

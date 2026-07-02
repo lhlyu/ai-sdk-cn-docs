@@ -1,0 +1,62 @@
+---
+title: 流式传输
+description: 为什么AI应用要使用流式传输？
+---
+
+# 流式传输
+
+对话式文本UI（如ChatGPT）在过去几个月中获得了极大的流行。本节将探讨流式传输与阻塞式界面的优缺点。
+
+[大型语言模型（LLMs）](/docs/foundations/overview#large-language-models)功能极其强大。然而，在生成较长输出时，其速度可能远低于你习惯的延迟水平。如果尝试构建传统的阻塞式UI，用户可能会发现自己在加载动画前等待5秒、10秒甚至长达40秒，等待整个LLM响应生成完毕。这会导致糟糕的用户体验，尤其是在聊天机器人等对话式应用中。流式传输UI可以通过**在响应内容可用时即时显示部分内容**来缓解这一问题。
+
+<div className="grid lg:grid-cols-2 grid-cols-1 gap-4 mt-8">
+  <Card
+    title="阻塞式UI"
+    description="阻塞式响应会等待完整响应生成后才进行显示。"
+  >
+    <BrowserIllustration highlight blocking />
+  </Card>
+  <Card
+    title="流式传输UI"
+    description="流式响应可以在内容可用时即时传输部分响应。"
+  >
+    <BrowserIllustration highlight />
+  </Card>
+</div>
+
+## 实际案例
+
+以下两个示例展示了流式传输UI如何在真实场景中改善用户体验——第一个使用阻塞式UI，第二个使用流式传输UI。
+
+### 阻塞式UI
+
+<InlinePrompt
+  initialInput="请写出《哈利·波特》系列第一本书的前200个字符。"
+  blocking
+/>
+
+### 流式传输UI
+
+<InlinePrompt initialInput="请写出《哈利·波特》系列第一本书的前200个字符。" />
+
+如你所见，流式传输UI能够比阻塞式UI更快地开始显示响应内容。这是因为阻塞式UI必须等待整个响应生成完毕才能显示任何内容，而流式传输UI可以在内容可用时即时显示部分响应。
+
+虽然流式传输界面能显著提升用户体验（尤其是使用大型语言模型时），但并非总是必要或有益的。如果你能通过更小、更快的模型实现所需功能而无需使用流式传输，这种方式通常能带来更简单、更易管理的开发流程。
+
+不过，无论模型速度如何，AI SDK都致力于让流式传输UI的实现尽可能简单。在以下示例中，我们使用SDK的[`streamText`](/docs/reference/ai-sdk-core/stream-text)函数，用不到10行代码实现了文本生成的流式传输：
+
+```ts
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { textStream } = streamText({
+  model: __MODEL__,
+  prompt: '写一首关于嵌入模型的诗。',
+});
+
+for await (const textPart of textStream) {
+  console.log(textPart);
+}
+```
+
+如需了解流式传输UI和AI SDK的入门知识，请查看我们的[入门指南](/docs/getting-started)。

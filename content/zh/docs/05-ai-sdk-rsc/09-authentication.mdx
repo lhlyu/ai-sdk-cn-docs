@@ -1,0 +1,41 @@
+---
+title: 处理身份验证
+description: 了解如何使用 AI SDK 进行身份验证。
+---
+
+# 身份验证
+
+<Note type="warning">
+  AI SDK RSC 目前处于实验阶段。我们建议在生产环境中使用 [AI SDK
+  UI](/docs/ai-sdk-ui/overview)。有关从 RSC 迁移到 UI 的指导，请参阅我们的[迁移指南](/docs/ai-sdk-rsc/migrating-to-ui)。
+</Note>
+
+RSC API 广泛使用 [`Server Actions`](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations) 来实现来自服务器的流式传输值和 UI。
+
+Server Actions 作为公开的、未受保护的端点暴露。因此，您应将 Server Actions 视为面向公众的 API 端点，并在返回任何数据之前确保用户有权执行该操作。
+
+```tsx filename="app/actions.tsx"
+'use server';
+
+import { cookies } from 'next/headers';
+import { createStreamableUI } from '@ai-sdk/rsc';
+import { validateToken } from '../utils/auth';
+
+export const getWeather = async () => {
+  const token = cookies().get('token');
+
+  if (!token || !validateToken(token)) {
+    return {
+      error: '此操作需要身份验证',
+    };
+  }
+  const streamableDisplay = createStreamableUI(null);
+
+  streamableDisplay.update(<Skeleton />);
+  streamableDisplay.done(<Weather />);
+
+  return {
+    display: streamableDisplay.value,
+  };
+};
+```

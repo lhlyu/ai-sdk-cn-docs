@@ -1,0 +1,198 @@
+---
+title: 手动智能体循环
+description: 学习如何创建完全掌控工具执行的自定义智能体循环
+tags: ['node', 'agent']
+---
+
+# 手动智能体循环
+
+当你需要对智能体循环和工具执行拥有完全控制权时，可以自行管理智能体流程，而不是使用 `prepareStep` 和 `stopWhen`。这种方法让你在工具执行时机、消息历史管理和循环终止条件方面拥有完全的灵活性。
+
+当你希望实现以下目标时，此模式非常有用：
+
+- 在工具调用之间实现自定义逻辑
+- 以特定方式处理工具执行错误
+- 添加自定义日志记录或监控
+- 在循环过程中与外部系统集成
+- 完全掌控对话历史
+
+## 示例
+
+```ts
+import { ModelMessage, streamText, tool } from 'ai';
+import 'dotenv/config';
+import z from 'zod';
+
+const getWeather = async ({ location }: { location: string }) => {
+  return `The weather in ${location} is ${Math.floor(Math.random() * 100)} degrees.`;
+};
+
+const messages: ModelMessage[] = [
+  {
+    role: 'user',
+    content: 'Get the weather in New York and San Francisco',
+  },
+];
+
+async function main() {
+  while (true) {
+    const result = streamText({
+      model: 'openai/gpt-4o',
+      messages,
+      tools: {
+        getWeather: tool({
+          description: 'Get the current weather in a given location',
+          inputSchema: z.object({
+            location: z.string(),
+          }),
+        }),
+        // 在此添加更多工具，省略 execute 函数以便自行处理
+      },
+    });
+
+    // 流式传输响应（仅用于向用户提供更新）
+    for await (const chunk of result.stream) {
+      if (chunk.type === 'text-delta') {
+        process.stdout.write(chunk.text);
+      }
+
+      if (chunk.type === 'tool-call') {
+        console.log('\\n调用工具:', chunk.toolName);
+      }
+    }
+
+    // 将 LLM 生成的消息添加到消息历史
+    const responseMessages = await result.responseMessages;
+    messages.push(...responseMessages);
+
+    const finishReason = await result.finishReason;
+
+    if (finishReason === 'tool-calls') {
+      const toolCalls = await result.toolCalls;
+
+      // 在此处理所有工具调用执行
+      for (const toolCall of toolCalls) {
+        if (toolCall.toolName === 'getWeather') {
+          const toolOutput = await getWeather(toolCall.input);
+          messages.push({
+            role: 'tool',
+            content: [
+              {
+                toolName: toolCall.toolName,
+                toolCallId: toolCall.toolCallId,
+                type: 'tool-result',
+                output: { type: 'text', value: toolOutput }, // 根据工具的输出格式更新
+              },
+            ],
+          });
+        }
+        // 处理其他工具调用
+      }
+    } else {
+      // 当模型不再请求使用任何工具时退出循环
+      console.log('\\n\\n最终消息历史:');
+      console.dir(messages, { depth: null });
+      break;
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+## 关键概念
+
+### 消息管理
+
+该示例维护一个 `messages` 数组来跟踪整个对话历史。每次模型响应后，生成的消息都会被添加到该历史中：
+
+```ts
+const responseMessages = await result.responseMessages;
+messages.push(...responseMessages);
+```
+
+### 工具执行控制
+
+工具执行在循环中手动处理。当模型请求工具调用时，你逐个处理每个调用：
+
+```ts
+if (finishReason === 'tool-calls') {
+  const toolCalls = await result.toolCalls;
+
+  for (const toolCall of toolCalls) {
+    if (toolCall.toolName === 'getWeather') {
+      const toolOutput = await getWeather(toolCall.input);
+      // 将工具结果添加到消息历史
+      messages.push({
+        role: 'tool',
+        content: [
+          {
+            toolName: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            type: 'tool-result',
+            output: { type: 'text', value: toolOutput },
+          },
+        ],
+      });
+    }
+  }
+}
+```
+
+### 循环终止
+
+循环持续运行，直到模型停止请求工具调用。你可以自定义此逻辑来实现自己的终止条件：
+
+```ts
+if (finishReason === 'tool-calls') {
+  // 继续循环
+} else {
+  // 退出循环
+  break;
+}
+```
+
+## 扩展此示例
+
+### 自定义循环控制
+
+实现最大迭代次数或时间限制：
+
+```ts
+let iterations = 0;
+const MAX_ITERATIONS = 10;
+
+while (iterations < MAX_ITERATIONS) {
+  iterations++;
+  // ... 循环的其余部分
+}
+```
+
+### 并行工具执行
+
+并行执行多个工具以获得更好的性能：
+
+```ts
+const toolPromises = toolCalls.map(async toolCall => {
+  if (toolCall.toolName === 'getWeather') {
+    const toolOutput = await getWeather(toolCall.input);
+    return {
+      role: 'tool' as const,
+      content: [
+        {
+          toolName: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          type: 'tool-result' as const,
+          output: { type: 'text' as const, value: toolOutput },
+        },
+      ],
+    };
+  }
+  // 处理其他工具
+});
+
+const toolResults = await Promise.all(toolPromises);
+messages.push(...toolResults.filter(Boolean));
+```
+
+这种手动方法让你在利用 AI SDK 强大的流式传输和工具调用能力的同时，完全掌控智能体循环。

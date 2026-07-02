@@ -1,0 +1,71 @@
+---
+title: simulateStreamingMiddleware
+description: 模拟非流式语言模型流式传输行为的中间件
+---
+
+# `simulateStreamingMiddleware()`
+
+`simulateStreamingMiddleware` 是一个中间件函数，用于模拟非流式语言模型响应的流式传输行为。当您希望在使用仅提供完整响应的模型时仍保持一致的流式传输接口时，此功能非常有用。
+
+```ts
+import { simulateStreamingMiddleware } from 'ai';
+
+const middleware = simulateStreamingMiddleware();
+```
+
+## 导入
+
+<Snippet
+  text={`import { simulateStreamingMiddleware } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+此中间件不接受任何参数。
+
+### 返回值
+
+返回一个中间件对象，该对象：
+
+- 接收语言模型的完整响应
+- 将其转换为模拟的数据块流
+- 正确处理各种响应组件，包括：
+  - 文本内容
+  - 推理过程（字符串或对象数组形式）
+  - 工具调用
+  - 元数据和使用信息
+  - 警告信息
+
+### 使用示例
+
+```ts
+import { streamText } from 'ai';
+import { wrapLanguageModel } from 'ai';
+import { simulateStreamingMiddleware } from 'ai';
+
+// 非流式模型示例
+const result = streamText({
+  model: wrapLanguageModel({
+    model: nonStreamingModel,
+    middleware: simulateStreamingMiddleware(),
+  }),
+  prompt: '在此输入您的提示词',
+});
+
+// 现在可以使用流式传输接口
+for await (const chunk of result.stream) {
+  // 处理流式数据块
+}
+```
+
+## 工作原理
+
+该中间件：
+
+1. 等待语言模型返回完整响应
+2. 创建一个 `ReadableStream`，按正确顺序发出数据块
+3. 通过将响应分解为适当的数据块类型来模拟流式传输
+4. 保留所有元数据、推理过程、工具调用及其他响应属性

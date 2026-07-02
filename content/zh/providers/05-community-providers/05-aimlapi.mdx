@@ -1,0 +1,95 @@
+---
+title: AI/ML API
+description: 了解如何使用 AI/ML API 提供商。
+---
+
+# AI/ML API 提供商
+
+[AI/ML API](https://aimlapi.com/?utm_source=aimlapi-vercel-ai&utm_medium=github&utm_campaign=integration) 提供商通过兼容 OpenAI 的 API 提供对超过 300 个 AI 模型的访问。
+
+## 设置
+
+AI/ML API 提供商可通过 `@ai-ml.api/aimlapi-vercel-ai` 模块获取。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-ml.api/aimlapi-vercel-ai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-ml.api/aimlapi-vercel-ai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-ml.api/aimlapi-vercel-ai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @ai-ml.api/aimlapi-vercel-ai" dark />
+  </Tab>
+</Tabs>
+
+### API 密钥
+
+使用你的密钥设置 `AIMLAPI_API_KEY` 环境变量：
+
+```bash
+export AIMLAPI_API_KEY="sk-..."
+```
+
+## 提供商实例
+
+你可以导入默认的提供商实例 `aimlapi`：
+
+```ts
+import { aimlapi } from '@ai-ml.api/aimlapi-vercel-ai';
+```
+
+## 语言模型
+
+使用 `aimlapi` 创建用于文本生成的模型，并与 `generateText` 一起使用：
+
+```ts
+import { aimlapi } from '@ai-ml.api/aimlapi-vercel-ai';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: aimlapi('gpt-4o'),
+  system: '你是一个友好的助手！',
+  prompt: '为什么天空是蓝色的？',
+});
+```
+
+## 图像生成
+
+你可以通过在图像模型上调用 `doGenerate` 来生成图像：
+
+```ts
+import { aimlapi } from '@ai-ml.api/aimlapi-vercel-ai';
+
+const model = aimlapi.imageModel('flux-pro');
+
+const res = await model.doGenerate({
+  prompt: '一只红色气球漂浮在雪山之上，电影感',
+  n: 1,
+  aspectRatio: '16:9',
+  seed: 42,
+  size: '1024x768',
+  providerOptions: {},
+});
+
+console.log(`✅ 生成的图像 URL: ${res.images[0]}`);
+```
+
+## 嵌入
+
+AI/ML API 还支持嵌入模型：
+
+```ts
+import { aimlapi } from '@ai-ml.api/aimlapi-vercel-ai';
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: aimlapi.embeddingModel('text-embedding-3-large'),
+  value: '阳光明媚的海滩日',
+});
+```
+
+更多信息和完整模型列表，请访问 [AI/ML API 仪表盘](https://aimlapi.com/app?utm_source=aimlapi-vercel-ai&utm_medium=github&utm_campaign=integration) 和 [AI/ML API 文档](https://docs.aimlapi.com/?utm_source=aimlapi-vercel-ai&utm_medium=github&utm_campaign=integration)。

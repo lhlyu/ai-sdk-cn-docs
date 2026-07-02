@@ -1,0 +1,138 @@
+---
+title: hasToolCall
+description: hasToolCall 的 API 参考文档。
+---
+
+# `hasToolCall()`
+
+创建一个停止条件，当最近一步中调用了任何指定工具时停止。
+
+此函数与 `generateText` 和 `streamText` 中的 `stopWhen` 配合使用，根据是否调用了指定工具来控制工具调用循环何时停止。
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  tools: {
+    weather: weatherTool,
+    finalAnswer: finalAnswerTool,
+  },
+  // 当调用 finalAnswer 工具时停止
+  stopWhen: hasToolCall('finalAnswer'),
+});
+```
+
+## 导入
+
+<Snippet text={`import { hasToolCall } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: '...toolNames',
+      type: 'string[]',
+      description:
+        '一个或多个工具名称。当最近一步中调用了其中任何一个工具时，停止条件触发。',
+    },
+  ]}
+/>
+
+### 返回值
+
+一个 `StopCondition` 函数，当最近一步中调用了任何指定工具时返回 `true`。该函数可用于 `generateText` 和 `streamText` 的 `stopWhen` 参数。
+
+## 示例
+
+### 基本用法
+
+当调用特定工具时停止：
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    submitAnswer: submitAnswerTool,
+    search: searchTool,
+  },
+  stopWhen: hasToolCall('submitAnswer'),
+});
+```
+
+### 匹配多个工具
+
+当最近一步中调用了多个工具中的任何一个时停止：
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    weather: weatherTool,
+    search: searchTool,
+    finalAnswer: finalAnswerTool,
+  },
+  stopWhen: hasToolCall('weather', 'finalAnswer'),
+});
+```
+
+### 与其他条件组合
+
+你可以将多个停止条件组合成一个数组：
+
+```ts
+import { generateText, hasToolCall, isStepCount } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    weather: weatherTool,
+    search: searchTool,
+    finalAnswer: finalAnswerTool,
+  },
+  // 当调用 weather 工具、调用 finalAnswer 工具或执行 5 步后停止
+  stopWhen: [
+    hasToolCall('weather'),
+    hasToolCall('finalAnswer'),
+    isStepCount(5),
+  ],
+});
+```
+
+### 智能体模式
+
+智能体在提供最终答案前持续运行的常见模式：
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    search: searchTool,
+    calculate: calculateTool,
+    finalAnswer: {
+      description: '向用户提供最终答案',
+      parameters: z.object({
+        answer: z.string(),
+      }),
+      execute: async ({ answer }) => answer,
+    },
+  },
+  stopWhen: hasToolCall('finalAnswer'),
+});
+```
+
+## 参见
+
+- [`isStepCount()`](/docs/reference/ai-sdk-core/is-step-count)
+- [`generateText()`](/docs/reference/ai-sdk-core/generate-text)
+- [`streamText()`](/docs/reference/ai-sdk-core/stream-text)

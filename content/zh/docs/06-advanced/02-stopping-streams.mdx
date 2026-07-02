@@ -1,0 +1,185 @@
+---
+title: 停止流式传输
+description: 了解如何使用 AI SDK 取消流式传输
+---
+
+# 停止流式传输
+
+取消正在进行的流式传输是常见需求。
+例如，当用户发现响应不符合预期时，可能希望停止流式传输。
+
+AI SDK 的不同部分支持以不同方式取消流式传输。
+
+## AI SDK Core
+
+AI SDK 函数提供了 `abortSignal` 参数，可用于取消流式传输。
+当你希望从服务器端向 LLM API 取消流式传输时，可以使用此功能，例如
+通过转发请求中的 `abortSignal`。
+
+```tsx highlight="10,11,12-16"
+import { createTextStreamResponse, streamText, toTextStream } from 'ai';
+__PROVIDER_IMPORT__;
+
+export async function POST(req: Request) {
+  const { prompt } = await req.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    prompt,
+    // 转发中止信号：
+    abortSignal: req.signal,
+    onAbort: ({ steps }) => {
+      // 处理流式传输中止时的清理工作
+      console.log('流式传输在', steps.length, '个步骤后中止');
+      // 将部分结果持久化到数据库
+    },
+  });
+
+  return createTextStreamResponse({
+    stream: toTextStream({ stream: result.stream }),
+  });
+}
+```
+
+## AI SDK UI
+
+这些 Hook（例如 `useChat` 或 `useCompletion`）提供了 `stop` 辅助函数，可用于取消流式传输。
+这将从客户端向服务器取消流式传输。
+
+<Note type="warning">
+  流式传输中止功能与流式传输恢复不兼容。如果你在 `useChat` 中使用了 `resume: true`，中止功能会破坏恢复机制。请选择中止或恢复功能，但不要同时使用两者。
+</Note>
+
+```tsx file="app/page.tsx" highlight="6,11-14"
+'use client';
+
+import { useCompletion } from '@ai-sdk/react';
+
+export default function Chat() {
+  const { input, completion, stop, status, handleSubmit, handleInputChange } =
+    useCompletion();
+
+  return (
+    <div>
+      {(status === 'submitted' || status === 'streaming') && (
+        <button type="button" onClick={() => stop()}>
+          停止
+        </button>
+      )}
+      {completion}
+      <form onSubmit={handleSubmit}>
+        <input value={input} onChange={handleInputChange} />
+      </form>
+    </div>
+  );
+}
+```
+
+## 处理流式传输中止清理
+
+当流式传输被中止时，你可能需要执行清理操作，例如持久化部分结果或清理资源。`onAbort` 回调提供了一种在服务器端处理这些场景的方法。
+
+与在流式传输正常完成时调用的 `onEnd` 不同，`onAbort` 专门在通过 `AbortSignal` 中止流式传输时调用。这种区别允许你以不同方式处理正常完成和中止的流式传输。
+
+<Note>
+  对于 UI 消息流（`toUIMessageStreamResponse`），`onEnd` 回调还会接收一个 `isAborted` 参数，指示流式传输是否被中止。这允许你在单个回调中处理完成和中止场景。
+</Note>
+
+```tsx highlight="8-12"
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = streamText({
+  model: __MODEL__,
+  prompt: '写一个长故事...',
+  abortSignal: controller.signal,
+  onAbort: ({ steps }) => {
+    // 当流式传输被中止时调用 - 持久化部分结果
+    await savePartialResults(steps);
+    await logAbortEvent(steps.length);
+  },
+  onEnd: ({ steps, totalUsage }) => {
+    // 当流式传输正常完成时调用
+    await saveFinalResults(steps, totalUsage);
+  },
+});
+```
+
+`onAbort` 回调接收：
+
+- `steps`：中止发生前所有已完成步骤的数组
+
+这对于以下场景特别有用：
+
+- 将部分对话历史持久化到数据库
+- 保存部分进度以便后续继续
+- 清理服务器端资源或连接
+- 记录中止事件用于分析
+
+你也可以直接在流式传输中使用 `abort` 流部分来处理中止事件：
+
+```tsx highlight="6-9"
+for await (const part of result.stream) {
+  switch (part.type) {
+    case 'text-delta':
+      // 处理文本增量内容
+      break;
+    case 'abort':
+      // 直接在流中处理中止事件
+      console.log('流式传输已被中止');
+      break;
+    // ... 其他情况
+  }
+}
+```
+
+## UI 消息流
+
+使用 `toUIMessageStream` 时，你需要以略微不同的方式处理流式传输中止。`onEnd` 回调会接收一个 `isAborted` 参数，并且你应该将 `consumeStream` 传递给 `createUIMessageStreamResponse`，以确保正确处理中止：
+
+```tsx highlight="3,21,24-30,34"
+import { openai } from '@ai-sdk/openai';
+import {
+  consumeStream,
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  UIMessage,
+} from 'ai';
+__PROVIDER_IMPORT__;
+
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    messages: await convertToModelMessages(messages),
+    abortSignal: req.signal,
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      onEnd: async ({ isAborted }) => {
+        if (isAborted) {
+          console.log('流式传输已被中止');
+          // 处理中止特定的清理
+        } else {
+          console.log('流式传输正常完成');
+          // 处理正常完成
+        }
+      },
+    }),
+    consumeSseStream: consumeStream,
+  });
+}
+```
+
+`consumeStream` 函数对于 UI 消息流中正确处理中止是必要的。它确保即使在中止时也能正确消费流，防止潜在的内存泄漏或连接挂起。
+
+## AI SDK RSC
+
+<Note type="warning">
+  AI SDK RSC 目前不支持停止流式传输。
+</Note>

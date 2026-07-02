@@ -1,0 +1,291 @@
+---
+title: createProviderRegistry
+description: 用于管理多个提供商和模型的注册表（API 参考）
+---
+
+# `createProviderRegistry()`
+
+当您使用多个提供商和模型时，通常希望将它们集中管理，并通过简单的字符串 ID 来访问模型。
+
+`createProviderRegistry` 允许您创建一个包含多个提供商的注册表，您可以通过 `providerId:modelId` 格式的 ID 来访问它们。
+
+在 TypeScript 中，注册表模型 ID 会根据已注册的提供商 ID 进行推断。当提供商公开了字面量模型 ID 类型时，编辑器可以建议组合后的 `providerId:modelId` 值。
+
+### 设置
+
+您可以使用 `createProviderRegistry` 创建一个包含多个提供商和模型的注册表。
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createProviderRegistry } from 'ai';
+
+export const registry = createProviderRegistry({
+  // 使用前缀和默认设置注册提供商：
+  anthropic,
+
+  // 使用前缀和自定义设置注册提供商：
+  openai: createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  }),
+});
+```
+
+### 自定义分隔符
+
+默认情况下，注册表使用 `:` 作为提供商和模型 ID 之间的分隔符。您可以通过传递 `separator` 选项来自定义此分隔符：
+
+```ts
+const registry = createProviderRegistry(
+  {
+    anthropic,
+    openai,
+  },
+  { separator: ' > ' },
+);
+
+// 现在您可以使用自定义分隔符
+const model = registry.languageModel('anthropic > claude-3-opus-20240229');
+```
+
+### 语言模型
+
+您可以通过注册表的 `languageModel` 方法来访问语言模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+
+```ts highlight={"5"}
+import { generateText } from 'ai';
+import { registry } from './registry';
+
+const { text } = await generateText({
+  model: registry.languageModel('openai:gpt-4.1'),
+  prompt: '发明一个新节日并描述其传统。',
+});
+```
+
+### 文本嵌入模型
+
+您可以通过注册表的 `.embeddingModel` 方法来访问文本嵌入模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+
+```ts highlight={"5"}
+import { embed } from 'ai';
+import { registry } from './registry';
+
+const { embedding } = await embed({
+  model: registry.embeddingModel('openai:text-embedding-3-small'),
+  value: '阳光明媚的海滩日',
+});
+```
+
+### 图像模型
+
+您可以通过注册表的 `imageModel` 方法来访问图像模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+
+```ts highlight={"5"}
+import { generateImage } from 'ai';
+import { registry } from './registry';
+
+const { image } = await generateImage({
+  model: registry.imageModel('openai:dall-e-3'),
+  prompt: '平静海面上美丽的日落',
+});
+```
+
+### 视频模型
+
+您可以通过注册表的 `videoModel` 方法来访问视频模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+
+```ts highlight={"7"}
+import { fal } from '@ai-sdk/fal';
+import { createProviderRegistry, experimental_generateVideo } from 'ai';
+
+const registry = createProviderRegistry({ fal });
+
+const { videos } = await experimental_generateVideo({
+  model: registry.videoModel('fal:luma-dream-machine/ray-2'),
+  prompt: '一只猫在日落时分的海滩上行走',
+});
+```
+
+### 文件和技能
+
+您可以通过调用 `registry.files(providerId)` 和 `registry.skills(providerId)` 来访问提供商的文件和技能接口。
+
+## 导入
+
+<Snippet text={`import { createProviderRegistry } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'providers',
+      type: 'Record<string, Provider>',
+      description:
+        '提供商的唯一标识符。它在注册表中应该是唯一的。',
+      properties: [
+        {
+          type: 'Provider',
+          parameters: [
+            {
+              name: 'languageModel',
+              type: '(id: string) => LanguageModel',
+              description:
+                '一个根据 ID 返回语言模型的函数。',
+            },
+            {
+              name: 'embeddingModel',
+              type: '(id: string) => EmbeddingModel<string>',
+              description:
+                '一个根据 ID 返回文本嵌入模型的函数。',
+            },
+            {
+              name: 'imageModel',
+              type: '(id: string) => ImageModel',
+              description: '一个根据 ID 返回图像模型的函数。',
+            },
+            {
+              name: 'transcriptionModel',
+              type: '(id: string) => TranscriptionModel',
+              isOptional: true,
+              description:
+                '一个根据 ID 返回转录模型的函数。',
+            },
+            {
+              name: 'speechModel',
+              type: '(id: string) => SpeechModel',
+              isOptional: true,
+              description: '一个根据 ID 返回语音模型的函数。',
+            },
+            {
+              name: 'rerankingModel',
+              type: '(id: string) => RerankingModel',
+              isOptional: true,
+              description:
+                '一个根据 ID 返回重排序模型的函数。',
+            },
+            {
+              name: 'videoModel',
+              type: '(id: string) => VideoModelV4',
+              isOptional: true,
+              description: '一个根据 ID 返回视频模型的函数。',
+            },
+            {
+              name: 'files',
+              type: '() => FilesV4',
+              isOptional: true,
+              description:
+                '一个返回提供商文件 API 接口的函数。',
+            },
+            {
+              name: 'skills',
+              type: '() => SkillsV4',
+              isOptional: true,
+              description:
+                '一个返回提供商技能 API 接口的函数。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'options',
+      type: 'object',
+      isOptional: true,
+      description: '注册表的可选配置。',
+      properties: [
+        {
+          type: 'Options',
+          parameters: [
+            {
+              name: 'separator',
+              type: 'string',
+              isOptional: true,
+              description:
+                '提供商和模型 ID 之间的自定义分隔符。默认为 ":"。',
+            },
+            {
+              name: 'languageModelMiddleware',
+              type: 'LanguageModelMiddleware | LanguageModelMiddleware[]',
+              isOptional: true,
+              description:
+                '用于包装从注册表获取的所有语言模型的中间件。',
+            },
+            {
+              name: 'imageModelMiddleware',
+              type: 'ImageModelMiddleware | ImageModelMiddleware[]',
+              isOptional: true,
+              description:
+                '用于包装从注册表获取的所有图像模型的中间件。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>
+
+### 返回值
+
+`createProviderRegistry` 函数返回一个 `Provider` 实例。它具有以下方法：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'languageModel',
+      type: '(id: string) => LanguageModel',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回语言模型的函数',
+    },
+    {
+      name: 'embeddingModel',
+      type: '(id: string) => EmbeddingModel<string>',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回文本嵌入模型的函数',
+    },
+    {
+      name: 'imageModel',
+      type: '(id: string) => ImageModel',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回图像模型的函数',
+    },
+    {
+      name: 'transcriptionModel',
+      type: '(id: string) => TranscriptionModel',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回转录模型的函数',
+    },
+    {
+      name: 'speechModel',
+      type: '(id: string) => SpeechModel',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回语音模型的函数',
+    },
+    {
+      name: 'rerankingModel',
+      type: '(id: string) => RerankingModel',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回重排序模型的函数',
+    },
+    {
+      name: 'videoModel',
+      type: '(id: string) => VideoModelV4',
+      description:
+        '一个根据 ID（格式：providerId:modelId）返回视频模型的函数',
+    },
+    {
+      name: 'files',
+      type: '(providerId: string) => FilesV4',
+      description:
+        '一个根据提供商 ID 返回提供商文件 API 接口的函数。',
+    },
+    {
+      name: 'skills',
+      type: '(providerId: string) => SkillsV4',
+      description:
+        '一个根据提供商 ID 返回提供商技能 API 接口的函数。',
+    },
+  ]}
+/>

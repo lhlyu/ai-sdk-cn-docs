@@ -1,0 +1,155 @@
+---
+title: Braintrust
+description: 使用 Braintrust 监控和追踪 LLM 应用
+---
+
+# Braintrust 可观测性
+
+Braintrust 是一个用于构建 AI 应用的全栈平台。当使用 AI SDK 构建时，你可以集成 Braintrust 来[记录](https://www.braintrust.dev/docs/guides/logging)、监控真实世界的交互并采取行动。
+
+## 设置
+
+Braintrust 原生支持 OpenTelemetry，并且可以通过 Next.js 或 Node.js 与 AI SDK 开箱即用。
+
+### Next.js
+
+如果你使用 Next.js，请将 Braintrust 导出器与 `@vercel/otel` 配合使用：
+
+```typescript filename="instrumentation"
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { registerOTel } from '@vercel/otel';
+import { BraintrustExporter } from 'braintrust';
+
+registerTelemetry(new LegacyOpenTelemetry());
+
+export function register() {
+  registerOTel({
+    serviceName: 'my-braintrust-app',
+    traceExporter: new BraintrustExporter({
+      parent: 'project_name:your-project-name',
+      filterAISpans: true, // 仅发送 AI 相关的跨度
+    }),
+  });
+}
+```
+
+被追踪的 LLM 调用将出现在 `parent` 字段提供的 Braintrust 项目或实验下。
+
+集成注册后，遥测数据会自动捕获。你可以通过 `context` 选项传递额外的元数据：
+
+```typescript
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = await generateText({
+  model: openai('gpt-4o-mini'),
+  prompt: '2 + 2 等于多少？',
+  context: {
+    query: '天气',
+    location: '旧金山',
+  },
+});
+```
+
+<Note>
+该集成支持流式函数，如 `streamText`。每个流式调用将在 Braintrust 中生成 `ai.streamText` 跨度。
+
+```typescript
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+
+export async function POST(req: Request) {
+  const { prompt } = await req.json();
+
+  const result = await streamText({
+    model: openai('gpt-4o-mini'),
+    prompt,
+  });
+
+  return result.toDataStreamResponse();
+}
+```
+
+</Note>
+
+### Node.js
+
+如果你在没有框架的情况下使用 Node.js，则必须直接配置 `NodeSDK`。在这种情况下，使用 `BraintrustSpanProcessor` 更为直接。
+
+首先，安装必要的依赖：
+
+```bash
+npm install ai @ai-sdk/openai @ai-sdk/otel braintrust @opentelemetry/sdk-node @opentelemetry/sdk-trace-base zod
+```
+
+然后，设置 OpenTelemetry SDK：
+
+```typescript
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { registerTelemetry, generateText, tool, isStepCount } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+import { BraintrustSpanProcessor } from 'braintrust';
+
+const sdk = new NodeSDK({
+  spanProcessors: [
+    new BraintrustSpanProcessor({
+      parent: 'project_name:your-project-name',
+      filterAISpans: true,
+    }),
+  ],
+});
+
+sdk.start();
+registerTelemetry(new LegacyOpenTelemetry());
+
+async function main() {
+  const result = await generateText({
+    model: openai('gpt-4o-mini'),
+    messages: [
+      {
+        role: 'user',
+        content: '我的订单有哪些，它们在哪里？我的用户 ID 是 123',
+      },
+    ],
+    tools: {
+      listOrders: tool({
+        description: '列出所有订单',
+        parameters: z.object({ userId: z.string() }),
+        execute: async ({ userId }) =>
+          `用户 ${userId} 有以下订单：1`,
+      }),
+      viewTrackingInformation: tool({
+        description: '查看特定订单的追踪信息',
+        parameters: z.object({ orderId: z.string() }),
+        execute: async ({ orderId }) =>
+          `这是 ${orderId} 的追踪信息`,
+      }),
+    },
+    context: {
+      something: 'custom',
+      someOtherThing: 'other-value',
+    },
+    telemetry: {
+      functionId: 'my-awesome-function',
+    },
+    stopWhen: isStepCount(10),
+  });
+
+  await sdk.shutdown();
+}
+
+main().catch(console.error);
+```
+
+## 资源
+
+要查看逐步示例，请查看 Braintrust [cookbook](https://www.braintrust.dev/docs/cookbook/recipes/OTEL-logging)。
+
+在 Braintrust 中记录你的应用后，探索其他工作流程，例如：
+
+- 将[工具](https://www.braintrust.dev/docs/guides/functions/tools)添加到你的库中，并在[实验](https://www.braintrust.dev/docs/guides/evals)和[游乐场](https://www.braintrust.dev/docs/guides/playground)中使用它们
+- 创建[自定义评分器](https://www.braintrust.dev/docs/guides/functions/scorers)来评估你的 LLM 调用质量
+- 将你的日志添加到[数据集](https://www.braintrust.dev/docs/guides/datasets)中，并运行评估以比较模型和提示词

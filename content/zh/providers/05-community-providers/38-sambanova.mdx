@@ -1,0 +1,179 @@
+---
+title: SambaNova
+description: 了解如何使用 AI SDK 的 SambaNova 提供商。
+---
+
+# SambaNova 提供商
+
+[sambanova-ai-provider](https://github.com/sambanova/sambanova-ai-provider) 包含对 SambaNova API 的语言模型支持。
+
+API 密钥可以从 [SambaNova 云平台](https://cloud.sambanova.ai/apis) 获取。
+
+## 安装
+
+SambaNova 提供商可通过 `sambanova-ai-provider` 模块获得。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add sambanova-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install sambanova-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add sambanova-ai-provider" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add sambanova-ai-provider" dark />
+  </Tab>
+</Tabs>
+
+### 环境变量
+
+创建一个包含 `SAMBANOVA_API_KEY` 变量的 `.env` 文件。
+
+## 提供商实例
+
+你可以从 `sambanova-ai-provider` 导入默认的提供商实例 `sambanova`：
+
+```ts
+import { sambanova } from 'sambanova-ai-provider';
+```
+
+如果你需要自定义设置，可以从 `sambanova-ai-provider` 导入 `createSambaNova`，并使用你的设置创建提供商实例：
+
+```ts
+import { createSambaNova } from 'sambanova-ai-provider';
+
+const sambanova = createSambaNova({
+  // 可选设置
+});
+```
+
+你可以使用以下可选设置来自定义 SambaNova 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
+  默认前缀是 `https://api.sambanova.ai/v1`。
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认为 `SAMBANOVA_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作中间件来拦截请求，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 模型
+
+你可以在提供商实例上使用 [SambaNova 模型](https://docs.sambanova.ai/cloud/docs/get-started/supported-models)。
+第一个参数是模型 ID，例如 `Meta-Llama-3.1-70B-Instruct`。
+
+```ts
+const model = sambanova('Meta-Llama-3.1-70B-Instruct');
+```
+
+## 已测试的模型和能力
+
+该提供商能够生成和流式传输文本，以及解释图像输入。
+
+至少已使用以下功能进行测试（这些功能使用 `/chat/completion` 端点）：
+
+| 聊天补全           | 图像输入           |
+| ------------------- | ------------------- |
+| <Check size={18} /> | <Check size={18} /> |
+
+### 图像输入
+
+你需要使用以下任一模型进行视觉理解：
+
+- Llama3.2-11B-Vision-Instruct
+- Llama3.2-90B-Vision-Instruct
+
+SambaNova 不支持 URL，但 AI SDK 能够下载文件并将其发送给模型。
+
+## 使用示例
+
+使用 SambaNova 提供商进行文本生成的基本演示。
+
+```ts
+import { createSambaNova } from 'sambanova-ai-provider';
+import { generateText } from 'ai';
+
+const sambanova = createSambaNova({
+  apiKey: 'YOUR_API_KEY',
+});
+
+const model = sambanova('Meta-Llama-3.1-70B-Instruct');
+
+const { text } = await generateText({
+  model,
+  prompt: '你好，很高兴认识你。',
+});
+
+console.log(text);
+```
+
+你将得到类似如下的输出文本：
+
+```
+你好。我也很高兴认识你。有什么我可以帮助你的，或者你想聊聊天吗？
+```
+
+## 拦截 Fetch 请求
+
+该提供商支持 [拦截 Fetch 请求](/examples/providers/intercepting-fetch-requests)。
+
+### 示例
+
+```ts
+import { createSambaNova } from 'sambanova-ai-provider';
+import { generateText } from 'ai';
+
+const sambanovaProvider = createSambaNova({
+  apiKey: 'YOUR_API_KEY',
+  fetch: async (url, options) => {
+    console.log('URL', url);
+    console.log('Headers', JSON.stringify(options.headers, null, 2));
+    console.log(`Body ${JSON.stringify(JSON.parse(options.body), null, 2)}`);
+    return await fetch(url, options);
+  },
+});
+
+const model = sambanovaProvider('Meta-Llama-3.1-70B-Instruct');
+
+const { text } = await generateText({
+  model,
+  prompt: '你好，很高兴认识你。',
+});
+```
+
+你将得到类似如下的输出：
+
+```bash
+URL https://api.sambanova.ai/v1/chat/completions
+Headers {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer YOUR_API_KEY"
+}
+Body {
+  "model": "Meta-Llama-3.1-70B-Instruct",
+  "temperature": 0,
+  "messages": [
+    {
+      "role": "user",
+      "content": "你好，很高兴认识你。"
+    }
+  ]
+}
+```

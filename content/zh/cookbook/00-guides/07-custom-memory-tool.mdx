@@ -1,0 +1,557 @@
+---
+title: 构建自定义记忆工具
+description: 构建一个使用文件系统支持的记忆工具来持久化记忆的智能体。
+---
+
+# 构建自定义记忆工具
+
+记忆意味着在正确的时间、正确的地点保存正确的信息，并在关键时刻将其注入回对话中。没有记忆，你的智能体每次对话都像是第一次。有了记忆，智能体就能随时间积累上下文，回忆之前的交互，并适应用户。
+
+## 存储原语：文件系统
+
+你应该把记忆存在哪里？以文件系统结构组织的文件是天然的选择：
+
+- **持久性**：你可以在进程重启和对话之间持久化文件
+- **速度**：读写文件很快，即使在大规模场景下也是如此
+- **熟悉度**：语言模型从其训练数据中理解文件和路径
+- **层次结构**：你可以使用目录结构创建深层且有组织的记忆库，按主题、时间或类型对记忆进行分组
+
+关键洞察在于，这里的"文件系统"是一种抽象。底层存储并不重要。你可以使用真正的沙盒文件系统、内存中的虚拟文件系统，或者基于 Postgres 的 shim。重要的是概念：以层次结构组织的文件，以及一个可以操作、搜索、读取和编辑这些文件的接口。这就是原语。
+
+## 接口：记忆工具
+
+你有了文件。现在模型需要与它们交互。你给模型一个工具，以及何时以及如何使用它的指令。有两种方法：
+
+### 结构化操作工具
+
+定义模型可以执行的显式操作（`view`、`create`、`update`、`search`），并让模型生成你自行处理的结构化输入：
+
+```json
+{
+  "name": "memory",
+  "input": {
+    "command": "view",
+    "path": "/memories/customer_service_guidelines.xml"
+  }
+}
+```
+
+这在设计上是安全的，因为你控制着每个运行的操。然而，它需要更多的前期实现，并将模型限制在你已构建的操作范围内。
+
+### Bash 支持的工具
+
+另一种选择是用 bash 来支持记忆工具。模型擅长组合 shell 命令，这使它们能够编写灵活的查询来访问所需内容：`cat` 一个文件，`grep` 查找模式，将命令通过管道连接起来，或者使用 `sed` 进行原地编辑。这是更强大的方法，但需要仔细构建一个审批系统，以防止提示词注入并阻止危险命令。
+
+## 记忆的类型
+
+并非所有记忆都是平等的。它们在存储方式、模型访问频率以及何时出现方面有所不同：
+
+- **核心记忆**：包含在每一轮对话中的信息。这可以包括用户的名字，到在哪里找到其他记忆的指令。你将核心记忆直接注入系统提示词，这样模型无需工具调用就能始终拥有它。
+- **归档记忆**：模型存储详细知识的笔记文件夹或文件。可以把它看作是模型的笔记本，它会在其中写下事实、摘要和观察结果以备后用。模型通过记忆工具按需读写归档记忆。
+- **回忆记忆**：对话本身。通过持久化完整的逐轮历史记录，模型可以搜索之前的交互，以从过去的讨论中浮现出相关的上下文。
+
+这些记忆术语基于 [Letta 的定义](https://www.letta.com/blog/agent-memory)。
+
+## 我们将构建什么
+
+本指南是对这些概念的简化演示。你将构建一个基于共享 `.memory` 存储的记忆工具，然后通过 `prepareCall` 将其接入智能体，以便在每次模型调用前注入核心记忆。你可以使用结构化操作或 bash 支持的接口来实现该工具。
+
+记忆布局是一个包含三个文件的 `.memory` 目录，每个文件对应上述一种记忆类型：
+
+```
+.memory/
+├── core.md               # 核心记忆，每轮注入
+├── notes.md              # 归档记忆，带时间戳的笔记
+└── conversations.jsonl   # 回忆记忆，完整轮次历史记录 (JSONL)
+```
+
+## 前提条件
+
+要遵循本指南，你需要以下内容：
+
+1. **AI SDK**，包含 `ToolLoopAgent` 和 `tool`
+2. **Zod**，用于工具输入模式
+3. **可选，用于路线 B (bash 支持)**：**[just-bash](https://github.com/vercel-labs/just-bash)**，用于命令执行和 AST 解析
+
+为两条路线安装依赖：
+
+```bash
+pnpm add ai just-bash zod
+```
+
+如果你只使用路线 A（结构化操作），可以跳过 `just-bash`。
+
+## 实现要求
+
+在构建智能体之前，你需要共享的基础设施加上一个特定于路线的部分：
+
+1. **引导文件系统。** 启动时，确保记忆目录及其文件存在，并包含合理的默认值。这是一个一次性设置步骤：如果目录缺失则创建，如果每个文件尚不存在则用起始内容填充，并将记忆目录添加到 `.gitignore` 以保持其本地化和私密性。
+
+2. **用于核心记忆和对话记录的辅助函数。** 你需要一种读取核心记忆的方法（以便将其注入系统提示词）和一种追加对话条目的方法。对话以 JSONL 格式存储（每行一个 JSON 对象），这使得它们易于使用 `grep` 搜索关键词，并通过 `jq` 进行格式化。
+
+3. **特定于路线的执行安全性。**
+   - **路线 A（结构化操作）：** 保持操作集小而明确（`view`、`create`、`update`、`search`），并且只操作已知的 `.memory` 路径。
+   - **路线 B（bash 支持）：** 在执行前验证命令。用户可能会编写提示词试图运行有害命令，因此请使用基于 AST 的验证和允许列表。有关使用 `just-bash` 的完整实现，请参阅[附录](#appendix-command-guard)。
+
+## 步骤 1：定义记忆工具
+
+首先选择你的工具接口。两条路线使用相同的 `.memory` 文件、相同的 `prepareCall` 注入模式和相同的对话记录。唯一的区别在于模型如何发出记忆操作。
+
+### 路线 A：结构化操作工具
+
+当你想要可预测、显式的操作（`view`、`create`、`update`、`search`）和最小的命令安全面时，使用此路线。
+
+定义一个模式，并通过你自己的 `runMemoryCommand` 处理程序路由每个请求：
+
+```ts
+import { tool } from 'ai';
+import { z } from 'zod';
+
+const memoryInputSchema = z.object({
+  command: z
+    .enum(['view', 'create', 'update', 'search'])
+    .describe(
+      '记忆操作：view 读取，create 写入新内容，update 更改现有内容，search 查找相关行。',
+    ),
+  path: z
+    .string()
+    .optional()
+    .describe(
+      '/memories 下的记忆路径，例如 /memories/core.md 或 /memories/notes.md。view、create 和 update 操作需要此参数。',
+    ),
+  content: z
+    .string()
+    .optional()
+    .describe('用于 create 或 update 命令的文本。'),
+  mode: z
+    .enum(['append', 'overwrite'])
+    .optional()
+    .describe(
+      'update 的写入模式：append 追加到现有内容，overwrite 替换现有内容。默认为 overwrite。',
+    ),
+  query: z
+    .string()
+    .optional()
+    .describe(
+      'search 命令的搜索关键词。建议使用简短、聚焦的术语。',
+    ),
+});
+
+const memoryTool = tool({
+  description: `使用此工具读取和维护 /memories 下的长期记忆。
+
+规则：
+- 如果用户提示词可能依赖于偏好、历史记录、约束或目标，请先搜索，然后回复。
+- 如果提示词是完全自包含的或常识性问题，直接回复。
+- 保持搜索简短且聚焦（1-4 个词）。
+- 将持久的用户事实存储在 /memories/core.md 中，将详细笔记存储在 /memories/notes.md 中。
+- 在面向用户的回复中保持记忆操作不可见。`,
+  inputSchema: memoryInputSchema,
+  execute: async input => {
+    try {
+      const output = await runMemoryCommand(input);
+      return { output };
+    } catch (error) {
+      return { output: `记忆操作失败：${(error as Error).message}` };
+    }
+  },
+});
+```
+
+这使记忆操作可预测，因为模型只能调用预定义的操作。
+
+### 路线 B：Bash 支持的工具
+
+当你希望在读取、写入和临时搜索方面获得最大灵活性时，使用此路线。
+
+```ts
+import { tool } from 'ai';
+import { Bash, ReadWriteFs } from 'just-bash';
+import { z } from 'zod';
+
+const fs = new ReadWriteFs({ root: process.cwd() });
+const bash = new Bash({ fs, cwd: '/' });
+
+const memoryTool = tool({
+  description: `仅对与记忆相关的任务运行 bash 命令。
+
+此工具仅限于记忆工作流。请勿将其用于
+一般项目工作、代码更改、依赖管理或
+系统管理。
+
+在工具内部，使用 /.memory 下的路径：
+- /.memory/core.md 用于应稍后重用的关键事实
+- /.memory/notes.md 用于详细笔记
+- /.memory/conversations.jsonl 用于完整轮次历史记录
+
+规则：
+- 仅执行与记忆相关的读取/写入和对话回忆
+- 保持 /.memory/core.md 简短且聚焦
+- 对于详细信息，优先在 /.memory/notes.md 中追加友好的笔记
+- 如果用户询问之前的对话，首先在
+  /.memory/conversations.jsonl 中搜索相关关键词
+- 使用 >> 追加，> 覆盖，perl -pi -e 进行原地编辑
+
+示例：
+- cat /.memory/core.md
+- echo "- 用户偏好简洁回答" >> /.memory/core.md
+- perl -pi -e 's/简洁回答/详细回答/g' /.memory/core.md
+- grep -n "项目" /.memory/notes.md
+- echo "2026-02-16: 开始了一个 Rust CLI 项目" >> /.memory/notes.md
+- grep -niE "定价|预算" /.memory/conversations.jsonl
+- tail -n 40 /.memory/conversations.jsonl | jq -c '.role + ": " + .content'`,
+  inputSchema: z.object({
+    command: z.string().describe('要执行的 bash 命令。'),
+  }),
+  execute: async ({ command }) => {
+    const unapprovedCommand = findUnapprovedCommand(command);
+    if (unapprovedCommand) {
+      return {
+        stdout: '',
+        stderr: `阻止了未批准的命令：${unapprovedCommand}\n`,
+        exitCode: 1,
+      };
+    }
+
+    const result = await bash.exec(command);
+    return {
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+    };
+  },
+});
+```
+
+`ReadWriteFs` 直接读写真实文件系统，根目录为 `process.cwd()`。bash 解释器内部的路径直接映射到磁盘：`/.memory/core.md` 解析为 `<项目根目录>/.memory/core.md`。
+
+安全管道有两层：基于 AST 的命令守卫在命令到达解释器之前拒绝未批准的命令，而 `just-bash` 本身是一个基于 JavaScript 的 bash 实现（它不会生成真正的 shell 进程）。虽然 bash 解释器在 JavaScript 中运行，但文件系统是真实的，命令会读写磁盘上的实际文件。这就是命令守卫至关重要的原因。
+
+本指南的其余部分（智能体接线、`prepareCall` 和运行循环）适用于任一路线。
+
+## 步骤 2：创建智能体
+
+使用 `ToolLoopAgent` 将所有内容连接起来。`prepareCall` 钩子在每次 LLM 调用前读取最新的核心记忆，并将其注入系统提示词：
+
+```ts
+import { ToolLoopAgent } from 'ai';
+
+const today = new Date().toISOString().slice(0, 10);
+
+const memoryAgent = new ToolLoopAgent({
+  model: 'anthropic/claude-haiku-4.5',
+  tools: { memory: memoryTool },
+  prepareCall: async settings => {
+    // 用户定义的函数在每一轮获取 /.memory/core.md 的内容
+    const coreMemory = await readCoreMemory();
+    return {
+      ...settings,
+      instructions: `今天的日期是 ${today}。
+
+核心记忆：
+${coreMemory}
+
+你可以使用记忆工具保存和回忆重要信息。`,
+    };
+  },
+});
+```
+
+因为 `prepareCall` 在工具循环中的每次生成调用之前运行，所以系统提示词始终反映 `core.md` 的最新状态。如果模型在对话期间更新了核心记忆，下一个循环迭代会立即看到更改。
+
+## 步骤 3：运行智能体
+
+引导文件系统，记录对话，并运行智能体：
+
+```ts
+const prompt = '记住我最喜欢的编辑器是 Neovim';
+
+// 记录用户消息
+await appendConversation({
+  role: 'user',
+  content: prompt,
+  timestamp: new Date().toISOString(),
+});
+
+// 运行智能体（在工具调用时自动循环）
+const result = await memoryAgent.generate({ prompt });
+
+// 记录助手响应
+await appendConversation({
+  role: 'assistant',
+  content: result.text,
+  timestamp: new Date().toISOString(),
+});
+
+console.log(result.text);
+```
+
+当模型决定需要存储或回忆信息时，它会调用 `memory` 工具。`ToolLoopAgent` 执行该工具并将结果反馈回去，持续进行直到模型产生最终的文本响应。
+
+一个典型的交互如下所示：
+
+1. 用户说"记住我最喜欢的编辑器是 Neovim"
+2. 模型调用 `memory`，命令为 `echo "- 最喜欢的编辑器：Neovim" >> /.memory/core.md`
+3. 工具执行命令并返回结果
+4. 模型响应："已收到，我已保存你最喜欢的编辑器是 Neovim。"
+5. 在下一次运行时，`prepareCall` 读取 `core.md`，该事实出现在系统提示词中
+
+## 了解更多
+
+- [AI SDK 文档](https://ai-sdk.dev/docs) 了解 `ToolLoopAgent`、`tool` 和 `generateText`
+- [just-bash](https://github.com/vercel-labs/just-bash) 了解基于 JavaScript 的 bash 解释器和 AST 解析器
+- [AI SDK 示例](https://github.com/vercel/ai/tree/main/examples) 了解更多智能体模式
+
+---
+
+## 附录：实现细节
+
+以下代码是[实现要求](#implementation-requirements)中所述基础设施的参考实现。它使用 Node.js 文件系统 API 和 Bun 入口点，但你可以将这些模式移植到任何运行时。
+
+### 附录：文件系统引导
+
+定义记忆目录结构并在启动时引导它。如果每个文件尚不存在，则为其提供合理的默认值：
+
+```ts
+import {
+  access,
+  appendFile,
+  mkdir,
+  readFile,
+  writeFile,
+} from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+
+const MEMORY_DIR = '.memory';
+const MEMORY_ROOT = resolve(process.cwd(), MEMORY_DIR);
+const CORE_MEMORY_PATH = join(MEMORY_ROOT, 'core.md');
+const NOTES_PATH = join(MEMORY_ROOT, 'notes.md');
+const CONVERSATIONS_PATH = join(MEMORY_ROOT, 'conversations.jsonl');
+
+const DEFAULT_CORE_MEMORY = `# 核心记忆
+- 保持简短。
+- 在此放置稳定的用户事实。
+`;
+
+const DEFAULT_NOTES = `# 笔记
+使用此文件存储详细记忆和带时间戳的笔记。
+`;
+
+async function ensureFile(path: string, content: string): Promise<void> {
+  try {
+    await access(path);
+  } catch {
+    await writeFile(path, content, 'utf8');
+  }
+}
+
+async function ensureMemoryFilesystem(): Promise<void> {
+  await mkdir(MEMORY_ROOT, { recursive: true });
+  await ensureFile(CORE_MEMORY_PATH, DEFAULT_CORE_MEMORY);
+  await ensureFile(NOTES_PATH, DEFAULT_NOTES);
+  await ensureFile(CONVERSATIONS_PATH, '');
+}
+```
+
+将 `.memory` 添加到你的 `.gitignore` 中，以保持记忆的本地性和私密性。
+
+### 附录：辅助函数
+
+一个辅助函数读取核心记忆用于系统提示词注入，另一个将对话条目作为 JSONL 追加：
+
+```ts
+async function readCoreMemory(): Promise<string> {
+  try {
+    return await readFile(CORE_MEMORY_PATH, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+async function appendConversation(entry: {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}): Promise<void> {
+  await appendFile(CONVERSATIONS_PATH, `${JSON.stringify(entry)}\n`, 'utf8');
+}
+```
+
+### 附录：结构化操作处理程序
+
+路线 A 中使用的 `runMemoryCommand` 函数将每个操作映射到文件系统操作。路径相对于记忆根目录解析，并且只允许已知的记忆文件：
+
+```ts
+import { readFile, writeFile, appendFile } from 'node:fs/promises';
+import { join, relative } from 'node:path';
+
+const MEMORY_FILES = ['core.md', 'notes.md', 'conversations.jsonl'];
+
+function resolveMemoryPath(path: string): string {
+  const relativePath = path
+    .trim()
+    .replace(/^\/?memories\/?/, '')
+    .replace(/^\/?\.memory\/?/, '')
+    .replace(/^\/+/, '');
+
+  if (!MEMORY_FILES.includes(relativePath)) {
+    throw new Error(`不支持的记忆路径：${path}`);
+  }
+
+  return join(MEMORY_ROOT, relativePath);
+}
+
+async function runMemoryCommand(input: {
+  command: 'view' | 'create' | 'update' | 'search';
+  path?: string;
+  content?: string;
+  mode?: 'append' | 'overwrite';
+  query?: string;
+}): Promise<string> {
+  const { command, path, content, mode, query } = input;
+
+  switch (command) {
+    case 'view': {
+      if (!path) throw new Error('view 操作需要 path');
+      return await readFile(resolveMemoryPath(path), 'utf8');
+    }
+    case 'create':
+    case 'update': {
+      if (!path) throw new Error('需要 path');
+      if (!content) throw new Error('需要 content');
+      const target = resolveMemoryPath(path);
+      if (mode === 'append') {
+        await appendFile(target, content, 'utf8');
+      } else {
+        await writeFile(target, content, 'utf8');
+      }
+      return `${command === 'create' ? '已创建' : '已更新'} ${path}`;
+    }
+    case 'search': {
+      if (!query) throw new Error('search 操作需要 query');
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const files = path
+        ? [resolveMemoryPath(path)]
+        : MEMORY_FILES.map(f => join(MEMORY_ROOT, f));
+      const matches: string[] = [];
+
+      for (const filePath of files) {
+        const lines = (await readFile(filePath, 'utf8')).split('\n');
+        for (const [i, line] of lines.entries()) {
+          const lower = line.toLowerCase();
+          if (terms.some(t => lower.includes(t))) {
+            matches.push(`${relative(MEMORY_ROOT, filePath)}:${i + 1}:${line}`);
+          }
+        }
+      }
+
+      return matches.length > 0 ? matches.join('\n') : '未找到匹配项。';
+    }
+  }
+}
+```
+
+### 附录：命令守卫
+
+基于 AST 的命令守卫遍历解析后命令中的每个节点（包括管道、子 shell、循环和条件语句），并拒绝任何不在允许列表中的内容。这比字符串匹配或正则表达式更健壮。如果命令名称是动态构造的（例如，通过变量扩展），`extractLiteralWord` 返回 `null`，并且守卫会跳过对该命令的允许列表检查。由于 `just-bash` 是一个基于 JavaScript 的解释器（不是真正的 shell），绕过允许列表检查的动态构造命令将无法解析为真正的二进制文件。这是一个可接受的权衡。
+
+```ts
+import {
+  type CommandNode,
+  parse,
+  type ScriptNode,
+  type WordNode,
+} from 'just-bash';
+
+const approvedCommands = new Set([
+  'cat',
+  'echo',
+  'grep',
+  'jq',
+  'ls',
+  'mkdir',
+  'perl',
+  'sed',
+  'tail',
+]);
+
+function extractLiteralWord(word: WordNode | null): string | null {
+  if (!word || word.parts.length !== 1) return null;
+  const [part] = word.parts;
+  if (!part || part.type !== 'Literal') return null;
+  return part.value;
+}
+
+function collectCommandNames(script: ScriptNode): string[] {
+  const names = new Set<string>();
+
+  const visitCommand = (command: CommandNode): void => {
+    switch (command.type) {
+      case 'SimpleCommand': {
+        const name = extractLiteralWord(command.name);
+        if (name) names.add(name);
+        break;
+      }
+      case 'If': {
+        for (const clause of command.clauses) {
+          for (const s of clause.condition) visitStatement(s);
+          for (const s of clause.body) visitStatement(s);
+        }
+        if (command.elseBody) {
+          for (const s of command.elseBody) visitStatement(s);
+        }
+        break;
+      }
+      case 'For':
+      case 'CStyleFor':
+      case 'While':
+      case 'Until':
+      case 'Subshell':
+      case 'Group': {
+        for (const s of command.body) visitStatement(s);
+        break;
+      }
+      case 'Case': {
+        for (const item of command.items) {
+          for (const s of item.body) visitStatement(s);
+        }
+        break;
+      }
+      case 'FunctionDef': {
+        visitCommand(command.body);
+        break;
+      }
+      case 'ArithmeticCommand':
+      case 'ConditionalCommand':
+        break;
+    }
+  };
+
+  const visitStatement = (
+    statement: ScriptNode['statements'][number],
+  ): void => {
+    for (const pipeline of statement.pipelines) {
+      for (const command of pipeline.commands) {
+        visitCommand(command);
+      }
+    }
+  };
+
+  for (const statement of script.statements) {
+    visitStatement(statement);
+  }
+
+  return [...names].sort();
+}
+
+export function findUnapprovedCommand(commandLine: string): string | null {
+  let script: ScriptNode;
+  try {
+    script = parse(commandLine);
+  } catch {
+    return null;
+  }
+  const commandNames = collectCommandNames(script);
+  return commandNames.find(name => !approvedCommands.has(name)) ?? null;
+}
+```

@@ -1,0 +1,34 @@
+---
+title: 未关闭的流
+description: 排查与未关闭流相关的错误。
+---
+
+# 未关闭的流
+
+有时流未能正确关闭，这可能导致意外行为。以下是流未正确关闭时可能出现的一些常见问题。
+
+## 问题
+
+可流式 UI 更新缓慢。
+
+## 解决方案
+
+当你使用 [`createStreamableUI`](/docs/reference/ai-sdk-rsc/create-streamable-ui) 创建可流式 UI 但未关闭流时，会出现此问题。
+要解决此问题，你必须确保通过调用 [`.done()`](/docs/reference/ai-sdk-rsc/create-streamable-ui#done) 方法来关闭流。
+这将确保流被关闭。
+
+```tsx file='app/actions.tsx'
+import { createStreamableUI } from '@ai-sdk/rsc';
+
+const submitMessage = async () => {
+  'use server';
+
+  const stream = createStreamableUI('1');
+
+  stream.update('2');
+  stream.append('3');
+  stream.done('4'); // [!code ++]
+
+  return stream.value;
+};
+```

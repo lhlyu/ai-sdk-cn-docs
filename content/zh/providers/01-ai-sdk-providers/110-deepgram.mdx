@@ -1,0 +1,280 @@
+---
+title: Deepgram
+description: 了解如何使用 AI SDK 的 Deepgram 提供商。
+---
+
+# Deepgram 提供商
+
+[Deepgram](https://deepgram.com/) 提供商为 Deepgram 转录和语音生成 API 提供语言模型支持。
+
+## 安装
+
+Deepgram 提供商位于 `@ai-sdk/deepgram` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/deepgram" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/deepgram" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/deepgram" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/deepgram" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/deepgram` 导入默认的提供商实例 `deepgram`：
+
+```ts
+import { deepgram } from '@ai-sdk/deepgram';
+```
+
+如果你需要自定义配置，可以从 `@ai-sdk/deepgram` 导入 `createDeepgram` 并创建带有你设置的提供商实例：
+
+```ts
+import { createDeepgram } from '@ai-sdk/deepgram';
+
+const deepgram = createDeepgram({
+  // 自定义设置，例如：
+  fetch: customFetch,
+});
+```
+
+你可以使用以下可选设置来自定义 Deepgram 提供商实例：
+
+- **apiKey** _string_
+
+  通过 `Authorization` 头部发送的 API 密钥。
+  默认为 `DEEPGRAM_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义头部。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作中间件来拦截请求，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 语音模型
+
+你可以使用 `.speech()` 工厂方法创建调用 [Deepgram 文本转语音 API](https://developers.deepgram.com/docs/text-to-speech) 的模型。
+
+第一个参数是模型 ID，其中包含语音。Deepgram 将语音直接嵌入模型 ID 中（例如 `aura-2-helena-en`）。
+
+```ts
+const model = deepgram.speech('aura-2-helena-en');
+```
+
+你可以将模型与 `generateSpeech` 函数一起使用：
+
+```ts
+import { generateSpeech } from 'ai';
+import { deepgram } from '@ai-sdk/deepgram';
+
+const result = await generateSpeech({
+  model: deepgram.speech('aura-2-helena-en'),
+  text: 'Hello, world!',
+});
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项：
+
+```ts highlight="7-11"
+import { generateSpeech } from 'ai';
+import { deepgram, type DeepgramSpeechModelOptions } from '@ai-sdk/deepgram';
+
+const result = await generateSpeech({
+  model: deepgram.speech('aura-2-helena-en'),
+  text: 'Hello, world!',
+  providerOptions: {
+    deepgram: {
+      encoding: 'linear16',
+      sampleRate: 24000,
+    } satisfies DeepgramSpeechModelOptions,
+  },
+});
+```
+
+可用的提供商选项如下：
+
+- **encoding** _string_
+
+  音频输出的编码类型。
+  支持的值：`'linear16'`、`'mulaw'`、`'alaw'`、`'mp3'`、`'opus'`、`'flac'`、`'aac'`。
+  可选。
+
+- **container** _string_
+
+  输出音频的容器格式。
+  支持的值：`'wav'`、`'ogg'`、`'none'`。
+  可选。
+
+- **sampleRate** _number_
+
+  输出音频的采样率，单位为 Hz。
+  支持的值取决于编码：`8000`、`16000`、`24000`、`32000`、`48000`。
+  可选。
+
+- **bitRate** _number | string_
+
+  音频的比特率，单位为比特每秒。
+  对于 `mp3`：`32000` 或 `48000`。
+  对于 `opus`：`4000` 到 `650000`。
+  对于 `aac`：`4000` 到 `192000`。
+  可选。
+
+- **callback** _string_
+
+  Deepgram 将向其发送包含音频的回调请求的 URL。
+  可选。
+
+- **callbackMethod** _enum_
+
+  回调请求的 HTTP 方法。
+  允许的值：`'POST'`、`'PUT'`。
+  可选。
+
+- **mipOptOut** _boolean_
+
+  选择退出 Deepgram 模型改进计划的请求。
+  可选。
+
+- **tag** _string | 字符串数组_
+
+  为你的请求打上标签，以便在使用报告中识别。
+  可选。
+
+### 模型能力
+
+| 模型                                                            |
+| ---------------------------------------------------------------- |
+| `aura-2-asteria-en`                                              |
+| `aura-2-thalia-en`                                               |
+| `aura-2-helena-en`                                               |
+| `aura-2-orpheus-en`                                              |
+| `aura-2-zeus-en`                                                 |
+| `aura-asteria-en`                                                |
+| `aura-luna-en`                                                   |
+| `aura-stella-en`                                                 |
+| [+ 更多语音](https://developers.deepgram.com/docs/tts-models) |
+
+## 转录模型
+
+你可以使用 `.transcription()` 工厂方法创建调用 [Deepgram 转录 API](https://developers.deepgram.com/docs/pre-recorded-audio) 的模型。
+
+第一个参数是模型 ID，例如 `nova-3`。
+
+```ts
+const model = deepgram.transcription('nova-3');
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `summarize` 选项将为内容片段启用摘要功能。
+
+```ts highlight="6"
+import { transcribe } from 'ai';
+import {
+  deepgram,
+  type DeepgramTranscriptionModelOptions,
+} from '@ai-sdk/deepgram';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: deepgram.transcription('nova-3'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    deepgram: {
+      summarize: true,
+    } satisfies DeepgramTranscriptionModelOptions,
+  },
+});
+```
+
+可用的提供商选项如下：
+
+- **language** _string_
+
+  音频的语言代码。
+  支持多种 ISO-639-1 和 ISO-639-3 语言代码。
+  可选。
+
+- **detectLanguage** _boolean_
+
+  是否启用自动语言检测。
+  如果为 true，Deepgram 将检测音频的语言。
+  可选。
+
+- **smartFormat** _boolean_
+
+  是否对转录应用智能格式化。
+  可选。
+
+- **punctuate** _boolean_
+
+  是否在转录中添加标点符号。
+  可选。
+
+- **summarize** _enum | boolean_
+
+  是否生成转录摘要。
+  允许的值：`'v2'`、`false`。
+  可选。
+
+- **topics** _boolean_
+
+  是否检测转录中的主题。
+  可选。
+
+- **detectEntities** _boolean_
+
+  是否检测转录中的实体。
+  可选。
+
+- **redact** _string | 字符串数组_
+
+  指定要从转录中编辑的内容。
+  可选。
+
+- **search** _string_
+
+  要在转录中查找的搜索词。
+  可选。
+
+- **diarize** _boolean_
+
+  是否识别转录中的不同说话者。
+  默认为 `true`。
+  可选。
+
+- **utterances** _boolean_
+
+  是否将转录分割为话语片段。
+  可选。
+
+- **uttSplit** _number_
+
+  分割话语的阈值。
+  可选。
+
+- **fillerWords** _boolean_
+
+  是否在转录中包含填充词（如“嗯”、“呃”等）。
+  可选。
+
+### 模型能力
+
+| 模型                                                                                              | 转录               | 时长               | 片段               | 语言               |
+| -------------------------------------------------------------------------------------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `nova-3` (+ [变体](https://developers.deepgram.com/docs/models-languages-overview#nova-3))         | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `nova-2` (+ [变体](https://developers.deepgram.com/docs/models-languages-overview#nova-2))         | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `nova` (+ [变体](https://developers.deepgram.com/docs/models-languages-overview#nova))             | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `enhanced` (+ [变体](https://developers.deepgram.com/docs/models-languages-overview#enhanced))     | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `base` (+ [变体](https://developers.deepgram.com/docs/models-languages-overview#base))             | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |

@@ -1,0 +1,44 @@
+---
+title: 使用文件提示词流式传输文本
+description: 了解如何使用 AI SDK 和 Node 通过文件提示词流式传输文本
+tags: ['node', '流式传输', '多模态']
+---
+
+# 使用文件提示词流式传输文本
+
+在 AI 应用中处理文件通常需要分析文档、处理结构化数据或从各种文件格式中提取信息。文件提示词允许您直接将文件内容发送给模型，从而实现文档分析、数据提取或基于文件内容生成响应等任务。
+
+```ts
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+import 'dotenv/config';
+import fs from 'node:fs';
+
+async function main() {
+  const result = streamText({
+    model: __MODEL__,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '根据这份文档，什么是嵌入模型？',
+          },
+          {
+            type: 'file',
+            data: fs.readFileSync('./data/ai.pdf'),
+            mediaType: 'application/pdf',
+          },
+        ],
+      },
+    ],
+  });
+
+  for await (const textPart of result.textStream) {
+    process.stdout.write(textPart);
+  }
+}
+
+main().catch(console.error);
+```

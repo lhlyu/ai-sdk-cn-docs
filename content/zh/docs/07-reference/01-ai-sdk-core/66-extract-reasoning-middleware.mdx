@@ -1,0 +1,68 @@
+---
+title: extractReasoningMiddleware
+description: 从生成的文本中提取 XML 标签标记的推理部分的中间件
+---
+
+# `extractReasoningMiddleware()`
+
+`extractReasoningMiddleware` 是一个中间件函数，用于从生成的文本中提取 XML 标签标记的推理部分，并将其与主文本内容分开暴露。当你希望将 AI 模型的推理过程与其最终输出分离时，此功能特别有用。
+
+```ts
+import { extractReasoningMiddleware } from 'ai';
+
+const middleware = extractReasoningMiddleware({
+  tagName: 'reasoning',
+  separator: '\n',
+});
+```
+
+## 导入
+
+<Snippet
+  text={`import { extractReasoningMiddleware } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'tagName',
+      type: 'string',
+      isOptional: false,
+      description:
+        '要从中提取推理内容的 XML 标签名称（不含尖括号）',
+    },
+    {
+      name: 'separator',
+      type: 'string',
+      isOptional: true,
+      description:
+        '推理部分与文本部分之间使用的分隔符。默认为 "\\n"',
+    },
+    {
+      name: 'startWithReasoning',
+      type: 'boolean',
+      isOptional: true,
+      description:
+        '以推理令牌开头。当响应始终以推理开头且省略了初始标签时，设置为 true。默认为 false。',
+    },
+  ]}
+/>
+
+### 返回值
+
+返回一个中间件对象，该对象：
+
+- 处理流式传输和非流式传输响应
+- 提取指定 XML 标签之间的内容作为推理内容
+- 从主文本中移除 XML 标签和推理内容
+- 向结果中添加一个 `reasoning` 属性，包含提取的内容
+- 使用指定的分隔符保持文本部分之间的适当分隔
+
+### 类型参数
+
+该中间件适用于流式传输响应的 `LanguageModelV4StreamPart` 类型。

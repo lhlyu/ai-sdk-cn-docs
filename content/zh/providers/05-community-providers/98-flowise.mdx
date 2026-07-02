@@ -1,0 +1,106 @@
+---
+title: Flowise
+description: 了解如何使用 AI SDK 的 Flowise 提供商。
+---
+
+# Flowise 提供商
+
+**[Flowise 提供商](https://github.com/ahmedrowaihi/flowise-ai-sdk-provider)** 允许你通过 AI SDK 轻松将 [Flowise](https://flowiseai.com/) 聊天流集成到你的应用程序中。
+
+## 安装
+
+Flowise 提供商位于 `@ahmedrowaihi/flowise-vercel-ai-sdk-provider` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn']}>
+  <Tab>
+    <Snippet
+      text="pnpm add @ahmedrowaihi/flowise-vercel-ai-sdk-provider"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="npm install @ahmedrowaihi/flowise-vercel-ai-sdk-provider"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="yarn add @ahmedrowaihi/flowise-vercel-ai-sdk-provider"
+      dark
+    />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ahmedrowaihi/flowise-vercel-ai-sdk-provider` 导入提供商工厂函数：
+
+```ts
+import { createFlowiseProvider } from '@ahmedrowaihi/flowise-vercel-ai-sdk-provider';
+```
+
+## 快速开始
+
+### 使用可复用的提供商
+
+创建一个名为 `.env.local` 的文件，并添加你的 Flowise 配置：
+
+```text
+FLOWISE_BASE_URL=https://your-flowise-instance.com
+FLOWISE_API_KEY=your_api_key_optional
+```
+
+```ts
+import { createFlowiseProvider } from '@ahmedrowaihi/flowise-vercel-ai-sdk-provider';
+import { generateText } from 'ai';
+
+const flowise = createFlowiseProvider({
+  baseUrl: process.env.FLOWISE_BASE_URL!,
+  apiKey: process.env.FLOWISE_API_KEY,
+});
+
+const { text } = await generateText({
+  model: flowise('your-chatflow-id'),
+  prompt: '写一份适合4人份的素食千层面食谱。',
+});
+```
+
+### 使用一次性模型
+
+```ts
+import { createFlowiseModel } from '@ahmedrowaihi/flowise-vercel-ai-sdk-provider';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: createFlowiseModel({
+    baseUrl: process.env.FLOWISE_BASE_URL!,
+    apiKey: process.env.FLOWISE_API_KEY,
+    chatflowId: 'your-chatflow-id',
+  }),
+  prompt: '写一份适合4人份的素食千层面食谱。',
+});
+```
+
+### 流式传输示例
+
+```ts
+import { streamText } from 'ai';
+import { createFlowiseProvider } from '@ahmedrowaihi/flowise-vercel-ai-sdk-provider';
+
+const flowise = createFlowiseProvider({
+  baseUrl: process.env.FLOWISE_BASE_URL!,
+  apiKey: process.env.FLOWISE_API_KEY,
+});
+
+const result = streamText({
+  model: flowise('your-chatflow-id'),
+  prompt: '写一个关于机器人学习烹饪的故事。',
+});
+
+return result.toDataStreamResponse();
+```
+
+## 更多信息
+
+有关更多信息和高级用法，请参阅 [Flowise 提供商文档](https://github.com/ahmedrowaihi/flowise-ai-sdk-provider#readme)。

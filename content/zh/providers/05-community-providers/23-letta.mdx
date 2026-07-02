@@ -1,0 +1,202 @@
+---
+title: Letta
+description: 了解如何在 AI SDK 中使用 Letta 提供商。
+---
+
+# Letta 提供商
+
+[Letta AI SDK 提供商](https://github.com/letta-ai/vercel-ai-sdk-provider) 允许你在 AI SDK 中使用 Letta 智能体。
+
+功能包括：
+
+- 持久化和长期记忆
+- 访问智能体级别和模型级别的推理消息，并附带来源归属
+- 支持自定义智能体配置的工具和 MCP（模型上下文协议）
+- 基于工具的文件访问，实现智能体管理的文件系统操作
+- 内置工具，可在 Letta 和 AI SDK 消息格式之间进行转换
+- [所有 Letta 发送消息 API 功能](https://docs.letta.com/api-reference/agents/messages/create-stream)，例如[长时间运行的智能体执行](https://docs.letta.com/guides/agents/long-running)
+
+## 支持的模型
+
+请参阅 [Letta 文档](https://docs.letta.com/connecting-model-providers/supported-models) 获取支持的模型完整列表。对于列表中未包含的模型，你可以尝试配置 Letta 使用 [OpenAI 代理](https://docs.letta.com/guides/server/providers/openai-proxy)。
+
+## 安装
+
+你可以通过以下方式安装 Letta 提供商：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @letta-ai/vercel-ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @letta-ai/vercel-ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @letta-ai/vercel-ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @letta-ai/vercel-ai-sdk-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@letta-ai/vercel-ai-sdk-provider` 导入提供商实例 `lettaCloud` 或 `lettaLocal`：
+
+```ts
+// 云用户
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+
+// 自托管用户
+import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+
+// 创建自定义 Letta 提供商
+import { createLetta } from '@letta-ai/vercel-ai-sdk-provider';
+
+const letta = createLetta({
+  baseUrl: '<your-base-url>',
+  token: '<your-access-token>',
+});
+```
+
+## 基本用法
+
+从 [Letta 仪表盘](https://app.letta.com/api-keys) 获取你的 API 密钥。
+
+```bash
+# .env
+LETTA_API_KEY=your-letta-api-key
+```
+
+```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: lettaCloud(), // 模型配置（LLM、温度等）通过你的 Letta 智能体管理
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' },
+    },
+  },
+  prompt: '写一份适合4人份的素食千层面食谱。',
+});
+
+console.log(result.text);
+```
+
+## 高级用法
+
+### 提供商选项
+
+你可以使用 `providerOptions.letta` 参数配置 Letta 特定的设置：
+
+```typescript
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: {
+        id: 'your-agent-id',
+        maxSteps: 100,
+        includePings: true,
+        streamTokens: true,
+      },
+      timeoutInSeconds: 300,
+    },
+  },
+  prompt: '给我讲一个关于机器人学习绘画的故事',
+});
+```
+
+#### 智能体配置
+
+配置用于消息创建的智能体特定参数。这些设置适用于流式传输和非流式传输操作。
+
+可用选项：
+
+- `id` (`string`，必填)：你的 Letta 智能体 ID
+- `maxSteps` (`number`)：智能体执行的最大步骤数
+- `includePings` (`boolean`)：是否在流中包含 ping 消息
+- `streamTokens` (`boolean`)：启用逐 token 流式传输
+- `background` (`boolean`)：为长时间运行的操作启用后台执行
+- 其他参数请参阅 [Letta API 文档](https://docs.letta.com/api-reference/agents/messages/create-stream)
+
+#### 超时配置
+
+**类型：** `number`
+
+**默认值：** `1000`
+
+设置智能体响应的最大等待时间（以秒为单位）。这对于长时间运行的智能体操作或处理复杂推理链时非常重要。
+
+```typescript
+const result = streamText({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' },
+      timeoutInSeconds: 300, // 最多等待 5 分钟
+    },
+  },
+  prompt: '处理这个复杂任务...',
+});
+```
+
+## 自定义工具和 MCP
+
+Letta 智能体通过提供商执行的工具支持自定义工具和 MCP（模型上下文协议）服务器。一旦[在你的 Letta 智能体上配置](https://docs.letta.com/guides/agents/custom-tools)，你可以使用 `letta.tool()` 将它们包含在请求中，Letta 会处理工具执行。
+
+```typescript
+import { streamText } from 'ai';
+import { z } from 'zod';
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+
+// 与流式传输一起使用
+const result = streamText({
+  model: lettaCloud(),
+  tools: {
+    web_search: lettaCloud.tool('web_search'),
+    memory_insert: lettaCloud.tool('memory_insert'),
+    memory_replace: lettaCloud.tool('memory_replace'),
+    core_memory_append: lettaCloud.tool('core_memory_append'),
+    my_custom_tool: lettaCloud.tool('my_custom_tool'),
+    // 可选地提供描述和模式（仅占位符 - 执行由 Letta 处理）
+    typed_query: lettaCloud.tool('typed_query', {
+      description: '使用类型化参数进行查询',
+      inputSchema: z.object({
+        query: z.string(),
+      }),
+    }),
+  },
+  providerOptions: {
+    letta: {
+      agent: { id: agentId },
+    },
+  },
+  prompt: '给我讲一个关于机器人学习绘画的故事',
+});
+```
+
+## 使用其他 Letta 客户端函数
+
+`vercel-ai-sdk-provider` 扩展了 [@letta-ai/letta-client](https://www.npmjs.com/package/@letta-ai/letta-client)，你可以通过使用 `lettaCloud.client` 或 `lettaLocal.client` 或你自定义生成的 `letta.client` 直接访问操作。
+
+```ts
+// 使用 Letta Cloud
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+
+lettaCloud.client.agents.list();
+
+// 使用 Letta Local
+import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
+
+lettaLocal.client.agents.list();
+```
+
+### 更多信息
+
+有关 Letta API 的更多信息，请参阅 [Letta API 文档](https://docs.letta.com/api-reference/overview)。

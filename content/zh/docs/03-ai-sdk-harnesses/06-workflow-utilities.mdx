@@ -1,0 +1,305 @@
+---
+title: 工作流工具
+description: 将 HarnessAgent 轮次作为持久化 Workflow DevKit 工作流运行。
+---
+
+# 工作流工具
+
+`@ai-sdk/workflow-harness` 提供了在 [workflow](https://vercel.com/docs/workflow) 中运行 `HarnessAgent` 轮次的辅助工具。
+
+该包提供了一个可序列化的状态机和一个切片运行器，您可以从自己的 `'use workflow'` 和 `'use step'` 函数中调用它。
+
+核心的 harness 和工作流文件是框架无关的。下面展示的 HTTP 处理程序和 Next.js 配置是如何从一个应用框架中暴露工作流的示例；请根据您的运行时和 Workflow SDK 集成调整这些部分。
+
+## 安装
+
+<div className="my-4">
+  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+    <Tab>
+      <Snippet text="pnpm add @ai-sdk/workflow-harness workflow" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="npm install @ai-sdk/workflow-harness workflow" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="yarn add @ai-sdk/workflow-harness workflow" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="bun add @ai-sdk/workflow-harness workflow" dark />
+    </Tab>
+  </Tabs>
+</div>
+
+按照 [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent) 中的说明，安装核心的 harness 包、一个 harness 适配器和一个沙箱提供商。
+
+## 使用持久化 Harness 智能体
+
+可以按照常规方式配置智能体。
+
+```ts filename='harness-workflow/agent.ts'
+import { HarnessAgent } from '@ai-sdk/harness/agent';
+import { claudeCode } from '@ai-sdk/harness-claude-code';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+
+export const agent = new HarnessAgent({
+  harness: claudeCode,
+  sandbox: createVercelSandbox({
+    runtime: 'node24',
+    ports: [4000],
+  }),
+  instructions: '你是一个有用的编码助手。',
+});
+```
+
+有了智能体定义文件后，从两个工作流特定的部分开始：一个切片步骤，用于运行 harness 轮次中一个有时间限制的部分；以及一个工作流，用于调用该步骤直到轮次完成。
+
+```ts filename='harness-workflow/run-slice-step.ts'
+import {
+  runHarnessAgentSlice,
+  type HarnessWorkflowState,
+} from '@ai-sdk/workflow-harness';
+
+export async function runSlice(
+  state: HarnessWorkflowState,
+): Promise<HarnessWorkflowState> {
+  'use step';
+
+  const { agent } = await import('./agent');
+
+  return runHarnessAgentSlice({
+    agent,
+    state,
+  });
+}
+```
+
+```ts filename='harness-workflow/workflow.ts'
+import { runSlice } from './run-slice-step';
+import {
+  createHarnessWorkflowState,
+  finalizeHarnessWorkflow,
+  type HarnessWorkflowInput,
+} from '@ai-sdk/workflow-harness';
+
+export async function codingWorkflow(
+  input: Pick<HarnessWorkflowInput, 'prompt' | 'sessionId'>,
+) {
+  'use workflow';
+
+  let state = createHarnessWorkflowState(input);
+
+  while (state.status === 'running' || state.status === 'timed_out') {
+    state = await runSlice(state);
+  }
+
+  return finalizeHarnessWorkflow(state);
+}
+```
+
+### 启动工作流
+
+从服务器端代码启动工作流。您可以从 HTTP 端点返回 `run.readable`，直接消费它，或者通过您框架的流式响应原语暴露它。
+
+```ts filename='server/start-coding-workflow.ts'
+import { codingWorkflow } from '../harness-workflow/workflow';
+import { start } from 'workflow/api';
+
+export async function startCodingWorkflow({
+  prompt,
+  sessionId,
+}: {
+  prompt: string;
+  sessionId: string;
+}) {
+  const run = await start(codingWorkflow, [{ prompt, sessionId }]);
+
+  return run.readable;
+}
+```
+
+这是核心的工作流/harness 集成。当您需要一个多轮聊天在多次工作流运行中重新连接到同一个原生 harness 会话时，请添加恢复持久化。
+
+### HTTP 路由示例
+
+此示例使用 Next.js 的 `Request`/`Response` 处理程序和 AI SDK UI 消息流。对于其他框架，工作流相关代码类似：提取最新的用户消息，调用 `start(codingWorkflow, [...])`，并返回运行的 readable 流。
+
+```ts filename='app/api/harness-workflow/route.ts'
+import { codingWorkflow } from '../../../harness-workflow/workflow';
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  type UIMessage,
+  type UIMessageChunk,
+} from 'ai';
+import { start } from 'workflow/api';
+
+function latestUserMessage(
+  messages: Awaited<ReturnType<typeof convertToModelMessages>>,
+) {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.role === 'user') return message;
+  }
+}
+
+export async function POST(request: Request) {
+  const body: {
+    id?: string;
+    messages: UIMessage[];
+  } = await request.json();
+
+  if (!body.id) {
+    return new Response('缺少聊天 ID', { status: 400 });
+  }
+
+  const prompt = latestUserMessage(await convertToModelMessages(body.messages));
+  if (!prompt) {
+    return new Response('没有要运行的用户消息', { status: 400 });
+  }
+
+  const run = await start(codingWorkflow, [
+    {
+      prompt,
+      sessionId: body.id,
+    },
+  ]);
+
+  return createUIMessageStreamResponse({
+    stream: run.readable as ReadableStream<UIMessageChunk>,
+  });
+}
+```
+
+如果您使用 Next.js，请使用 `withWorkflow()` 包装您的配置，以便 Workflow SDK 转换 `'use workflow'` 和 `'use step'` 模块。其他框架有自己的 Workflow SDK 设置。
+
+```js filename='next.config.js'
+const { withWorkflow } = require('workflow/next');
+
+const nextConfig = {};
+
+module.exports = withWorkflow(nextConfig, {});
+```
+
+## 恢复持久化
+
+仅持久化在完成的轮次后返回的不透明 `resumeFrom` 状态。下面的示例使用 Workflow 步骤，因为文件系统访问必须保持在工作流函数之外。在生产环境中，请使用持久化存储而不是本地文件。
+
+```ts filename='harness-workflow/resume-store.ts'
+import type { HarnessV1ResumeSessionState } from '@ai-sdk/harness';
+import { safeParseJSON } from '@ai-sdk/provider-utils';
+
+const RESUME_DIR = '.harness-sessions';
+
+function fileName(sessionId: string): string {
+  return `${sessionId.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`;
+}
+
+export async function loadResumeStep(
+  sessionId: string,
+): Promise<HarnessV1ResumeSessionState | undefined> {
+  'use step';
+
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+
+  let text: string;
+  try {
+    text = await readFile(
+      join(process.cwd(), RESUME_DIR, fileName(sessionId)),
+      'utf8',
+    );
+  } catch {
+    return undefined;
+  }
+
+  const parsed = await safeParseJSON({ text });
+
+  return parsed.success
+    ? (parsed.value as unknown as HarnessV1ResumeSessionState)
+    : undefined;
+}
+
+export async function persistResumeStep({
+  sessionId,
+  resumeState,
+}: {
+  sessionId: string;
+  resumeState: HarnessV1ResumeSessionState | undefined;
+}): Promise<void> {
+  'use step';
+
+  if (!resumeState) return;
+
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const dir = join(process.cwd(), RESUME_DIR);
+
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, fileName(sessionId)), JSON.stringify(resumeState));
+}
+```
+
+在第一个切片之前加载恢复状态，并在轮次完成后持久化新的状态：
+
+```ts filename='harness-workflow/workflow.ts'
+import { loadResumeStep, persistResumeStep } from './resume-store';
+import { runSlice } from './run-slice-step';
+import {
+  createHarnessWorkflowState,
+  finalizeHarnessWorkflow,
+  type HarnessWorkflowInput,
+} from '@ai-sdk/workflow-harness';
+
+export async function codingWorkflow(
+  input: Pick<HarnessWorkflowInput, 'prompt' | 'sessionId'>,
+) {
+  'use workflow';
+
+  const resumeFrom = await loadResumeStep(input.sessionId);
+  let state = createHarnessWorkflowState({ ...input, resumeFrom });
+
+  while (state.status === 'running' || state.status === 'timed_out') {
+    state = await runSlice(state);
+  }
+
+  await persistResumeStep({
+    sessionId: state.sessionId,
+    resumeState: state.resumeFrom,
+  });
+
+  return finalizeHarnessWorkflow(state);
+}
+```
+
+harness 的 `sessionId` 为沙箱提供了跨工作流运行的稳定身份，并允许工作流在发送下一条用户消息之前加载上一轮次的恢复状态。
+
+一个 harness 会话拥有其原生的对话历史记录，因此路由只发送最新的用户消息。不要将完整的 UI 消息历史记录重放给 harness。
+
+## 工作原理
+
+每个用户轮次由一个 `HarnessWorkflowState` 表示：
+
+- `createHarnessWorkflowState()` 为轮次创建初始状态。
+- `runHarnessAgentSlice()` 流式传输轮次的一个有时间限制的切片。
+- 如果切片超时，harness 轮次会非破坏性地挂起，返回的状态包含用于下一个切片的 `continueFrom`。
+- 如果轮次完成，辅助工具会关闭工作流输出流，并返回用于下一个用户轮次的 `resumeFrom`。
+- `finalizeHarnessWorkflow()` 返回最终结果，如果工作流失败则抛出异常。
+
+工作流输出流接收 AI SDK UI 消息块，因此路由可以通过 `createUIMessageStreamResponse()` 返回 `run.readable`。
+
+## 文件边界
+
+将工作流入口点与智能体定义分开：
+
+- `agent.ts` 定义 `HarnessAgent`。
+- `run-slice-step.ts` 是一个 `'use step'` 模块，并在步骤体内动态导入智能体。
+- `workflow.ts` 包含 `'use workflow'` 函数，并仅导入工作流安全的辅助工具和步骤模块。
+- 您的路由或服务器入口点启动工作流。它可以导入 `ai` 辅助工具，例如 `convertToModelMessages()` 和 `createUIMessageStreamResponse()`。
+
+不要在与路由处理程序、服务器入口点或智能体相同的模块中定义工作流函数。Workflow DevKit 会编译从 `'use workflow'` 指令可达的模块图。保持图的小型化可以防止将 Node 重型的智能体、沙箱和框架依赖项拉入工作流包中。
+
+## 相关
+
+- [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [UI](/docs/ai-sdk-harnesses/ui)

@@ -1,0 +1,309 @@
+---
+title: 为智能体添加技能
+description: 学习如何通过智能体技能，在运行时加载专门能力来扩展你的智能体。
+tags: ['agent', 'skills', 'tools', 'extensibility']
+---
+
+# 为智能体添加技能
+
+在本指南中，你将学习如何使用 [Agent Skills](https://agentskills.io) 扩展你的智能体。这是一种轻量级、开放式的格式，用于添加从 Markdown 文件在运行时加载的专门知识和工作流程。
+
+技能的核心是一个包含 `SKILL.md` 文件的文件夹，该文件包含元数据和指令，用于告诉智能体如何执行特定任务。
+
+```
+my-skill/
+├── SKILL.md          # 必需：指令 + 元数据
+├── scripts/          # 可选：可执行代码
+├── references/       # 可选：文档
+└── assets/           # 可选：模板、资源
+```
+
+## 技能如何工作
+
+技能使用**渐进式披露**来高效管理上下文：
+
+1.  **发现**：启动时，智能体仅加载每个可用技能的名称和描述（足以知道何时可能相关）。
+2.  **激活**：当任务与技能描述匹配时，智能体将完整的 `SKILL.md` 指令读入上下文。
+3.  **执行**：智能体遵循指令，根据需要可选地加载引用的文件或执行捆绑的代码。
+
+这种方法使智能体保持快速，同时按需访问更多上下文。
+
+## SKILL.md 文件
+
+每个技能都以包含 YAML 前置元数据和 Markdown 指令的 `SKILL.md` 文件开始：
+
+```yaml
+---
+name: pdf-processing
+description: 从 PDF 文件中提取文本和表格，填写表单，合并文档。
+---
+
+# PDF 处理
+
+## 何时使用此技能
+当用户需要处理 PDF 文件时使用此技能...
+
+## 如何提取文本
+1. 使用 pdfplumber 进行文本提取...
+
+## 如何填写表单
+...
+```
+
+前置元数据需要：
+
+- `name`：一个简短的标识符
+- `description`：关于何时使用此技能的说明
+
+Markdown 正文包含实际的技能内容，对结构或内容没有限制。
+
+## 前提条件
+
+为了支持技能，你的智能体需要：
+
+1.  **文件系统访问权限**：用于发现和加载技能文件（读取文件、读取目录）
+2.  **一个加载技能工具**：用于将 `SKILL.md` 内容读入上下文
+3.  **命令执行**（可选）：如果技能捆绑了脚本（例如，一个完整的沙箱环境）
+
+## 步骤 1：定义沙箱抽象
+
+<Note>
+  本指南使用通用的沙箱抽象来跨环境提供灵活性。如果你是为 Node.js 构建，可以直接使用 `fs/promises` 和 `child_process`。
+</Note>
+
+创建一个通用的沙箱接口，提供与文件系统交互的一致方式。此抽象允许你根据环境（Node.js fs、容器化沙箱、云存储等）以不同方式实现它：
+
+```ts
+interface Sandbox {
+  readFile(path: string, encoding: 'utf-8'): Promise<string>;
+  readdir(
+    path: string,
+    opts: { withFileTypes: true },
+  ): Promise<{ name: string; isDirectory(): boolean }[]>;
+  exec(command: string): Promise<{ stdout: string; stderr: string }>;
+}
+```
+
+## 步骤 2：启动时发现技能
+
+扫描技能目录并从每个 `SKILL.md` 中提取元数据：
+
+```ts
+interface SkillMetadata {
+  name: string;
+  description: string;
+  path: string;
+}
+
+async function discoverSkills(
+  sandbox: Sandbox,
+  directories: string[],
+): Promise<SkillMetadata[]> {
+  const skills: SkillMetadata[] = [];
+  const seenNames = new Set<string>();
+
+  for (const dir of directories) {
+    let entries;
+    try {
+      entries = await sandbox.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue; // 跳过不存在的目录
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const skillDir = `${dir}/${entry.name}`;
+      const skillFile = `${skillDir}/SKILL.md`;
+
+      try {
+        const content = await sandbox.readFile(skillFile, 'utf-8');
+        const frontmatter = parseFrontmatter(content);
+
+        // 具有给定名称的第一个技能获胜（允许项目覆盖）
+        if (seenNames.has(frontmatter.name)) continue;
+        seenNames.add(frontmatter.name);
+
+        skills.push({
+          name: frontmatter.name,
+          description: frontmatter.description,
+          path: skillDir,
+        });
+      } catch {
+        continue; // 跳过没有有效 SKILL.md 的技能
+      }
+    }
+  }
+  return skills;
+}
+
+function parseFrontmatter(content: string) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match?.[1]) throw new Error('未找到前置元数据');
+  // 使用你偏好的库解析 YAML
+  return yaml.parse(match[1]);
+}
+```
+
+## 步骤 3：构建系统提示词
+
+在系统提示词中包含已发现的技能，以便智能体知道有哪些可用：
+
+```ts
+function buildSkillsPrompt(skills: SkillMetadata[]): string {
+  const skillsList = skills
+    .map(s => `- ${s.name}: ${s.description}`)
+    .join('\n');
+
+  return `
+## 技能
+
+当用户的请求受益于专门指令时，使用 \`loadSkill\` 工具加载技能。
+
+可用技能：
+${skillsList}
+`;
+}
+```
+
+智能体只看到名称和描述。完整的指令在加载之前不会进入上下文窗口。
+
+## 步骤 4：创建加载技能工具
+
+加载技能工具读取完整的 `SKILL.md` 并返回正文（不含前置元数据）：
+
+```ts
+function stripFrontmatter(content: string): string {
+  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+  return match ? content.slice(match[0].length).trim() : content.trim();
+}
+
+const loadSkillTool = tool({
+  description: '加载技能以获取专门指令',
+  inputSchema: z.object({
+    name: z.string().describe('要加载的技能名称'),
+  }),
+  execute: async ({ name }, { context }) => {
+    const { sandbox, skills } = context as {
+      sandbox: Sandbox;
+      skills: SkillMetadata[];
+    };
+
+    const skill = skills.find(s => s.name.toLowerCase() === name.toLowerCase());
+    if (!skill) {
+      return { error: `未找到技能 '${name}'` };
+    }
+
+    const skillFile = `${skill.path}/SKILL.md`;
+    const content = await sandbox.readFile(skillFile, 'utf-8');
+    const body = stripFrontmatter(content);
+
+    return {
+      skillDirectory: skill.path,
+      content: body,
+    };
+  },
+});
+```
+
+该工具返回技能目录路径和内容，以便智能体可以构建捆绑资源的完整路径。
+
+## 步骤 5：创建智能体
+
+使用 `callOptionsSchema` 和 `prepareCall` 连接沙箱和技能：
+
+```ts
+const callOptionsSchema = z.object({
+  sandbox: z.custom<Sandbox>(),
+  skills: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+      path: z.string(),
+    }),
+  ),
+});
+
+const readFileTool = tool({
+  description: '从文件系统读取文件',
+  inputSchema: z.object({ path: z.string() }),
+  execute: async ({ path }, { context }) => {
+    const { sandbox } = context as { sandbox: Sandbox };
+    return sandbox.readFile(path, 'utf-8');
+  },
+});
+
+const bashTool = tool({
+  description: '执行 bash 命令',
+  inputSchema: z.object({ command: z.string() }),
+  execute: async ({ command }, { context }) => {
+    const { sandbox } = context as { sandbox: Sandbox };
+    return sandbox.exec(command);
+  },
+});
+
+const agent = new ToolLoopAgent({
+  model: yourModel,
+  tools: {
+    loadSkill: loadSkillTool,
+    readFile: readFileTool,
+    bash: bashTool,
+  },
+  callOptionsSchema,
+  prepareCall: ({ options, ...settings }) => ({
+    ...settings,
+    instructions: `${settings.instructions}\n\n${buildSkillsPrompt(options.skills)}`,
+    context: {
+      sandbox: options.sandbox,
+      skills: options.skills,
+    },
+  }),
+});
+```
+
+## 步骤 6：运行智能体
+
+```ts
+// 创建沙箱（你的文件系统/执行抽象）
+const sandbox = createSandbox({ workingDirectory: process.cwd() });
+
+// 启动时发现技能
+const skills = await discoverSkills(sandbox, [
+  '.agents/skills',
+  '~/.config/agent/skills',
+]);
+
+// 运行智能体
+const result = await agent.run({
+  prompt: userMessage,
+  options: { sandbox, skills },
+});
+```
+
+当用户提出与技能描述匹配的问题时，智能体会调用 `loadSkill`。完整的指令加载到上下文中，智能体使用 `bash` 和 `readFile` 访问捆绑资源来遵循这些指令。
+
+## 访问捆绑资源
+
+技能可以引用相对于其目录的文件。智能体使用现有工具访问它们：
+
+```markdown
+技能目录：/path/to/.agents/skills/my-skill
+
+# 我的技能指令
+
+读取配置模板：
+templates/config.json
+
+运行设置脚本：
+bash scripts/setup.sh
+```
+
+智能体在工具结果中看到技能目录路径，并在访问 `templates/config.json` 或 `scripts/setup.sh` 时将其作为前缀。不需要特殊的资源加载机制——智能体使用与其他所有操作相同的工具。
+
+## 了解更多
+
+-   [Agent Skills 规范](https://agentskills.io/specification) 了解完整格式详情
+-   GitHub 上的[示例技能](https://github.com/anthropics/skills)
+-   编写有效技能的[创作最佳实践](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+-   用于验证技能和生成提示词 XML 的[参考库](https://github.com/agentskills/agentskills/tree/main/skills-ref)
+-   浏览和发现社区技能的 [skills.sh](https://skills.sh)

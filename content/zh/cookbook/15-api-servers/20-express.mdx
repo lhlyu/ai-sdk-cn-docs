@@ -1,0 +1,132 @@
+---
+title: Express
+description: 了解如何在 Express 服务器中使用 AI SDK
+tags: ['api servers', 'streaming']
+---
+
+# Express
+
+你可以在 [Express](https://expressjs.com/) 服务器中使用 AI SDK，以生成文本和对象并将其流式传输到客户端。
+
+## 示例
+
+这些示例启动一个简单的 HTTP 服务器，监听 8080 端口。你可以使用 `curl` 进行测试：
+
+```bash
+curl -X POST http://localhost:8080
+```
+
+<Note>
+  这些示例使用了 Vercel AI Gateway。请确保你的 AI Gateway API 密钥已设置在 `AI_GATEWAY_API_KEY` 环境变量中。
+</Note>
+
+**完整示例**：[github.com/vercel/ai/examples/express](https://github.com/vercel/ai/tree/main/examples/express)
+
+### UI 消息流
+
+你可以使用 `pipeUIMessageStreamToResponse` 辅助函数将流数据管道传输到服务器响应中。
+
+```ts filename='index.ts'
+import {
+  pipeUIMessageStreamToResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+import express, { Request, Response } from 'express';
+
+const app = express();
+
+app.post('/', async (req: Request, res: Response) => {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+
+  pipeUIMessageStreamToResponse({
+    response: res,
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+});
+
+app.listen(8080, () => {
+  console.log(`示例应用正在监听端口 ${8080}`);
+});
+```
+
+### 发送自定义数据
+
+`pipeUIMessageStreamToResponse` 可用于向客户端发送自定义数据。
+
+```ts filename='index.ts'
+import {
+  createUIMessageStream,
+  pipeUIMessageStreamToResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+import express, { Request, Response } from 'express';
+
+const app = express();
+
+app.post('/custom-data-parts', async (req: Request, res: Response) => {
+  pipeUIMessageStreamToResponse({
+    response: res,
+    stream: createUIMessageStream({
+      execute: async ({ writer }) => {
+        writer.write({ type: 'start' });
+
+        writer.write({
+          type: 'data-custom',
+          data: {
+            custom: 'Hello, world!',
+          },
+        });
+
+        const result = streamText({
+          model: 'openai/gpt-4o',
+          prompt: '发明一个新节日并描述其传统。',
+        });
+
+        writer.merge(
+          toUIMessageStream({ stream: result.stream, sendStart: false }),
+        );
+      },
+    }),
+  });
+});
+
+app.listen(8080, () => {
+  console.log(`示例应用正在监听端口 ${8080}`);
+});
+```
+
+### 文本流
+
+你可以使用 `pipeTextStreamToResponse` 将文本流发送到客户端。
+
+```ts filename='index.ts'
+import { pipeTextStreamToResponse, streamText, toTextStream } from 'ai';
+import express, { Request, Response } from 'express';
+
+const app = express();
+
+app.post('/', async (req: Request, res: Response) => {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+
+  pipeTextStreamToResponse({
+    response: res,
+    stream: toTextStream({ stream: result.stream }),
+  });
+});
+
+app.listen(8080, () => {
+  console.log(`示例应用正在监听端口 ${8080}`);
+});
+```
+
+## 故障排除
+
+- 通过[代理](/docs/troubleshooting/streaming-not-working-when-proxied)时流式传输无法正常工作

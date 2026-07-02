@@ -1,0 +1,120 @@
+---
+title: streamText 多步骤指南
+description: 了解如何使用不同设置创建多个 streamText 步骤
+tags: ['next', 'streaming']
+---
+
+# streamText 多步骤智能体
+
+你可能希望在流的不同步骤中使用不同的设置，
+例如模型、工具或系统提示词。
+
+通过 `createUIMessageStream` 以及合并到 `UIMessageStream` 时的 `sendFinish` / `sendStart` 选项，
+你可以控制何时向客户端发送完成和开始事件，
+从而在单个助手 UI 消息中实现不同步骤。
+
+## 服务端
+
+```typescript filename='app/api/chat/route.ts'
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  tool,
+} from 'ai';
+import { z } from 'zod';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      // 步骤 1 示例：强制工具调用
+      const result1 = streamText({
+        model: 'openai/gpt-4o-mini',
+        system: '从对话中提取用户目标。',
+        messages,
+        toolChoice: 'required', // 强制模型调用工具
+        tools: {
+          extractGoal: tool({
+            inputSchema: z.object({ goal: z.string() }),
+            execute: async ({ goal }) => goal, // 无操作提取工具
+          }),
+        },
+      });
+
+      // 将初始结果转发给客户端，但不发送完成事件：
+      writer.merge(
+        toUIMessageStream({ stream: result1.stream, sendFinish: false }),
+      );
+
+      // 注意：你可以在此处使用任何编程结构，例如 if-else、循环等。
+      // 使用这种方法，工作流编程就是常规编程。
+
+      // 示例：使用上一步的强制工具调用继续流
+      const result2 = streamText({
+        // 不同的系统提示词、不同的模型，无工具：
+        model: 'openai/gpt-4o',
+        system:
+          '你是一个具有不同系统提示词的有用助手。请在回答中重复提取的用户目标。',
+        // 使用上一步的消息继续工作流流：
+        messages: [
+          ...convertToModelMessages(messages),
+          ...(await result1.response).messages,
+        ],
+      });
+
+      // 将第二个结果转发给客户端（包括完成事件）：
+      writer.merge(
+        toUIMessageStream({ stream: result2.stream, sendStart: false }),
+      );
+    },
+  });
+
+  return createUIMessageStreamResponse({ stream });
+}
+```
+
+## 客户端
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+
+export default function Chat() {
+  const [input, setInput] = useState('');
+  const { messages, sendMessage } = useChat();
+
+  return (
+    <div>
+      {messages?.map(message => (
+        <div key={message.id}>
+          <strong>{`${message.role}: `}</strong>
+          {message.parts.map((part, index) => {
+            switch (part.type) {
+              case 'text':
+                return <span key={index}>{part.text}</span>;
+              case 'tool-extractGoal': {
+                return <pre key={index}>{JSON.stringify(part, null, 2)}</pre>;
+              }
+            }
+          })}
+        </div>
+      ))}
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          sendMessage({ text: input });
+          setInput('');
+        }}
+      >
+        <input value={input} onChange={e => setInput(e.currentTarget.value)} />
+      </form>
+    </div>
+  );
+}
+```

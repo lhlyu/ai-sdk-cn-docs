@@ -1,0 +1,110 @@
+---
+title: 选择提供商
+description: 了解如何在 AI SDK 中配置和认证 AI 提供商。
+---
+
+# 选择提供商
+
+AI SDK 通过[官方](/providers/ai-sdk-providers)、[兼容 OpenAI](/providers/openai-compatible-providers) 和[社区](/providers/community-providers)包支持数十种模型提供商。
+
+```ts
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: '什么是爱？',
+});
+```
+
+## AI Gateway
+
+[Vercel AI Gateway](/providers/ai-sdk-providers/ai-gateway) 是开始使用 AI SDK 的最快方式。可访问 OpenAI、Anthropic、Google 及其他提供商的模型。通过 [OIDC](https://ai-sdk.dev/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments) 或 AI Gateway API 密钥进行认证。
+
+<div className="max-w-[40%] mx-auto">
+  <ButtonLink
+    href="https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys%3Futm_source%3Dgateway-models-page%26showCreateKeyModal%3Dtrue&title=Get+Started+with+Vercel+AI+Gateway"
+    shape="rounded"
+    size="large"
+    type="default"
+    prefix={<VercelIcon />}
+  >
+    获取 API 密钥
+  </ButtonLink>
+</div>
+
+将你的 API 密钥添加到环境变量中：
+
+```env filename=".env.local"
+AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+AI Gateway 是默认的[全局提供商](/docs/ai-sdk-core/provider-management#global-provider-configuration)，因此你可以使用简单的字符串访问模型：
+
+```ts
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: 'anthropic/claude-sonnet-4.5',
+  prompt: '什么是爱？',
+});
+```
+
+你也可以显式导入并使用 gateway 提供商：
+
+```ts
+// 选项 1：从 'ai' 包导入（默认包含）
+import { gateway } from 'ai';
+model: gateway('anthropic/claude-sonnet-4.5');
+
+// 选项 2：安装并从 '@ai-sdk/gateway' 包导入
+import { gateway } from '@ai-sdk/gateway';
+model: gateway('anthropic/claude-sonnet-4.5');
+```
+
+## 使用专用提供商
+
+你也可以直接使用[官方](/providers/ai-sdk-providers)、[兼容 OpenAI](/providers/openai-compatible-providers) 和[社区](/providers/community-providers)提供商包。安装包并创建提供商实例。例如，使用 Anthropic：
+
+<div className="my-4">
+  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+    <Tab>
+      <Snippet text="pnpm add @ai-sdk/anthropic" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="npm install @ai-sdk/anthropic" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="yarn add @ai-sdk/anthropic" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="bun add @ai-sdk/anthropic" dark />
+    </Tab>
+  </Tabs>
+</div>
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+
+model: anthropic('claude-sonnet-4-5');
+```
+
+你可以更改默认的全局提供商，以便在应用程序中所有地方使用字符串模型引用时都使用你偏好的提供商。了解更多关于[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)的信息。
+
+查看[可用提供商](/providers/ai-sdk-providers)以获取每个提供商的设置说明。
+
+## 自定义提供商
+
+你可以构建自己的提供商，将任何服务与 AI SDK 集成。AI SDK 提供了[语言模型规范](https://github.com/vercel/ai/tree/main/packages/provider/src/language-model/v3)，确保跨提供商的兼容性。
+
+```ts
+import { generateText } from 'ai';
+import { yourProvider } from 'your-custom-provider';
+
+const { text } = await generateText({
+  model: yourProvider('your-model-id'),
+  prompt: '什么是爱？',
+});
+```
+
+查看[编写自定义提供商](/providers/community-providers/custom-providers)以获取完整指南。

@@ -1,0 +1,216 @@
+---
+title: generateSpeech
+description: generateSpeech 的 API 参考文档。
+---
+
+# `generateSpeech()`
+
+根据文本生成语音音频。
+
+```ts
+import { generateSpeech } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const { audio } = await generateSpeech({
+  model: openai.speech('tts-1'),
+  text: 'Hello from the AI SDK!',
+  voice: 'alloy',
+});
+
+console.log(audio);
+```
+
+## 示例
+
+### OpenAI
+
+```ts
+import { generateSpeech } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const { audio } = await generateSpeech({
+  model: openai.speech('tts-1'),
+  text: 'Hello from the AI SDK!',
+  voice: 'alloy',
+});
+```
+
+### ElevenLabs
+
+```ts
+import { generateSpeech } from 'ai';
+import { elevenLabs } from '@ai-sdk/elevenlabs';
+
+const { audio } = await generateSpeech({
+  model: elevenLabs.speech('eleven_multilingual_v2'),
+  text: 'Hello from the AI SDK!',
+  voice: 'your-voice-id', // 必填：从你的 ElevenLabs 账户获取此 ID
+});
+```
+
+## 导入
+
+<Snippet text={`import { generateSpeech } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'SpeechModelV4',
+      description: '要使用的语音模型。',
+    },
+    {
+      name: 'text',
+      type: 'string',
+      description: '用于生成语音的文本。',
+    },
+    {
+      name: 'voice',
+      type: 'string',
+      isOptional: true,
+      description: '用于语音的声音。',
+    },
+    {
+      name: 'outputFormat',
+      type: 'string',
+      isOptional: true,
+      description:
+        '语音的输出格式，例如 "mp3"、"wav" 等。',
+    },
+    {
+      name: 'instructions',
+      type: 'string',
+      isOptional: true,
+      description: '语音生成的指令。',
+    },
+    {
+      name: 'speed',
+      type: 'number',
+      isOptional: true,
+      description: '语音生成的速度。',
+    },
+    {
+      name: 'language',
+      type: 'string',
+      isOptional: true,
+      description:
+        '语音生成的语言。应为 ISO 639-1 语言代码（例如 "en"、"es"、"fr"）或 "auto" 以自动检测语言。提供商支持情况有所不同。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'Record<string, JSONObject>',
+      isOptional: true,
+      description: '额外的提供商特定选项。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description: '最大重试次数。默认值：2。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '可选的取消信号，用于取消调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description: '请求的额外 HTTP 标头。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'audio',
+      type: 'GeneratedAudioFile',
+      description: '生成的音频。',
+      properties: [
+        {
+          type: 'GeneratedAudioFile',
+          parameters: [
+            {
+              name: 'base64',
+              type: 'string',
+              description: '音频的 base64 编码字符串。',
+            },
+            {
+              name: 'uint8Array',
+              type: 'Uint8Array',
+              description: '音频的 Uint8Array 表示。',
+            },
+            {
+              name: 'mediaType',
+              type: 'string',
+              description: '音频的媒体类型（例如 "audio/mpeg"）。',
+            },
+            {
+              name: 'format',
+              type: 'string',
+              description: '音频的格式（例如 "mp3"）。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description:
+        '来自模型提供商的警告（例如不支持的设置）。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'Record<string, JSONObject>',
+      isOptional: true,
+      description:
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。具体内容取决于提供商。',
+    },
+    {
+      name: 'responses',
+      type: 'Array<SpeechModelResponseMetadata>',
+      description:
+        '来自提供商的响应元数据。如果对模型进行了多次调用，可能会有多个响应。',
+      properties: [
+        {
+          type: 'SpeechModelResponseMetadata',
+          parameters: [
+            {
+              name: 'timestamp',
+              type: 'Date',
+              description: '生成响应开始的时间戳。',
+            },
+            {
+              name: 'modelId',
+              type: 'string',
+              description:
+                '用于生成响应的响应模型 ID。',
+            },
+            {
+              name: 'body',
+              isOptional: true,
+              type: 'unknown',
+              description: '可选的响应体。',
+            },
+            {
+              name: 'headers',
+              type: 'Record<string, string>',
+              isOptional: true,
+              description: '响应标头。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>

@@ -1,0 +1,165 @@
+---
+title: Codex CLI
+description: 了解如何通过 Codex CLI 使用 Codex CLI 提供商访问 OpenAI GPT-5 模型。
+---
+
+# Codex CLI 提供商
+
+[ai-sdk-provider-codex-cli](https://github.com/ben-vargas/ai-sdk-provider-codex-cli) 社区提供商支持通过 [Codex CLI](https://github.com/openai/codex) 使用 OpenAI 的 GPT-5 系列模型。对于希望使用 ChatGPT Plus/Pro 订阅或 API 密钥进行身份验证的开发者来说，这非常有用。
+
+## 版本兼容性
+
+| 提供商版本 | AI SDK 版本 | NPM 标签    | 状态       |
+| ---------- | ----------- | ----------- | ---------- |
+| 1.x        | v6          | `latest`    | 稳定       |
+| 0.x        | v5          | `ai-sdk-v5` | 维护中     |
+
+```bash
+# AI SDK v6（默认）
+npm install ai-sdk-provider-codex-cli ai
+
+# AI SDK v5
+npm install ai-sdk-provider-codex-cli@ai-sdk-v5 ai@^5.0.0
+```
+
+## 安装
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add ai-sdk-provider-codex-cli" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install ai-sdk-provider-codex-cli" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add ai-sdk-provider-codex-cli" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add ai-sdk-provider-codex-cli" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `ai-sdk-provider-codex-cli` 导入默认的提供商实例 `codexCli`：
+
+```ts
+import { codexCli } from 'ai-sdk-provider-codex-cli';
+```
+
+如果需要自定义设置，可以导入 `createCodexCli` 并提供适用于每个模型的默认设置：
+
+```ts
+import { createCodexCli } from 'ai-sdk-provider-codex-cli';
+
+const codexCli = createCodexCli({
+  defaultSettings: {
+    reasoningEffort: 'medium',
+    approvalMode: 'on-failure',
+    sandboxMode: 'workspace-write',
+    verbose: true,
+  },
+});
+```
+
+或者按模型传递设置：
+
+```ts
+const model = codexCli('gpt-5.1-codex', {
+  reasoningEffort: 'high',
+  approvalMode: 'on-failure',
+  sandboxMode: 'workspace-write',
+});
+```
+
+模型设置：
+
+- **reasoningEffort** _'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'_ - 控制推理深度。
+- **approvalMode** _'untrusted' | 'on-failure' | 'on-request' | 'never'_ - 工具审批策略。
+- **sandboxMode** _'read-only' | 'workspace-write' | 'danger-full-access'_ - 沙箱限制。
+- **mcpServers** _Record&lt;string, McpServerConfig&gt;_ - MCP 服务器配置。
+- **verbose** _boolean_ - 启用详细日志记录。
+- **logger** _Logger | false_ - 自定义日志记录器或禁用日志记录。
+
+## 语言模型
+
+使用提供商实例创建通过 Codex CLI 调用 GPT-5 的模型：
+
+```ts
+const model = codexCli('gpt-5.2-codex');
+```
+
+**当前代模型：**
+
+- **gpt-5.3-codex**：最新的智能体编码模型
+- **gpt-5.2**：最新的通用模型
+- **gpt-5.1-codex-max**：旗舰模型，具有深度推理能力（支持 `xhigh` 推理）
+- **gpt-5.1-codex-mini**：轻量级、更快的变体
+
+**旧版模型（仍受支持）：**
+
+- **gpt-5.1**：通用
+- **gpt-5.1-codex**：Codex 变体
+- **gpt-5**：上一代
+- **gpt-5-codex**：上一代 Codex 变体
+- **gpt-5-codex-mini**：上一代轻量级变体
+
+### 示例
+
+```ts
+import { codexCli } from 'ai-sdk-provider-codex-cli';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: codexCli('gpt-5.2-codex'),
+  prompt: '写一份适合4人份的素食千层面食谱。',
+});
+```
+
+### 推理配置
+
+```ts
+const model = codexCli('gpt-5.1-codex-max', {
+  reasoningEffort: 'high', // 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+  reasoningSummary: 'detailed',
+});
+```
+
+<Note>
+  `xhigh` 推理努力级别适用于 `gpt-5.1-codex-max` 及更新的模型系列（如果您的 Codex CLI 版本支持，则包括 GPT-5.2 变体）。
+</Note>
+
+### 模型能力
+
+| 模型                | 图像输入            | 对象生成            | 工具使用            | 工具流式传输        |
+| ------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `gpt-5.3-codex`     | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `gpt-5.2-codex`     | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `gpt-5.2`           | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `gpt-5.1-codex-max` | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `gpt-5.1-codex-mini`| <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `gpt-5.1`           | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `gpt-5.1-codex`     | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+
+<Note>
+  工具使用和工具流式传输显示 ❌，因为此提供商不支持 AI SDK 自定义工具（传递给 `generateText`/`streamText` 的 Zod 模式）。相反，Codex CLI 自主执行自己的工具，可以通过流式事件观察到。对象生成通过 `--output-schema` 使用原生 JSON Schema 支持，以确保符合模式。
+</Note>
+
+## 身份验证
+
+该提供商通过 Codex CLI 使用您现有的 ChatGPT Plus/Pro 订阅：
+
+```bash
+npm install -g @openai/codex
+codex  # 按照交互式身份验证设置进行操作
+```
+
+或者，您可以通过设置 `OPENAI_API_KEY` 环境变量来使用 OpenAI API 密钥。
+
+## 要求
+
+- Node.js 22 或更高版本
+- 全局安装 Codex CLI（v0.42.0+ 支持 JSON，建议使用 v0.60.0+ 以获取最新模型）
+- ChatGPT Plus/Pro 订阅或 OpenAI API 密钥
+
+有关更多详细信息，请参阅[提供商文档](https://github.com/ben-vargas/ai-sdk-provider-codex-cli)。

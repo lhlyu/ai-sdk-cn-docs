@@ -1,0 +1,139 @@
+---
+title: 并行调用工具
+description: 了解如何使用 AI SDK 和 React Server Components 并行调用工具。
+tags: ['rsc', '工具调用']
+---
+
+# 并行调用工具
+
+部分语言模型支持并行调用工具。当多个工具相互独立且可在同一生成步骤中并行执行时，这一功能尤为实用。
+
+<Browser>
+  <ChatGeneration
+    history={[
+      { role: 'User', content: '最近怎么样？' },
+      { role: 'Assistant', content: '一切都好，有什么可以帮您的吗？' },
+    ]}
+    inputMessage={{
+      role: 'User',
+      content: '巴黎和纽约的天气怎么样？',
+    }}
+    outputMessage={{
+      role: 'Assistant',
+      content:
+        '纽约24°C，巴黎25°C。两个城市都是晴天。',
+    }}
+  />
+</Browser>
+
+## 客户端
+
+让我们修改之前的示例，为多个城市并行调用 `getWeather` 工具。
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState } from 'react';
+import { Message, continueConversation } from './actions';
+
+// 允许流式响应最长30秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [conversation, setConversation] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>('');
+
+  return (
+    <div>
+      <div>
+        {conversation.map((message, index) => (
+          <div key={index}>
+            {message.role}: {message.content}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <input
+          type="text"
+          value={input}
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button
+          onClick={async () => {
+            const { messages } = await continueConversation([
+              ...conversation,
+              { role: 'user', content: input },
+            ]);
+
+            setConversation(messages);
+          }}
+        >
+          发送消息
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+## 服务端
+
+现在更新 tools 对象，改用 `getWeather` 函数。
+
+```ts filename='app/actions.ts'
+'use server';
+
+import { generateText } from 'ai';
+import { z } from 'zod';
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+function getWeather({ city, unit }) {
+  // 此函数通常会发起
+  // API 请求来获取天气数据。
+
+  return { value: 25, description: 'Sunny' };
+}
+
+export async function continueConversation(history: Message[]) {
+  'use server';
+
+  const { text, toolResults } = await generateText({
+    model: 'openai/gpt-5.4',
+    system: '你是一个友好的天气助手！',
+    messages: history,
+    tools: {
+      getWeather: {
+        description: '获取某个地点的天气',
+        inputSchema: z.object({
+          city: z.string().describe('要获取天气的城市'),
+          unit: z
+            .enum(['C', 'F'])
+            .describe('显示温度的单位'),
+        }),
+        execute: async ({ city, unit }) => {
+          const weather = getWeather({ city, unit });
+          return `目前${city}温度为${weather.value}°${unit}，天气${weather.description}！`;
+        },
+      },
+    },
+  });
+
+  return {
+    messages: [
+      ...history,
+      {
+        role: 'assistant' as const,
+        content:
+          text || toolResults.map(toolResult => toolResult.result).join('\n'),
+      },
+    ],
+  };
+}
+```

@@ -1,0 +1,171 @@
+---
+title: 带记忆化的 Markdown 聊天机器人
+description: 使用 Next.js 和 AI SDK 构建一个能渲染并记忆化 Markdown 响应的聊天机器人。
+tags: ['next', '流式传输', '聊天机器人', 'markdown']
+---
+
+# 带记忆化的 Markdown 聊天机器人
+
+在使用 Next.js 和 AI SDK 构建聊天机器人时，你很可能希望使用 `react-markdown` 这类库以 Markdown 格式渲染模型的响应。然而，这可能会带来负面性能影响，因为每次从流式响应接收到新 token 时，Markdown 都会被重新渲染。
+
+随着对话变长、变复杂，这种性能影响会呈指数级恶化，因为每次收到新 token 时，整个对话历史都会被重新渲染。
+
+本方案使用记忆化——一种性能优化技术，将昂贵函数调用的结果缓存并复用，以避免不必要的重复计算。在此场景中，已解析的 Markdown 块会被记忆化，防止它们在每次 token 更新时被重新解析和渲染。这意味着一旦某个块被完全解析，它就会被缓存并复用，而不是重新生成。这种方法通过消除冗余的解析和渲染操作，显著提升了长对话的渲染性能。
+
+## 安装
+
+首先，安装 Markdown 渲染和解析所需的依赖：
+
+```bash
+npm install react-markdown marked
+```
+
+## 服务端
+
+在服务端，使用一个简单的路由处理器来流式传输语言模型的响应。
+
+```tsx filename='app/api/chat/route.ts'
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from 'ai';
+
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const result = streamText({
+    system:
+      '你是一个乐于助人的助手。请以 Markdown 格式回复用户。',
+    model: 'openai/gpt-4o',
+    messages: await convertToModelMessages(messages),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+## 记忆化 Markdown 组件
+
+接下来，创建一个记忆化的 Markdown 组件，它将原始 Markdown 文本拆分为块，并且仅在内容实际发生变化时才更新。该组件使用 `marked` 库将 Markdown 内容分割成块，以识别离散的 Markdown 元素，然后利用 React 的记忆化特性，通过仅更新实际发生变化的块来优化重新渲染。
+
+```tsx filename='components/memoized-markdown.tsx'
+import { marked } from 'marked';
+import { memo, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+
+function parseMarkdownIntoBlocks(markdown: string): string[] {
+  const tokens = marked.lexer(markdown);
+  return tokens.map(token => token.raw);
+}
+
+const MemoizedMarkdownBlock = memo(
+  ({ content }: { content: string }) => {
+    return <ReactMarkdown>{content}</ReactMarkdown>;
+  },
+  (prevProps, nextProps) => {
+    if (prevProps.content !== nextProps.content) return false;
+    return true;
+  },
+);
+
+MemoizedMarkdownBlock.displayName = 'MemoizedMarkdownBlock';
+
+export const MemoizedMarkdown = memo(
+  ({ content, id }: { content: string; id: string }) => {
+    const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
+
+    return blocks.map((block, index) => (
+      <MemoizedMarkdownBlock content={block} key={`${id}-block_${index}`} />
+    ));
+  },
+);
+
+MemoizedMarkdown.displayName = 'MemoizedMarkdown';
+```
+
+## 客户端
+
+最后，在客户端使用 `useChat` Hook 管理聊天状态并渲染聊天界面。你可以使用 `MemoizedMarkdown` 组件以 Markdown 格式渲染消息内容，同时不影响性能。此外，你可以将表单渲染到自己的组件中，以避免触发聊天消息的不必要重新渲染。你还可以使用 `experimental_throttle` 选项，该选项会将数据更新限制在指定的时间间隔内，有助于管理渲染性能。
+
+```typescript filename='app/page.tsx'
+"use client";
+
+import { Chat, useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { useState } from "react";
+import { MemoizedMarkdown } from "@/components/memoized-markdown";
+
+const chat = new Chat({
+  transport: new DefaultChatTransport({
+    api: "/api/chat",
+  }),
+});
+
+export default function Page() {
+  const { messages } = useChat({ chat, experimental_throttle: 50 });
+
+  return (
+    <div className="flex flex-col w-full max-w-xl py-24 mx-auto stretch">
+      <div className="space-y-8 mb-4">
+        {messages.map((message) => (
+          <div key={message.id}>
+            <div className="font-bold mb-2">
+              {message.role === "user" ? "你" : "助手"}
+            </div>
+            <div className="prose space-y-2">
+              {message.parts.map((part) => {
+                if (part.type === "text") {
+                  return (
+                    <MemoizedMarkdown
+                      key={`${message.id}-text`}
+                      id={message.id}
+                      content={part.text}
+                    />
+                  );
+                }
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <MessageInput />
+    </div>
+  );
+}
+
+const MessageInput = () => {
+  const [input, setInput] = useState("");
+  const { sendMessage } = useChat({ chat });
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        sendMessage({
+          text: input,
+        });
+        setInput("");
+      }}
+    >
+      <input
+        className="fixed bottom-0 w-full max-w-xl p-2 mb-8 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
+        placeholder="说点什么..."
+        value={input}
+        onChange={(event) => {
+          setInput(event.target.value);
+        }}
+      />
+    </form>
+  );
+};
+```
+
+<Note>
+  通过使用同一个 `Chat` 实例，两个组件之间共享聊天状态。这允许你将表单和聊天消息拆分为独立的组件，同时保持状态同步。
+</Note>

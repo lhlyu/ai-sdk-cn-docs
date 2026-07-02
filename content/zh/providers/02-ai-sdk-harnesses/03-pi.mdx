@@ -1,0 +1,153 @@
+---
+title: Pi
+description: 了解如何使用 Pi 适配器。
+---
+
+# Pi 适配器
+
+Pi 适配器将 `HarnessAgent` 连接到 `@earendil-works/pi-coding-agent`。Pi 在宿主 Node.js 进程中运行，并将沙箱用作远程文件系统和 Shell。它不会在沙箱内部安装桥接。
+
+<Note>
+  Harness 包是**实验性的**。随着这个早期 API 的进一步完善，预计版本之间会有破坏性变更。
+</Note>
+
+## 安装
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet
+      text="pnpm add @ai-sdk/harness @ai-sdk/harness-pi @ai-sdk/sandbox-vercel"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="npm install @ai-sdk/harness @ai-sdk/harness-pi @ai-sdk/sandbox-vercel"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="yarn add @ai-sdk/harness @ai-sdk/harness-pi @ai-sdk/sandbox-vercel"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="bun add @ai-sdk/harness @ai-sdk/harness-pi @ai-sdk/sandbox-vercel"
+      dark
+    />
+  </Tab>
+</Tabs>
+
+## 导入
+
+```ts
+import { pi, createPi } from '@ai-sdk/harness-pi';
+```
+
+`pi` 等同于使用默认配置的 `createPi()`。
+
+## 基本用法
+
+```ts
+import { HarnessAgent } from '@ai-sdk/harness/agent';
+import { pi } from '@ai-sdk/harness-pi';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+
+const agent = new HarnessAgent({
+  harness: pi,
+  sandbox: createVercelSandbox({
+    runtime: 'node24',
+  }),
+});
+
+const session = await agent.createSession();
+
+let exitCode = 0;
+try {
+  const result = await agent.stream({
+    session,
+    prompt: '检查测试失败并修复生产代码。',
+  });
+
+  for await (const part of result.stream) {
+    if (part.type === 'text-delta') {
+      process.stdout.write(part.text);
+    }
+  }
+} catch (err) {
+  exitCode = 1;
+  console.error(err);
+} finally {
+  await session.destroy();
+  process.exit(exitCode);
+}
+```
+
+要使用此智能体，请确保环境变量包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及用于 Pi 的[身份验证](#身份验证)下列出的变量之一。
+
+## 适配器设置
+
+使用 `createPi()` 配置运行时：
+
+```ts
+const harness = createPi({
+  model: 'anthropic/claude-sonnet-4.6',
+  thinkingLevel: 'medium',
+});
+```
+
+设置：
+
+- `auth`：AI Gateway 或自定义提供商环境配置。
+- `model`：Pi 模型 ID 或模型名称。
+- `thinkingLevel`：Pi 思考预算级别。
+
+## 身份验证
+
+Pi 可以使用 AI Gateway 凭据或自定义提供商环境变量。当未配置显式身份验证时，它会检查宿主环境中的 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN`。
+
+```ts
+const harness = createPi({
+  auth: {
+    gateway: {
+      apiKey: process.env.AI_GATEWAY_API_KEY,
+    },
+  },
+});
+```
+
+对于多个提供商，传递 `auth.customEnv` 以及标准环境变量对，例如 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`ANTHROPIC_API_KEY` 或 `ANTHROPIC_BASE_URL`。
+
+## 沙箱
+
+Pi 需要一个 `HarnessV1SandboxProvider`，但它不需要暴露端口。你可以使用网络沙箱适配器，例如 `@ai-sdk/sandbox-vercel`，或本地模拟，例如 `@ai-sdk/sandbox-just-bash`：
+
+```ts
+const sandbox = createVercelSandbox({
+  runtime: 'node24',
+});
+```
+
+## 内置工具
+
+适配器通过 `agent.tools` 暴露以下常见的 Pi 内置工具：
+
+- `read`
+- `write`
+- `edit`
+- `bash`
+- `grep`
+- `glob`
+- `ls`
+
+当其他 Pi 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
+
+当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，Pi 支持内置工具的审批请求。
+
+## 相关链接
+
+- [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)

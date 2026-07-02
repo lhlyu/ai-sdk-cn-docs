@@ -1,0 +1,103 @@
+---
+title: 模型上下文协议 (MCP) 提示收集
+description: 了解如何使用 AI SDK 处理来自 MCP 服务器的提示收集请求
+tags: ['node', 'mcp', 'elicitation']
+---
+
+# MCP 提示收集
+
+提示收集是一种机制，MCP 服务器可以在工具执行期间向客户端请求额外信息。此示例演示了如何处理提示收集请求，例如收集用户注册信息。
+
+## 示例：用户注册
+
+此示例展示了如何设置一个 MCP 客户端来处理来自需要收集用户输入的服务器的提示收集请求。
+
+```ts
+import { createMCPClient, ElicitationRequestSchema } from '@ai-sdk/mcp';
+import { generateText } from 'ai';
+
+// 创建启用了提示收集能力的 MCP 客户端
+const mcpClient = await createMCPClient({
+  transport: {
+    type: 'sse',
+    url: 'http://localhost:8083/sse',
+  },
+  capabilities: {
+    elicitation: {},
+  },
+});
+
+// 注册一个处理提示收集请求的处理器
+mcpClient.onElicitationRequest(ElicitationRequestSchema, async request => {
+  console.log('服务器正在请求：', request.params.message);
+  console.log('期望的模式：', request.params.requestedSchema);
+
+  // 根据模式收集用户输入
+  // 在这里实现你自己的逻辑来提示用户
+  const userData = await promptUserForInput(request.params.requestedSchema);
+
+  // 返回包含以下三种操作之一的结果：
+  // - 'accept'：用户提供了请求的信息
+  // - 'decline'：用户选择不提供信息
+  // - 'cancel'：用户完全取消了操作
+  return {
+    action: 'accept',
+    content: userData,
+  };
+});
+
+try {
+  const tools = await mcpClient.tools();
+
+  const { text } = await generateText({
+    model: 'openai/gpt-4o-mini',
+    tools,
+    prompt: '注册一个新用户账户',
+  });
+
+  console.log('响应：', text);
+} finally {
+  await mcpClient.close();
+}
+
+// promptUserForInput 的示例实现
+async function promptUserForInput(
+  schema: unknown,
+): Promise<Record<string, unknown>> {
+  // 实现你自己的逻辑来根据模式收集输入
+  // 这可以是：
+  // - 使用 readline 的命令行提示
+  // - 一个网页表单
+  // - 一个 GUI 对话框
+  // - 任何其他输入机制
+
+  // 对于此示例，我们将返回模拟数据
+  return {
+    username: 'johndoe',
+    email: 'john@example.com',
+    password: 'securepassword123',
+    newsletter: true,
+  };
+}
+```
+
+## 提示收集响应操作
+
+你的处理器必须返回一个包含 `action` 字段的对象：
+
+- **`'accept'`**：用户提供了请求的信息。必须包含带有数据的 `content`。
+- **`'decline'`**：用户选择不提供信息。
+- **`'cancel'`**：用户完全取消了操作。
+
+## 重要说明
+
+<Note type="warning">
+  正确处理提示收集请求是客户端应用程序的责任。MCP 客户端仅将这些请求从服务器传递给你的应用程序代码。
+</Note>
+
+提示收集处理器应：
+
+1. 解析 `request.params.requestedSchema` 以了解服务器需要哪些数据
+2. 实现适当的用户输入收集方式（命令行、网页表单等）
+3. 验证输入与请求的模式匹配
+4. 返回适当的操作和内容

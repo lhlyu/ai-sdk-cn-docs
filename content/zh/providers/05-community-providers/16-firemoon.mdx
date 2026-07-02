@@ -1,0 +1,202 @@
+---
+title: Firemoon
+description: Firemoon 提供商，用于 AI SDK。
+---
+
+# Firemoon 提供商
+
+[Firemoon Studio](https://firemoon.studio/) 是一个专注于高质量图像和视频生成模型的 AI 平台，特别提供微调模型和最新模型。
+
+用于 AI SDK 的 Firemoon 提供商使您能够通过简单、一致的 API 使用这些模型：
+
+- **图像生成**：目前支持图像生成，并早期支持视频模型。
+- **模型多样性**：通过单一提供商访问多个模型系列。
+- **提供商选项**：在需要更多控制时传递模型特定参数。
+
+## 安装
+
+Firemoon 提供商可通过 `@firemoon/ai-provider` 模块获取。您可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @firemoon/ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @firemoon/ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @firemoon/ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @firemoon/ai-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+使用您的 API 密钥创建 Firemoon 提供商实例：
+
+```ts
+import { createFiremoon } from '@firemoon/ai-provider';
+
+const firemoon = createFiremoon({
+  apiKey: process.env.FIREMOON_API_KEY,
+});
+```
+
+您可以从 [Firemoon Dashboard](https://firemoon.studio/keys) 获取 Firemoon API 密钥。
+
+## 图像生成
+
+Firemoon 通过 `image()` 方法支持多种图像生成模型：
+
+```ts
+import { generateImage } from 'ai';
+
+const result = await generateImage({
+  model: firemoon.image('flux/dev'),
+  prompt: 'An orangered moon with a dark background',
+  size: 'square_hd',
+});
+
+console.log(result.images[0]);
+```
+
+### 可用模型
+
+- `flux/dev` - 快速、高质量的图像生成
+- `flux-2-dev/edit` - 使用 Flux 2 进行快速、高质量的图像编辑
+- `nano-banana` - 快速、高质量的图像生成
+- `nano-banana/edit` - 由 Gemini 提供的高质量图像编辑，也称为 Gemini 2.5 Flash Image
+- `nano-banana-pro/edit` - 由 Gemini 3 Pro 提供的高质量图像编辑
+- `firemoon-studio/memphis-style` - 孟菲斯风格图像生成
+
+您可以在 [Firemoon Studio Models](https://firemoon.studio/models) 页面浏览所有可用模型。
+
+### 参数
+
+#### 尺寸
+
+您可以使用 `size` 参数指定图像尺寸：
+
+```ts
+const result = await generateImage({
+  model: firemoon.image('flux/dev'),
+  prompt: 'A beautiful landscape with an orangered moon in the background',
+  size: 'square_hd', // 或 'landscape_16_9' 等
+});
+```
+
+或使用宽高比映射：
+
+```ts
+const result = await generateImage({
+  model: firemoon.image('flux/dev'),
+  prompt: 'A beautiful landscape with an orangered moon in the background',
+  aspectRatio: '16:9', // 映射为 landscape_16_9
+});
+```
+
+#### 种子
+
+为了获得可重复的结果，您可以指定种子：
+
+```ts
+const result = await generateImage({
+  model: firemoon.image('flux/dev'),
+  prompt: 'A beautiful landscape with an orangered moon in the background',
+  seed: 12345,
+});
+```
+
+#### 自定义参数
+
+您可以传递 Firemoon 模型特定的额外参数：
+
+```ts
+const result = await generateImage({
+  model: firemoon.image('flux/dev'),
+  prompt: 'A beautiful landscape with an orangered moon in the background',
+  providerOptions: {
+    firemoon: {
+      // 自定义参数
+    },
+  },
+});
+```
+
+#### 微调模型
+
+您可以通过将模型 ID 传递给 `image()` 方法来使用微调模型：
+
+```ts
+const result = await generateImage({
+  model: firemoon.image('firemoon-studio/memphis-style'),
+  prompt: 'a man smiling at the camera',
+  size: 'landscape_16_9',
+  providerOptions: {
+    firemoon: {
+      lora_scale: 0.6,
+      num_images: 1,
+      image_size: 'landscape_4_3',
+      output_format: 'jpeg',
+      guidance_scale: 3.5,
+      num_inference_steps: 28,
+      enable_safety_checker: true,
+    },
+  },
+});
+```
+
+## 快速入门示例
+
+### `generateImage`
+
+```ts
+import { createFiremoon } from '@firemoon/ai-provider';
+import { generateImage } from 'ai';
+
+const firemoon = createFiremoon({
+  apiKey: process.env.FIREMOON_API_KEY,
+});
+
+const result = await generateImage({
+  model: firemoon.image('flux/dev'),
+  prompt: 'A beautiful landscape with an orangered moon in the background',
+  aspectRatio: '16:9',
+});
+
+console.log(result.images[0]);
+```
+
+## 高级功能
+
+1. **宽高比映射**：使用 `aspectRatio` 方便预设，无需硬编码尺寸。
+2. **可重复输出**：提供 `seed` 使结果更具可重复性。
+3. **模型特定选项**：使用 `providerOptions.firemoon` 传递 Firemoon 参数。
+
+## 错误处理
+
+Firemoon 提供商在 API 相关错误时会抛出 `APICallError`：
+
+```ts
+import { APICallError } from 'ai';
+
+try {
+  const result = await generateImage({
+    model: firemoon.image('flux/dev'),
+    prompt: 'A beautiful landscape with an orangered moon in the background',
+  });
+} catch (error) {
+  if (error instanceof APICallError) {
+    console.error('API 错误：', error.message);
+    console.error('状态码：', error.statusCode);
+  }
+}
+```
+
+## 其他资源
+
+- [Firemoon Studio](https://firemoon.studio/)
+- [Firemoon Studio Models](https://firemoon.studio/models)
+- [Firemoon Studio API 参考](https://docs.firemoon.studio)

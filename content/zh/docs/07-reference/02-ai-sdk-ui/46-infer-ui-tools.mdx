@@ -1,0 +1,99 @@
+---
+title: InferUITools
+description: InferUITools 的 API 参考文档。
+---
+
+# InferUITools
+
+推断 `ToolSet` 的输入和输出类型。
+
+在 TypeScript 中使用工具时，此类型辅助工具有助于确保 `UIMessage` 中工具输入和输出的类型安全。
+
+## 导入
+
+```tsx
+import { InferUITools } from 'ai';
+```
+
+## API 签名
+
+### 类型参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'TOOLS',
+      type: 'ToolSet',
+      description: '要从中推断类型的工具集。',
+    },
+  ]}
+/>
+
+### 返回值
+
+一个类型，将工具集中的每个工具映射到其推断出的输入和输出类型。
+
+结果类型的形状如下：
+
+```typescript
+{
+  [NAME in keyof TOOLS & string]: {
+    input: InferToolInput<TOOLS[NAME]>;
+    output: InferToolOutput<TOOLS[NAME]>;
+  };
+}
+```
+
+## 示例
+
+### 基本用法
+
+```tsx
+import { InferUITools } from 'ai';
+import { z } from 'zod';
+
+const tools = {
+  weather: {
+    description: '获取当前天气',
+    inputSchema: z.object({
+      location: z.string().describe('城市和州'),
+    }),
+    execute: async ({ location }) => {
+      return `${location} 的天气是晴天。`;
+    },
+  },
+  calculator: {
+    description: '执行基本算术运算',
+    inputSchema: z.object({
+      operation: z.enum(['add', 'subtract', 'multiply', 'divide']),
+      a: z.number(),
+      b: z.number(),
+    }),
+    execute: async ({ operation, a, b }) => {
+      switch (operation) {
+        case 'add':
+          return a + b;
+        case 'subtract':
+          return a - b;
+        case 'multiply':
+          return a * b;
+        case 'divide':
+          return a / b;
+      }
+    },
+  },
+};
+
+// 从工具集推断类型
+type MyUITools = InferUITools<typeof tools>;
+// 这会创建一个类型：
+// {
+//   weather: { input: { location: string }; output: string };
+//   calculator: { input: { operation: 'add' | 'subtract' | 'multiply' | 'divide'; a: number; b: number }; output: number };
+// }
+```
+
+## 相关
+
+- [`InferUITool`](/docs/reference/ai-sdk-ui/infer-ui-tool) - 推断单个工具的类型
+- [`useChat`](/docs/reference/ai-sdk-ui/use-chat) - 支持类型化工具的聊天 Hook

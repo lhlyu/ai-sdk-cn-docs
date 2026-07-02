@@ -1,0 +1,138 @@
+---
+title: 使用图片提示词流式传输文本
+description: 学习如何使用 AI SDK 和 Next.js 通过图片提示词流式传输文本
+tags: ['next', 'streaming', 'multimodal']
+---
+
+# 使用图片提示词流式传输文本
+
+像 GPT-4o 这样的视觉模型可以同时处理文本和图片。在本示例中，我们将展示如何使用 `useChat` 将图片 URL 与用户消息一起发送给模型。
+
+## 使用图片 URL
+
+### 服务端
+
+服务端路由使用 `convertToModelMessages` 来处理从 `UIMessage` 到模型消息的转换，它会自动处理包括图片在内的多模态内容。
+
+```tsx filename='app/api/chat/route.ts' highlight="16,20-22"
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+
+export const maxDuration = 60;
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  // 调用语言模型
+  const result = streamText({
+    model: 'openai/gpt-4.1',
+    messages: await convertToModelMessages(messages),
+  });
+
+  // 响应流式数据
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+### 客户端
+
+在客户端，我们使用新的 `useChat` Hook，并通过 `parts` 数组发送多模态消息。
+
+```typescript filename='app/page.tsx'
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { useState } from 'react';
+
+// 允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Chat() {
+  const [input, setInput] = useState('');
+  const [imageUrl, setImageUrl] = useState(
+    'https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png',
+  );
+
+  const { messages, sendMessage } = useChat();
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    sendMessage({
+      role: 'user',
+      parts: [
+        // 检查 imageUrl 是否已定义，如果是，则将其添加到消息中
+        ...(imageUrl.trim().length > 0
+          ? [
+              {
+                type: 'file' as const,
+                mediaType: 'image/png',
+                url: imageUrl,
+              },
+            ]
+          : []),
+        { type: 'text' as const, text: input },
+      ],
+    });
+    setInput('');
+    setImageUrl('');
+  };
+
+  return (
+    <div>
+      <div>
+        {messages.map(m => (
+          <div key={m.id}>
+            <span>{m.role === 'user' ? '用户: ' : 'AI: '}</span>
+            <div>
+              {m.parts.map((part, i) => {
+                switch (part.type) {
+                  case 'text':
+                    return part.text;
+                  case 'file':
+                    return (
+                      <img
+                        key={(part.filename || 'image') + i}
+                        src={part.url}
+                        alt={part.filename ?? 'image'}
+                      />
+                    );
+                  default:
+                    return null;
+                }
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="image-url">图片 URL:</label>
+          <input
+            id="image-url"
+            value={imageUrl}
+            placeholder="输入图片 URL..."
+            onChange={e => setImageUrl(e.currentTarget.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="image-description">提示词:</label>
+          <input
+            id="image-description"
+            value={input}
+            placeholder="图片显示了什么..."
+            onChange={e => setInput(e.currentTarget.value)}
+          />
+        </div>
+        <button type="submit">发送消息</button>
+      </form>
+    </div>
+  );
+}
+```

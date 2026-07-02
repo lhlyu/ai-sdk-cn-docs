@@ -1,0 +1,274 @@
+---
+title: Aihubmix
+description: 了解如何将 Aihubmix 与 AI SDK 结合使用。
+---
+
+# Aihubmix 提供商
+
+[Aihubmix](https://aihubmix.com/) 提供商通过 Aihubmix API 提供对多个 AI 提供商的统一访问，包括 OpenAI、Anthropic Claude 和 Google Gemini 模型。在 [aihubmix.com/models](https://aihubmix.com/models) 查看所有可用模型。
+
+## 安装
+
+Aihubmix 提供商位于 `@aihubmix/ai-sdk-provider` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn']}>
+  <Tab>
+    <Snippet text="pnpm add @aihubmix/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @aihubmix/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @aihubmix/ai-sdk-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+### 方法一：使用 createAihubmix
+
+要创建 Aihubmix 提供商实例，请使用 `createAihubmix` 函数：
+
+```typescript
+import { createAihubmix } from '@aihubmix/ai-sdk-provider';
+
+const aihubmix = createAihubmix({
+  apiKey: 'AIHUBMIX_API_KEY',
+});
+```
+
+你可以从 [Aihubmix Keys](https://aihubmix.com/token) 获取你的 Aihubmix API 密钥。
+
+### 方法二：使用环境变量
+
+或者，你可以通过设置 `AIHUBMIX_API_KEY` 环境变量来使用预配置的 `aihubmix` 实例：
+
+```bash
+# .env
+AIHUBMIX_API_KEY=your_api_key_here
+```
+
+然后导入并使用预配置的实例：
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+```
+
+## 使用示例
+
+### 聊天补全
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: aihubmix('o4-mini'),
+  prompt: '写一份适合4人份的素食千层面食谱。',
+});
+```
+
+### Claude 模型
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: aihubmix('claude-sonnet-4-5-20250929'),
+  prompt: '用简单的语言解释量子计算。',
+});
+```
+
+### Gemini 模型
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: aihubmix('gemini-2.5-flash'),
+  prompt: '创建一个 Python 脚本来对数字列表进行排序。',
+});
+```
+
+### 图像生成
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: aihubmix.image('gpt-image-1'),
+  prompt: '山峦上美丽的日落',
+});
+```
+
+### 嵌入
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: aihubmix.embedding('text-embedding-ada-002'),
+  value: '你好，世界！',
+});
+```
+
+### 转录
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { transcribe } from 'ai';
+
+const { text } = await transcribe({
+  model: aihubmix.transcription('whisper-1'),
+  audio: audioFile,
+});
+```
+
+### 流式传输文本
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: aihubmix('gpt-3.5-turbo'),
+  prompt: '写一个关于机器人学习绘画的短篇故事。',
+  maxOutputTokens: 256,
+  temperature: 0.3,
+  maxRetries: 3,
+});
+
+let fullText = '';
+for await (const textPart of result.textStream) {
+  fullText += textPart;
+  process.stdout.write(textPart);
+}
+
+console.log('\n使用量:', await result.usage);
+console.log('结束原因:', await result.finishReason);
+```
+
+### 结构化输出
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+
+const result = await generateText({
+  model: aihubmix('gpt-4o-mini'),
+  output: Output.object({
+    schema: z.object({
+      recipe: z.object({
+        name: z.string(),
+        ingredients: z.array(
+          z.object({
+            name: z.string(),
+            amount: z.string(),
+          }),
+        ),
+        steps: z.array(z.string()),
+      }),
+    }),
+  }),
+  prompt: '生成一份千层面食谱。',
+});
+
+console.log(JSON.stringify(result.output.recipe, null, 2));
+console.log('Token 使用量:', result.usage);
+console.log('结束原因:', result.finishReason);
+```
+
+### 流式结构化输出
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { streamText, Output } from 'ai';
+import { z } from 'zod';
+
+const result = streamText({
+  model: aihubmix('gpt-4o-mini'),
+  output: Output.object({
+    schema: z.object({
+      recipe: z.object({
+        name: z.string(),
+        ingredients: z.array(
+          z.object({
+            name: z.string(),
+            amount: z.string(),
+          }),
+        ),
+        steps: z.array(z.string()),
+      }),
+    }),
+  }),
+  prompt: '生成一份千层面食谱。',
+});
+
+for await (const objectPart of result.partialOutputStream) {
+  console.log(objectPart);
+}
+
+console.log('Token 使用量:', await result.usage);
+console.log('最终对象:', await result.output);
+```
+
+### 批量嵌入
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { embedMany } from 'ai';
+
+const { embeddings, usage } = await embedMany({
+  model: aihubmix.embedding('text-embedding-3-small'),
+  values: [
+    '阳光明媚的海滩日',
+    '城市里的雨午后',
+    '山区的雪夜',
+  ],
+});
+
+console.log('嵌入向量:', embeddings);
+console.log('使用量:', usage);
+```
+
+### 语音合成
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateSpeech } from 'ai';
+
+const { audio } = await generateSpeech({
+  model: aihubmix.speech('tts-1'),
+  text: '你好，这是语音合成测试。',
+});
+```
+
+## 工具
+
+Aihubmix 提供商支持多种工具，包括网络搜索：
+
+```ts
+import { aihubmix } from '@aihubmix/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: aihubmix('gpt-5'),
+  prompt: '人工智能的最新发展是什么？',
+  tools: {
+    webSearchPreview: aihubmix.tools.webSearch({
+      searchContextSize: 'high',
+    }),
+  },
+});
+```
+
+## 其他资源
+
+- [Aihubmix 提供商仓库](https://github.com/inferera/aihubmix)
+- [Aihubmix 文档](https://docs.aihubmix.com/en)
+- [Aihubmix 控制台](https://aihubmix.com)

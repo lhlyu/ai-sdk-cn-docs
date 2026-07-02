@@ -1,0 +1,250 @@
+---
+title: 实时
+description: 了解如何使用 AI SDK 构建实时语音对话。
+---
+
+# 实时
+
+<Note type="warning">实时功能为实验性特性。</Note>
+
+AI SDK 提供实时模型，支持通过 WebSocket 进行双向音频和文本对话。实时会话在浏览器中运行，并使用您在服务器上创建的短期令牌直接连接到提供商。您还可以通过 [AI 网关](/providers/ai-sdk-providers/ai-gateway#realtime) 路由连接。
+
+典型流程如下：
+
+1. 浏览器调用您的设置端点。
+1. 您的服务器使用 `experimental_realtime.getToken()` 创建短期实时令牌。
+1. 浏览器打开与提供商或 AI 网关的 WebSocket 连接。
+1. 模型将音频、文本和工具调用流式传输回浏览器。
+1. 工具调用由您的应用程序通过 `onToolCall` 处理。
+
+## 设置端点
+
+创建一个设置端点，返回实时提供商的短期令牌。此端点还可以将会话附加工具定义。
+
+```ts filename='app/api/realtime/setup/route.ts'
+import { openai } from '@ai-sdk/openai';
+import { experimental_getRealtimeToolDefinitions, tool } from 'ai';
+import { z } from 'zod';
+
+const tools = {
+  getWeather: tool({
+    description: '获取指定城市的当前天气',
+    inputSchema: z.object({
+      city: z.string().describe('要获取天气的城市'),
+    }),
+  }),
+};
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const toolDefinitions = await experimental_getRealtimeToolDefinitions({
+    tools,
+  });
+
+  const token = await openai.experimental_realtime.getToken({
+    model: 'gpt-realtime',
+    sessionConfig: {
+      ...body.sessionConfig,
+      tools: toolDefinitions,
+    },
+  });
+
+  return Response.json({
+    ...token,
+    tools: toolDefinitions,
+  });
+}
+```
+
+<Note>
+  在生产环境中，请对您的设置端点进行身份验证和速率限制。它会使用您的服务器端 API 密钥创建实时会话。
+</Note>
+
+## AI 网关
+
+当您希望相同的实时客户端代码在支持的多个上游提供商之间工作时，请使用 [AI 网关](/providers/ai-sdk-providers/ai-gateway)。网关在服务器端标准化实时事件，浏览器仍然只接收短期客户端密钥。
+
+从服务器端设置端点创建短期网关实时令牌：
+
+```ts filename='app/api/realtime/setup/route.ts'
+import { gateway } from 'ai';
+
+export async function POST() {
+  const token = await gateway.experimental_realtime.getToken({
+    model: 'openai/gpt-realtime-2',
+  });
+
+  return Response.json(token);
+}
+```
+
+然后在浏览器中使用匹配的网关实时模型：
+
+```tsx filename='app/realtime/page.tsx'
+'use client';
+
+import { experimental_useRealtime } from '@ai-sdk/react';
+import { gateway } from 'ai';
+
+export default function RealtimePage() {
+  const realtime = experimental_useRealtime({
+    model: gateway.experimental_realtime('openai/gpt-realtime-2'),
+    api: {
+      token: '/api/realtime/setup',
+    },
+    sessionConfig: {
+      instructions: '你是一个乐于助人的助手。请简洁回答。',
+      inputAudioTranscription: {},
+      voice: 'alloy',
+      turnDetection: { type: 'server-vad' },
+    },
+  });
+
+  // ...
+}
+```
+
+<Note>
+  `gateway.experimental_realtime.getToken()` 必须在您的服务器上运行，因为它使用您的网关凭证生成 `vcst_` 客户端密钥。在浏览器中使用 `gateway.experimental_realtime()` 创建实时模型是安全的。
+</Note>
+
+工具定义在 AI 网关中的工作方式相同：在设置端点中使用 `experimental_getRealtimeToolDefinitions()` 转换 AI SDK 工具，并将定义与令牌一起返回。Hook 会在 WebSocket 打开后将其包含在会话更新中。
+
+## 客户端会话
+
+使用 `experimental_useRealtime` Hook 连接到实时模型、捕获麦克风音频、播放模型音频、发送文本消息以及渲染消息。
+
+```tsx filename='app/realtime/page.tsx'
+'use client';
+
+import { openai } from '@ai-sdk/openai';
+import { experimental_useRealtime } from '@ai-sdk/react';
+
+export default function RealtimePage() {
+  const realtime = experimental_useRealtime({
+    model: openai.experimental_realtime('gpt-realtime'),
+    api: {
+      token: '/api/realtime/setup',
+    },
+    sessionConfig: {
+      instructions: '你是一个乐于助人的助手。请简洁回答。',
+      inputAudioTranscription: {},
+      voice: 'alloy',
+      turnDetection: { type: 'server-vad' },
+    },
+  });
+
+  return (
+    <div>
+      <button onClick={realtime.connect}>连接</button>
+      <button onClick={realtime.disconnect}>断开连接</button>
+
+      {realtime.messages.map(message => (
+        <div key={message.id}>
+          <strong>{message.role}</strong>
+          {message.parts.map((part, index) =>
+            part.type === 'text' ? <span key={index}>{part.text}</span> : null,
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## 工具调用
+
+实时工具执行由客户端驱动。提供商通过 WebSocket 发送工具调用，您的应用程序通过 `onToolCall` 处理它们。如果结果立即可用，请从 `onToolCall` 返回它。SDK 会将其作为工具输出发送回提供商。
+
+对于服务器支持的工具，请从 `onToolCall` 调用特定于应用程序的 API 端点。避免使用通用的“按名称执行工具”路由。特定于应用程序的端点更易于保护，因为它们可以使用您正常的身份验证、授权、验证和速率限制规则。
+
+### 服务器支持的工具端点
+
+```ts filename='app/api/weather/route.ts'
+import { z } from 'zod';
+
+const inputSchema = z.object({
+  city: z.string(),
+});
+
+export async function POST(request: Request) {
+  const input = inputSchema.safeParse(await request.json());
+
+  if (!input.success) {
+    return Response.json({ error: '无效输入' }, { status: 400 });
+  }
+
+  return Response.json({
+    city: input.data.city,
+    temperature: 72,
+    condition: '晴朗',
+  });
+}
+```
+
+### 客户端工具处理器
+
+```tsx filename='app/realtime/page.tsx' highlight="10-24"
+import { openai } from '@ai-sdk/openai';
+import { experimental_useRealtime } from '@ai-sdk/react';
+
+export default function RealtimePage() {
+  const realtime = experimental_useRealtime({
+    model: openai.experimental_realtime('gpt-realtime'),
+    api: {
+      token: '/api/realtime/setup',
+    },
+    onToolCall: async ({ toolCall }) => {
+      if (toolCall.toolName === 'getWeather') {
+        const response = await fetch('/api/weather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(toolCall.args),
+        });
+
+        if (!response.ok) {
+          throw new Error('天气查询失败');
+        }
+
+        return response.json();
+      }
+    },
+  });
+
+  // ...
+}
+```
+
+当工具需要用户交互或其他异步进程时，您也可以使用 `addToolOutput` 手动提交工具输出：
+
+```tsx
+realtime.addToolOutput(toolCallId, {
+  approved: true,
+});
+```
+
+## 支持的提供商
+
+实时模型在提供实时 WebSocket API 的提供商上可用：
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
+import { xai } from '@ai-sdk/xai';
+
+const openaiModel = openai.experimental_realtime('gpt-realtime');
+const googleModel = google.experimental_realtime(
+  'gemini-3.1-flash-live-preview',
+);
+const xaiModel = xai.experimental_realtime('grok-voice-latest');
+```
+
+您还可以通过 [AI 网关](/providers/ai-sdk-providers/ai-gateway#realtime) 路由实时连接，该网关会标准化会话，使相同的客户端代码可在多个上游提供商之间工作：
+
+```ts
+import { gateway } from '@ai-sdk/gateway';
+
+const gatewayModel = gateway.experimental_realtime('openai/gpt-realtime-2');
+```
+
+`gateway.experimental_realtime.getToken()` 在您的服务器上生成一个短期网关客户端密钥。浏览器使用该令牌打开网关 WebSocket；SDK 会为您处理网关特定的 WebSocket 子协议。有关网关特定的令牌和提供商选项详细信息，请参阅 [AI 网关实时文档](/providers/ai-sdk-providers/ai-gateway#realtime)。

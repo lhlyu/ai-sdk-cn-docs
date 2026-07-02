@@ -1,0 +1,168 @@
+---
+title: 使用自定义格式进行流式传输
+description: 构建自定义格式以流式传输 LLM 响应
+tags: ['next', 'streaming', 'tool use']
+---
+
+# 使用自定义格式进行流式传输
+
+创建自定义流，以控制流式传输格式和工具调用的结构，而不是使用内置的 AI SDK 数据流格式（`toUIMessageStream()`）。
+
+`stream`（在 `StreamTextResult` 上）让您直接访问所有模型事件。您可以转换、过滤和构建这些事件，形成自己的流式传输格式。这使您既能享受 AI SDK 统一提供商接口的优势，又无需规定如何消费流。
+
+您可以：
+
+- 定义自己的流块格式
+- 控制步骤和工具调用的结构方式
+- 在客户端手动解析流
+- 根据流数据构建自定义 UI
+
+如需完全控制流式传输格式和执行循环，可将此模式与[手动智能体循环](/cookbook/node/manual-agent-loop)结合使用。
+
+## 实现
+
+### 服务端
+
+创建一个路由处理程序，调用模型并以自定义格式流式传输响应：
+
+```tsx filename="app/api/stream/route.ts"
+import { tools } from '@/ai/tools'; // 您的工具
+import { isStepCount, streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+export type StreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'tool-call'; toolName: string; input: unknown }
+  | { type: 'tool-result'; toolName: string; result: unknown };
+
+const encoder = new TextEncoder();
+
+function formatEvent(event: StreamEvent): Uint8Array {
+  return encoder.encode('data: ' + JSON.stringify(event) + '\n\n');
+}
+
+export async function POST(request: Request) {
+  const { prompt } = await request.json();
+
+  const result = streamText({
+    prompt,
+    model: __MODEL__,
+    tools,
+    stopWhen: isStepCount(5),
+  });
+
+  const transformStream = new TransformStream({
+    transform(chunk, controller) {
+      switch (chunk.type) {
+        case 'text-delta':
+          controller.enqueue(formatEvent({ type: 'text', text: chunk.text }));
+          break;
+        case 'tool-call':
+          controller.enqueue(
+            formatEvent({
+              type: 'tool-call',
+              toolName: chunk.toolName,
+              input: chunk.input,
+            }),
+          );
+          break;
+        case 'tool-result':
+          controller.enqueue(
+            formatEvent({
+              type: 'tool-result',
+              toolName: chunk.toolName,
+              result: chunk.output,
+            }),
+          );
+          break;
+      }
+    },
+  });
+
+  return new Response(result.stream.pipeThrough(transformStream), {
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+```
+
+该路由使用 `streamText` 处理带有工具的提示词。每个事件（文本、工具调用、工具结果）都被编码为服务器发送事件，带有 `data: ` 前缀，并发送到客户端。
+
+### 客户端
+
+创建一个简单的界面来解析和显示流：
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useState } from 'react';
+import { StreamEvent } from './api/stream/route';
+
+export default function Home() {
+  const [prompt, setPrompt] = useState('');
+  const [events, setEvents] = useState<StreamEvent[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const handleSubmit = async () => {
+    setEvents([]);
+    setIsStreaming(true);
+    setPrompt('');
+
+    const response = await fetch('/api/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (reader) {
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim()) {
+            const dataStr = line.replace(/^data: /, '');
+            const event = JSON.parse(dataStr) as StreamEvent;
+            setEvents(prev => [...prev, event]);
+          }
+        }
+      }
+    }
+
+    setIsStreaming(false);
+  };
+
+  return (
+    <div>
+      <input
+        value={prompt}
+        onChange={e => setPrompt(e.target.value)}
+        placeholder="输入提示词..."
+      />
+      <button onClick={handleSubmit} disabled={isStreaming}>
+        {isStreaming ? '流式传输中...' : '发送'}
+      </button>
+
+      <pre>{JSON.stringify(events, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+## 工作原理
+
+客户端使用 Fetch API 从服务端流式传输响应。由于服务端发送的是服务器发送事件（以 `data: ` 前缀换行分隔），客户端：
+
+1. 使用 `getReader()` 从流中读取块
+2. 将二进制块解码为文本
+3. 按换行符分割以识别完整事件
+4. 移除 `data: ` 前缀并解析 JSON，然后将其追加到事件列表中
+
+事件按到达顺序呈现，为您提供 AI 响应的线性表示。

@@ -1,0 +1,25 @@
+---
+title: 服务器操作纯对象错误
+description: 排查在服务器操作中使用 AI SDK 核心函数时出现的相关错误。
+---
+
+# "只能从客户端组件传递纯对象" 服务器操作错误
+
+## 问题
+
+我在服务器操作中使用 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 时，遇到了 `"只能从客户端组件传递纯对象和少量内置对象"` 的错误。
+
+## 背景
+
+当你尝试从服务器操作向客户端组件返回不可序列化的对象时，会出现此错误。`streamText` 函数可能返回包含方法或复杂结构的对象，这些内容无法直接序列化并传递给客户端。
+
+## 解决方案
+
+要解决此问题，你需要确保只从服务器操作返回可序列化的数据。以下是修改方法：
+
+1. 不要返回 `streamText` 的整个结果对象，而是仅提取必要的可序列化数据。
+2. 使用 [`createStreamableValue`](/docs/reference/ai-sdk-rsc/create-streamable-value) 函数创建一个可安全传递给客户端的流式值。
+
+以下示例演示了如何实现此解决方案：[流式文本生成](/examples/next-app/basics/streaming-text-generation)。
+
+这种方法确保只有可序列化的数据（文本）被传递给客户端，从而避免"仅限纯对象"的错误。

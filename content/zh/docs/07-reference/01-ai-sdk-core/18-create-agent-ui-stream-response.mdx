@@ -1,0 +1,190 @@
+---
+title: createAgentUIStreamResponse
+description: createAgentUIStreamResponse 工具函数的 API 参考文档。
+---
+
+# `createAgentUIStreamResponse`
+
+`createAgentUIStreamResponse` 函数执行一个[智能体](/docs/reference/ai-sdk-core/agent)，将其流式输出作为 UI 消息流运行，并返回一个 HTTP [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) 对象，其主体是实时的流式 UI 消息输出。此函数专为提供实时智能体结果的 API 路由设计，例如聊天端点或流式工具调用操作。
+
+## 导入
+
+<Snippet
+  text={`import { createAgentUIStreamResponse } from "ai"`}
+  prompt={false}
+/>
+
+## 用法
+
+```ts
+import { ToolLoopAgent, createAgentUIStreamResponse } from 'ai';
+__PROVIDER_IMPORT__;
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  instructions: '你是一个乐于助人的助手。',
+  tools: { weather: weatherTool, calculator: calculatorTool },
+});
+
+export async function POST(request: Request) {
+  const { messages } = await request.json();
+
+  // 可选：支持取消（在断开连接时中止等）
+  const abortController = new AbortController();
+
+  return createAgentUIStreamResponse({
+    agent,
+    uiMessages: messages,
+    abortSignal: abortController.signal, // 可选
+    // experimental_sandbox, // 可选：传递给工具执行
+    // ...其他 UIMessageStreamOptions，如 sendSources、experimental_transform 等
+  });
+}
+```
+
+## 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'agent',
+      type: 'Agent',
+      isRequired: true,
+      description:
+        '要从中流式传输响应的智能体实例。必须实现 `.stream({ prompt, ... })` 并定义 `tools` 属性。',
+    },
+    {
+      name: 'uiMessages',
+      type: 'unknown[]',
+      isRequired: true,
+      description:
+        '提供给智能体的输入 UI 消息数组（例如，用户和助手消息）。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isRequired: false,
+      description:
+        '可选的中止信号，用于取消流式传输，例如在客户端断开连接时。这应该是一个 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) 实例。',
+    },
+    {
+      name: 'timeout',
+      type: 'number | { totalMs?: number }',
+      isRequired: false,
+      description:
+        '超时时间（毫秒）。可以指定为数字或包含 totalMs 属性的对象。如果调用时间超过指定的超时时间，将被中止。可以与 abortSignal 一起使用。',
+    },
+    {
+      name: 'experimental_sandbox',
+      type: 'Experimental_SandboxSession',
+      isRequired: false,
+      description:
+        '可选的实验性沙箱环境，会传递给工具执行。工具可以从其执行上下文中访问它。',
+    },
+    {
+      name: 'options',
+      type: 'CALL_OPTIONS',
+      isRequired: false,
+      description:
+        '可选的智能体调用选项，适用于具有泛型参数 `CALL_OPTIONS` 的智能体。',
+    },
+    {
+      name: 'experimental_transform',
+      type: 'StreamTextTransform | StreamTextTransform[]',
+      isRequired: false,
+      description:
+        '可选的流转换，用于后处理文本输出——与底层流式 API 中的相同。',
+    },
+    {
+      name: 'onStepEnd',
+      type: 'GenerateTextOnStepEndCallback',
+      isRequired: false,
+      description:
+        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。用于跟踪 token 使用情况或记录中间步骤。',
+    },
+    {
+      name: 'onStepFinish',
+      type: 'GenerateTextOnStepFinishCallback',
+      isRequired: false,
+      description:
+        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时作为回退使用。',
+    },
+    {
+      name: '...UIMessageStreamOptions',
+      type: 'UIMessageStreamOptions',
+      isRequired: false,
+      description:
+        '其他 UI 消息输出选项——例如 `sendSources` 等。',
+    },
+    {
+      name: 'headers',
+      type: 'HeadersInit',
+      isRequired: false,
+      description: '可选的 HTTP 标头，包含在 Response 对象中。',
+    },
+    {
+      name: 'status',
+      type: 'number',
+      isRequired: false,
+      description: '可选的 HTTP 状态码。',
+    },
+    {
+      name: 'statusText',
+      type: 'string',
+      isRequired: false,
+      description: '可选的 HTTP 状态文本。',
+    },
+    {
+      name: 'consumeSseStream',
+      type: '(options: { stream: ReadableStream<string> }) => PromiseLike<void> | void',
+      isRequired: false,
+      description:
+        '可选函数，用于消费 SSE 流。提供时，将使用 SSE 流调用此函数以处理消费。',
+    },
+  ]}
+/>
+
+## 返回值
+
+一个 `Promise<Response>`，其 `body` 是来自智能体的流式 UI 消息输出。在 serverless、Next.js、Express、Hono 或边缘运行时环境中，将其用作 API/服务器处理程序的返回值。
+
+## 示例：Next.js API 路由处理程序
+
+```ts
+import { createAgentUIStreamResponse } from 'ai';
+import { MyCustomAgent } from '@/agent/my-custom-agent';
+
+export async function POST(request: Request) {
+  const { messages } = await request.json();
+
+  return createAgentUIStreamResponse({
+    agent: MyCustomAgent,
+    uiMessages: messages,
+    // experimental_sandbox, // 可选
+    sendSources: true, // (可选)
+    // headers、status、abortSignal 和其他 UIMessageStreamOptions 也支持
+  });
+}
+```
+
+## 工作原理
+
+- 1. **UI 消息验证：** 根据智能体指定的工具和要求验证传入的 `uiMessages` 数组。
+- 2. **模型消息转换：** 将验证后的 UI 消息转换为智能体的内部模型消息格式。
+- 3. **流式智能体输出：** 调用智能体的 `.stream({ prompt, ... })` 以获取数据块流（步骤/UI 消息），并传递诸如 `experimental_sandbox` 等选项。
+- 4. **创建 HTTP 响应：** 将输出流包装为可读的 HTTP `Response` 对象，将 UI 消息块流式传输到客户端。
+
+## 注意事项
+
+- 你的智能体**必须**实现 `.stream({ prompt, ... })` 并定义 `tools` 属性（即使只是 `{}`）才能与此函数一起使用。
+- **仅限服务端：** 此 API 仅应在后端/服务端上下文中调用（API 路由、边缘/serverless/服务端路由处理程序等）。不适用于浏览器。
+- 当你的智能体工具在执行期间需要实验性沙箱环境时，请传递 `experimental_sandbox`。
+- 其他选项（`headers`、`status`、UI 流选项、转换等）可用于高级场景。
+- 这利用了 [ReadableStream](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream)，因此你的平台/客户端必须支持 HTTP 流式消费。
+
+## 参见
+
+- [`Agent`](/docs/reference/ai-sdk-core/agent)
+- [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent)
+- [`UIMessage`](/docs/reference/ai-sdk-core/ui-message)
+- [`createAgentUIStream`](/docs/reference/ai-sdk-core/create-agent-ui-stream)

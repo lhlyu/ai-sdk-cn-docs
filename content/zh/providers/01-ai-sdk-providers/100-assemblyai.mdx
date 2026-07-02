@@ -1,0 +1,281 @@
+---
+title: AssemblyAI
+description: 了解如何使用 AI SDK 的 AssemblyAI 提供商。
+---
+
+# AssemblyAI 提供商
+
+[AssemblyAI](https://assemblyai.com/) 提供商为 AssemblyAI 转录 API 提供语言模型支持。
+
+## 安装
+
+AssemblyAI 提供商位于 `@ai-sdk/assemblyai` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/assemblyai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/assemblyai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/assemblyai" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/assemblyai" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/assemblyai` 导入默认的提供商实例 `assemblyai`：
+
+```ts
+import { assemblyai } from '@ai-sdk/assemblyai';
+```
+
+如果你需要自定义设置，可以从 `@ai-sdk/assemblyai` 导入 `createAssemblyAI`，并使用你的设置创建提供商实例：
+
+```ts
+import { createAssemblyAI } from '@ai-sdk/assemblyai';
+
+const assemblyai = createAssemblyAI({
+  // 自定义设置，例如
+  fetch: customFetch,
+});
+```
+
+你可以使用以下可选设置来自定义 AssemblyAI 提供商实例：
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认值为 `ASSEMBLYAI_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作拦截请求的中间件，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 转录模型
+
+你可以使用 `.transcription()` 工厂方法创建调用 [AssemblyAI 转录 API](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file/typescript) 的模型。
+
+第一个参数是模型 ID，例如 `best`。
+
+```ts
+const model = assemblyai.transcription('best');
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `contentSafety` 选项将启用内容安全过滤。
+
+```ts highlight="7"
+import { transcribe } from 'ai';
+import { assemblyai } from '@ai-sdk/assemblyai';
+import { type AssemblyAITranscriptionModelOptions } from '@ai-sdk/assemblyai';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: assemblyai.transcription('best'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    assemblyai: {
+      contentSafety: true,
+    } satisfies AssemblyAITranscriptionModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **audioEndAt** _number_
+
+  音频的结束时间（毫秒）。
+  可选。
+
+- **audioStartFrom** _number_
+
+  音频的开始时间（毫秒）。
+  可选。
+
+- **autoChapters** _boolean_
+
+  是否自动为转录生成章节。
+  可选。
+
+- **autoHighlights** _boolean_
+
+  是否自动为转录生成高亮。
+  可选。
+
+- **boostParam** _枚举_
+
+  转录的增强参数。
+  允许的值：`'low'`、`'default'`、`'high'`。
+  可选。
+
+- **contentSafety** _boolean_
+
+  是否启用内容安全过滤。
+  可选。
+
+- **contentSafetyConfidence** _number_
+
+  内容安全过滤的置信度阈值（25-100）。
+  可选。
+
+- **customSpelling** _对象数组_
+
+  转录的自定义拼写规则。
+  每个对象具有 `from`（字符串数组）和 `to`（字符串）属性。
+  可选。
+
+- **disfluencies** _boolean_
+
+  是否在转录中包含不流畅部分（如“嗯”、“呃”等）。
+  可选。
+
+- **entityDetection** _boolean_
+
+  是否检测转录中的实体。
+  可选。
+
+- **filterProfanity** _boolean_
+
+  是否过滤转录中的脏话。
+  可选。
+
+- **formatText** _boolean_
+
+  是否格式化转录中的文本。
+  可选。
+
+- **iabCategories** _boolean_
+
+  是否在转录中包含 IAB 类别。
+  可选。
+
+- **languageCode** _string_
+
+  音频的语言代码。
+  支持多种 ISO-639-1 和 ISO-639-3 语言代码。
+  可选。
+
+- **languageConfidenceThreshold** _number_
+
+  语言检测的置信度阈值。
+  可选。
+
+- **languageDetection** _boolean_
+
+  是否启用语言检测。
+  可选。
+
+- **multichannel** _boolean_
+
+  是否分别处理多个音频通道。
+  可选。
+
+- **punctuate** _boolean_
+
+  是否在转录中添加标点符号。
+  可选。
+
+- **redactPii** _boolean_
+
+  是否编辑个人身份信息。
+  可选。
+
+- **redactPiiAudio** _boolean_
+
+  是否在音频文件中编辑 PII。
+  可选。
+
+- **redactPiiAudioQuality** _枚举_
+
+  编辑后音频文件的质量。
+  允许的值：`'mp3'`、`'wav'`。
+  可选。
+
+- **redactPiiPolicies** _枚举数组_
+
+  PII 编辑策略，指定要编辑的信息类型。
+  支持多种类型，如 `'person_name'`、`'phone_number'` 等。
+  可选。
+
+- **redactPiiSub** _枚举_
+
+  编辑 PII 的替换方法。
+  允许的值：`'entity_name'`、`'hash'`。
+  可选。
+
+- **sentimentAnalysis** _boolean_
+
+  是否对转录进行情感分析。
+  可选。
+
+- **speakerLabels** _boolean_
+
+  是否在转录中标记不同的说话者。
+  可选。
+
+- **speakersExpected** _number_
+
+  音频中预期的说话者数量。
+  可选。
+
+- **speechThreshold** _number_
+
+  语音检测的阈值（0-1）。
+  可选。
+
+- **summarization** _boolean_
+
+  是否生成转录摘要。
+  可选。
+
+- **summaryModel** _枚举_
+
+  用于摘要的模型。
+  允许的值：`'informative'`、`'conversational'`、`'catchy'`。
+  可选。
+
+- **summaryType** _枚举_
+
+  要生成的摘要类型。
+  允许的值：`'bullets'`、`'bullets_verbose'`、`'gist'`、`'headline'`、`'paragraph'`。
+  可选。
+
+- **webhookAuthHeaderName** _string_
+
+  Webhook 请求的身份验证标头名称。
+  可选。
+
+- **webhookAuthHeaderValue** _string_
+
+  Webhook 请求的身份验证标头值。
+  可选。
+
+- **webhookUrl** _string_
+
+  用于发送 Webhook 通知的 URL。
+  可选。
+
+- **wordBoost** _字符串数组_
+
+  要在转录中增强的单词列表。
+  可选。
+
+### 模型能力
+
+| 模型   | 转录                | 时长                | 分段                | 语言                |
+| ------ | ------------------- | ------------------- | ------------------- | ------------------- |
+| `best` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `nano` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |

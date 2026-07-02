@@ -1,0 +1,263 @@
+---
+title: Confident AI
+description: 使用 Confident AI 追踪和评估您的 LLM 应用
+---
+
+# Confident AI 可观测性
+
+[Confident AI](https://confident-ai.com/) 是一个 LLM 可观测性和评估平台，帮助团队在开发和生产环境中构建可靠的 AI 应用。
+
+`deepeval-ts` 包与 AI SDK 集成，提供追踪、在线评估和会话分析功能。
+
+## 设置
+
+要启用追踪功能，请安装 `deepeval-ts`，配置您的 API 密钥，并全局注册 Confident AI 集成。
+
+### 1. 安装 deepeval-ts
+
+```bash
+npm install deepeval-ts @ai-sdk/otel
+```
+
+### 2. 设置环境变量
+
+注册或登录 [Confident AI](https://app.confident-ai.com) 获取您的 API 密钥，然后将其设置为环境变量：
+
+```bash
+CONFIDENT_API_KEY="YOUR-PROJECT-API-KEY"
+```
+
+### 3. 注册 OpenTelemetry 集成
+
+在应用启动时全局注册 `LegacyOpenTelemetry`，以便 AI SDK 发出 Confident AI 可以收集的 OpenTelemetry spans：
+
+```typescript
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+configureAiSdkTracing();
+registerTelemetry(new LegacyOpenTelemetry());
+```
+
+## 追踪您的应用
+
+现在，您可以将 `tracer` 对象传递给任何 AI SDK 调用的 `telemetry` 字段，从而在 Confident AI 平台上获取追踪数据。
+
+以下是一些使用 Confident AI 的 tracer 追踪各种 AI SDK 函数的示例：
+
+### 生成文本
+
+```typescript
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+const tracer = configureAiSdkTracing();
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'What are LLMs?',
+  telemetry: {
+    integrations: new LegacyOpenTelemetry({ tracer }),
+  },
+});
+```
+
+### 流式传输文本
+
+```typescript
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+const tracer = configureAiSdkTracing();
+
+const result = streamText({
+  model: openai('gpt-4o'),
+  prompt: 'Invent a new holiday and describe its traditions.',
+  telemetry: {
+    integrations: new LegacyOpenTelemetry({ tracer }),
+  },
+});
+
+for await (const textPart of result.textStream) {
+  console.log(textPart);
+}
+```
+
+### 使用工具调用生成文本
+
+```typescript
+import { generateText, tool, isStepCount } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+const tracer = configureAiSdkTracing();
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  tools: {
+    weather: tool({
+      description: 'Get the weather in a location',
+      inputSchema: z.object({
+        location: z.string().describe('The location to get the weather for'),
+      }),
+      execute: async ({ location }) => ({
+        location,
+        temperature: 72 + Math.floor(Math.random() * 21) - 10,
+      }),
+    }),
+  },
+  stopWhen: isStepCount(5),
+  prompt: 'What is the weather in San Francisco?',
+  telemetry: {
+    integrations: new LegacyOpenTelemetry({ tracer }),
+  },
+});
+```
+
+### 生成结构化输出
+
+```typescript
+import { generateObject } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+const tracer = configureAiSdkTracing();
+
+const { object } = await generateObject({
+  model: openai('gpt-4o'),
+  schema: z.object({
+    recipe: z.object({
+      name: z.string(),
+      ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
+      steps: z.array(z.string()),
+    }),
+  }),
+  prompt: 'Generate a lasagna recipe.',
+  telemetry: {
+    integrations: new LegacyOpenTelemetry({ tracer }),
+  },
+});
+```
+
+以下示例展示了从上述代码片段生成的追踪数据：
+
+- [生成文本](https://app.confident-ai.com/share/traces/6629a1f0-ab5e-50a0-a7ac-62cd0d64cd63)
+- [流式传输文本](https://app.confident-ai.com/share/traces/a5ab4eea-b29b-578a-9151-afb988dd61d8)
+- [使用工具调用生成文本](https://app.confident-ai.com/share/traces/c34935e2-f1b7-5507-a7ae-46e4db2a64bc)
+- [生成结构化输出](https://app.confident-ai.com/share/traces/e718d3d4-53cb-51b5-b3c7-89593f7cd8bc)
+
+## 配置
+
+您可以通过向 `configureAiSdkTracing` 传递选项来自定义追踪分组和评估行为。这允许您：
+
+- 对相关追踪进行分组（例如，聊天会话）
+- 将提示词版本与追踪关联
+- 在 span 和 trace 级别启用在线评估
+
+### 设置追踪属性
+
+您可以传递 `name`、`threadId`、`userId` 和 `environment` 等属性，以便更轻松地查找和筛选追踪数据。
+
+```typescript
+import { registerTelemetry, generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+const tracer = configureAiSdkTracing({
+  name: 'AI SDK Confident AI Tracing',
+  threadId: 'thread-123',
+  userId: 'user-456',
+  environment: 'production',
+});
+
+registerTelemetry(new LegacyOpenTelemetry({ tracer }));
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'How do you make the best coffee?',
+});
+```
+
+### 记录托管提示词
+
+如果您使用 Confident AI 提示词管理，可以将追踪与特定提示词版本关联。将 `Prompt` 对象传递给 `configureAiSdkTracing`，以将追踪与运行时使用的提示词版本关联。
+
+```typescript
+import { registerTelemetry, generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing, Prompt } from 'deepeval-ts';
+
+const prompt = new Prompt({ alias: 'my-prompt-alias' });
+await prompt.pull();
+
+const tracer = configureAiSdkTracing({
+  confidentPrompt: prompt,
+});
+registerTelemetry(new LegacyOpenTelemetry({ tracer }));
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'How do you make the best coffee?',
+});
+```
+
+记录提示词可以让您监控生产环境中运行的提示词以及哪些提示词长期表现最佳：
+
+![Confident AI 上的提示词可观测性](https://confident-docs.s3.us-east-1.amazonaws.com/llm-tracing:prompt-logging.png)
+
+<Note>
+  在将提示词传递给 `configureAiSdkTracing` 之前，请确保**先 `pull` 该提示词**。如果不先拉取，提示词版本将无法在 Confident AI 上显示。
+</Note>
+
+## 在线评估
+
+Confident AI 支持通过传递项目中定义的指标集合来自动对追踪进行在线评估。要启用在线评估：
+
+1. 在 Confident AI 平台中[创建一个指标集合](https://www.confident-ai.com/docs/metrics/metric-collections)
+2. 在 `configureAiSdkTracing` 选项中传递您的指标集合名称
+3. 您可以为 trace、LLM span 和 tool span 级别传递不同的指标集合
+
+以下是如何将指标集合附加到追踪的示例：
+
+```typescript
+import { registerTelemetry, generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { configureAiSdkTracing } from 'deepeval-ts';
+
+const tracer = configureAiSdkTracing({
+  metricCollection: 'my-trace-metrics',
+  llmMetricCollection: 'my-llm-metrics',
+  toolMetricCollection: 'my-tool-metrics',
+});
+registerTelemetry(new LegacyOpenTelemetry({ tracer }));
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'How do you make the best coffee?',
+});
+```
+
+所有传入的追踪现在将自动进行评估。评估结果将在 Confident AI Observatory 中与您的追踪一起显示。
+
+您可以在 [Confident AI 文档此处](https://www.confident-ai.com/docs/integrations/third-party/vercel-ai-sdk)找到关于使用 `deepeval-ts` 进行 AI SDK 追踪的更全面指南。
+
+## 了解更多
+
+- [Confident AI 文档](https://www.confident-ai.com/docs)
+- [LLM 追踪](https://www.confident-ai.com/docs/llm-tracing/introduction)
+- [在线评估](https://www.confident-ai.com/docs/llm-tracing/online-evals)
+- [提示词管理](https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts)
+- [DeepEval Discord](https://discord.gg/a3K9c8GRGt)
+- [AI SDK 遥测文档](/docs/ai-sdk-core/telemetry)

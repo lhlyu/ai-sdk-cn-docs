@@ -1,0 +1,189 @@
+---
+title: 运行时上下文与工具上下文
+description: 了解运行时上下文、工具上下文以及遥测上下文过滤如何协同工作。
+---
+
+# 运行时上下文与工具上下文
+
+上下文允许你在生成循环或智能体循环中传递服务端状态，而无需将该状态放入提示词中。AI SDK 将共享的运行时状态与每个工具的执行状态分开，这样智能体可以跟踪其工作，而工具只接收它们需要的值。
+
+使用上下文来存储租户信息、功能开关、会话数据、请求 ID、API 凭据、访问令牌或其他应影响执行的应用状态。
+
+## 上下文类型
+
+| 概念                               | 定义位置                                                         | 读取位置                                                                                     | 用途                               |
+| ---------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `runtimeContext`                   | `generateText`、`streamText` 或 `ToolLoopAgent` 调用             | `prepareStep`、生命周期回调、步骤结果和遥测                                                 | 共享的生成或智能体状态             |
+| `toolsContext`                     | `generateText`、`streamText` 或 `ToolLoopAgent` 调用             | `prepareStep`、审批回调、工具上下文解析和工具描述函数                                       | 以工具名称为键的每个工具上下文值映射 |
+| 工具 `context`                     | 每个工具的 `toolsContext` 条目，由其 `contextSchema` 验证        | 工具描述函数、工具 `execute`、`needsApproval` 和工具输入生命周期回调                         | 单个工具所需的值                   |
+| `toolContext`                      | 从单个工具的上下文派生                                           | 工具审批回调和工具执行事件                                                                   | 单个工具上下文的事件/回调名称      |
+| `telemetry.includeRuntimeContext`  | 生成或智能体调用                                                 | 遥测过滤                                                                                     | 要包含在遥测中的顶层 `runtimeContext` 属性 |
+| `telemetry.includeToolsContext`    | 生成或智能体调用                                                 | 遥测过滤                                                                                     | 要包含在遥测中的顶层工具上下文属性 |
+
+在智能体中，`runtimeContext` 是智能体的共享运行时状态。它流经循环，可以在模型调用之间的 `prepareStep` 中读取或更新。工具特定的数据保留在 `toolsContext` 中，每个工具只接收其自己经过验证的 `context`。
+
+```txt
+generateText / streamText / ToolLoopAgent
+  -> runtimeContext
+       -> prepareStep, lifecycle callbacks, step results
+       -> telemetry, filtered by telemetry.includeRuntimeContext
+  -> toolsContext
+       -> prepareStep
+       -> one tool's context / toolContext
+            -> execute, approval callbacks, tool events
+            -> telemetry, filtered by telemetry.includeToolsContext
+```
+
+## 运行时上下文
+
+当你需要整个生成或智能体循环的共享状态时，传递 `runtimeContext`。它不会自动添加到模型提示词中。使用它来配置步骤准备、跟踪服务端状态或关联生命周期事件。
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: '帮助用户规划他们的旅行。',
+  runtimeContext: {
+    tenantId: 'tenant_123',
+    plan: 'enterprise',
+    requestId: 'req_abc',
+  },
+  prepareStep: async ({ runtimeContext }) => {
+    if (runtimeContext.plan === 'enterprise') {
+      return { temperature: 0.2 };
+    }
+
+    return {};
+  },
+});
+```
+
+`prepareStep` 可以返回一个新的 `runtimeContext`。新值会影响当前步骤和所有后续步骤，这使其成为在循环轮次之间更新智能体状态的正确位置。
+
+## 工具上下文
+
+使用 `toolsContext` 来存储属于特定工具的值。每个工具使用 `contextSchema` 声明其期望的上下文；匹配的 `toolsContext` 条目会被验证并作为 `context` 传递给工具。
+
+```ts highlight="9-12,25-30"
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const weatherTool = tool({
+  description: '获取某个地点的天气',
+  inputSchema: z.object({
+    location: z.string(),
+  }),
+  contextSchema: z.object({
+    weatherApiKey: z.string(),
+    defaultUnit: z.enum(['celsius', 'fahrenheit']),
+  }),
+  execute: async ({ location }, { context }) => {
+    return fetchWeather({
+      location,
+      apiKey: context.weatherApiKey,
+      unit: context.defaultUnit,
+    });
+  },
+});
+
+const result = await generateText({
+  model: __MODEL__,
+  tools: { weather: weatherTool },
+  toolsContext: {
+    weather: {
+      weatherApiKey: process.env.WEATHER_API_KEY!,
+      defaultUnit: 'fahrenheit',
+    },
+  },
+  prompt: '旧金山的天气怎么样？',
+});
+```
+
+当至少一个工具声明了 `contextSchema` 时，对于需要上下文的工具，`toolsContext` 是必需的。一个工具只接收其自己的上下文，而不是完整的 `toolsContext` 映射。工具描述函数在每次模型调用前会接收到相同的类型化 `context`，因此描述可以根据当前工具上下文而变化。
+
+将工具上下文视为工具内部不可变的数据。如果你需要在步骤之间更改工具上下文，请在 `prepareStep` 中检查上一步并返回一个更新后的 `toolsContext`。
+
+## 遥测上下文过滤
+
+上下文通常包含在你的应用内部有用但不应发送给遥测提供商的值。使用 `telemetry.includeRuntimeContext` 将选定的顶层运行时上下文属性包含在遥测中，使用 `telemetry.includeToolsContext` 将每个工具的选定顶层工具上下文属性包含在遥测中。
+
+```ts highlight="34-43"
+import { ToolLoopAgent, tool } from 'ai';
+import { z } from 'zod';
+
+const customerLookup = tool({
+  description: '查找客户账户详情',
+  inputSchema: z.object({
+    customerId: z.string(),
+  }),
+  contextSchema: z.object({
+    apiKey: z.string(),
+    region: z.string(),
+  }),
+  execute: async ({ customerId }, { context }) => {
+    return lookupCustomer({
+      customerId,
+      apiKey: context.apiKey,
+      region: context.region,
+    });
+  },
+});
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  tools: { customerLookup },
+});
+
+const result = await agent.generate({
+  prompt: '检查客户 cust_123 是否有资格获得优先支持。',
+  runtimeContext: {
+    requestId: 'req_abc',
+    tenantId: 'tenant_123',
+    userId: 'user_123',
+  },
+  telemetry: {
+    includeRuntimeContext: {
+      requestId: true,
+    },
+    includeToolsContext: {
+      customerLookup: {
+        region: true,
+      },
+    },
+  },
+  toolsContext: {
+    customerLookup: {
+      apiKey: process.env.CUSTOMER_API_KEY!,
+      region: 'us',
+    },
+  },
+});
+```
+
+在此示例中，遥测接收到的 `runtimeContext` 仅包含 `requestId`，`customerLookup` 上下文仅包含 `region`。
+
+<Note>
+  上下文过滤器仅影响遥测集成，包括 OpenTelemetry 集成。工具执行、生命周期回调和返回的结果仍然接收完整的上下文值。
+</Note>
+
+上下文遥测过滤是浅层的。对于 `telemetry.includeRuntimeContext`，当配置时，仅发送标记为 `true` 的顶层属性；如果省略，则不发送任何运行时上下文属性。对于 `telemetry.includeToolsContext`，当配置时，仅发送标记为 `true` 的顶层工具上下文属性；如果省略，则不发送任何工具上下文属性。
+
+## 上下文可用位置
+
+| 位置                     | `runtimeContext`                              | `toolsContext`                              | 工具 `context` / `toolContext`                           |
+| ------------------------ | --------------------------------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| `prepareStep`            | 读取和更新                                    | 读取和更新                                  | 不直接可用                                               |
+| 工具描述函数             | 不直接传递                                    | 不直接传递                                  | 读取单个工具经过验证的 `context`                         |
+| 工具 `execute`           | 不直接传递                                    | 不直接传递                                  | 读取单个工具经过验证的 `context`                         |
+| 工具审批                 | 在通用和每个工具的回调中读取                  | 在通用回调中读取                            | 在每个工具的回调中作为 `toolContext` 读取                |
+| 工具执行事件             | 不包含                                        | 不包含                                      | 作为 `toolContext` 读取                                  |
+| 步骤结果和完成回调       | 读取最终或每步状态                            | 读取最终或每步状态                          | 通过 `toolsContext` 中每个工具的条目可用                 |
+| 遥测                     | 由 `telemetry.includeRuntimeContext` 过滤      | 由 `telemetry.includeToolsContext` 过滤     | 由 `telemetry.includeToolsContext` 过滤                  |
+
+## 选择合适的上下文
+
+- 使用 `runtimeContext` 存储整个生成或智能体循环共享的状态，例如请求元数据、租户设置、功能开关或智能体进度。
+- 使用 `toolsContext` 和 `contextSchema` 存储特定工具所需的值，例如 API 密钥、作用域客户端、用户权限或默认工具设置。
+- 使用提示词消息存储模型应推理或在其回答中提及的信息。
+- 使用 `telemetry.includeRuntimeContext` 和 `telemetry.includeToolsContext` 来减少遥测暴露，而不是作为通用的安全边界。
+
+了解更多关于[工具和工具调用](/docs/ai-sdk-core/tools-and-tool-calling)、[生命周期回调](/docs/ai-sdk-core/lifecycle-callbacks)和[遥测](/docs/ai-sdk-core/telemetry)的信息。

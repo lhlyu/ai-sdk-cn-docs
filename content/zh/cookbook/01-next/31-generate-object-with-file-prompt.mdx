@@ -1,0 +1,121 @@
+---
+title: 通过表单提交使用文件提示词生成对象
+description: 学习如何使用 AI SDK 和 Next.js 通过表单提交利用文件提示词生成对象
+tags: ['next', '多模态']
+---
+
+# 通过表单提交使用文件提示词生成对象
+
+<Note>
+  此功能仅限于支持 PDF 输入的模型/提供商
+  ([Anthropic](/providers/ai-sdk-providers/anthropic#pdf-support)、
+  [OpenAI](/providers/ai-sdk-providers/openai#pdf-support)、[Google
+  Gemini](/providers/ai-sdk-providers/google#file-inputs) 和 [Google
+  Vertex](/providers/ai-sdk-providers/google-vertex#file-inputs))。
+</Note>
+
+使用特定模型，您可以将 PDF（文件）作为提示词的一部分发送。让我们创建一个简单的 Next.js 应用程序，允许用户上传 PDF 并将其发送给 LLM 进行摘要生成。
+
+## 客户端
+
+在前端，创建一个允许用户上传 PDF 的表单。提交表单时，将 PDF 发送到 `/api/analyze` 路由。
+
+```tsx file="app/page.tsx"
+'use client';
+
+import { useState } from 'react';
+
+export default function Page() {
+  const [description, setDescription] = useState<string>();
+  const [loading, setLoading] = useState(false);
+
+  return (
+    <div>
+      <form
+        action={async formData => {
+          try {
+            setLoading(true);
+            const response = await fetch('/api/analyze', {
+              method: 'POST',
+              body: formData,
+            });
+            setLoading(false);
+
+            if (response.ok) {
+              setDescription(await response.text());
+            }
+          } catch (error) {
+            console.error('分析失败:', error);
+          }
+        }}
+      >
+        <div>
+          <label>上传图片</label>
+          <input name="pdf" type="file" accept="application/pdf" />
+        </div>
+        <button type="submit" disabled={loading}>
+          提交{loading && '中...'}
+        </button>
+      </form>
+      {description && (
+        <pre>{JSON.stringify(JSON.parse(description), null, 2)}</pre>
+      )}
+    </div>
+  );
+}
+```
+
+## 服务端
+
+在服务端，创建一个 API 路由来接收 PDF，将其发送给 LLM，并返回结果。此示例使用 [ `generateText` ](/docs/reference/ai-sdk-core/generate-text) 函数配合 `Output.object` 将摘要生成为结构化输出的一部分。
+
+```typescript file="app/api/analyze/route.ts"
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+
+export async function POST(request: Request) {
+  const formData = await request.formData();
+  const file = formData.get('pdf') as File;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+
+  const charArray = Array.from(uint8Array, byte => String.fromCharCode(byte));
+  const binaryString = charArray.join('');
+  const base64Data = btoa(binaryString);
+  const fileDataUrl = `data:application/pdf;base64,${base64Data}`;
+
+  const result = await generateText({
+    model: 'openai/gpt-4o',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '分析以下 PDF 并生成摘要。',
+          },
+          {
+            type: 'file',
+            data: fileDataUrl,
+            mediaType: 'application/pdf',
+          },
+        ],
+      },
+    ],
+    output: Output.object({
+      schema: z.object({
+        people: z
+          .object({
+            name: z.string().describe('人员姓名。'),
+            age: z.number().min(0).describe('人员年龄。'),
+          })
+          .array()
+          .describe('人员数组。'),
+      }),
+    }),
+  });
+
+  return Response.json(result.output);
+}
+```

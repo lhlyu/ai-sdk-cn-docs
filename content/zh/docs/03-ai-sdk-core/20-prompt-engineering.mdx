@@ -1,0 +1,160 @@
+---
+title: 提示词工程
+description: 学习如何使用 AI SDK Core 开发提示词。
+---
+
+# 提示词工程
+
+## 技巧
+
+### 工具的提示词
+
+当你创建包含工具的提示词时，随着工具数量和复杂度的增加，获得良好结果可能会变得棘手。
+
+以下是一些帮助你获得最佳结果的技巧：
+
+1. 使用在工具调用方面表现强劲的模型，例如 `gpt-5` 或 `gpt-4.1`。较弱的模型通常难以有效且完美地调用工具。
+1. 保持工具数量较少，例如不超过 5 个。
+1. 保持工具参数的复杂度较低。包含许多嵌套和可选元素、联合类型等的复杂 Zod 模式，可能会让模型难以处理。
+1. 为你的工具、参数、参数属性等使用语义上有意义的名称。你传递给模型的信息越多，它就越能理解你的需求。
+1. 为 Zod 模式属性添加 `.describe("...")`，以向模型提示特定属性的用途。
+1. 当工具的输出可能对模型不明确，且工具之间存在依赖关系时，使用工具的 `description` 字段提供关于工具执行输出的信息。
+1. 你可以在提示词中包含工具调用的示例输入/输出，以帮助模型理解如何使用工具。请记住，工具处理的是 JSON 对象，因此示例应使用 JSON。
+
+总的来说，目标应该是清晰地向模型提供它所需的所有信息。
+
+### 工具与结构化数据模式
+
+从 Zod 模式到 LLM 输入（通常是 JSON 模式）的映射并不总是直接的，因为映射并非一一对应。
+
+#### Zod 日期
+
+Zod 期望 JavaScript Date 对象，但模型返回的日期是字符串。
+你可以使用 `z.string().datetime()` 或 `z.string().date()` 指定并验证日期格式，
+然后使用 Zod 转换器将字符串转换为 Date 对象。
+
+```ts highlight="8-11"
+const result = await generateText({
+  model: __MODEL__,
+  output: Output.object({
+    schema: z.object({
+      events: z.array(
+        z.object({
+          event: z.string(),
+          date: z
+            .string()
+            .date()
+            .transform(value => new Date(value)),
+        }),
+      ),
+    }),
+  }),
+  prompt: '列出 2000 年的 5 个重要事件。',
+});
+```
+
+#### 可选参数
+
+当使用带有可选参数的工具时，你可能会遇到某些使用严格模式验证的提供商的兼容性问题。
+
+<Note>
+  这对于使用结构化输出（严格模式）的 OpenAI 模型尤其相关。
+</Note>
+
+为了最大兼容性，可选参数应使用 `.nullable()` 而不是 `.optional()`：
+
+```ts highlight="6,7,16,17"
+// 这可能在严格模式验证下失败
+const failingTool = tool({
+  description: '执行命令',
+  inputSchema: z.object({
+    command: z.string(),
+    workdir: z.string().optional(), // 这可能导致错误
+    timeout: z.string().optional(),
+  }),
+});
+
+// 这适用于严格模式验证
+const workingTool = tool({
+  description: '执行命令',
+  inputSchema: z.object({
+    command: z.string(),
+    workdir: z.string().nullable(), // 使用 nullable 替代
+    timeout: z.string().nullable(),
+  }),
+});
+```
+
+#### 温度设置
+
+对于工具调用和对象生成，建议使用 `temperature: 0` 以确保确定性和一致的结果：
+
+```ts highlight="3"
+const result = await generateText({
+  model: __MODEL__,
+  temperature: 0, // 推荐用于工具调用
+  tools: {
+    myTool: tool({
+      description: '执行命令',
+      inputSchema: z.object({
+        command: z.string(),
+      }),
+    }),
+  },
+  prompt: '执行 ls 命令',
+});
+```
+
+较低的温度值会减少模型输出的随机性，这在模型需要以下情况时尤为重要：
+
+- 生成具有特定格式的结构化数据
+- 使用正确参数进行精确的工具调用
+- 一致地遵循严格模式
+
+## 调试
+
+### 检查警告
+
+并非所有提供商都支持所有 AI SDK 功能。
+提供商在不支持某项功能时，要么抛出异常，要么返回警告。
+要检查你的提示词、工具和设置是否被提供商正确处理，你可以检查调用警告：
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: '你好，世界！',
+});
+
+console.log(result.warnings);
+```
+
+### 请求消息
+
+你可以使用 `request.messages` 检查发送给模型进行最后一步的输入消息。
+将 `include.requestMessages` 设置为 `true`，以在步骤结果中包含这些消息。
+
+```ts highlight="4,7"
+const result = await generateText({
+  model: __MODEL__,
+  prompt: '你好，世界！',
+  include: { requestMessages: true },
+});
+
+console.log(result.finalStep.request.messages);
+```
+
+### HTTP 请求体
+
+你可以检查暴露原始 HTTP 请求体的模型，例如 [OpenAI](/providers/ai-sdk-providers/openai)。
+这允许你以提供商特定的方式检查发送给模型提供商的精确负载。
+
+请求体可通过响应的 `finalStep.request.body` 属性获取：
+
+```ts highlight="6"
+const result = await generateText({
+  model: __MODEL__,
+  prompt: '你好，世界！',
+});
+
+console.log(result.finalStep.request.body);
+```

@@ -1,0 +1,239 @@
+---
+title: experimental_useRealtime
+description: experimental_useRealtime Hook 的 API 参考文档。
+---
+
+# `experimental_useRealtime()`
+
+<Note type="warning">
+  `experimental_useRealtime` 是一个实验性功能。
+</Note>
+
+创建一个浏览器端实时会话，用于与实时提供商模型进行双向音频和文本对话。
+
+该 Hook 使用来自设置端点的短期令牌连接到实时 WebSocket，以 `UIMessage[]` 形式返回消息，并提供音频捕获、播放、文本输入和工具输出的控制。
+
+```tsx
+import { openai } from '@ai-sdk/openai';
+import { experimental_useRealtime } from '@ai-sdk/react';
+
+const realtime = experimental_useRealtime({
+  model: openai.experimental_realtime('gpt-realtime'),
+  api: {
+    token: '/api/realtime/setup',
+  },
+});
+```
+
+对于 AI Gateway，将 `gateway.experimental_realtime(...)` 作为模型传入，并将 `api.token` 指向一个调用 `gateway.experimental_realtime.getToken()` 的服务端设置端点。
+
+## 导入
+
+<Snippet
+  text={`import { experimental_useRealtime } from "@ai-sdk/react"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'Experimental_RealtimeModel',
+      description: '要连接的实时模型。',
+    },
+    {
+      name: 'api',
+      type: '{ token: string }',
+      description:
+        '实时会话使用的 API 端点。token 端点通过 POST 请求调用以创建实时设置响应。',
+      properties: [
+        {
+          type: 'Object',
+          parameters: [
+            {
+              name: 'token',
+              type: 'string',
+              description:
+                '返回 Experimental_RealtimeSetupResponse 的设置端点。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'sessionConfig',
+      type: 'Partial<Experimental_RealtimeSessionConfig>',
+      isOptional: true,
+      description:
+        '与提供商无关的会话配置，例如指令、语音、音频格式、输入音频转录、语音活动检测、工具和 providerOptions。',
+    },
+    {
+      name: 'sampleRate',
+      type: 'number',
+      isOptional: true,
+      description:
+        '当 inputAudioFormat.rate 或 outputAudioFormat.rate 未指定时使用的默认音频采样率。默认为 24000。',
+    },
+    {
+      name: 'maxEvents',
+      type: 'number',
+      isOptional: true,
+      description:
+        'events 数组中保留的最大提供商事件数量。默认为 500。',
+    },
+    {
+      name: 'onToolCall',
+      type: '(options: { toolCall: { toolCallId: string; toolName: string; args: unknown } }) => unknown | Promise<unknown> | undefined',
+      isOptional: true,
+      description:
+        '当提供商请求工具调用时调用。返回一个值以自动将其作为工具输出提交，或返回 undefined 并在稍后手动调用 addToolOutput。',
+    },
+    {
+      name: 'onEvent',
+      type: '(event: Experimental_RealtimeServerEvent) => void',
+      isOptional: true,
+      description: '为每个标准化后的实时服务器事件调用。',
+    },
+    {
+      name: 'onError',
+      type: '(error: Error) => void',
+      isOptional: true,
+      description: '当实时会话遇到错误时调用。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'status',
+      type: "'disconnected' | 'connecting' | 'connected' | 'error'",
+      description: '当前连接状态。',
+    },
+    {
+      name: 'messages',
+      type: 'UIMessage[]',
+      description:
+        '从实时文本、转录和工具事件中组装的消息。',
+    },
+    {
+      name: 'events',
+      type: 'Experimental_RealtimeServerEvent[]',
+      description:
+        '最近的标准化提供商事件，用于检查或调试 UI。',
+    },
+    {
+      name: 'isCapturing',
+      type: 'boolean',
+      description: '麦克风音频捕获是否处于活动状态。',
+    },
+    {
+      name: 'isPlaying',
+      type: 'boolean',
+      description: '模型音频播放是否处于活动状态。',
+    },
+    {
+      name: 'connect',
+      type: '() => Promise<void>',
+      description:
+        '获取设置令牌并打开提供商 WebSocket 连接。',
+    },
+    {
+      name: 'disconnect',
+      type: '() => void',
+      description: '关闭提供商 WebSocket 连接。',
+    },
+    {
+      name: 'addToolOutput',
+      type: '(callId: string, result: unknown) => void',
+      description:
+        '将工具调用的结果提交回实时提供商。',
+    },
+    {
+      name: 'sendEvent',
+      type: '(event: Experimental_RealtimeClientEvent) => void',
+      description: '发送一个标准化的实时客户端事件。',
+    },
+    {
+      name: 'sendTextMessage',
+      type: '(text: string) => void',
+      description: '发送用户文本消息并请求响应。',
+    },
+    {
+      name: 'sendAudio',
+      type: '(base64Audio: string) => void',
+      description:
+        '将 base64 编码的音频块发送到提供商输入音频缓冲区。',
+    },
+    {
+      name: 'commitAudio',
+      type: '() => void',
+      description: '提交提供商输入音频缓冲区。',
+    },
+    {
+      name: 'clearAudioBuffer',
+      type: '() => void',
+      description: '清除提供商输入音频缓冲区。',
+    },
+    {
+      name: 'requestResponse',
+      type: '(options?: { modalities?: string[] }) => void',
+      description: '请求新的模型响应。',
+    },
+    {
+      name: 'cancelResponse',
+      type: '() => void',
+      description: '取消当前活动的模型响应。',
+    },
+    {
+      name: 'startAudioCapture',
+      type: '(stream: MediaStream) => void',
+      description:
+        '开始从提供的 MediaStream 捕获麦克风音频。',
+    },
+    {
+      name: 'stopAudioCapture',
+      type: '() => void',
+      description: '停止麦克风音频捕获。',
+    },
+    {
+      name: 'stopPlayback',
+      type: '() => void',
+      description: '停止已排队的模型音频播放。',
+    },
+  ]}
+/>
+
+## 工具调用
+
+实时工具执行由客户端驱动。使用 `onToolCall` 处理工具调用并返回工具输出：
+
+```tsx
+const realtime = experimental_useRealtime({
+  model: openai.experimental_realtime('gpt-realtime'),
+  api: {
+    token: '/api/realtime/setup',
+  },
+  onToolCall: async ({ toolCall }) => {
+    if (toolCall.toolName === 'getWeather') {
+      const response = await fetch('/api/weather', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(toolCall.args),
+      });
+
+      return response.json();
+    }
+  },
+});
+```
+
+对于需要用户交互的工具，从 `onToolCall` 返回 `undefined`，并在稍后调用 `addToolOutput`。
+
+有关包含服务端应用特定工具端点的完整示例，请参阅 [Realtime](/docs/ai-sdk-core/realtime#tool-calling)。

@@ -1,0 +1,286 @@
+---
+title: Gladia
+description: 了解如何使用 AI SDK 的 Gladia 提供商。
+---
+
+# Gladia 提供商
+
+[Gladia](https://gladia.io/) 提供商为 Gladia 转录 API 提供语言模型支持。
+
+## 安装
+
+Gladia 提供商位于 `@ai-sdk/gladia` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/gladia" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/gladia" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/gladia" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/gladia" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/gladia` 导入默认的提供商实例 `gladia`：
+
+```ts
+import { gladia } from '@ai-sdk/gladia';
+```
+
+如果你需要自定义设置，可以从 `@ai-sdk/gladia` 导入 `createGladia`，并使用你的设置创建提供商实例：
+
+```ts
+import { createGladia } from '@ai-sdk/gladia';
+
+const gladia = createGladia({
+  // 自定义设置，例如
+  fetch: customFetch,
+});
+```
+
+你可以使用以下可选设置来自定义 Gladia 提供商实例：
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认使用 `GLADIA_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作中间件来拦截请求，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 转录模型
+
+你可以使用 `.transcription()` 工厂方法创建调用 [Gladia 转录 API](https://docs.gladia.io/chapters/pre-recorded-stt/getting-started) 的模型。
+
+```ts
+const model = gladia.transcription();
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `summarize` 选项将为内容部分启用摘要功能。
+
+```ts highlight="7"
+import { transcribe } from 'ai';
+import { gladia } from '@ai-sdk/gladia';
+import { type GladiaTranscriptionModelOptions } from '@ai-sdk/gladia';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: gladia.transcription(),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    gladia: {
+      summarization: true,
+    } satisfies GladiaTranscriptionModelOptions,
+  },
+});
+```
+
+<Note>
+  Gladia 没有多种模型，因此你可以省略标准的 `model` id 参数。
+</Note>
+
+以下提供商选项可用：
+
+- **contextPrompt** _string_
+
+  为转录模型提供的上下文，可能有助于提高准确性。
+  可选。
+
+- **customVocabulary** _boolean | any[]_
+
+  自定义词汇表，用于提高转录准确性。
+  可选。
+
+- **customVocabularyConfig** _object_
+
+  自定义词汇表的配置。
+  可选。
+  - **vocabulary** _Array&lt;string | \{ value: string, intensity?: number, pronunciations?: string[], language?: string \}&gt;_
+  - **defaultIntensity** _number_
+
+- **detectLanguage** _boolean_
+
+  是否自动检测语言。
+  可选。
+
+- **enableCodeSwitching** _boolean_
+
+  为多语言音频启用代码切换。
+  可选。
+
+- **codeSwitchingConfig** _object_
+
+  代码切换的配置。
+  可选。
+  - **languages** _string[]_
+
+- **language** _string_
+
+  指定音频的语言。
+  可选。
+
+- **callback** _boolean_
+
+  转录完成时启用回调。
+  可选。
+
+- **callbackConfig** _object_
+
+  回调的配置。
+  可选。
+  - **url** _string_
+  - **method** _'POST' | 'PUT'_
+
+- **subtitles** _boolean_
+
+  从转录生成字幕。
+  可选。
+
+- **subtitlesConfig** _object_
+
+  字幕的配置。
+  可选。
+  - **formats** _Array&lt;'srt' | 'vtt'&gt;_
+  - **minimumDuration** _number_
+  - **maximumDuration** _number_
+  - **maximumCharactersPerRow** _number_
+  - **maximumRowsPerCaption** _number_
+  - **style** _'default' | 'compliance'_
+
+- **diarization** _boolean_
+
+  启用说话人分离。
+  可选。
+
+- **diarizationConfig** _object_
+
+  说话人分离的配置。
+  可选。
+  - **numberOfSpeakers** _number_
+  - **minSpeakers** _number_
+  - **maxSpeakers** _number_
+  - **enhanced** _boolean_
+
+- **translation** _boolean_
+
+  启用转录翻译。
+  可选。
+
+- **translationConfig** _object_
+
+  翻译的配置。
+  可选。
+  - **targetLanguages** _string[]_
+  - **model** _'base' | 'enhanced'_
+  - **matchOriginalUtterances** _boolean_
+
+- **summarization** _boolean_
+
+  启用转录摘要。
+  可选。
+
+- **summarizationConfig** _object_
+
+  摘要的配置。
+  可选。
+  - **type** _'general' | 'bullet_points' | 'concise'_
+
+- **moderation** _boolean_
+
+  启用内容审核。
+  可选。
+
+- **namedEntityRecognition** _boolean_
+
+  启用命名实体识别。
+  可选。
+
+- **chapterization** _boolean_
+
+  启用转录分章。
+  可选。
+
+- **nameConsistency** _boolean_
+
+  在转录中启用名称一致性。
+  可选。
+
+- **customSpelling** _boolean_
+
+  启用自定义拼写。
+  可选。
+
+- **customSpellingConfig** _object_
+
+  自定义拼写的配置。
+  可选。
+  - **spellingDictionary** _Record&lt;string, string[]&gt;_
+
+- **structuredDataExtraction** _boolean_
+
+  启用结构化数据提取。
+  可选。
+
+- **structuredDataExtractionConfig** _object_
+
+  结构化数据提取的配置。
+  可选。
+  - **classes** _string[]_
+
+- **sentimentAnalysis** _boolean_
+
+  启用情感分析。
+  可选。
+
+- **audioToLlm** _boolean_
+
+  启用音频到 LLM 处理。
+  可选。
+
+- **audioToLlmConfig** _object_
+
+  音频到 LLM 的配置。
+  可选。
+  - **prompts** _string[]_
+
+- **customMetadata** _Record&lt;string, any&gt;_
+
+  要包含在请求中的自定义元数据。
+  可选。
+
+- **sentences** _boolean_
+
+  启用句子检测。
+  可选。
+
+- **displayMode** _boolean_
+
+  启用显示模式。
+  可选。
+
+- **punctuationEnhanced** _boolean_
+
+  启用增强标点。
+  可选。
+
+### 模型能力
+
+| 模型      | 转录               | 时长               | 片段               | 语言               |
+| --------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `Default` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |

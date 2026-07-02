@@ -1,0 +1,167 @@
+---
+title: Raindrop
+description: 使用 Raindrop 监控 AI SDK 调用和智能体追踪
+---
+
+# Raindrop 可观测性
+
+[Raindrop](https://www.raindrop.ai/) 为 AI 应用提供可观测性。其 AI SDK 集成记录了 `generateText`、`streamText`、`generateObject`、`streamObject`、模型调用、工具调用、错误、延迟和令牌用量的事件和追踪。
+
+Raindrop 直接支持 AI SDK v7 遥测接口，因此你可以使用 `registerTelemetry` 和 `telemetry` 选项，而无需添加 OpenTelemetry 设置。
+
+## 设置
+
+安装 Raindrop AI SDK 集成：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @raindrop-ai/ai-sdk" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @raindrop-ai/ai-sdk" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @raindrop-ai/ai-sdk" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @raindrop-ai/ai-sdk" dark />
+  </Tab>
+</Tabs>
+
+设置你的 Raindrop 写入密钥（在 [Raindrop 仪表盘](https://www.raindrop.ai/) 中创建一个）：
+
+```bash filename=".env.local"
+RAINDROP_WRITE_KEY="..."
+```
+
+然后在应用启动时注册一次 Raindrop。`raindrop()` 会自动读取 `RAINDROP_WRITE_KEY`，无需 `@ai-sdk/otel` 或 OpenTelemetry 设置：
+
+```ts filename="instrumentation.ts"
+import { registerTelemetry } from 'ai';
+import { raindrop } from '@raindrop-ai/ai-sdk';
+
+registerTelemetry(raindrop());
+```
+
+## 使用
+
+注册后，AI SDK 调用会自动发出遥测数据。使用 `telemetry` 选项进行函数级设置，例如 `functionId`：
+
+```ts
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const { text } = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: '为新用户写一条简短的欢迎消息。',
+  telemetry: {
+    functionId: 'welcome-message',
+  },
+});
+```
+
+Raindrop 在 `userId` 可用时记录事件，因此请设置 Raindrop `context` 以将调用归因于用户。你可以在注册时全局提供（`raindrop({ context: { userId } })`），或通过 `telemetry.integrations` 按请求提供（见下文）。如果没有 `userId`，Raindrop 仍会记录调用的追踪，但不会发出事件。
+
+## 请求特定的 Raindrop 上下文
+
+如果 Raindrop 事件字段（如 `userId`、`convoId` 或 `eventName`）随请求变化，请通过该调用的 `telemetry.integrations` 传递 Raindrop 集成：
+
+```ts highlight="12-22"
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { raindrop } from '@raindrop-ai/ai-sdk';
+
+const userId = 'user_123';
+const convoId = 'chat_456';
+
+const raindropTelemetry = raindrop({
+  context: { userId, convoId, eventName: 'support-chat' },
+});
+
+const { text } = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: '总结最新的支持工单。',
+  telemetry: {
+    functionId: 'support-summary',
+    integrations: [raindropTelemetry],
+  },
+});
+
+await raindropTelemetry.flush();
+```
+
+<Note>
+  每次调用的 `telemetry.integrations` 会替换该调用的全局注册集成。如果你还使用其他遥测集成，请将其包含在同一个 `integrations` 数组中。
+</Note>
+
+## 流式传输
+
+流式调用以相同方式工作。对于 AI SDK UI 路由，返回 v7 流辅助函数，并在流完成时刷新 Raindrop：
+
+```ts filename="app/api/chat/route.ts" highlight="15-27"
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { raindrop } from '@raindrop-ai/ai-sdk';
+
+export async function POST(req: Request) {
+  const { id, messages, userId } = (await req.json()) as {
+    id: string;
+    messages: UIMessage[];
+    userId: string;
+  };
+
+  const raindropTelemetry = raindrop({
+    context: { userId, convoId: id, eventName: 'chat' },
+  });
+
+  const result = streamText({
+    model: openai('gpt-5-mini'),
+    messages: await convertToModelMessages(messages),
+    telemetry: {
+      functionId: 'chat-route',
+      integrations: [raindropTelemetry],
+    },
+    onEnd: async () => {
+      await raindropTelemetry.flush();
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+## 隐私控制
+
+`recordInputs` 和 `recordOutputs` 控制是否将提示词和响应附加到**追踪跨度**：
+
+```ts
+const result = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: '总结这份私人文档。',
+  telemetry: {
+    recordInputs: false,
+    recordOutputs: false,
+  },
+});
+```
+
+这些标志仅影响跨度属性。Raindrop 的事件负载仍会记录输入（最后一条用户消息）和输出（最终文本）。要完全阻止敏感内容进入 Raindrop，请禁用事件捕获，以便仅记录追踪：
+
+```ts
+registerTelemetry(raindrop({ events: { enabled: false } }));
+```
+
+提供商选项中类似凭证的值默认会从追踪中剥离；使用 `traces.transformSpan` 或 `traces.disableDefaultRedaction` 进行自定义。
+
+## 资源
+
+- [Raindrop AI SDK 集成](https://www.raindrop.ai/docs/integrations/vercel-ai-sdk/)
+- [AI SDK 遥测文档](/docs/ai-sdk-core/telemetry)

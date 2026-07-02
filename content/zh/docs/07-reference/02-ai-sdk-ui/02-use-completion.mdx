@@ -1,0 +1,185 @@
+---
+title: useCompletion
+description: `useCompletion` Hook 的 API 参考文档。
+---
+
+# `useCompletion()`
+
+允许你为应用程序创建基于文本补全的功能。它支持从 AI 提供商流式传输文本补全，管理聊天输入的状态，并在收到新消息时自动更新 UI。
+
+## 导入
+
+<Tabs items={['React', 'Svelte', 'Vue', 'Angular']}>
+  <Tab>
+    <Snippet
+      text="import { useCompletion } from '@ai-sdk/react'"
+      dark
+      prompt={false}
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="import { Completion } from '@ai-sdk/svelte'"
+      dark
+      prompt={false}
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="import { useCompletion } from '@ai-sdk/vue'"
+      dark
+      prompt={false}
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="import { Completion } from '@ai-sdk/angular'"
+      dark
+      prompt={false}
+    />
+  </Tab>
+</Tabs>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'api',
+      type: "string = '/api/completion'",
+      description:
+        '用于生成文本的 API 端点。可以是相对路径（以 `/` 开头）或绝对 URL。',
+    },
+    {
+      name: 'id',
+      type: 'string',
+      description:
+        '补全的唯一标识符。如果未提供，将生成一个随机标识符。当提供时，具有相同 `id` 的 `useCompletion` Hook 将在组件间共享状态。这在你有多个组件显示相同聊天流时非常有用。',
+    },
+    {
+      name: 'initialInput',
+      type: 'string',
+      description: '初始提示词输入的可选字符串。',
+    },
+    {
+      name: 'initialCompletion',
+      type: 'string',
+      description: '初始补全结果的可选字符串。',
+    },
+    {
+      name: 'onFinish',
+      type: '(prompt: string, completion: string) => void',
+      description:
+        '一个可选的回调函数，在补全流结束时调用。',
+    },
+    {
+      name: 'onError',
+      type: '(error: Error) => void',
+      description:
+        '一个可选的回调函数，在聊天流遇到错误时调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string> | Headers',
+      description:
+        '一个可选的头部对象，将传递给 API 端点。',
+    },
+    {
+      name: 'body',
+      type: 'object',
+      description:
+        '一个可选的附加请求体对象，将传递给 API 端点。',
+    },
+    {
+      name: 'credentials',
+      type: "'omit' | 'same-origin' | 'include'",
+      description:
+        '一个可选的字符串字面量，设置请求中使用的凭据模式。默认为 same-origin。',
+    },
+    {
+      name: 'streamProtocol',
+      type: "'text' | 'data'",
+      isOptional: true,
+      description:
+        '一个可选的字符串字面量，设置要使用的流类型。默认为 `data`。如果设置为 `text`，流将被视为文本流。请注意，无论使用哪种协议，`useCompletion` 仅通过 `completion` 字段暴露文本内容——服务器发出的非文本部分（例如 `data-*` 部分）将被忽略。如果你需要访问这些部分，请使用 `useChat`。',
+    },
+    {
+      name: 'fetch',
+      type: 'FetchFunction',
+      isOptional: true,
+      description:
+        '可选。用于 API 调用的自定义 fetch 函数。默认为全局 fetch 函数。',
+    },
+    {
+      name: 'experimental_throttle',
+      type: 'number',
+      isOptional: true,
+      description:
+        '仅限 React。补全和数据更新的自定义节流等待时间（毫秒）。指定后，会限制流式传输期间 UI 更新的频率。默认为 undefined，表示禁用节流。',
+    },
+
+]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'completion',
+      type: 'string',
+      description: '当前的文本补全。',
+    },
+    {
+      name: 'complete',
+      type: '(prompt: string, options?: { headers?: Record<string, string> | Headers, body?: object }) => Promise<string | null | undefined>',
+      description:
+        '根据提供的提示词执行文本补全的函数。完成后返回补全结果。',
+    },
+    {
+      name: 'error',
+      type: 'undefined | Error',
+      description: '补全过程中抛出的错误（如果有）。',
+    },
+    {
+      name: 'setCompletion',
+      type: '(completion: string) => void',
+      description: '用于更新 `completion` 状态的函数。',
+    },
+    {
+      name: 'stop',
+      type: '() => void',
+      description: '用于中止当前 API 请求的函数。',
+    },
+    {
+      name: 'input',
+      type: 'string',
+      description: '输入字段的当前值。',
+    },
+    {
+      name: 'setInput',
+      type: 'React.Dispatch<React.SetStateAction<string>>',
+      description: '用于更新输入值的函数。',
+    },
+    {
+      name: 'handleInputChange',
+      type: '(event: any) => void',
+      description:
+        '输入字段 `onChange` 事件的处理函数，用于控制输入的值。',
+    },
+    {
+      name: 'handleSubmit',
+      type: '(event?: { preventDefault?: () => void }) => void',
+      description:
+        '表单提交处理函数，自动重置输入字段并追加一条用户消息。',
+    },
+    {
+      name: 'isLoading',
+      type: 'boolean',
+      description:
+        '布尔标志，指示当前是否正在进行 fetch 操作。',
+    },
+  ]}
+/>

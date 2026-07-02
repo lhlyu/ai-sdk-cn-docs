@@ -1,0 +1,32 @@
+---
+title: 部署后流式传输失效
+description: 排查已部署应用中的流式传输问题。
+---
+
+# 部署后流式传输失效
+
+## 问题
+
+使用 AI SDK 进行流式传输在本地开发环境中运行正常。
+但部署后，流式传输在已部署的应用中无法工作。
+取而代之的是，需要等待一段时间后才会返回完整响应。
+
+## 原因
+
+此问题的原因多种多样，具体取决于部署环境。
+
+## 解决方案
+
+你可以尝试以下方法：
+
+- 添加 `'Transfer-Encoding': 'chunked'` 和/或 `Connection: 'keep-alive'` 标头
+
+  ```tsx
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+    headers: {
+      'Transfer-Encoding': 'chunked',
+      Connection: 'keep-alive',
+    },
+  });
+  ```

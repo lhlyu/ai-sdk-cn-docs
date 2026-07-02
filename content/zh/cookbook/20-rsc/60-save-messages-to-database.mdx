@@ -1,0 +1,205 @@
+---
+title: 将消息保存到数据库
+description: 了解如何使用 AI SDK 和 React 服务器组件将消息保存到外部数据库
+tags: ['rsc', '工具使用']
+---
+
+# 将消息保存到数据库
+
+有时与语言模型的对话会变得有趣，你可能希望保存状态，以便稍后重新查看或继续对话。
+
+`createAI` 有一个名为 `onSetAIState` 的实验性回调函数，每当 AI 状态发生变化时，它就会被调用。你可以利用它来将 AI 状态保存到文件或数据库中。
+
+## 客户端
+
+```tsx filename='app/layout.tsx'
+import { ServerMessage } from './actions';
+import { AI } from './ai';
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  // 从数据库获取聊天历史
+  const history: ServerMessage[] = getChat();
+
+  return (
+    <html lang="en">
+      <body>
+        <AI initialAIState={history} initialUIState={[]}>
+          {children}
+        </AI>
+      </body>
+    </html>
+  );
+}
+```
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState } from 'react';
+import { ClientMessage } from './actions';
+import { useActions, useUIState } from '@ai-sdk/rsc';
+import { generateId } from 'ai';
+
+// 允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [input, setInput] = useState<string>('');
+  const [conversation, setConversation] = useUIState();
+  const { continueConversation } = useActions();
+
+  return (
+    <div>
+      <div>
+        {conversation.map((message: ClientMessage) => (
+          <div key={message.id}>
+            {message.role}: {message.display}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <input
+          type="text"
+          value={input}
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button
+          onClick={async () => {
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              { id: generateId(), role: 'user', display: input },
+            ]);
+
+            const message = await continueConversation(input);
+
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              message,
+            ]);
+          }}
+        >
+          发送消息
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+## 服务器端
+
+我们将使用回调函数来监听状态变化，并在收到 `done` 事件时保存对话。
+
+```tsx filename='app/actions.tsx'
+'use server';
+
+import { getAIState, getMutableAIState, streamUI } from '@ai-sdk/rsc';
+import { ReactNode } from 'react';
+import { z } from 'zod';
+import { generateId } from 'ai';
+import { Stock } from '@ai-studio/components/stock';
+
+export interface ServerMessage {
+  role: 'user' | 'assistant' | 'function';
+  content: string;
+}
+
+export interface ClientMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'function';
+  display: ReactNode;
+}
+
+export async function continueConversation(
+  input: string,
+): Promise<ClientMessage> {
+  'use server';
+
+  const history = getMutableAIState();
+
+  const result = await streamUI({
+    model: 'openai/gpt-5.4',
+    messages: [...history.get(), { role: 'user', content: input }],
+    text: ({ content, done }) => {
+      if (done) {
+        history.done([
+          ...history.get(),
+          { role: 'user', content: input },
+          { role: 'assistant', content },
+        ]);
+      }
+
+      return <div>{content}</div>;
+    },
+    tools: {
+      showStockInformation: {
+        description:
+          '获取指定股票代码在过去 numOfMonths 个月内的股票信息',
+        inputSchema: z.object({
+          symbol: z
+            .string()
+            .describe('要获取信息的股票代码'),
+          numOfMonths: z
+            .number()
+            .describe('要获取历史信息的月份数'),
+        }),
+        generate: async ({ symbol, numOfMonths }) => {
+          history.done([
+            ...history.get(),
+            {
+              role: 'function',
+              name: 'showStockInformation',
+              content: JSON.stringify({ symbol, numOfMonths }),
+            },
+          ]);
+
+          return <Stock symbol={symbol} numOfMonths={numOfMonths} />;
+        },
+      },
+    },
+  });
+
+  return {
+    id: generateId(),
+    role: 'assistant',
+    display: result.value,
+  };
+}
+```
+
+```ts filename='app/ai.ts'
+import { createAI } from '@ai-sdk/rsc';
+import { ServerMessage, ClientMessage, continueConversation } from './actions';
+
+export const AI = createAI<ServerMessage[], ClientMessage[]>({
+  actions: {
+    continueConversation,
+  },
+  onSetAIState: async ({ state, done }) => {
+    'use server';
+
+    if (done) {
+      saveChat(state);
+    }
+  },
+  onGetUIState: async () => {
+    'use server';
+
+    const history: ServerMessage[] = getAIState();
+
+    return history.map(({ role, content }) => ({
+      id: generateId(),
+      role,
+      display:
+        role === 'function' ? <Stock {...JSON.parse(content)} /> : content,
+    }));
+  },
+});
+```

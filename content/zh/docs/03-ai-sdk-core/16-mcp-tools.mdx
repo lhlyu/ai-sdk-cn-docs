@@ -1,0 +1,508 @@
+---
+title: 模型上下文协议 (MCP)
+description: 了解如何连接到模型上下文协议 (MCP) 服务器，并在 AI SDK Core 中使用其工具。
+---
+
+# 模型上下文协议 (MCP)
+
+AI SDK 支持连接到[模型上下文协议 (MCP)](https://modelcontextprotocol.io/) 服务器，以访问其工具、资源和提示词。
+这使得您的 AI 应用能够通过标准化接口发现并使用各种服务的能力。
+
+<Note>
+  如果您使用的是 OpenAI 的 Responses API，也可以使用内置的
+  `openai.tools.mcp` 工具，它提供了直接的 MCP 服务器集成，无需
+  转换工具。详情请参阅 [OpenAI 提供商
+  文档](/providers/ai-sdk-providers/openai#mcp-tool)。
+</Note>
+
+## 初始化 MCP 客户端
+
+我们建议在生产部署中使用 HTTP 传输（如 `StreamableHTTPClientTransport`）。stdio 传输应仅用于连接本地服务器，因为它无法部署到生产环境。
+
+使用以下传输选项之一创建 MCP 客户端：
+
+- **HTTP 传输（推荐）**：可以直接通过客户端使用 `transport: { type: 'http', ... }` 配置 HTTP，或使用 MCP 官方 TypeScript SDK 的 `StreamableHTTPClientTransport`
+- SSE（服务器发送事件）：另一种基于 HTTP 的传输方式
+- `stdio`：仅用于本地开发。使用标准输入/输出流连接本地 MCP 服务器
+
+### HTTP 传输（推荐）
+
+对于生产部署，我们推荐使用 HTTP 传输。您可以直接在客户端上配置它：
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcpClient = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://your-server.com/mcp',
+
+    // 可选：配置 HTTP 请求头
+    headers: { Authorization: 'Bearer my-api-key' },
+
+    // 可选：提供 OAuth 客户端提供程序以进行自动授权
+    authProvider: myOAuthClientProvider,
+
+    // 可选：允许重定向响应（默认为 'error' 以防止 SSRF）
+    redirect: 'follow',
+  },
+});
+```
+
+如果 MCP 服务器使用 Streamable HTTP 会话，您可以通过恢复之前的会话 ID 和初始化结果来重新连接到已保存的会话：
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const savedSession = await loadMcpSession();
+let currentSessionId = savedSession?.sessionId;
+
+const mcpClient = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://your-server.com/mcp',
+    initialSessionId: savedSession?.sessionId,
+    initialProtocolVersion: savedSession?.initializeResult.protocolVersion,
+    terminateSessionOnClose: false,
+
+    onSessionIdChange: sessionId => {
+      currentSessionId = sessionId;
+    },
+
+    onSessionExpired: sessionId => {
+      if (currentSessionId === sessionId) {
+        currentSessionId = undefined;
+        void clearMcpSession();
+      }
+    },
+  },
+  initialInitializeResult: savedSession?.initializeResult,
+});
+
+if (currentSessionId) {
+  await saveMcpSession({
+    sessionId: currentSessionId,
+    initializeResult: mcpClient.initializeResult,
+  });
+}
+```
+
+当提供了 `initialInitializeResult` 时，`createMCPClient` 会重用缓存的初始化元数据，并且不会发送另一个 `initialize` 请求。当调用 `onSessionExpired` 时，传输层已清除会话 ID，并且请求仍会因底层 HTTP 错误而失败。请通过创建一个没有 `initialSessionId` 或 `initialInitializeResult` 的新客户端来重试。当仅关闭本地客户端但保留 MCP 会话以供稍后重新连接时，请将 `terminateSessionOnClose` 设置为 `false`。
+
+或者，您可以使用 MCP 官方 TypeScript SDK 中的 `StreamableHTTPClientTransport`：
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+const url = new URL('https://your-server.com/mcp');
+const mcpClient = await createMCPClient({
+  transport: new StreamableHTTPClientTransport(url, {
+    sessionId: 'session_123',
+  }),
+});
+```
+
+### SSE 传输
+
+SSE 提供了另一种基于 HTTP 的传输选项。使用 `type` 和 `url` 属性进行配置。您还可以为 OAuth 提供 `authProvider`：
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcpClient = await createMCPClient({
+  transport: {
+    type: 'sse',
+    url: 'https://my-server.com/sse',
+
+    // 可选：配置 HTTP 请求头
+    headers: { Authorization: 'Bearer my-api-key' },
+
+    // 可选：提供 OAuth 客户端提供程序以进行自动授权
+    authProvider: myOAuthClientProvider,
+
+    // 可选：允许重定向响应（默认为 'error' 以防止 SSRF）
+    redirect: 'follow',
+  },
+});
+```
+
+### Stdio 传输（本地服务器）
+
+<Note type="warning">
+  stdio 传输应仅用于本地服务器。
+</Note>
+
+Stdio 传输可以从 MCP SDK 或 AI SDK 导入：
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+// 或者使用 AI SDK 的 stdio 传输：
+// import { Experimental_StdioMCPTransport as StdioClientTransport } from '@ai-sdk/mcp/mcp-stdio';
+
+const mcpClient = await createMCPClient({
+  transport: new StdioClientTransport({
+    command: 'node',
+    args: ['src/stdio/dist/server.js'],
+  }),
+});
+```
+
+### 自定义传输
+
+您也可以通过实现 `MCPTransport` 接口来提供自己的传输，以满足标准传输无法覆盖的特定需求。
+
+<Note>
+  `createMCPClient` 函数返回的客户端是一个轻量级客户端，旨在用于工具转换。它目前不支持完整 MCP 客户端的所有功能，例如自动会话持久化、可恢复流和接收通知。
+
+当使用 AI SDK MCP HTTP 或 SSE 传输时，通过提供 `authProvider` 支持通过 OAuth 进行授权。
+
+</Note>
+
+### OAuth 授权服务器验证
+
+在服务器端应用中使用 MCP OAuth 时，MCP 服务器可以通告要使用的 OAuth 授权服务器。如果您连接到不受您控制的 MCP 服务器，请在您的 `authProvider` 上实现 `validateAuthorizationServerURL`，以仅允许您信任的授权服务器来源：
+
+```typescript
+const allowedAuthorizationServerOrigins = new Set([
+  'https://accounts.example.com',
+  'https://tenant.auth0.com',
+]);
+
+const myOAuthClientProvider = {
+  // ...其他 OAuthClientProvider 方法
+
+  validateAuthorizationServerURL(serverUrl, authorizationServerUrl) {
+    const origin = new URL(authorizationServerUrl).origin;
+
+    if (!allowedAuthorizationServerOrigins.has(origin)) {
+      throw new Error(
+        `服务器 ${serverUrl} 的 OAuth 授权服务器来源意外：${origin}`,
+      );
+    }
+  },
+};
+```
+
+此 Hook 在 SDK 获取授权服务器元数据之前被调用，因此被拒绝的 URL 不会被请求。它是可选的，除非您实现它，否则不会更改现有的 OAuth 流程。
+
+### 重试临时工具故障
+
+MCP 工具调用可能因临时传输原因而失败，例如速率限制、临时过载或网关超时。您可以通过在创建客户端时传递 `maxRetries` 来选择对 `tools/call` 请求进行自动重试：
+
+```typescript
+const mcpClient = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://your-server.com/mcp',
+  },
+  maxRetries: 2,
+});
+```
+
+默认情况下禁用重试。内置的重试匹配仅针对临时 HTTP 和网络故障。JSON-RPC 应用程序错误（例如无效的工具参数）会立即返回，不会重试。成功的 MCP 工具响应（带有 `isError: true`）也会返回给模型，不会重试。
+
+<Note type="warning">
+  仅对重试安全的 MCP 工具启用重试。重试非幂等工具（例如发送电子邮件或创建记录的工具）可能会导致重复的副作用。
+</Note>
+
+### 关闭 MCP 客户端
+
+初始化后，您应根据使用模式关闭 MCP 客户端：
+
+- 对于短期使用（例如单个请求），在响应完成后关闭客户端
+- 对于长期运行的客户端（例如命令行应用），保持客户端打开，但确保在应用程序终止时关闭它
+
+在流式传输响应时，您可以在 LLM 响应完成后关闭客户端。例如，使用 `streamText` 时，应使用 `onEnd` 回调：
+
+```typescript
+const mcpClient = await createMCPClient({
+  // ...
+});
+
+const tools = await mcpClient.tools();
+
+const result = await streamText({
+  model: __MODEL__,
+  tools,
+  prompt: 'What is the weather in Brooklyn, New York?',
+  onEnd: async () => {
+    await mcpClient.close();
+  },
+});
+```
+
+在生成非流式响应时，您可以在框架中使用 try/finally 或清理函数：
+
+```typescript
+import { createMCPClient, type MCPClient } from '@ai-sdk/mcp';
+
+let mcpClient: MCPClient | undefined;
+
+try {
+  mcpClient = await createMCPClient({
+    // ...
+  });
+} finally {
+  await mcpClient?.close();
+}
+```
+
+## 使用 MCP 工具
+
+客户端的 `tools` 方法充当 MCP 工具和 AI SDK 工具之间的适配器。它支持两种处理工具模式的方式：
+
+### 模式发现
+
+使用模式发现时，服务器提供的所有工具都会自动列出，并且输入参数类型会根据服务器提供的模式进行推断：
+
+```typescript
+const tools = await mcpClient.tools();
+```
+
+这种方法实现起来更简单，并且会自动与服务器更改保持同步。但是，您在开发过程中不会获得 TypeScript 类型安全，并且会加载服务器中的所有工具。
+
+### 模式定义
+
+为了获得更好的类型安全性和控制，您可以在客户端代码中显式定义工具及其输入模式：
+
+```typescript
+import { z } from 'zod';
+
+const tools = await mcpClient.tools({
+  schemas: {
+    'get-data': {
+      inputSchema: z.object({
+        query: z.string().describe('数据查询'),
+        format: z.enum(['json', 'text']).optional(),
+      }),
+    },
+    // 对于零输入的工具，应使用空对象：
+    'tool-with-no-args': {
+      inputSchema: z.object({}),
+    },
+  },
+});
+```
+
+这种方法提供了完整的 TypeScript 类型安全和 IDE 自动补全，让您在开发过程中就能捕获参数不匹配的问题。当您定义 `schemas` 时，客户端只会拉取显式定义的工具，使您的应用程序专注于它需要的工具。
+
+### 类型化工具输出
+
+当 MCP 服务器返回 `structuredContent`（根据 [MCP 规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content)）时，您可以定义一个 `outputSchema` 来获取类型化的工具结果：
+
+```typescript
+import { z } from 'zod';
+
+const tools = await mcpClient.tools({
+  schemas: {
+    'get-weather': {
+      inputSchema: z.object({
+        location: z.string(),
+      }),
+      // 为类型化结果定义 outputSchema
+      outputSchema: z.object({
+        temperature: z.number(),
+        conditions: z.string(),
+        humidity: z.number(),
+      }),
+    },
+  },
+});
+
+const result = await tools['get-weather'].execute(
+  { location: 'New York' },
+  { messages: [], toolCallId: 'weather-1' },
+);
+
+console.log(`温度：${result.temperature}°C`);
+```
+
+当提供了 `outputSchema` 时：
+
+- 客户端从工具结果中提取 `structuredContent`
+- 输出会在运行时根据您的模式进行验证
+- 您将获得结果的完整 TypeScript 类型安全
+
+如果服务器没有返回 `structuredContent`，客户端会回退到从文本内容解析 JSON。如果两者都不可用或验证失败，则会抛出错误。
+
+<Note>
+  没有 `outputSchema` 时，工具会返回原始的 `CallToolResult` 对象，其中包含 `content` 和可选的 `isError` 字段。
+</Note>
+
+## 使用 MCP 资源
+
+根据 [MCP 规范](https://modelcontextprotocol.io/docs/learn/server-concepts#resources)，资源是**应用程序驱动**的数据源，为模型提供上下文。与工具（由模型控制）不同，您的应用程序决定何时获取资源并将其作为上下文传递。
+
+MCP 客户端提供了三种处理资源的方法：
+
+### 列出资源
+
+列出 MCP 服务器中的所有可用资源：
+
+```typescript
+const resources = await mcpClient.listResources();
+```
+
+### 读取资源内容
+
+通过 URI 读取特定资源的内容：
+
+```typescript
+const resourceData = await mcpClient.readResource({
+  uri: 'file:///example/document.txt',
+});
+```
+
+### 列出资源模板
+
+资源模板是动态 URI 模式，允许灵活查询。列出所有可用模板：
+
+```typescript
+const templates = await mcpClient.listResourceTemplates();
+```
+
+## 使用 MCP 补全
+
+当 MCP 服务器声明了 `completions` 能力时，它们可以为提示词参数和资源模板变量提供自动补全建议。使用 `complete` 让服务器根据当前的局部参数值提供建议：
+
+```typescript
+const completion = await mcpClient.complete({
+  ref: {
+    type: 'ref/resource',
+    uri: 'file:///{path}',
+  },
+  argument: {
+    name: 'path',
+    value: 'doc',
+  },
+});
+
+console.log(completion.completion.values);
+```
+
+对于具有多个参数的资源模板或提示词，通过 `context.arguments` 传递已解析的值：
+
+```typescript
+const completion = await mcpClient.complete({
+  ref: {
+    type: 'ref/resource',
+    uri: 'kubernetes://namespaced/{plural}/{namespace}',
+  },
+  argument: {
+    name: 'namespace',
+    value: 'auth',
+  },
+  context: {
+    arguments: {
+      plural: 'deployments',
+    },
+  },
+});
+```
+
+如果连接的服务器没有声明 `capabilities.completions`，客户端会抛出 `MCPClientError`。
+
+## 使用 MCP 提示词
+
+<Note type="warning">
+  MCP 提示词是一个实验性功能，未来可能会发生变化。
+</Note>
+
+根据 MCP 规范，提示词是用户控制的模板，服务器将其暴露出来，供客户端列出和检索，并可以附带可选参数。
+
+### 列出提示词
+
+```typescript
+const prompts = await mcpClient.experimental_listPrompts();
+```
+
+### 获取提示词
+
+检索提示词消息，可以选择传递服务器定义的参数：
+
+```typescript
+const prompt = await mcpClient.experimental_getPrompt({
+  name: 'code_review',
+  arguments: { code: 'function add(a, b) { return a + b; }' },
+});
+```
+
+## 处理引导请求
+
+引导是一种机制，MCP 服务器可以在工具执行期间向客户端请求额外信息。例如，服务器可能需要用户输入来完成注册表单，或对敏感操作进行确认。
+
+<Note type="warning">
+  由客户端应用程序负责正确处理引导请求。MCP 客户端只是将这些请求从服务器传递到您的应用程序代码。
+</Note>
+
+### 启用引导支持
+
+要启用引导，您需要在创建 MCP 客户端时声明该能力：
+
+```typescript
+const mcpClient = await createMCPClient({
+  transport: {
+    type: 'sse',
+    url: 'https://your-server.com/sse',
+  },
+  capabilities: {
+    elicitation: {},
+  },
+});
+```
+
+### 注册引导处理器
+
+使用 `onElicitationRequest` 方法注册一个处理器，当服务器请求输入时，该处理器将被调用：
+
+```typescript
+import { ElicitationRequestSchema } from '@ai-sdk/mcp';
+
+mcpClient.onElicitationRequest(ElicitationRequestSchema, async request => {
+  // request.params.message: 描述需要什么输入的消息
+  // request.params.requestedSchema: 定义预期输入结构的 JSON 模式
+
+  // 从用户获取输入（根据您的应用程序需求实现）
+  const userInput = await getInputFromUser(
+    request.params.message,
+    request.params.requestedSchema,
+  );
+
+  // 返回包含以下三种操作之一的结果：
+  return {
+    action: 'accept', // 或 'decline' 或 'cancel'
+    content: userInput, // 仅当 action 为 'accept' 时需要
+  };
+});
+```
+
+### 引导响应操作
+
+您的处理器必须返回一个包含 `action` 字段的对象，该字段可以是以下之一：
+
+- `'accept'`：用户提供了请求的信息。必须包含带有数据的 `content`。
+- `'decline'`：用户选择不提供信息。
+- `'cancel'`：用户完全取消了操作。
+
+## 示例
+
+您可以在以下示例中看到 MCP 的实际应用：
+
+<ExampleLinks
+  examples={[
+    {
+      title: '学习在 Node.js 中使用 MCP 工具',
+      link: '/cookbook/node/mcp-tools',
+    },
+    {
+      title: '学习在 Node.js 中处理 MCP 引导请求',
+      link: '/cookbook/node/mcp-elicitation',
+    },
+    {
+      title: '学习渲染 MCP 应用',
+      link: '/docs/ai-sdk-core/mcp-apps',
+    },
+  ]}
+/>

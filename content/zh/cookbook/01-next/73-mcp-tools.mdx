@@ -1,0 +1,143 @@
+---
+title: 模型上下文协议 (MCP) 工具
+description: 学习如何在 AI SDK 和 Next.js 中使用 MCP 工具
+tags: ['next', '工具调用', '智能体', 'mcp']
+---
+
+# MCP 工具
+
+AI SDK 通过提供一个轻量级客户端来支持模型上下文协议 (MCP) 工具，该客户端暴露了一个 `tools` 方法，用于从 MCP 服务器检索工具。使用后，应始终关闭客户端以释放资源。
+
+## 服务端
+
+让我们创建一个 `/api/completion` 的路由处理器，它将根据输入提示词和 MCP 工具生成文本，这些工具可在生成过程中的任何时刻被调用。该路由将调用 `ai` 模块中的 `streamText` 函数，该函数会根据输入提示词生成文本并将其流式传输到客户端。
+
+如果你更倾向于使用官方传输层（可选），请安装模型上下文协议的官方 TypeScript SDK：
+
+<Snippet text="pnpm install @modelcontextprotocol/sdk" />
+
+```ts filename="app/api/completion/route.ts"
+import { createMCPClient } from '@ai-sdk/mcp';
+import { streamText } from 'ai';
+import { Experimental_StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio';
+import { openai } from '@ai-sdk/openai';
+// 可选：如果你更倾向于使用官方传输层
+// import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
+// import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse';
+// import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp';
+
+export async function POST(req: Request) {
+  const { prompt }: { prompt: string } = await req.json();
+
+  try {
+    // 初始化一个 MCP 客户端以连接到 `stdio` MCP 服务器（仅限本地）：
+    const transport = new Experimental_StdioMCPTransport({
+      command: 'node',
+      args: ['src/stdio/dist/server.js'],
+    });
+
+    const stdioClient = await createMCPClient({
+      transport,
+    });
+
+    // 通过客户端传输配置直接连接到 HTTP MCP 服务器
+    const httpClient = await createMCPClient({
+      transport: {
+        type: 'http',
+        url: 'http://localhost:3000/mcp',
+
+        // 可选：配置请求头
+        // headers: { Authorization: 'Bearer my-api-key' },
+
+        // 可选：提供 OAuth 客户端提供程序以进行自动授权
+        // authProvider: myOAuthClientProvider,
+      },
+    });
+
+    // 通过客户端传输配置直接连接到服务器发送事件 (SSE) MCP 服务器
+    const sseClient = await createMCPClient({
+      transport: {
+        type: 'sse',
+        url: 'http://localhost:3000/sse',
+
+        // 可选：配置请求头
+        // headers: { Authorization: 'Bearer my-api-key' },
+
+        // 可选：提供 OAuth 客户端提供程序以进行自动授权
+        // authProvider: myOAuthClientProvider,
+      },
+    });
+
+    // 或者，你可以使用官方 SDK 创建传输层，而不是直接配置：
+    // const httpTransport = new StreamableHTTPClientTransport(new URL('http://localhost:3000/mcp'));
+    // const httpClient = await createMCPClient({ transport: httpTransport });
+    // const sseTransport = new SSEClientTransport(new URL('http://localhost:3000/sse'));
+    // const sseClient = await createMCPClient({ transport: sseTransport });
+
+    const toolSetOne = await stdioClient.tools();
+    const toolSetTwo = await httpClient.tools();
+    const toolSetThree = await sseClient.tools();
+    const tools = {
+      ...toolSetOne,
+      ...toolSetTwo,
+      ...toolSetThree, // 注意：此方法会导致后续工具集覆盖具有相同名称的工具
+    };
+
+    const response = await streamText({
+      model: 'openai/gpt-4o',
+      tools,
+      prompt,
+      // 流式传输时，应在响应完成后关闭客户端：
+      onEnd: async () => {
+        await stdioClient.close();
+        await httpClient.close();
+        await sseClient.close();
+      },
+      // 在 onError 中关闭客户端是可选的
+      // - 关闭：立即释放资源，防止连接挂起
+      // - 不关闭：保持连接打开以进行重试
+      onError: async error => {
+        await stdioClient.close();
+        await httpClient.close();
+        await sseClient.close();
+      },
+    });
+
+    return response.toDataStreamResponse();
+  } catch (error) {
+    return new Response('内部服务器错误', { status: 500 });
+  }
+}
+```
+
+## 客户端
+
+让我们创建一个简单的 React 组件，它从 `@ai-sdk/react` 模块导入 `useCompletion` Hook。当点击按钮时，`useCompletion` Hook 会调用 `/api/completion` 端点。该端点会根据输入提示词生成文本并将其流式传输到客户端。
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useCompletion } from '@ai-sdk/react';
+
+export default function Page() {
+  const { completion, complete } = useCompletion({
+    api: '/api/completion',
+  });
+
+  return (
+    <div>
+      <div
+        onClick={async () => {
+          await complete(
+            '请帮我安排明天上午10点与 Sonny 和 Robby 的通话！',
+          );
+        }}
+      >
+        安排通话
+      </div>
+
+      {completion}
+    </div>
+  );
+}
+```

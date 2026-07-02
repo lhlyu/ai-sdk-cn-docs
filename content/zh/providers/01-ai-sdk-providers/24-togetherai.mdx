@@ -1,0 +1,363 @@
+---
+title: Together.ai
+description: 了解如何将 Together.ai 的模型与 AI SDK 结合使用。
+---
+
+# Together.ai 提供商
+
+[Together.ai](https://together.ai) 提供商通过 [Together.ai API](https://docs.together.ai/reference) 支持 200 多个开源模型。
+
+## 安装
+
+Together.ai 提供商可通过 `@ai-sdk/togetherai` 模块获取。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/togetherai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/togetherai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/togetherai" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/togetherai" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/togetherai` 导入默认的提供商实例 `togetherai`：
+
+```ts
+import { togetherai } from '@ai-sdk/togetherai';
+```
+
+如果你需要自定义设置，可以从 `@ai-sdk/togetherai` 导入 `createTogetherAI` 并使用你的设置创建提供商实例：
+
+```ts
+import { createTogetherAI } from '@ai-sdk/togetherai';
+
+const togetherai = createTogetherAI({
+  apiKey: process.env.TOGETHER_API_KEY ?? '',
+});
+```
+
+你可以使用以下可选设置来自定义 Together.ai 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。默认前缀为 `https://api.together.xyz/v1`。
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。默认为 `TOGETHER_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作中间件来拦截请求，或为测试等提供自定义 fetch 实现。
+
+## 语言模型
+
+你可以使用提供商实例创建 [Together.ai 模型](https://docs.together.ai/docs/serverless-models)。第一个参数是模型 ID，例如 `google/gemma-2-9b-it`。
+
+```ts
+const model = togetherai('google/gemma-2-9b-it');
+```
+
+### 推理模型
+
+Together.ai 在生成的文本中使用 `<think>` 标签暴露 `deepseek-ai/DeepSeek-R1` 的思考过程。你可以使用 `extractReasoningMiddleware` 提取此推理过程，并将其作为结果上的 `reasoning` 属性暴露：
+
+```ts
+import { togetherai } from '@ai-sdk/togetherai';
+import { wrapLanguageModel, extractReasoningMiddleware } from 'ai';
+
+const enhancedModel = wrapLanguageModel({
+  model: togetherai('deepseek-ai/DeepSeek-R1'),
+  middleware: extractReasoningMiddleware({ tagName: 'think' }),
+});
+```
+
+然后，你可以在 `generateText` 和 `streamText` 等函数中使用该增强模型。
+
+### 示例
+
+你可以使用 Together.ai 语言模型通过 `generateText` 函数生成文本：
+
+```ts
+import { togetherai } from '@ai-sdk/togetherai';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: togetherai('meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'),
+  prompt: '写一份供 4 人食用的素食千层面食谱。',
+});
+```
+
+Together.ai 语言模型也可以在 `streamText` 函数中使用（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+
+Together.ai 提供商还支持通过（遵循上述示例代码）`togetherai.completionModel()` 使用[补全模型](https://docs.together.ai/docs/serverless-models#language-models)，以及通过 `togetherai.embeddingModel()` 使用[嵌入模型](https://docs.together.ai/docs/serverless-models#embedding-models)。
+
+## 模型能力
+
+| 模型                                               | 图像输入            | 对象生成            | 工具使用            | 工具流式传输        |
+| --------------------------------------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `moonshotai/Kimi-K2.5`                              | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `Qwen/Qwen3.5-397B-A17B`                            | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `MiniMaxAI/MiniMax-M2.5`                            | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `zai-org/GLM-5`                                     | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `deepseek-ai/DeepSeek-V3.1`                         | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `openai/gpt-oss-120b`                               | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `openai/gpt-oss-20b`                                | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+
+<Note>
+  上表列出了热门模型。请参阅 [Together.ai 文档](https://docs.together.ai/docs/serverless-models) 获取完整可用模型列表。如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+</Note>
+
+## 图像模型
+
+你可以使用 `.image()` 工厂方法创建 Together.ai 图像模型。有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+
+```ts
+import { togetherai } from '@ai-sdk/togetherai';
+import { generateImage } from 'ai';
+
+const { images } = await generateImage({
+  model: togetherai.image('black-forest-labs/FLUX.1-dev'),
+  prompt: '一只在雨滴中飞翔的欢快华丽的凤尾绿咬鹃',
+});
+```
+
+你可以使用 `providerOptions` 参数传递可选的提供商特定请求参数。
+
+```ts
+import {
+  togetherai,
+  type TogetherAIImageModelOptions,
+} from '@ai-sdk/togetherai';
+import { generateImage } from 'ai';
+
+const { images } = await generateImage({
+  model: togetherai.image('black-forest-labs/FLUX.1-dev'),
+  prompt: '一只在雨滴中飞翔的欢快华丽的凤尾绿咬鹃',
+  size: '512x512',
+  // 可选的额外提供商特定请求参数
+  providerOptions: {
+    togetherai: {
+      steps: 40,
+    } satisfies TogetherAIImageModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **steps** _number_
+
+  生成步数。较高的值可以提高质量。
+
+- **guidance** _number_
+
+  图像生成的引导尺度。
+
+- **negative_prompt** _string_
+
+  用于指导避免什么的负面提示词。
+
+- **disable_safety_checker** _boolean_
+
+  禁用图像生成的安全检查器。当为 true 时，API 不会拒绝标记为可能 NSFW 的图像。不适用于 Flux Schnell Free 和 Flux Pro 模型。
+
+### 图像编辑
+
+Together AI 通过 FLUX Kontext 模型支持图像编辑。通过 `prompt.images` 传递输入图像以转换或编辑现有图像。
+
+<Note>
+  Together AI 不支持基于遮罩的图像修复。相反，请使用描述性提示词来指定你想要在图像中更改的内容。
+</Note>
+
+#### 基本图像编辑
+
+使用文本提示词转换现有图像：
+
+```ts
+const imageBuffer = readFileSync('./input-image.png');
+
+const { images } = await generateImage({
+  model: togetherai.image('black-forest-labs/FLUX.1-kontext-pro'),
+  prompt: {
+    text: '把猫变成一只金毛寻回犬',
+    images: [imageBuffer],
+  },
+  size: '1024x1024',
+  providerOptions: {
+    togetherai: {
+      steps: 28,
+    } satisfies TogetherAIImageModelOptions,
+  },
+});
+```
+
+#### 使用 URL 引用进行编辑
+
+你也可以直接传递图像 URL：
+
+```ts
+const { images } = await generateImage({
+  model: togetherai.image('black-forest-labs/FLUX.1-kontext-pro'),
+  prompt: {
+    text: '将背景改为茂密的热带雨林',
+    images: ['https://example.com/photo.png'],
+  },
+  size: '1024x1024',
+  providerOptions: {
+    togetherai: {
+      steps: 28,
+    } satisfies TogetherAIImageModelOptions,
+  },
+});
+```
+
+<Note>
+  输入图像可以作为 `Buffer`、`ArrayBuffer`、`Uint8Array`、base64 编码字符串或 URL 提供。Together AI 每个请求仅支持单个输入图像。
+</Note>
+
+#### 支持的图像编辑模型
+
+| 模型                                  | 描述                        |
+| -------------------------------------- | --------------------------- |
+| `black-forest-labs/FLUX.1-kontext-pro` | 生产质量，速度均衡          |
+| `black-forest-labs/FLUX.1-kontext-max` | 最高图像保真度              |
+| `black-forest-labs/FLUX.1-kontext-dev` | 开发和实验                  |
+
+### 模型能力
+
+Together.ai 图像模型支持各种图像尺寸，具体因模型而异。常见尺寸包括 512x512、768x768 和 1024x1024，某些模型支持高达 1792x1792。默认尺寸为 1024x1024。
+
+| 可用模型                               |
+| ------------------------------------------ |
+| `stabilityai/stable-diffusion-xl-base-1.0` |
+| `black-forest-labs/FLUX.1-dev`             |
+| `black-forest-labs/FLUX.1-dev-lora`        |
+| `black-forest-labs/FLUX.1-schnell`         |
+| `black-forest-labs/FLUX.1-canny`           |
+| `black-forest-labs/FLUX.1-depth`           |
+| `black-forest-labs/FLUX.1-redux`           |
+| `black-forest-labs/FLUX.1.1-pro`           |
+| `black-forest-labs/FLUX.1-pro`             |
+| `black-forest-labs/FLUX.1-schnell-Free`    |
+| `black-forest-labs/FLUX.1-kontext-pro`     |
+| `black-forest-labs/FLUX.1-kontext-max`     |
+| `black-forest-labs/FLUX.1-kontext-dev`     |
+
+<Note>
+  请参阅 [Together.ai 模型页面](https://docs.together.ai/docs/serverless-models#image-models) 获取可用图像模型及其能力的完整列表。
+</Note>
+
+## 嵌入模型
+
+你可以使用 `.embeddingModel()` 工厂方法创建 Together.ai 嵌入模型。有关使用 AI SDK 进行嵌入的更多信息，请参见 [embed()](/docs/reference/ai-sdk-core/embed)。
+
+```ts
+import { togetherai } from '@ai-sdk/togetherai';
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: togetherai.embeddingModel('togethercomputer/m2-bert-80M-2k-retrieval'),
+  value: '海滩上阳光明媚的一天',
+});
+```
+
+### 模型能力
+
+| 模型                                     | 维度   | 最大令牌数 |
+| ----------------------------------------- | ---------- | ---------- |
+| `BAAI/bge-large-en-v1.5`                  | 1024       | 512        |
+| `Alibaba-NLP/gte-modernbert-base`         | 768        | 8192       |
+| `intfloat/multilingual-e5-large-instruct` | 1024       | 514        |
+
+<Note>
+  有关可用嵌入模型的完整列表，请参阅 [Together.ai 模型页面](https://docs.together.ai/docs/serverless-models#embedding-models)。
+</Note>
+
+## 重排序模型
+
+你可以使用 `.reranking()` 工厂方法创建 Together.ai 重排序模型。有关使用 AI SDK 进行重排序的更多信息，请参见 [rerank()](/docs/reference/ai-sdk-core/rerank)。
+
+```ts
+import { togetherai } from '@ai-sdk/togetherai';
+import { rerank } from 'ai';
+
+const documents = [
+  '海滩上阳光明媚的一天',
+  '城市里阴雨的下午',
+  '山中雪夜',
+];
+
+const { ranking } = await rerank({
+  model: togetherai.reranking('mixedbread-ai/Mxbai-Rerank-Large-V2'),
+  documents,
+  query: '谈论下雨',
+  topN: 2,
+});
+
+console.log(ranking);
+// [
+//   { originalIndex: 1, score: 0.9, document: '城市里阴雨的下午' },
+//   { originalIndex: 0, score: 0.3, document: '海滩上阳光明媚的一天' }
+// ]
+```
+
+Together.ai 重排序模型支持针对对象文档的额外提供商选项。你可以指定用于重排序的字段：
+
+```ts
+import {
+  togetherai,
+  type TogetherAIRerankingModelOptions,
+} from '@ai-sdk/togetherai';
+import { rerank } from 'ai';
+
+const documents = [
+  {
+    from: 'Paul Doe',
+    subject: '跟进',
+    text: '我们很高兴为您提供 20% 的折扣。',
+  },
+  {
+    from: 'John McGill',
+    subject: '缺少信息',
+    text: '这是来自 Oracle 的定价：每月 5000 美元',
+  },
+];
+
+const { ranking } = await rerank({
+  model: togetherai.reranking('mixedbread-ai/Mxbai-Rerank-Large-V2'),
+  documents,
+  query: '我们从 Oracle 获得了哪个定价？',
+  providerOptions: {
+    togetherai: {
+      rankFields: ['from', 'subject', 'text'], // 指定按哪些字段进行重排序
+    } satisfies TogetherAIRerankingModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **rankFields** _string[]_
+
+  当文档为 JSON 对象时，用于重排序的字段名称数组。如果未指定，则使用所有字段。
+
+### 模型能力
+
+| 模型                                 |
+| ------------------------------------- |
+| `mixedbread-ai/Mxbai-Rerank-Large-V2` |

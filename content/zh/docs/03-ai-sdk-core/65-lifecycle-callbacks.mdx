@@ -1,0 +1,1134 @@
+---
+title: 生命周期回调
+description: 在 generateText、streamText、embed、embedMany 和 rerank 调用中观察 AI SDK 生命周期事件
+---
+
+# 生命周期回调
+
+事件回调让你能够在 AI SDK 调用的关键节点运行自己的代码。
+你可以将它们直接附加到 `generateText`、`streamText`、`embed`、`embedMany` 和 `rerank` 调用上，以观察发生了什么、记录使用情况、调试多步骤生成过程以及监控工具执行。
+
+当你希望在与调用点相近的位置实现特定于应用的逻辑时，它们尤其有用：
+
+- 记录请求使用了哪个模型、提示词形状和设置。
+- 记录用于分析或计费的 token 用量、延迟、结束原因和警告。
+- 理解多步骤工具调用如何从模型响应过渡到工具执行再到最终答案。
+- 跟踪工具输入、工具输出、执行时间和错误。
+- 通过 `runtimeContext` 和 `toolsContext` 附加你自己的请求、用户、租户或工作流标识符。
+
+如需在整个应用中实现自动的 OpenTelemetry 检测，请使用[遥测](/docs/ai-sdk-core/telemetry)。
+当你希望为特定的 AI SDK 调用运行自定义代码时，请使用事件回调。
+
+## 基本用法
+
+将回调作为选项传递给所调用的 AI SDK 函数：
+
+```tsx highlight="8-18"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'What is the weather in San Francisco?',
+
+  onStart({ callId, modelId }) {
+    console.log('Generation started', { callId, modelId });
+  },
+
+  onEnd({ callId, usage, finishReason }) {
+    console.log('Generation finished', {
+      callId,
+      finishReason,
+      totalTokens: usage.totalTokens,
+    });
+  },
+});
+```
+
+回调可以是同步的，也可以是异步的。如果某个回调抛出错误，该错误会被内部捕获，AI SDK 调用会继续执行。
+由于回调作为生命周期的一部分运行，请保持其快速执行，或将耗时操作排入后台系统。
+
+## 使用场景
+
+### 请求日志记录
+
+使用 `onStart` 和 `onEnd` 在调用开始和结束时记录一条应用日志。
+`callId` 在生命周期事件中可用，因此你可以关联来自同一请求的日志。
+
+```tsx highlight="8-20"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a short product description for a camping mug.',
+
+  onStart({ callId, provider, modelId }) {
+    logger.info('ai.request.started', {
+      callId,
+      provider,
+      modelId,
+    });
+  },
+
+  onEnd({ callId, finishReason, usage, warnings }) {
+    logger.info('ai.request.finished', {
+      callId,
+      finishReason,
+      usage,
+      warningCount: warnings?.length ?? 0,
+    });
+  },
+});
+```
+
+这种模式非常适合审计日志、内部仪表盘以及跟踪特定功能的使用情况。
+
+### 衡量模型性能
+
+`onLanguageModelCallEnd` 在提供商响应被标准化和解析后运行。
+对于 `streamText`，该事件还包括流式传输特有的计时数据，例如首次输出时间和输出块之间的间隔。
+
+```tsx highlight="8-19"
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = streamText({
+  model: __MODEL__,
+  prompt: 'Explain partial prerendering in two paragraphs.',
+
+  onLanguageModelCallEnd({ callId, modelId, usage, performance }) {
+    metrics.histogram('ai.model.response_time_ms', performance.responseTimeMs, {
+      callId,
+      modelId,
+    });
+
+    metrics.gauge('ai.model.tokens_per_second', {
+      output: performance.outputTokensPerSecond,
+      total: performance.effectiveTotalTokensPerSecond,
+      tokens: usage.totalTokens,
+    });
+  },
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+当你想要专门衡量提供商的工作时，请使用模型调用事件。
+当你想要包含 SDK 管理工作（例如本地工具执行）的计时时，请使用步骤事件。
+
+### 调试多步骤工具调用
+
+当你将工具与 `generateText` 或 `streamText` 一起使用时，单个用户请求可能涉及多次模型调用。
+每次模型调用就是一个步骤。模型可能在一个步骤中调用工具，接收工具结果，然后在下一个步骤中生成最终答案。
+
+```tsx highlight="10-29"
+import { generateText, isStepCount, tool } from 'ai';
+import { z } from 'zod';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  stopWhen: isStepCount(5),
+  prompt: 'What is the weather in San Francisco?',
+  tools: {
+    weather: tool({
+      description: 'Get the weather in a location',
+      inputSchema: z.object({ location: z.string() }),
+      execute: async ({ location }) => getWeather(location),
+    }),
+  },
+
+  onStepStart({ stepNumber, messages, steps }) {
+    console.log(`Step ${stepNumber} started`, {
+      messageCount: messages.length,
+      previousSteps: steps.length,
+    });
+  },
+
+  onStepEnd({ stepNumber, finishReason, toolCalls, usage, performance }) {
+    console.log(`Step ${stepNumber} finished`, {
+      finishReason,
+      toolCalls: toolCalls.map(toolCall => toolCall.toolName),
+      totalTokens: usage.totalTokens,
+      stepTimeMs: performance.stepTimeMs,
+    });
+  },
+});
+```
+
+这有助于回答以下问题：
+
+- 模型是调用了工具还是直接回答？
+- 请求经历了多少个步骤？
+- 哪个步骤使用了最多的 token？
+- 时间花费在了模型响应上还是本地工具执行上？
+
+### 监控工具执行
+
+工具执行回调围绕工具的 `execute` 函数运行。
+使用它们来记录工具使用情况、延迟、成功结果和工具错误。
+
+```tsx highlight="17-35"
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Find flights from SFO to JFK tomorrow morning.',
+  tools: {
+    searchFlights: tool({
+      description: 'Search available flights',
+      inputSchema: z.object({
+        origin: z.string(),
+        destination: z.string(),
+      }),
+      execute: async input => searchFlights(input),
+    }),
+  },
+
+  onToolExecutionStart({ callId, toolCall }) {
+    logger.info('ai.tool.started', {
+      callId,
+      toolCallId: toolCall.toolCallId,
+      toolName: toolCall.toolName,
+      input: toolCall.input,
+    });
+  },
+
+  onToolExecutionEnd({ callId, toolCall, toolExecutionMs, toolOutput }) {
+    logger.info('ai.tool.finished', {
+      callId,
+      toolCallId: toolCall.toolCallId,
+      toolName: toolCall.toolName,
+      durationMs: toolExecutionMs,
+      success: toolOutput.type === 'tool-result',
+    });
+  },
+});
+```
+
+`toolOutput` 是一个可辨识联合类型。当 `toolOutput.type` 为 `'tool-result'` 时，输出在 `toolOutput.output` 上可用。当它为 `'tool-error'` 时，错误在 `toolOutput.error` 上可用。
+
+### 观察嵌入和重排序
+
+嵌入和重排序回调更简单：它们在操作前后暴露 `onStart` 和 `onEnd`。
+这对于检索管道非常有用，你可以了解嵌入的频率、嵌入值的数量以及重排序如何改变结果集。
+
+```tsx highlight="10-23"
+import { embedMany, rerank } from 'ai';
+import { cohere } from '@ai-sdk/cohere';
+
+const values = ['sunny day at the beach', 'rainy afternoon in the city'];
+
+const { embeddings } = await embedMany({
+  model: 'openai/text-embedding-3-small',
+  values,
+
+  onStart({ callId, operationId, modelId, value }) {
+    logger.info('ai.embedding.started', {
+      callId,
+      operationId,
+      modelId,
+      valueCount: Array.isArray(value) ? value.length : 1,
+    });
+  },
+
+  onEnd({ callId, usage }) {
+    logger.info('ai.embedding.finished', {
+      callId,
+      tokens: usage.tokens,
+    });
+  },
+});
+
+const { ranking } = await rerank({
+  model: cohere.reranking('rerank-v3.5'),
+  documents: values,
+  query: 'talk about rain',
+
+  onEnd({ callId, ranking }) {
+    logger.info('ai.rerank.finished', {
+      callId,
+      topResult: ranking[0],
+    });
+  },
+});
+```
+
+## 生成生命周期
+
+`generateText` 和 `streamText` 暴露了最丰富的生命周期，因为它们可能涉及提示词、模型调用、工具调用和多个步骤。
+
+一个典型的单步生成按以下顺序运行：
+
+1. `onStart`
+2. `onStepStart`
+3. `onLanguageModelCallStart`
+4. `onLanguageModelCallEnd`
+5. `onStepEnd`
+6. `onEnd`
+
+一个包含本地工具执行的多步生成通常按以下顺序运行：
+
+1. `onStart`
+2. `onStepStart`
+3. `onLanguageModelCallStart`
+4. `onLanguageModelCallEnd`
+5. `onToolExecutionStart`
+6. `onToolExecutionEnd`
+7. `onStepEnd`
+8. 重复步骤回调，直到满足停止条件
+9. `onEnd`
+
+`onStepStart` 和 `onStepEnd` 描述整个步骤。
+`onLanguageModelCallStart` 和 `onLanguageModelCallEnd` 仅描述该步骤内部的模型调用。
+当步骤包含本地工具执行时，这种区别很重要：步骤持续时间可能比模型响应持续时间更长。
+
+## 运行时和工具上下文
+
+生命周期回调接收流经调用的完整 `runtimeContext` 和 `toolsContext` 值。
+这使得回调对于附加应用上下文而不更改提示词或工具输入非常有用。
+
+```tsx highlight="8-17,23-28"
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Check the order status.',
+  runtimeContext: {
+    requestId: 'req_123',
+    tenantId: 'tenant_abc',
+  },
+  tools: {
+    getOrderStatus: tool({
+      inputSchema: z.object({ orderId: z.string() }),
+      contextSchema: z.object({ region: z.string() }),
+      execute: async ({ orderId }, { context }) =>
+        getOrderStatus(orderId, context.region),
+    }),
+  },
+  toolsContext: {
+    getOrderStatus: {
+      region: 'us-east-1',
+    },
+  },
+
+  onStart({ callId, runtimeContext }) {
+    logger.info('ai.request.started', {
+      callId,
+      requestId: runtimeContext.requestId,
+      tenantId: runtimeContext.tenantId,
+    });
+  },
+
+  onToolExecutionStart({ toolCall, toolContext }) {
+    logger.info('ai.tool.started', {
+      toolName: toolCall.toolName,
+      region: toolContext.region,
+    });
+  },
+});
+```
+
+<Note>
+  遥测集成可以在导出之前过滤 `runtimeContext` 和 `toolsContext`。生命周期回调会接收完整的上下文对象。注意不要从回调中记录机密或敏感的用户数据。
+</Note>
+
+## 可用回调
+
+### `generateText` 和 `streamText`
+
+<PropertiesTable
+  content={[
+    {
+      name: 'onStart',
+      type: '(event: GenerateTextStartEvent) => void | Promise<void>',
+      description:
+        '在生成操作开始时调用一次，在任何模型调用之前。',
+    },
+    {
+      name: 'onStepStart',
+      type: '(event: GenerateTextStepStartEvent) => void | Promise<void>',
+      description:
+        '在每个生成步骤之前调用。每个步骤代表一次模型调用及其周围的任何 SDK 管理工作。',
+    },
+    {
+      name: 'onLanguageModelCallStart',
+      type: '(event: LanguageModelCallStartEvent) => void | Promise<void>',
+      description:
+        '在提供商模型调用开始之前立即调用。仅限定于模型工作。',
+    },
+    {
+      name: 'onLanguageModelCallEnd',
+      type: '(event: LanguageModelCallEndEvent) => void | Promise<void>',
+      description:
+        '在模型响应被标准化和解析之后、本地工具执行开始之前调用。',
+    },
+    {
+      name: 'onToolExecutionStart',
+      type: '(event: ToolExecutionStartEvent) => void | Promise<void>',
+      description: "在本地工具的 `execute` 函数运行之前调用。",
+    },
+    {
+      name: 'onToolExecutionEnd',
+      type: '(event: ToolExecutionEndEvent) => void | Promise<void>',
+      description:
+        "在本地工具的 `execute` 函数完成或出错后调用。",
+    },
+    {
+      name: 'onStepEnd',
+      type: '(event: GenerateTextStepEndEvent) => void | Promise<void>',
+      description:
+        '在每个生成步骤完成后调用。接收步骤结果，包括使用情况和性能。',
+    },
+    {
+      name: 'onEnd',
+      type: '(event: GenerateTextEndEvent) => void | Promise<void>',
+      description:
+        '在整个生成完成时调用一次。接收最终输出和跨所有步骤的聚合使用情况。',
+    },
+  ]}
+/>
+
+<Note>`onStepFinish` 已弃用。新代码请使用 `onStepEnd`。</Note>
+
+### `embed` 和 `embedMany`
+
+<PropertiesTable
+  content={[
+    {
+      name: 'onStart',
+      type: '(event: EmbedStartEvent) => void | Promise<void>',
+      description:
+        '在嵌入操作开始时、嵌入模型被调用之前调用。',
+    },
+    {
+      name: 'onEnd',
+      type: '(event: EmbedEndEvent) => void | Promise<void>',
+      description:
+        '在嵌入操作完成时、嵌入模型返回后调用。',
+    },
+  ]}
+/>
+
+### `rerank`
+
+<PropertiesTable
+  content={[
+    {
+      name: 'onStart',
+      type: '(event: RerankStartEvent) => void | Promise<void>',
+      description:
+        '在重排序操作开始时、重排序模型被调用之前调用。',
+    },
+    {
+      name: 'onEnd',
+      type: '(event: RerankEndEvent) => void | Promise<void>',
+      description:
+        '在重排序操作完成时、重排序模型返回后调用。',
+    },
+  ]}
+/>
+
+## 事件数据参考
+
+确切的事件数据取决于回调。下表总结了你最常使用的字段。
+
+### 文本生成事件
+
+#### onStart
+
+在任何模型调用之前调用一次。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'operationId',
+      type: 'string',
+      description:
+        "操作类型，例如 'ai.generateText' 或 'ai.streamText'。",
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '已解析模型的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '已解析模型的模型标识符。',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description: '此生成的消息。',
+    },
+    {
+      name: 'instructions',
+      type: 'Instructions | undefined',
+      description: '提供给模型的指令。',
+    },
+    {
+      name: 'tools',
+      type: 'ToolSet | undefined',
+      description: '此生成可用的工具。',
+    },
+    {
+      name: 'toolChoice',
+      type: 'ToolChoice | undefined',
+      description: '此生成的工具选择策略。',
+    },
+    {
+      name: 'activeTools',
+      type: 'ActiveTools<TOOLS>',
+      description: '限制模型可以调用的工具。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      description: '失败请求的最大重试次数。',
+    },
+    {
+      name: 'timeout',
+      type: 'TimeoutConfiguration | undefined',
+      description: '生成的超时配置。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string | undefined> | undefined',
+      description: '随请求发送的额外 HTTP 头。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions | undefined',
+      description: '提供商特定选项。',
+    },
+    {
+      name: 'runtimeContext',
+      type: 'CONTEXT',
+      description: '用户定义的生成运行时上下文。',
+    },
+    {
+      name: 'toolsContext',
+      type: 'InferToolSetContext<TOOLS>',
+      description: '通过 `toolsContext` 传递的每个工具的上下文映射。',
+    },
+  ]}
+/>
+
+#### onStepStart
+
+在每个步骤开始之前调用。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'stepNumber',
+      type: 'number',
+      description: '当前步骤的从零开始的索引。',
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '已解析模型的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '已解析模型的模型标识符。',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description: '将为此步骤发送给模型的消息。',
+    },
+    {
+      name: 'tools',
+      type: 'ToolSet | undefined',
+      description: '此生成可用的工具。',
+    },
+    {
+      name: 'activeTools',
+      type: 'ActiveTools<TOOLS>',
+      description: '限制此步骤可用的工具。',
+    },
+    {
+      name: 'steps',
+      type: 'ReadonlyArray<StepResult>',
+      description: '先前步骤的结果。对于第一步为空。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions | undefined',
+      description: '此步骤的提供商特定选项。',
+    },
+    {
+      name: 'runtimeContext',
+      type: 'CONTEXT',
+      description:
+        '此步骤的运行时上下文。可能在步骤之间通过 `prepareStep` 更新。',
+    },
+    {
+      name: 'toolsContext',
+      type: 'InferToolSetContext<TOOLS>',
+      description:
+        '此步骤的每个工具的上下文映射。可能在步骤之间通过 `prepareStep` 更新。',
+    },
+  ]}
+/>
+
+#### onLanguageModelCallStart
+
+在提供商模型调用开始之前立即调用。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '此模型调用的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '此模型调用的模型标识符。',
+    },
+    {
+      name: 'instructions',
+      type: 'Instructions | undefined',
+      description: '将发送给模型的指令。',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description: '将发送给模型的消息。',
+    },
+    {
+      name: 'tools',
+      type: 'ReadonlyArray<Record<string, unknown>> | undefined',
+      description: '为模型调用准备的工具定义（如果有）。',
+    },
+  ]}
+/>
+
+#### onLanguageModelCallEnd
+
+在提供商响应被标准化和解析之后、本地工具执行开始之前调用。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '此模型调用的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '此模型调用的模型标识符。',
+    },
+    {
+      name: 'finishReason',
+      type: 'FinishReason',
+      description: '模型调用结束的统一原因。',
+    },
+    {
+      name: 'usage',
+      type: 'LanguageModelUsage',
+      description: '模型调用报告的 token 使用情况。',
+    },
+    {
+      name: 'content',
+      type: 'ReadonlyArray<ContentPart<TOOLS>>',
+      description: '模型调用产生的内容部分。',
+    },
+    {
+      name: 'responseId',
+      type: 'string',
+      description: '此模型调用的提供商返回的响应 ID。',
+    },
+    {
+      name: 'performance',
+      type: 'LanguageModelCallPerformance',
+      description:
+        '计时和吞吐量指标，包括响应时间、每秒 token 数以及可用的流式传输计时。',
+    },
+  ]}
+/>
+
+#### onToolExecutionStart
+
+在本地工具的 `execute` 函数运行之前调用。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'toolCall',
+      type: 'TypedToolCall',
+      description:
+        '即将执行的工具调用，包括 `toolCallId`、`toolName` 和 `input`。',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description:
+        '发送给模型以发起包含该工具调用的响应的消息。不包括系统提示词或包含该工具调用的助手响应。',
+    },
+    {
+      name: 'toolContext',
+      type: 'InferToolContext<TOOLS[toolName]>',
+      description: '工具调用的工具特定上下文对象。',
+    },
+  ]}
+/>
+
+#### onToolExecutionEnd
+
+在本地工具的 `execute` 函数完成或出错后调用。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'toolCall',
+      type: 'TypedToolCall',
+      description: '已完成的工具调用。',
+    },
+    {
+      name: 'toolExecutionMs',
+      type: 'number',
+      description: '工具调用的执行时间（毫秒）。',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description:
+        '发送给模型以发起包含该工具调用的响应的消息。不包括系统提示词或包含该工具调用的助手响应。',
+    },
+    {
+      name: 'toolContext',
+      type: 'InferToolContext<TOOLS[toolName]>',
+      description: '已完成的工具调用的工具特定上下文对象。',
+    },
+    {
+      name: 'toolOutput',
+      type: "{ type: 'tool-result'; output: unknown } | { type: 'tool-error'; error: unknown }",
+      description:
+        '可辨识联合类型，表示成功的工具结果或工具错误。',
+    },
+  ]}
+/>
+
+#### onStepEnd
+
+在每个步骤完成后调用。该事件是该步骤的完整 `StepResult`。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'stepNumber',
+      type: 'number',
+      description: '已完成的步骤的从零开始的索引。',
+    },
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string }',
+      description: '产生此步骤的模型的信息。',
+    },
+    {
+      name: 'content',
+      type: 'Array<ContentPart>',
+      description: '此步骤中生成的内容。',
+    },
+    {
+      name: 'text',
+      type: 'string',
+      description: '此步骤中生成的文本。',
+    },
+    {
+      name: 'toolCalls',
+      type: 'Array<TypedToolCall>',
+      description: '此步骤中进行的工具调用。',
+    },
+    {
+      name: 'toolResults',
+      type: 'Array<TypedToolResult>',
+      description: '此步骤中产生的工具结果。',
+    },
+    {
+      name: 'finishReason',
+      type: 'FinishReason',
+      description: '步骤结束的统一原因。',
+    },
+    {
+      name: 'usage',
+      type: 'LanguageModelUsage',
+      description: '此步骤的 token 使用情况。',
+    },
+    {
+      name: 'performance',
+      type: 'StepResultPerformance',
+      description:
+        '此步骤的计时和吞吐量指标，包括模型响应时间和工具执行时间。',
+    },
+    {
+      name: 'warnings',
+      type: 'CallWarning[] | undefined',
+      description: '来自模型提供商的警告。',
+    },
+    {
+      name: 'request',
+      type: 'LanguageModelRequestMetadata',
+      description:
+        '请求元数据，包括请求体和请求消息（如果包含）。',
+    },
+    {
+      name: 'response',
+      type: 'LanguageModelResponseMetadata',
+      description:
+        '响应元数据，包括响应头、响应体和消息（如果包含）。',
+    },
+    {
+      name: 'runtimeContext',
+      type: 'CONTEXT',
+      description: '此步骤的运行时上下文。',
+    },
+    {
+      name: 'toolsContext',
+      type: 'InferToolSetContext<TOOLS>',
+      description: '此步骤的每个工具的上下文映射。',
+    },
+  ]}
+/>
+
+#### onEnd
+
+在整个生成完成时调用一次。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此生成调用的唯一标识符。',
+    },
+    {
+      name: 'steps',
+      type: 'Array<StepResult>',
+      description: '生成中所有步骤的结果。',
+    },
+    {
+      name: 'finalStep',
+      type: 'StepResult',
+      description: '最后一步。这是 `steps.at(-1)` 的快捷方式。',
+    },
+    {
+      name: 'responseMessages',
+      type: 'Array<ResponseMessage>',
+      description: '调用期间生成的响应消息。',
+    },
+    {
+      name: 'content',
+      type: 'Array<ContentPart>',
+      description: '跨所有步骤生成的内容。',
+    },
+    {
+      name: 'text',
+      type: 'string',
+      description: '在最后一步中生成的文本。',
+    },
+    {
+      name: 'toolCalls',
+      type: 'Array<TypedToolCall>',
+      description: '跨所有步骤进行的工具调用。',
+    },
+    {
+      name: 'toolResults',
+      type: 'Array<TypedToolResult>',
+      description: '跨所有步骤产生的工具结果。',
+    },
+    {
+      name: 'finishReason',
+      type: 'FinishReason',
+      description: '最后一步结束的统一原因。',
+    },
+    {
+      name: 'usage',
+      type: 'LanguageModelUsage',
+      description: '跨所有步骤的聚合 token 使用情况。',
+    },
+    {
+      name: 'warnings',
+      type: 'CallWarning[] | undefined',
+      description: '跨所有步骤来自模型提供商的警告。',
+    },
+  ]}
+/>
+
+### 嵌入事件
+
+`embed` 和 `embedMany` 共享相同的事件接口。
+使用 `operationId` 来区分 `'ai.embed'` 和 `'ai.embedMany'`。
+对于 `embed`，`value` 是单个字符串。对于 `embedMany`，`value` 是字符串数组。
+
+#### onStart
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此嵌入调用的唯一标识符。',
+    },
+    {
+      name: 'operationId',
+      type: 'string',
+      description: "操作类型，例如 'ai.embed' 或 'ai.embedMany'。",
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '嵌入模型的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '嵌入模型标识符。',
+    },
+    {
+      name: 'value',
+      type: 'string | Array<string>',
+      description: '正在嵌入的值或值数组。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      description: '失败请求的最大重试次数。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string | undefined> | undefined',
+      description: '随请求发送的额外 HTTP 头。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions | undefined',
+      description: '提供商特定选项。',
+    },
+  ]}
+/>
+
+#### onEnd
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此嵌入调用的唯一标识符。',
+    },
+    {
+      name: 'operationId',
+      type: 'string',
+      description: "操作类型，例如 'ai.embed' 或 'ai.embedMany'。",
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '嵌入模型的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '嵌入模型标识符。',
+    },
+    {
+      name: 'value',
+      type: 'string | Array<string>',
+      description: '已嵌入的值或值数组。',
+    },
+    {
+      name: 'embedding',
+      type: 'Embedding | Array<Embedding>',
+      description: '生成的嵌入或嵌入数组。',
+    },
+    {
+      name: 'usage',
+      type: 'EmbeddingModelUsage',
+      description: '嵌入操作的 token 使用情况。',
+    },
+    {
+      name: 'warnings',
+      type: 'Array<Warning>',
+      description: '来自嵌入模型的警告。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      description: '可选的提供商特定元数据。',
+    },
+    {
+      name: 'response',
+      type: '{ headers?: Record<string, string>; body?: unknown } | Array<{ headers?: Record<string, string>; body?: unknown } | undefined> | undefined',
+      description:
+        '响应数据。对于 `embedMany`，这可以是每个块的一个响应。',
+    },
+  ]}
+/>
+
+### 重排序事件
+
+#### onStart
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此重排序调用的唯一标识符。',
+    },
+    {
+      name: 'operationId',
+      type: 'string',
+      description: "操作类型，'ai.rerank'。",
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '重排序模型的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '重排序模型标识符。',
+    },
+    {
+      name: 'documents',
+      type: 'Array<JSONObject | string>',
+      description: '正在重排序的文档。',
+    },
+    {
+      name: 'query',
+      type: 'string',
+      description: '用于对文档进行重排序的查询。',
+    },
+    {
+      name: 'topN',
+      type: 'number | undefined',
+      description: '要返回的顶部文档数量。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      description: '失败请求的最大重试次数。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string | undefined> | undefined',
+      description: '随请求发送的额外 HTTP 头。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions | undefined',
+      description: '提供商特定选项。',
+    },
+  ]}
+/>
+
+#### onEnd
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: '此重排序调用的唯一标识符。',
+    },
+    {
+      name: 'operationId',
+      type: 'string',
+      description: "操作类型，'ai.rerank'。",
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: '重排序模型的提供商标识符。',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: '重排序模型标识符。',
+    },
+    {
+      name: 'documents',
+      type: 'Array<JSONObject | string>',
+      description: '已重排序的文档。',
+    },
+    {
+      name: 'query',
+      type: 'string',
+      description: '文档被重排序所依据的查询。',
+    },
+    {
+      name: 'ranking',
+      type: 'Array<{ originalIndex: number; score: number; document: JSONObject | string }>',
+      description:
+        '按相关性分数降序排列的重排序结果。',
+    },
+    {
+      name: 'warnings',
+      type: 'Array<Warning>',
+      description: '来自重排序模型的警告。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      description: '可选的提供商特定元数据。',
+    },
+    {
+      name: 'response',
+      type: '{ id?: string; timestamp: Date; modelId: string; headers?: Record<string, string>; body?: unknown }',
+      description: '响应数据，包括头和体。',
+    },
+  ]}
+/>

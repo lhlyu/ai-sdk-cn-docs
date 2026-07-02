@@ -1,0 +1,192 @@
+---
+title: DeepSeek
+description: 了解如何通过 AI SDK 使用 DeepSeek 的模型。
+---
+
+# DeepSeek 提供商
+
+[DeepSeek](https://www.deepseek.com) 提供商通过 DeepSeek API 提供对强大语言模型的访问。
+
+API 密钥可以从 [DeepSeek 平台](https://platform.deepseek.com/api_keys) 获取。
+
+## 安装
+
+DeepSeek 提供商可通过 `@ai-sdk/deepseek` 模块获得。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/deepseek" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/deepseek" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/deepseek" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @ai-sdk/deepseek" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/deepseek` 导入默认的提供商实例 `deepSeek`：
+
+```ts
+import { deepSeek } from '@ai-sdk/deepseek';
+```
+
+对于自定义配置，你可以导入 `createDeepSeek` 并使用你的设置创建提供商实例：
+
+```ts
+import { createDeepSeek } from '@ai-sdk/deepseek';
+
+const deepSeek = createDeepSeek({
+  apiKey: process.env.DEEPSEEK_API_KEY ?? '',
+});
+```
+
+你可以使用以下可选设置来自定义 DeepSeek 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀。
+  默认前缀为 `https://api.deepseek.com`。
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。默认值为
+  `DEEPSEEK_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+
+## 语言模型
+
+你可以使用提供商实例创建语言模型：
+
+```ts
+import { deepSeek } from '@ai-sdk/deepseek';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: deepSeek('deepseek-chat'),
+  prompt: '写一份供4人食用的素食千层面食谱。',
+});
+```
+
+你也可以使用 `.chat()` 或 `.languageModel()` 工厂方法：
+
+```ts
+const model = deepSeek.chat('deepseek-chat');
+// 或
+const model = deepSeek.languageModel('deepseek-chat');
+```
+
+DeepSeek 语言模型可用于 `streamText` 函数
+（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+
+DeepSeek 模型提供以下可选的提供商选项：
+
+- `thinking` _object_
+
+  可选。控制思考模式（思维链推理）。你可以通过使用 `deepseek-reasoner` 模型或设置此选项来启用思考模式。
+  - `type`: `'adaptive' | 'enabled' | 'disabled'` - 启用、禁用或让模型决定（`adaptive`）何时思考。参见 [DeepSeek 的思考模式文档](https://api-docs.deepseek.com/guides/thinking_mode)。
+
+- `reasoningEffort` _'low' | 'medium' | 'high' | 'xhigh' | 'max'_
+
+  可选。控制 DeepSeek V4 推理模型的思考强度。根据
+  DeepSeek 文档，`low` 和 `medium` 会映射到 `high`，而 `xhigh` 会
+  映射到 `max`（服务器端），以与其他提供商兼容。当
+  使用顶层 `reasoning` 设置时，`minimal` 会作为 `low` 发送，而
+  `low`、`medium`、`high` 和 `xhigh` 会透传为 DeepSeek 的原生
+  努力值。
+
+```ts highlight="7-12"
+import {
+  deepSeek,
+  type DeepSeekLanguageModelChatOptions,
+} from '@ai-sdk/deepseek';
+import { generateText } from 'ai';
+
+const { text, reasoning } = await generateText({
+  model: deepSeek('deepseek-chat'),
+  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  providerOptions: {
+    deepseek: {
+      thinking: { type: 'enabled' },
+      reasoningEffort: 'high',
+    } satisfies DeepSeekLanguageModelChatOptions,
+  },
+});
+```
+
+### 推理
+
+DeepSeek 对 `deepseek-reasoner` 模型提供推理支持。推理结果通过流式传输暴露：
+
+```ts
+import { deepSeek } from '@ai-sdk/deepseek';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: deepSeek('deepseek-reasoner'),
+  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+});
+
+for await (const part of result.stream) {
+  if (part.type === 'reasoning') {
+    // 这是推理文本
+    console.log('推理过程：', part.text);
+  } else if (part.type === 'text') {
+    // 这是最终答案
+    console.log('答案：', part.text);
+  }
+}
+```
+
+有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+
+### 缓存 Token 使用情况
+
+DeepSeek 提供基于磁盘的上下文缓存技术，可以显著降低重复内容的 Token 成本。你可以通过响应中的 `providerMetadata` 属性访问缓存命中/未命中指标：
+
+```ts
+import { deepSeek } from '@ai-sdk/deepseek';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: deepSeek('deepseek-chat'),
+  prompt: '你的提示词在这里',
+});
+
+console.log(result.providerMetadata);
+// 示例输出：{ deepseek: { promptCacheHitTokens: 1856, promptCacheMissTokens: 5 } }
+```
+
+指标包括：
+
+- `promptCacheHitTokens`：被缓存的输入 Token 数量
+- `promptCacheMissTokens`：未被缓存的输入 Token 数量
+
+<Note>
+  有关 DeepSeek 缓存系统的更多详细信息，请参见 [DeepSeek 缓存
+  文档](https://api-docs.deepseek.com/guides/kv_cache#checking-cache-hit-status)。
+</Note>
+
+## 模型能力
+
+| 模型                | 文本生成            | 对象生成            | 图像输入            | 工具使用            | 工具流式传输        |
+| ------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `deepseek-chat`     | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `deepseek-reasoner` | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
+
+<Note>
+  请参见 [DeepSeek
+  文档](https://api-docs.deepseek.com/quick_start/pricing) 获取可用模型的完整列表。如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+</Note>

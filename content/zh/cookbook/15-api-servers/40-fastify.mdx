@@ -1,0 +1,122 @@
+---
+title: Fastify
+description: 了解如何在 Fastify 服务器中使用 AI SDK
+tags: ['api servers', 'streaming']
+---
+
+# Fastify
+
+你可以在 [Fastify](https://fastify.dev/) 服务器中使用 AI SDK 来生成文本和对象，并将其流式传输到客户端。
+
+## 示例
+
+以下示例启动一个简单的 HTTP 服务器，监听 8080 端口。你可以使用 `curl` 进行测试：
+
+```bash
+curl -X POST http://localhost:8080
+```
+
+<Note>
+  示例使用了 Vercel AI Gateway。请确保在 `AI_GATEWAY_API_KEY` 环境变量中设置了你的 AI Gateway API 密钥。
+</Note>
+
+**完整示例**：[github.com/vercel/ai/examples/fastify](https://github.com/vercel/ai/tree/main/examples/fastify)
+
+### UI 消息流
+
+你可以使用 `toUIMessageStream` 辅助函数将结果流转换为 UI 消息流，然后将其发送到响应中。
+
+```ts filename='index.ts'
+import { streamText, toUIMessageStream } from 'ai';
+import Fastify from 'fastify';
+
+const fastify = Fastify({ logger: true });
+
+fastify.post('/', async function (request, reply) {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+
+  reply.header('Content-Type', 'text/plain; charset=utf-8');
+
+  return reply.send(toUIMessageStream({ stream: result.stream }));
+});
+
+fastify.listen({ port: 8080 });
+```
+
+### 发送自定义数据
+
+`createUIMessageStream` 可用于向客户端发送自定义数据。
+
+```ts filename='index.ts' highlight="8-11,18"
+import { createUIMessageStream, streamText, toUIMessageStream } from 'ai';
+import Fastify from 'fastify';
+
+const fastify = Fastify({ logger: true });
+
+fastify.post('/stream-data', async function (request, reply) {
+  // 立即开始流式传输响应
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      writer.write({ type: 'start' });
+
+      writer.write({
+        type: 'data-custom',
+        data: {
+          custom: 'initialized call',
+        },
+      });
+
+      const result = streamText({
+        model: 'openai/gpt-4o',
+        prompt: '发明一个新节日并描述其传统。',
+      });
+
+      writer.merge(
+        toUIMessageStream({ stream: result.stream, sendStart: false }),
+      );
+    },
+    onError: error => {
+      // 出于安全原因，错误消息默认会被屏蔽。
+      // 如果你想向客户端暴露错误消息，可以在此处进行：
+      return error instanceof Error ? error.message : String(error);
+    },
+  });
+
+  reply.header('Content-Type', 'text/plain; charset=utf-8');
+
+  return reply.send(stream);
+});
+
+fastify.listen({ port: 8080 });
+```
+
+### 文本流
+
+你可以使用 `textStream` 属性从结果中获取文本流，然后将其管道传输到响应中。
+
+```ts filename='index.ts' highlight="15"
+import { streamText } from 'ai';
+import Fastify from 'fastify';
+
+const fastify = Fastify({ logger: true });
+
+fastify.post('/', async function (request, reply) {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+
+  reply.header('Content-Type', 'text/plain; charset=utf-8');
+
+  return reply.send(result.textStream);
+});
+
+fastify.listen({ port: 8080 });
+```
+
+## 故障排除
+
+- 通过 [代理](/docs/troubleshooting/streaming-not-working-when-proxied) 时流式传输无法正常工作

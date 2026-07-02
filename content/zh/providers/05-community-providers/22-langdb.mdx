@@ -1,0 +1,137 @@
+---
+title: LangDB
+description: 了解如何将 LangDB 与 AI SDK 结合使用
+---
+
+# LangDB
+
+<Note type="warning">
+  此社区提供商尚不兼容 AI SDK 5。请等待提供商更新，或考虑使用 [AI SDK 5 兼容提供商](/providers/ai-sdk-providers)。
+</Note>
+
+[LangDB](https://langdb.ai) 是一个用 Rust 构建的高性能企业级 AI 网关，旨在治理、保护和优化 AI 流量。
+
+LangDB 提供兼容 OpenAI 的 API，使开发者只需更改两行代码即可连接多个 LLM。使用 LangDB，您可以：
+
+- 访问所有主流 LLM
+- 使用任何框架（如 Langchain、Vercel AI SDK、CrewAI 等）实现即插即用功能，便于集成
+- 简化追踪和成本优化功能的实现，确保运营流程精简
+- 根据预定义参数，将请求动态路由到最合适的 LLM
+
+## 安装
+
+LangDB 提供商可通过 `@langdb/vercel-provider` 模块获取。您可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @langdb/vercel-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @langdb/vercel-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @langdb/vercel-provider" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @langdb/vercel-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+要创建 LangDB 提供商实例，请使用 `createLangDB` 函数：
+
+```tsx
+import { createLangDB } from '@langdb/vercel-provider';
+
+const langdb = createLangDB({
+  apiKey: process.env.LANGDB_API_KEY, // 必填
+  projectId: 'your-project-id', // 必填
+  threadId: uuidv4(), // 可选
+  runId: uuidv4(), // 可选
+  label: 'code-agent', // 可选
+  headers: { 'Custom-Header': 'value' }, // 可选
+});
+```
+
+您可以在 [LangDB 控制台](https://app.langdb.ai) 中找到您的 LangDB API 密钥。
+
+## 示例
+
+您可以将 LangDB 与 `generateText` 或 `streamText` 函数结合使用：
+
+### `generateText`
+
+```tsx
+import { createLangDB } from '@langdb/vercel-provider';
+import { generateText } from 'ai';
+
+const langdb = createLangDB({
+  apiKey: process.env.LANGDB_API_KEY,
+  projectId: 'your-project-id',
+});
+
+export async function generateTextExample() {
+  const { text } = await generateText({
+    model: langdb('openai/gpt-4o-mini'),
+    prompt: '编写一个对列表进行排序的 Python 函数：',
+  });
+
+  console.log(text);
+}
+```
+
+### generateImage
+
+```tsx
+import { createLangDB } from '@langdb/vercel-provider';
+import { generateImage } from 'ai';
+import fs from 'fs';
+import path from 'path';
+
+const langdb = createLangDB({
+  apiKey: process.env.LANGDB_API_KEY,
+  projectId: 'your-project-id',
+});
+
+export async function generateImageExample() {
+  const { images } = await generateImage({
+    model: langdb.image('openai/dall-e-3'),
+    prompt: '一只在雨滴中飞翔的华丽凤尾绿咬鹃',
+  });
+
+  const imagePath = path.join(__dirname, 'generated-image.png');
+  fs.writeFileSync(imagePath, images[0].uint8Array);
+  console.log(`图片已保存至：${imagePath}`);
+}
+```
+
+### embed
+
+```tsx
+import { createLangDB } from '@langdb/vercel-provider';
+import { embed } from 'ai';
+
+const langdb = createLangDB({
+  apiKey: process.env.LANGDB_API_KEY,
+  projectId: 'your-project-id',
+});
+
+export async function generateEmbeddings() {
+  const { embedding } = await embed({
+    model: langdb.embeddingModel('text-embedding-3-small'),
+    value: '阳光明媚的海滩日',
+  });
+
+  console.log('嵌入向量：', embedding);
+}
+```
+
+## 支持的模型
+
+LangDB 支持超过 250 种模型，能够无缝对接广泛的 AI 能力。
+
+查看[模型列表](https://app.langdb.ai/models)以获取更多信息。
+
+更多详情，请访问 [LangDB 文档](https://docs.langdb.ai/)。

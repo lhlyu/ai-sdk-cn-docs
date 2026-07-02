@@ -1,0 +1,352 @@
+---
+title: 在 Next.js 中实现人工介入
+description: 使用 Next.js 和 AI SDK 为智能体系统添加人工审批步骤
+tags: ['next', '智能体', '工具使用']
+---
+
+# 在 Next.js 中实现人工介入
+
+构建智能体系统时，添加人工介入（HITL）功能至关重要，以确保系统在执行操作前能获得用户批准。AI SDK 通过工具的 `needsApproval` 属性提供对工具执行审批的内置支持。
+
+本教程演示如何使用 AI SDK 的原生工具执行审批功能，为 Next.js 聊天机器人添加人工审批步骤。
+
+## 背景
+
+要理解如何实现此功能，我们先看看在 Next.js 聊天机器人应用中，AI SDK 如何处理工具调用。
+
+在前端，使用 `useChat` Hook 管理消息状态和用户交互。
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { useState } from 'react';
+
+export default function Chat() {
+  const { messages, sendMessage } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+  });
+  const [input, setInput] = useState('');
+
+  return (
+    <div>
+      <div>
+        {messages?.map(m => (
+          <div key={m.id}>
+            <strong>{`${m.role}: `}</strong>
+            {m.parts?.map((part, i) => {
+              switch (part.type) {
+                case 'text':
+                  return <div key={i}>{part.text}</div>;
+              }
+            })}
+            <br />
+          </div>
+        ))}
+      </div>
+
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          if (input.trim()) {
+            sendMessage({ text: input });
+            setInput('');
+          }
+        }}
+      >
+        <input
+          value={input}
+          placeholder="说点什么..."
+          onChange={e => setInput(e.target.value)}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+在后端，创建一个使用 `streamText` 并返回 `UIMessageStreamResponse` 的路由处理器。工具包含一个 `execute` 函数，当模型调用该工具时会自动执行。
+
+```ts filename="app/api/chat/route.ts"
+import {
+  streamText,
+  tool,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+} from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4o'),
+    messages,
+    tools: {
+      getWeatherInformation: tool({
+        description: '向用户展示指定城市的天气',
+        inputSchema: z.object({ city: z.string() }),
+        execute: async ({ city }) => {
+          const weatherOptions = ['晴天', '多云', '雨天', '雪天'];
+          return weatherOptions[
+            Math.floor(Math.random() * weatherOptions.length)
+          ];
+        },
+      }),
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+当用户询问纽约的天气时，模型会生成一个包含城市参数的工具调用。AI SDK 随后自动执行 `execute` 函数并返回结果。
+
+要添加人工介入步骤，你需要在工具调用和工具执行之间，通过 `needsApproval` 设置一个审批关卡。
+
+## 添加工具执行审批
+
+### 服务端设置
+
+在工具定义中添加 `needsApproval: true`。工具保留其 `execute` 函数，但 SDK 会暂停执行，直到用户批准。
+
+```ts filename="app/api/chat/route.ts" highlight="20"
+import {
+  streamText,
+  tool,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+} from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4o'),
+    messages,
+    tools: {
+      getWeatherInformation: tool({
+        description: '向用户展示指定城市的天气',
+        inputSchema: z.object({ city: z.string() }),
+        needsApproval: true,
+        execute: async ({ city }) => {
+          const weatherOptions = ['晴天', '多云', '雨天', '雪天'];
+          return weatherOptions[
+            Math.floor(Math.random() * weatherOptions.length)
+          ];
+        },
+      }),
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+当模型调用此工具时，SDK 不会运行 `execute` 函数，而是向客户端发送一个状态为 `approval-requested` 的工具部分。工具只有在用户响应后才会执行。
+
+### 客户端审批界面
+
+在前端，检查 `approval-requested` 状态并渲染批准/拒绝按钮。使用 `useChat` Hook 中的 `addToolApprovalResponse` 发送用户的决定。
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+} from 'ai';
+import { useState } from 'react';
+
+export default function Chat() {
+  const { messages, sendMessage, addToolApprovalResponse } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+  });
+  const [input, setInput] = useState('');
+
+  return (
+    <div>
+      <div>
+        {messages?.map(m => (
+          <div key={m.id}>
+            <strong>{`${m.role}: `}</strong>
+            {m.parts?.map((part, i) => {
+              if (part.type === 'text') {
+                return <div key={i}>{part.text}</div>;
+              }
+              if (part.type === 'tool-getWeatherInformation') {
+                switch (part.state) {
+                  case 'approval-requested':
+                    return (
+                      <div key={part.toolCallId}>
+                        获取 {part.input.city} 的天气信息？
+                        <div>
+                          <button
+                            onClick={() =>
+                              addToolApprovalResponse({
+                                id: part.approval.id,
+                                approved: true,
+                              })
+                            }
+                          >
+                            批准
+                          </button>
+                          <button
+                            onClick={() =>
+                              addToolApprovalResponse({
+                                id: part.approval.id,
+                                approved: false,
+                              })
+                            }
+                          >
+                            拒绝
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  case 'output-available':
+                    return (
+                      <div key={part.toolCallId}>
+                        {part.input.city} 的天气：{part.output}
+                      </div>
+                    );
+                  case 'output-denied':
+                    return (
+                      <div key={part.toolCallId}>
+                        对 {part.input.city} 的天气请求已被拒绝。
+                      </div>
+                    );
+                }
+              }
+            })}
+            <br />
+          </div>
+        ))}
+      </div>
+
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          if (input.trim()) {
+            sendMessage({ text: input });
+            setInput('');
+          }
+        }}
+      >
+        <input
+          value={input}
+          placeholder="说点什么..."
+          onChange={e => setInput(e.target.value)}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+审批流程如下：
+
+1. 模型调用 `getWeatherInformation` 并传入城市参数
+2. 工具部分进入 `approval-requested` 状态，并附带 `approval.id`
+3. 界面渲染批准/拒绝按钮
+4. 用户点击按钮后，`addToolApprovalResponse` 记录决定
+5. `sendAutomaticallyWhen` 检测到所有审批都已响应后，自动发送消息
+6. 在服务端，如果批准，则执行 `execute` 函数并返回结果；如果拒绝，模型收到拒绝信息并做出相应回应
+
+### 审批后自动提交
+
+`sendAutomaticallyWhen` 选项配合 `lastAssistantMessageIsCompleteWithApprovalResponses`，会在上一步所有工具审批都得到响应后自动发送消息。如果不使用此选项，你需要在每次审批后手动调用 `sendMessage()`。
+
+```tsx
+import { useChat } from '@ai-sdk/react';
+import { lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
+
+const { messages, addToolApprovalResponse } = useChat({
+  sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+});
+```
+
+<Note>
+  如果批准工具执行后没有任何反应，请确保你手动调用了 `sendMessage`，或者在
+  `useChat` Hook 上配置了 `sendAutomaticallyWhen`。
+</Note>
+
+### 动态审批
+
+你可以通过为 `needsApproval` 提供一个异步函数，根据工具输入条件性地决定是否需要审批：
+
+```ts filename="app/api/chat/route.ts" highlight="23"
+import {
+  streamText,
+  tool,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+} from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4o'),
+    messages,
+    tools: {
+      processPayment: tool({
+        description: '处理付款',
+        inputSchema: z.object({
+          amount: z.number(),
+          recipient: z.string(),
+        }),
+        needsApproval: async ({ amount }) => amount > 1000,
+        execute: async ({ amount, recipient }) => {
+          return `已处理向 ${recipient} 支付 $${amount} 的付款。`;
+        },
+      }),
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+在此示例中，只有超过 1000 美元的付款需要审批。较小金额会自动执行。
+
+### 处理拒绝
+
+当用户拒绝工具执行时，模型会收到拒绝信息并做出相应回应。为防止模型重试相同的工具调用，可以添加一条指令：
+
+```ts highlight="5-6"
+const result = streamText({
+  model: openai('gpt-4o'),
+  messages,
+  system:
+    '当工具执行未被用户批准时，不要重试。' +
+    '告知用户该操作未被执行。',
+  tools: {
+    // ...
+  },
+});
+```
+
+## 完整示例
+
+要查看此代码的实际运行效果，请查看 AI SDK 仓库中的 [`next-openai` 示例](https://github.com/vercel/ai/tree/main/examples/next-openai)。导航到 `/test-tool-approval` 页面及其关联的路由处理器。
+
+有关工具执行审批的更多详细信息，请参阅[工具执行审批](/docs/ai-sdk-core/tools-and-tool-calling#tool-execution-approval)和[聊天机器人工具使用](/docs/ai-sdk-ui/chatbot-tool-usage#tool-execution-approval)文档。

@@ -1,0 +1,137 @@
+---
+title: Patronus
+description: 使用 Patronus 监控、评估和调试您的 AI SDK 应用程序
+---
+
+# Patronus 可观测性
+
+[Patronus AI](https://patronus.ai) 提供了一套端到端的系统，用于评估、监控和改进 LLM 系统的性能，使开发者能够安全、自信地交付 AI 产品。了解更多信息，请点击[此处](https://docs.patronus.ai/docs)。
+
+当您使用 AI SDK 构建时，可以将 OpenTelemetry (OTEL) 追踪数据直接流式传输到 Patronus，并将每次生成与丰富的自动评估配对。
+
+## 设置
+
+### 1. OpenTelemetry
+
+Patronus 公开了一个完全托管的 OTEL 端点。配置一个 **OTLP 导出器** 指向该端点，传入您的 API 密钥，即可完成——Patronus 会自动将 LLM 跨度转换为提示/响应记录，供您探索和评估。
+
+#### 环境变量（推荐）
+
+```bash filename=".env.local"
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.patronus.ai/v1/traces
+OTEL_EXPORTER_OTLP_HEADERS="x-api-key:<PATRONUS_API_KEY>"
+```
+
+#### 使用 `@vercel/otel`
+
+```ts filename="instrumentation.ts"
+import { registerOTel } from '@vercel/otel';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+
+export function register() {
+  registerOTel({
+    serviceName: 'next-app',
+    additionalSpanProcessors: [
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({
+          url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+          headers: {
+            'x-api-key': process.env.PATRONUS_API_KEY!,
+          },
+        }),
+      ),
+    ],
+  });
+}
+
+registerTelemetry(new LegacyOpenTelemetry());
+```
+
+<Note>
+  如果您需要 gRPC 而不是 HTTP，请将导出器替换为
+  `@opentelemetry/exporter-trace-otlp-grpc` 并使用
+  `https://otel.patronus.ai:4317`。
+</Note>
+
+### 2. 注册集成并启用遥测
+
+一旦您安装了 `@ai-sdk/otel` 并将 `registerTelemetry` 添加到您的 `instrumentation.ts` 中，遥测功能将自动捕获。传递 `telemetry` 以附加元数据：
+
+```ts
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: '写一首关于春天的俳句。',
+  telemetry: {
+    functionId: 'spring-haiku', // 跨度名称
+    metadata: {
+      userId: 'user-123', // 自定义属性会显示在 Patronus UI 中
+    },
+  },
+});
+```
+
+`metadata` 中的每个属性都会成为 OTEL 属性，并由 Patronus 建立索引以进行过滤。
+
+## 示例——追踪与自动评估
+
+```ts filename="app/api/chat/route.ts"
+import { trace } from '@opentelemetry/api';
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  const tracer = trace.getTracer('next-app');
+
+  return await tracer.startActiveSpan('chat-evaluate', async span => {
+    try {
+      /* 1️⃣ 生成答案 */
+      const answer = await generateText({
+        model: openai('gpt-4o'),
+        prompt: body.prompt,
+        telemetry: { functionId: 'chat' },
+      });
+
+      /* 2️⃣ 在同一追踪中运行 Patronus 评估 */
+      await fetch('https://api.patronus.ai/v1/evaluate', {
+        method: 'POST',
+        headers: {
+          'X-API-Key': process.env.PATRONUS_API_KEY!,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          evaluators: [
+            { evaluator: 'lynx', criteria: 'patronus:hallucination' },
+          ],
+          evaluated_model_input: body.prompt,
+          evaluated_model_output: answer.text,
+          trace_id: span.spanContext().traceId,
+          span_id: span.spanContext().spanId,
+        }),
+      });
+
+      return new Response(answer.text);
+    } finally {
+      span.end();
+    }
+  });
+}
+```
+
+结果：一个包含根 HTTP 请求、LLM 生成跨度以及您的评估跨度的单一追踪——**所有这些在 Patronus 中均可见**，并附带了幻觉评分。
+
+## 完成追踪后
+
+- 如果您正在追踪一个智能体，Patronus 的 AI 助手 Percival 将协助进行错误分析和提示词优化。了解更多信息，请点击[此处](https://docs.patronus.ai/docs/percival/percival)
+- 通过在 Patronus 上查看日志和追踪并配置用于告警的 Webhook，设置生产监控和告警。了解更多信息，请点击[此处](https://docs.patronus.ai/docs/real_time_monitoring/webhooks)
+
+## 资源
+
+- [Patronus 文档](https://docs.patronus.ai)
+- [OpenTelemetry SDK (JS)](https://opentelemetry.io/docs/instrumentation/js/)

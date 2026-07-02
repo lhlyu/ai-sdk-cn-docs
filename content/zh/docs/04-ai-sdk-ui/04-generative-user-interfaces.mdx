@@ -1,0 +1,407 @@
+---
+title: 生成式用户界面
+description: 学习如何使用 AI SDK UI 构建生成式用户界面。
+---
+
+# 生成式用户界面
+
+生成式用户界面（generative UI）是让大语言模型（LLM）超越文本范畴、"生成 UI" 的过程。这为用户创造了更具参与感和 AI 原生体验的交互方式。
+
+<WeatherSearch />
+
+生成式 UI 的核心是[工具](/docs/ai-sdk-core/tools-and-tool-calling)，即你提供给模型执行特定任务（如获取某个位置的天气）的函数。模型可以根据对话上下文决定何时以及如何使用这些工具。
+
+生成式 UI 是将工具调用结果连接到 React 组件的过程。其工作原理如下：
+
+1. 你向模型提供提示词或对话历史，以及一组工具。
+2. 根据上下文，模型可能决定调用某个工具。
+3. 如果工具被调用，它将执行并返回数据。
+4. 这些数据随后可传递给 React 组件进行渲染。
+
+通过将工具结果传递给 React 组件，你可以创建更具参与感和适应性的生成式 UI 体验。
+
+## 构建生成式 UI 聊天界面
+
+让我们创建一个既能处理文本对话，又能根据模型响应动态融入 UI 元素的聊天界面。
+
+### 基础聊天实现
+
+首先使用 `useChat` Hook 实现基础聊天功能：
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+
+export default function Page() {
+  const [input, setInput] = useState('');
+  const { messages, sendMessage } = useChat();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage({ text: input });
+    setInput('');
+  };
+
+  return (
+    <div>
+      {messages.map(message => (
+        <div key={message.id}>
+          <div>{message.role === 'user' ? '用户: ' : 'AI: '}</div>
+          <div>
+            {message.parts.map((part, index) => {
+              if (part.type === 'text') {
+                return <span key={index}>{part.text}</span>;
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      ))}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="输入消息..."
+        />
+        <button type="submit">发送</button>
+      </form>
+    </div>
+  );
+}
+```
+
+为了处理聊天请求和模型响应，需要设置一个 API 路由：
+
+```ts filename="app/api/chat/route.ts"
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  isStepCount,
+  streamText,
+  toUIMessageStream,
+  UIMessage,
+} from 'ai';
+__PROVIDER_IMPORT__;
+
+export async function POST(request: Request) {
+  const { messages }: { messages: UIMessage[] } = await request.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    instructions: '你是一个友好的助手！',
+    messages: await convertToModelMessages(messages),
+    stopWhen: isStepCount(5),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+该 API 路由使用 `streamText` 函数处理聊天消息，并将模型的响应流式传输回客户端。
+
+### 创建工具
+
+在增强聊天界面动态 UI 元素之前，你需要创建一个工具及对应的 React 组件。工具允许模型执行特定操作，例如获取天气信息。
+
+创建名为 `ai/tools.ts` 的文件，内容如下：
+
+```ts filename="ai/tools.ts"
+import { tool as createTool } from 'ai';
+import { z } from 'zod';
+
+export const weatherTool = createTool({
+  description: '显示某个位置的天气',
+  inputSchema: z.object({
+    location: z.string().describe('要获取天气的位置'),
+  }),
+  execute: async function ({ location }) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return { weather: '晴朗', temperature: 75, location };
+  },
+});
+
+export const tools = {
+  displayWeather: weatherTool,
+};
+```
+
+在此文件中，你创建了一个名为 `weatherTool` 的工具。该工具模拟获取指定位置的天气信息，并在 2 秒延迟后返回模拟数据。在实际应用中，你需要将此模拟替换为对天气服务的真实 API 调用。
+
+### 更新 API 路由
+
+更新 API 路由以包含你定义的工具：
+
+```ts filename="app/api/chat/route.ts" highlight="10,15,20"
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  isStepCount,
+  streamText,
+  toUIMessageStream,
+  UIMessage,
+} from 'ai';
+__PROVIDER_IMPORT__;
+import { tools } from '@/ai/tools';
+
+export async function POST(request: Request) {
+  const { messages }: { messages: UIMessage[] } = await request.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    instructions: '你是一个友好的助手！',
+    messages: await convertToModelMessages(messages),
+    stopWhen: isStepCount(5),
+    tools,
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+现在你已经定义了工具并将其添加到 `streamText` 调用中，接下来构建一个 React 组件来显示工具返回的天气信息。
+
+### 创建 UI 组件
+
+创建名为 `components/weather.tsx` 的文件：
+
+```tsx filename="components/weather.tsx"
+type WeatherProps = {
+  temperature: number;
+  weather: string;
+  location: string;
+};
+
+export const Weather = ({ temperature, weather, location }: WeatherProps) => {
+  return (
+    <div>
+      <h2>{location} 当前天气</h2>
+      <p>天气状况：{weather}</p>
+      <p>温度：{temperature}°C</p>
+    </div>
+  );
+};
+```
+
+该组件将显示指定位置的天气信息。它接收三个属性：`temperature`、`weather` 和 `location`（与 `weatherTool` 返回的数据完全一致）。
+
+### 渲染天气组件
+
+现在你已经有了工具和对应的 React 组件，将它们集成到聊天界面中。当模型调用天气工具时，你将渲染 Weather 组件。
+
+要检查模型是否调用了工具，可以查看 UIMessage 对象的 `parts` 数组中特定于工具的部分。在 AI SDK 5.0 中，工具部分使用类型化命名：`tool-${toolName}` 而非通用类型。
+
+更新你的 `page.tsx` 文件：
+
+```tsx filename="app/page.tsx" highlight="4,9,14-15,19-46"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+import { Weather } from '@/components/weather';
+
+export default function Page() {
+  const [input, setInput] = useState('');
+  const { messages, sendMessage } = useChat();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage({ text: input });
+    setInput('');
+  };
+
+  return (
+    <div>
+      {messages.map(message => (
+        <div key={message.id}>
+          <div>{message.role === 'user' ? '用户: ' : 'AI: '}</div>
+          <div>
+            {message.parts.map((part, index) => {
+              if (part.type === 'text') {
+                return <span key={index}>{part.text}</span>;
+              }
+
+              if (part.type === 'tool-displayWeather') {
+                switch (part.state) {
+                  case 'input-available':
+                    return <div key={index}>正在加载天气...</div>;
+                  case 'output-available':
+                    return (
+                      <div key={index}>
+                        <Weather {...part.output} />
+                      </div>
+                    );
+                  case 'output-error':
+                    return <div key={index}>错误：{part.errorText}</div>;
+                  default:
+                    return null;
+                }
+              }
+
+              return null;
+            })}
+          </div>
+        </div>
+      ))}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="输入消息..."
+        />
+        <button type="submit">发送</button>
+      </form>
+    </div>
+  );
+}
+```
+
+在此更新后的代码片段中，你：
+
+1. 使用 `useState` 手动管理输入状态，而非内置的 `input` 和 `handleInputChange`。
+2. 使用 `sendMessage` 而非 `handleSubmit` 发送消息。
+3. 检查每条消息的 `parts` 数组以处理不同类型的内容。
+4. 处理类型为 `tool-displayWeather` 的工具部分及其不同状态（`input-available`、`output-available`、`output-error`）。
+
+这种方法允许你根据模型的响应动态渲染 UI 组件，创建更具交互性和上下文感知的聊天体验。
+
+## 扩展生成式 UI 应用
+
+你可以通过添加更多工具和组件来增强聊天应用，创造更丰富、更通用的用户体验。以下是扩展应用的方法：
+
+### 添加更多工具
+
+要添加更多工具，只需在 `ai/tools.ts` 文件中定义它们：
+
+```ts
+// 添加新的股票工具
+export const stockTool = createTool({
+  description: '获取股票价格',
+  inputSchema: z.object({
+    symbol: z.string().describe('要获取价格的股票代码'),
+  }),
+  execute: async function ({ symbol }) {
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return { symbol, price: 100 };
+  },
+});
+
+// 更新 tools 对象
+export const tools = {
+  displayWeather: weatherTool,
+  getStockPrice: stockTool,
+};
+```
+
+现在，创建名为 `components/stock.tsx` 的新文件：
+
+```tsx
+type StockProps = {
+  price: number;
+  symbol: string;
+};
+
+export const Stock = ({ price, symbol }: StockProps) => {
+  return (
+    <div>
+      <h2>股票信息</h2>
+      <p>代码：{symbol}</p>
+      <p>价格：${price}</p>
+    </div>
+  );
+};
+```
+
+最后，更新你的 `page.tsx` 文件以包含新的 Stock 组件：
+
+```tsx
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+import { Weather } from '@/components/weather';
+import { Stock } from '@/components/stock';
+
+export default function Page() {
+  const [input, setInput] = useState('');
+  const { messages, sendMessage } = useChat();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage({ text: input });
+    setInput('');
+  };
+
+  return (
+    <div>
+      {messages.map(message => (
+        <div key={message.id}>
+          <div>{message.role}</div>
+          <div>
+            {message.parts.map((part, index) => {
+              if (part.type === 'text') {
+                return <span key={index}>{part.text}</span>;
+              }
+
+              if (part.type === 'tool-displayWeather') {
+                switch (part.state) {
+                  case 'input-available':
+                    return <div key={index}>正在加载天气...</div>;
+                  case 'output-available':
+                    return (
+                      <div key={index}>
+                        <Weather {...part.output} />
+                      </div>
+                    );
+                  case 'output-error':
+                    return <div key={index}>错误：{part.errorText}</div>;
+                  default:
+                    return null;
+                }
+              }
+
+              if (part.type === 'tool-getStockPrice') {
+                switch (part.state) {
+                  case 'input-available':
+                    return <div key={index}>正在加载股票价格...</div>;
+                  case 'output-available':
+                    return (
+                      <div key={index}>
+                        <Stock {...part.output} />
+                      </div>
+                    );
+                  case 'output-error':
+                    return <div key={index}>错误：{part.errorText}</div>;
+                  default:
+                    return null;
+                }
+              }
+
+              return null;
+            })}
+          </div>
+        </div>
+      ))}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+        />
+        <button type="submit">发送</button>
+      </form>
+    </div>
+  );
+}
+```
+
+通过遵循此模式，你可以继续添加更多工具和组件，扩展生成式 UI 应用的功能。

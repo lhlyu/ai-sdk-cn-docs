@@ -1,0 +1,167 @@
+---
+title: 动态提示词缓存
+description: 了解如何通过缓存控制指令为 Anthropic 模型实现动态提示词缓存，从而降低 API 成本。
+tags: ['缓存', '成本优化']
+---
+
+# 动态提示词缓存
+
+构建智能体时，随着对话增长，API 成本会迅速累积。许多模型提供商提供提示词缓存功能，允许你缓存对话前缀，从而显著降低重复上下文的成本。
+
+本方案展示了一种可复制到项目中并根据特定提供商和缓存策略进行自定义的模式。示例实现默认采用 Anthropic 推荐的方法，但你可以扩展它以支持其他提供商。
+
+此模式在以下场景中特别有用：
+
+1. **构建长对话智能体** - 多轮智能体交互会累积上下文，每次请求都会重新发送。
+2. **大量使用工具** - 工具调用和结果会增加显著的 Token 开销，而缓存可以从中受益。
+
+对于非 Anthropic 模型，消息会原样传递，因此可以安全地在与提供商无关的代码中使用。
+
+## 实现
+
+该工具函数会向消息中添加 Anthropic 的 `cacheControl` 指令，将最后一条消息标记为 `{ type: "ephemeral" }`。这告诉 Anthropic 缓存到该点为止的所有内容，因此后续请求只需为新增内容支付全价。
+
+### 工作原理
+
+该函数会检测模型提供商并应用相应的缓存策略。在此实现中，它通过检查提供商名称和模型 ID 来识别 Anthropic 模型。当找到 Anthropic 模型时，它会向消息数组中的最后一条消息添加 `providerOptions`，其中包含 `cacheControl: { type: "ephemeral" }`。根据 Anthropic 文档：“标记最后一条消息的最后一个内容块，以便对话可以增量缓存。”
+
+对于非 Anthropic 模型，该函数会原样返回消息。你可以通过添加检测逻辑和特定于提供商的选项来扩展此模式以支持其他提供商。
+
+### 消息级与内容块级缓存控制
+
+你可能注意到此实现是在**消息级别**添加 `providerOptions`，而 Anthropic 的 API 期望在**内容块级别**使用 `cache_control`。AI SDK 会自动处理此转换。
+
+当你在消息上设置 `providerOptions` 时，SDK 会在构建 API 请求时将其应用于最后一个内容块。例如：
+
+```ts
+// 你编写的内容（消息级别）
+{
+  role: 'user',
+  content: [
+    { type: 'text', text: '第一部分' },
+    { type: 'text', text: '第二部分' },
+  ],
+  providerOptions: {
+    anthropic: { cacheControl: { type: 'ephemeral' } },
+  },
+}
+
+// SDK 发送给 Anthropic 的内容（内容块级别）
+{
+  "role": "user",
+  "content": [
+    { "type": "text", "text": "第一部分" },
+    { "type": "text", "text": "第二部分", "cache_control": { "type": "ephemeral" } }
+  ]
+}
+```
+
+此行为是设计使然，并且在用户消息、助手消息和工具结果中保持一致。如果你需要更精细的控制，也可以直接在单个内容部分上设置 `providerOptions`，这优先于消息级别的设置。
+
+### 工具函数
+
+```ts
+import type { ModelMessage, JSONValue, LanguageModel } from 'ai';
+
+function isAnthropicModel(model: LanguageModel): boolean {
+  if (typeof model === 'string') {
+    return model.includes('anthropic') || model.includes('claude');
+  }
+  return (
+    model.provider === 'anthropic' ||
+    model.provider.includes('anthropic') ||
+    model.modelId.includes('anthropic') ||
+    model.modelId.includes('claude')
+  );
+}
+
+export function addCacheControlToMessages({
+  messages,
+  model,
+  providerOptions = {
+    anthropic: { cacheControl: { type: 'ephemeral' } },
+  },
+}: {
+  messages: ModelMessage[];
+  model: LanguageModel;
+  providerOptions?: Record<string, Record<string, JSONValue>>;
+}): ModelMessage[] {
+  if (messages.length === 0) return messages;
+  if (!isAnthropicModel(model)) return messages;
+
+  return messages.map((message, index) => {
+    if (index === messages.length - 1) {
+      return {
+        ...message,
+        providerOptions: {
+          ...message.providerOptions,
+          ...providerOptions,
+        },
+      };
+    }
+    return message;
+  });
+}
+```
+
+## 使用工具函数
+
+通过 `generateText` 和 `stopWhen` 的 `prepareStep` 回调将工具函数集成到你的智能体中：
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { generateText, tool, isStepCount } from 'ai';
+import { z } from 'zod';
+import { addCacheControlToMessages } from './add-cache-control-to-messages';
+
+async function main() {
+  const result = await generateText({
+    model: anthropic('claude-sonnet-4-5'),
+    prompt: '帮我分析这个代码库并提出改进建议。',
+    stopWhen: isStepCount(10),
+    tools: {
+      // 你的工具在这里
+      analyzeFile: tool({
+        description: '分析代码库中的文件',
+        inputSchema: z.object({
+          path: z.string().describe('文件路径'),
+        }),
+        execute: async ({ path }) => {
+          // 实现
+          return { analysis: `对 ${path} 的分析` };
+        },
+      }),
+    },
+    prepareStep: ({ messages, model }) => ({
+      messages: addCacheControlToMessages({ messages, model }),
+    }),
+  });
+
+  console.log(result.text);
+}
+
+main().catch(console.error);
+```
+
+如果需要，你也可以自定义缓存控制选项：
+
+```ts
+prepareStep: ({ messages, model }) => ({
+  messages: addCacheControlToMessages({
+    messages,
+    model,
+    providerOptions: {
+      anthropic: { cacheControl: { type: "ephemeral" } },
+    },
+  }),
+}),
+```
+
+## 注意事项
+
+使用此工具函数时，请记住以下几点：
+
+1. **特定于提供商的行为** - 此实现针对 Anthropic 模型。对于其他提供商，消息会原样传递。你可以扩展此模式以支持其他提供商。
+2. **最小 Token 阈值** - Anthropic 要求缓存激活前达到最小 Token 数量。短对话可能无法受益。其他提供商可能有类似要求。
+3. **缓存生命周期** - Anthropic 的临时缓存 TTL 为 5 分钟。不活跃的对话会丢失缓存。请查看提供商的文档了解缓存持续时间详情。
+4. **成本结构** - 使用 Anthropic 时，缓存 Token 成本为输入 Token 的 10%，但缓存写入成本高出 25%。当缓存命中次数超过缓存未命中次数时，你可以节省成本。不同提供商成本结构各异。

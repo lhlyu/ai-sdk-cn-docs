@@ -1,0 +1,177 @@
+---
+title: MLflow
+description: 使用 MLflow Tracing 跟踪、可视化和调试 Vercel AI SDK 的追踪数据
+---
+
+# MLflow 可观测性
+
+<video
+  src="https://mlflow.org/docs/latest/images/llms/tracing/vercel-ai-tracing.mp4"
+  autoplay
+  muted
+  loop
+  controls
+  playsinline
+  aria-label="MLflow Tracing Vercel AI SDK"
+>
+  <a href="https://mlflow.org/docs/latest/images/llms/tracing/vercel-ai-tracing.mp4">
+    MLflow Tracing Vercel AI SDK 演示视频
+  </a>
+</video>
+
+[MLflow Tracing](https://mlflow.org/docs/latest/genai/tracing) 通过 OpenTelemetry 为基于 [Vercel AI SDK](https://ai-sdk.dev/)（即 `ai` 包）构建的应用提供自动追踪功能，为 TypeScript 和 JavaScript 应用解锁可观测性。
+
+启用后，MLflow 会记录：
+
+- 提示词/消息和生成的响应
+- 延迟和调用层级
+- Token 用量（当提供商返回时）
+- 异常
+
+## 快速开始（NextJS）
+
+如果你使用 NextJS，为 Vercel AI SDK 启用 MLflow 追踪相当简单。
+
+<Note>
+  没有现成的应用？试试 Vercel 的演示聊天机器人：
+  https://vercel.com/templates/next.js/ai-chatbot-telemetry
+</Note>
+
+### 1. 启动 MLflow 追踪服务器
+
+```bash
+mlflow server --backend-store-uri sqlite:///mlruns.db --port 5000
+```
+
+你也可以使用 Docker Compose 启动服务器；请参阅 [MLflow 设置指南](https://mlflow.org/docs/latest/genai/getting-started/connect-environment/)。
+
+### 2. 配置环境变量
+
+将这些添加到 `.env.local`：
+
+```bash filename=".env.local"
+OTEL_EXPORTER_OTLP_ENDPOINT=<你的-mlflow-追踪服务器端点>
+OTEL_EXPORTER_OTLP_TRACES_HEADERS=x-mlflow-experiment-id=<你的实验-id>
+OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
+```
+
+本地测试使用：`OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:5000`。
+
+### 3. 启用 OpenTelemetry
+
+安装 Vercel OpenTelemetry 集成：
+
+```bash
+pnpm i @opentelemetry/api @vercel/otel @ai-sdk/otel
+```
+
+在项目根目录创建 `instrumentation.ts`，并在 OTel 提供商设置中注册 `LegacyOpenTelemetry`：
+
+```ts filename="instrumentation.ts"
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { registerOTel } from '@vercel/otel';
+
+registerTelemetry(new LegacyOpenTelemetry());
+
+export async function register() {
+  registerOTel({ serviceName: 'next-app' });
+}
+```
+
+集成注册后，AI SDK 调用会自动发出遥测数据：
+
+```ts filename="route.ts"
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+export async function POST(req: Request) {
+  const { prompt } = await req.json();
+
+  const { text } = await generateText({
+    model: openai('gpt-5'),
+    prompt,
+  });
+
+  return new Response(JSON.stringify({ text }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+```
+
+有关上下文传播等高级选项，请参阅 [Vercel OpenTelemetry 文档](https://vercel.com/docs/tracing/instrumentation)。
+
+### 4. 运行应用并查看追踪
+
+启动你的 NextJS 应用，并在追踪服务器端点（例如 `http://localhost:5000`）打开 MLflow UI。AI SDK 调用的追踪会出现在配置的实验中。
+
+## 其他 Node.js 应用
+
+对于其他 Node.js 框架，需要手动配置 OpenTelemetry Node SDK 和 OTLP 导出器。
+
+```ts filename="main.ts"
+import { init } from 'mlflow-tracing';
+import { registerTelemetry, generateText } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { openai } from '@ai-sdk/openai';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+
+const sdk = new NodeSDK({
+  spanProcessors: [
+    new SimpleSpanProcessor(
+      new OTLPTraceExporter({
+        url: '<你的-mlflow-追踪服务器端点>/v1/traces',
+        headers: { 'x-mlflow-experiment-id': '<你的实验-id>' },
+      }),
+    ),
+  ],
+});
+
+sdk.start();
+init();
+registerTelemetry(new LegacyOpenTelemetry());
+
+const result = await generateText({
+  model: openai('gpt-5'),
+  prompt: '什么是 MLflow？',
+});
+
+console.log(result.text);
+sdk.shutdown();
+```
+
+```bash
+npx tsx main.ts
+```
+
+## 流式传输
+
+支持流式传输。与 `generateText` 类似，集成注册后会自动捕获追踪。
+
+```ts
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const stream = await streamText({
+  model: openai('gpt-5'),
+  prompt: '用一段话解释向量数据库。',
+});
+
+for await (const part of stream.textStream) {
+  process.stdout.write(part);
+}
+```
+
+## 禁用自动追踪
+
+要禁用 Vercel AI SDK 的追踪，请在 AI SDK 调用中设置 `telemetry: { isEnabled: false }`。
+
+## 了解更多
+
+- 为 AI SDK 设置 MLflow Tracing 后，你可以进一步利用 MLflow GenAI 的广泛功能：
+  - [评估](https://mlflow.org/docs/latest/genai/eval-monitor/)：使用内置的 LLM 评估器和数据集管理，系统地衡量质量并监控从开发到生产的 GenAI 应用。
+  - [提示词管理](https://mlflow.org/docs/latest/genai/prompt-registry/)：集中管理提示词模板，支持版本控制、别名、血缘关系和协作，使团队能够安全地重用和比较提示词。
+  - [MCP 服务器](https://mlflow.org/docs/latest/genai/mcp/)：将你的编码智能体与 MLflow MCP 服务器连接，以编程方式与 MLflow 追踪交互，改进你的 LLM 应用。
+- 有关 AI SDK 中追踪的更多信息，请参阅[遥测文档](/docs/ai-sdk-core/telemetry)。

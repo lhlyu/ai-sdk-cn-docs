@@ -1,0 +1,60 @@
+---
+title: 在 Vercel 上部署时遇到超时
+description: 了解如何修复在 Vercel 上部署时的超时和响应截断问题。
+---
+
+# 在 Vercel 上部署时遇到超时
+
+## 问题
+
+使用 AI SDK 进行流式传输在本地开发环境中可以正常工作。
+然而，当我部署到 Vercel 时，较长的响应在 UI 中被截断，并且在 Vercel 日志中看到超时，或者看到错误：`Uncaught (in promise) Error: Connection closed`。
+
+## 解决方案
+
+借助 Vercel 的 [Fluid Compute](https://vercel.com/docs/fluid-compute)，所有计划的默认函数持续时间现在为 **5 分钟（300 秒）**。这对于大多数流式传输应用来说应该足够了。
+
+如果需要为长时间运行的处理延长超时时间，可以增加 `maxDuration` 设置：
+
+### Next.js (App Router)
+
+将以下内容添加到路由文件或调用 Server Action 的页面中：
+
+```tsx
+export const maxDuration = 600;
+```
+
+<Note>
+  将 `maxDuration` 设置为 300 秒以上需要 Pro 或 Enterprise 计划。
+</Note>
+
+### 其他框架
+
+对于其他框架，可以在 `vercel.json` 文件中设置超时：
+
+```json
+{
+  "functions": {
+    "api/chat/route.ts": {
+      "maxDuration": 600
+    }
+  }
+}
+```
+
+<Note>
+  将 `maxDuration` 设置为 300 秒以上需要 Pro 或 Enterprise 计划。
+</Note>
+
+### 最大持续时间限制
+
+可设置的最大持续时间取决于你的 Vercel 计划：
+
+- **Hobby**：最多 300 秒（5 分钟）
+- **Pro**：最多 800 秒（约 13 分钟）
+- **Enterprise**：最多 800 秒（约 13 分钟）
+
+## 了解更多
+
+- [Fluid Compute 默认设置](https://vercel.com/docs/fluid-compute#default-settings-by-plan)
+- [配置 Vercel 函数的最大持续时间](https://vercel.com/docs/functions/configuring-functions/duration)

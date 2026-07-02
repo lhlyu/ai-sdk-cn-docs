@@ -1,0 +1,117 @@
+---
+title: Helicone
+description: 适用于 AI SDK 的 Helicone 提供商
+---
+
+# Helicone
+
+[Helicone AI 网关](https://helicone.ai/) 让您能够访问数百个 AI 模型，并通过我们的可观测性平台直接进行追踪和监控。
+
+- **统一模型访问**：使用一个 API 密钥即可访问来自 Anthropic、Google、Meta 等领先提供商的数百个模型。
+- **智能提供商选择**：始终选择成本最低的提供商，并为提供商的正常运行时间和速率限制启用故障转移。
+- **简化追踪**：默认通过 Helicone 可观测性监控您的 LLM 性能并调试应用程序，包括对日志、指标和追踪的 OpenTelemetry 支持。
+- **提升性能并降低成本**：缓存响应以减少成本和延迟。
+- **提示词管理**：直接在 Helicone 中处理提示词版本管理和 Playground，无需依赖工程师进行更改。
+
+在 [Helicone 文档](https://helicone.ai/docs) 中了解更多关于 Helicone 功能的信息。
+
+## 设置
+
+Helicone 提供商位于 `@helicone/ai-sdk-provider` 包中。您可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @helicone/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @helicone/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @helicone/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @helicone/ai-sdk-provider" dark />
+  </Tab>
+</Tabs>
+
+## 开始使用
+
+要开始使用 Helicone，请使用 `createHelicone` 函数创建一个提供商实例。然后查询您喜欢的任何模型。
+
+```typescript
+import { createHelicone } from '@helicone/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const helicone = createHelicone({
+  apiKey: process.env.HELICONE_API_KEY,
+});
+
+const result = await generateText({
+  model: helicone('claude-4.5-haiku'),
+  prompt: '写一首关于人工智能的俳句',
+});
+
+console.log(result.text);
+```
+
+您可以从 [Helicone 仪表盘](https://us.helicone.ai/settings/api-keys) 获取您的 Helicone API 密钥。
+
+## 示例
+
+以下是使用 Helicone 与 AI SDK 的示例。
+
+### `generateText`
+
+```javascript
+import { createHelicone } from '@helicone/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const helicone = createHelicone({
+  apiKey: process.env.HELICONE_API_KEY,
+});
+
+const { text } = await generateText({
+  model: helicone('gemini-2.5-flash-lite'),
+  prompt: '什么是 Helicone？',
+});
+
+console.log(text);
+```
+
+### `streamText`
+
+```javascript
+const helicone = createHelicone({
+  apiKey: process.env.HELICONE_API_KEY,
+});
+
+const result = await streamText({
+  model: helicone('deepseek-v3.1-terminus'),
+  prompt: '写一个关于机器人学习绘画的短篇故事',
+  maxOutputTokens: 300,
+});
+
+for await (const chunk of result.textStream) {
+  process.stdout.write(chunk);
+}
+
+console.log('\n\n流式传输完成！');
+```
+
+## 高级功能
+
+Helicone 提供多项高级功能来增强您的 AI 应用程序：
+
+1. **模型灵活性**：无需更改代码或管理多个 API 密钥，即可在数百个模型之间切换。
+
+2. **成本管理**：通过 Helicone 的 LLM 可观测性仪表盘实时管理每个模型的成本。
+
+3. **可观测性**：通过 Helicone 的 LLM 可观测性仪表盘访问所有请求的全面分析和日志。
+
+4. **提示词管理**：通过 Helicone 仪表盘管理提示词和版本。
+
+5. **缓存**：缓存响应以减少成本和延迟。
+
+6. **定期更新**：自动访问新模型和功能。
+
+有关这些功能和高级配置选项的更多信息，请访问 [Helicone 文档](https://docs.helicone.ai)。

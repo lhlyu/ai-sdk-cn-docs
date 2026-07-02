@@ -1,0 +1,173 @@
+---
+title: 背压
+description: 使用 AI SDK 时如何处理背压与取消
+---
+
+# 流式背压与取消
+
+本文重点介绍使用流时如何理解背压与取消。你无需了解这些信息即可使用 AI SDK，但对于感兴趣的读者，本文深入探讨了 SDK 为何以及如何以最优方式流式传输响应。
+
+在以下章节中，我们将通过一个简单的示例程序来探讨背压与取消。我们将讨论"急切"方式可能引发的问题，并演示"惰性"方式如何解决这些问题。
+
+## 流式背压与取消
+
+首先，我们创建一个简单的示例程序：
+
+```jsx
+// 一个生成正整数的生成器
+async function* integers() {
+  let i = 1;
+  while (true) {
+    console.log(`生成 ${i}`);
+    yield i++;
+
+    await sleep(100);
+  }
+}
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 将生成器包装为 ReadableStream
+function createStream(iterator) {
+  return new ReadableStream({
+    async start(controller) {
+      for await (const v of iterator) {
+        controller.enqueue(v);
+      }
+      controller.close();
+    },
+  });
+}
+
+// 从流中收集数据
+async function run() {
+  // 创建一个整数流
+  const stream = createStream(integers());
+
+  // 从流中读取值
+  const reader = stream.getReader();
+  for (let i = 0; i < 10_000; i++) {
+    // 我们知道流是无限的，因此无需检查 `done`
+    const { value } = await reader.read();
+    console.log(`读取 ${value}`);
+
+    await sleep(1_000);
+  }
+}
+run();
+```
+
+在此示例中，我们创建了一个生成正整数的异步生成器、一个包装该生成器的 `ReadableStream`，以及一个从流中读取值的读取器。请注意，整数生成器会输出 `"生成 ${i}"`，而读取器会输出 `"读取 ${value}"`。两者处理数据都需要一定时间，生成器中的 100ms 休眠和读取器中的 1 秒休眠即体现了这一点。
+
+## 背压
+
+如果你运行此程序，会发现一个有趣的现象：每输出一条"读取"日志，大约会输出 10 条"生成"日志。这似乎显而易见——生成器推送值的速度比读取器拉取值快 10 倍。但这代表了一个问题：我们的 `stream` 必须维护一个不断增长的队列，其中包含已推入但尚未取出的项。
+
+问题的根源在于我们将生成器包装成流的方式。请注意 `start` 处理器中使用的 `for await (…)`。这是一个**急切**的 for 循环，它会持续运行以从生成器中获取下一个值并将其入队到流中。这意味着我们的流不尊重背压——即消费者向生产者发出的"暂时不需要更多值"的信号。我们实际上创建了一个线程，它会以最快速度持续向流中推送新数据。更糟糕的是，当我们不需要额外数据时，无法向该线程发送停止信号。
+
+为了解决这个问题，`ReadableStream` 允许使用 `pull` 处理器。每次消费者尝试从流中读取更多数据时（如果内部没有已排队的数据），都会调用 `pull`。但仅仅将 `for await(…)` 移到 `pull` 中是不够的，我们还需要将急切入队转换为**惰性**入队。通过这两项更改，我们就能对消费者做出响应：如果他们需要更多数据，我们可以轻松生成；如果他们不需要，则无需花费时间做无用功。
+
+```jsx
+function createStream(iterator) {
+  return new ReadableStream({
+    async pull(controller) {
+      const { value, done } = await iterator.next();
+
+      if (done) {
+        controller.close();
+      } else {
+        controller.enqueue(value);
+      }
+    },
+  });
+}
+```
+
+我们的 `createStream` 现在略显冗长，但新代码至关重要。首先，我们需要手动调用 `iterator.next()` 方法。该方法返回一个 `Promise`，其对象类型签名为 `{ done: boolean, value: T }`。如果 `done` 为 `true`，则说明生成器不再生成值，我们必须 `close` 流（这能让消费者知道流也已结束生成值）。否则，我们需要 `enqueue` 新生成的值。
+
+运行此程序时，我们会发现"生成"和"读取"日志现在成对出现。我们不再为每次读取生成 10 倍的整数！而且，我们的流现在只需在内部缓冲区中维护 1 个项。我们实际上已将控制权交给了消费者，使其在需要时负责生成新值。太棒了！
+
+## 取消
+
+让我们回到最初的急切示例，稍作修改。现在，我们不再读取 10,000 个整数，而只读取 3 个：
+
+```jsx
+// 一个生成正整数的生成器
+async function* integers() {
+  let i = 1;
+  while (true) {
+    console.log(`生成 ${i}`);
+    yield i++;
+
+    await sleep(100);
+  }
+}
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 将生成器包装为 ReadableStream
+function createStream(iterator) {
+  return new ReadableStream({
+    async start(controller) {
+      for await (const v of iterator) {
+        controller.enqueue(v);
+      }
+      controller.close();
+    },
+  });
+}
+// 从流中收集数据
+async function run() {
+  // 创建一个整数流
+  const stream = createStream(integers());
+
+  // 从流中读取值
+  const reader = stream.getReader();
+  // 这次只读取 3 个项：
+  for (let i = 0; i < 3; i++) {
+    // 我们知道流是无限的，因此无需检查 `done`
+    const { value } = await reader.read();
+    console.log(`读取 ${value}`);
+
+    await sleep(1000);
+  }
+}
+run();
+```
+
+我们又回到了生成值数量是读取值数量 10 倍的情况。但请注意，在读取 3 个值后，我们仍在继续生成新值。我们知道读取器不会再读取任何值，但流不知道！急切的 `for await (…)` 会永远运行下去，不断将新值入队到流的缓冲区中，增加内存使用量，直到耗尽所有可用程序内存。
+
+解决方法完全相同：使用 `pull` 和手动迭代。通过**惰性**生成值，我们将整数生成器的生命周期与读取器的生命周期绑定。一旦读取停止，生成也会停止：
+
+```jsx
+// 将生成器包装为 ReadableStream
+function createStream(iterator) {
+  return new ReadableStream({
+    async pull(controller) {
+      const { value, done } = await iterator.next();
+
+      if (done) {
+        controller.close();
+      } else {
+        controller.enqueue(value);
+      }
+    },
+  });
+}
+```
+
+由于解决方案与实现背压相同，这表明它们只是同一问题的两个方面：向流中推送值应**惰性**进行，而急切推送会导致预期的问题。
+
+## 将流惰性与 AI 响应关联
+
+现在，假设你正在将 AIBot 服务集成到产品中。用户可以提示"从 1 数到无穷大"，浏览器会请求你的 AI API 端点，你的服务器连接到 AIBot 以获取响应。但"无穷大"是无限的，响应永远不会结束！
+
+几秒钟后，用户感到无聊并离开页面。或者，你正在进行本地开发，热模块重新加载刷新了页面。浏览器会断开与 API 端点的连接，但你的服务器会断开与 AIBot 的连接吗？
+
+如果你使用急切的 `for await (...)` 方法，连接仍在运行，你的服务器会不断向 AIBot 请求更多数据。我们的服务器创建了一个"线程"，但无法在急切拉取结束时发出信号。最终，服务器会耗尽内存（记住，没有活动的 fetch 连接来读取缓冲的响应并释放它们）。
+
+{/* 当我们开始为 AI SDK 编写流式代码时，我们确认中止 fetch 会结束来自 Next.js 的流式响应 */}
+
+使用惰性方法，这一切都会自动处理。因为流只会在消费者请求时向 AIBot 请求新数据，离开页面自然会释放所有资源。fetch 连接中止，服务器可以清理响应。与该响应关联的 `ReadableStream` 现在可以被垃圾回收。当这种情况发生时，它持有的与 AIBot 的连接也可以被释放。

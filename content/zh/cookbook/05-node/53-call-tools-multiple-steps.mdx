@@ -1,0 +1,36 @@
+---
+title: 多步骤工具调用
+description: 了解如何使用 AI SDK 和 Node 进行多步骤工具调用
+tags: ['node', '工具使用', '智能体']
+---
+
+# 多步骤工具调用
+
+模型通过调用工具来收集信息或执行模型无法直接完成的操作。
+当工具结果可用时，模型可以利用这些结果生成另一轮响应。
+
+你可以在 `generateText` 中通过 `stopWhen` 定义停止条件，从而启用多步骤工具调用。
+这允许你定义智能体在模型生成工具调用时应停止的条件。
+
+```ts highlight={"7"}
+import { generateText, tool, isStepCount } from 'ai';
+import { z } from 'zod';
+
+const { text, steps } = await generateText({
+  model: 'openai/gpt-4.1',
+  stopWhen: isStepCount(5),
+  tools: {
+    weather: tool({
+      description: '获取某个位置的天气',
+      inputSchema: z.object({
+        location: z.string().describe('要获取天气的位置'),
+      }),
+      execute: async ({ location }: { location: string }) => ({
+        location,
+        temperature: 72 + Math.floor(Math.random() * 21) - 10,
+      }),
+    }),
+  },
+  prompt: '旧金山的天气如何？',
+});
+```

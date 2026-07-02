@@ -1,0 +1,167 @@
+---
+title: pipeAgentUIStreamToResponse
+description: pipeAgentUIStreamToResponse 工具函数的 API 参考文档。
+---
+
+# `pipeAgentUIStreamToResponse`
+
+`pipeAgentUIStreamToResponse` 函数运行一个[智能体](/docs/reference/ai-sdk-core/agent)，并将生成的 UI 消息输出直接流式传输到 Node.js [`ServerResponse`](https://nodejs.org/api/http.html#class-httpserverresponse) 对象。这非常适合在基于 Node.js 的框架（如 Express、Hono 或自定义 Node 服务器）中构建实时流式传输 API 端点（用于聊天、工具调用等）。
+
+## 导入
+
+<Snippet
+  text={`import { pipeAgentUIStreamToResponse } from "ai"`}
+  prompt={false}
+/>
+
+## 用法
+
+```ts
+import { pipeAgentUIStreamToResponse } from 'ai';
+import { MyAgent } from './agent';
+
+export async function handler(req, res) {
+  const { messages } = JSON.parse(req.body);
+
+  await pipeAgentUIStreamToResponse({
+    response: res, // Node.js ServerResponse
+    agent: MyAgent,
+    uiMessages: messages, // 必需：输入 UI 消息数组
+    // abortSignal: 可选的 AbortSignal，用于取消操作
+    // experimental_sandbox: 可选的实验性沙箱，传递给工具执行
+    // status: 200,
+    // headers: { ... },
+    // ...其他可选的 UI 消息流选项
+  });
+}
+```
+
+## 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'response',
+      type: 'ServerResponse',
+      isRequired: true,
+      description:
+        '用于接收 UI 消息流输出的 Node.js ServerResponse 对象。',
+    },
+    {
+      name: 'agent',
+      type: 'Agent',
+      isRequired: true,
+      description:
+        '一个实现了 `.stream({ prompt, ... })` 方法并定义了 `tools` 属性的智能体实例。',
+    },
+    {
+      name: 'uiMessages',
+      type: 'unknown[]',
+      isRequired: true,
+      description:
+        '发送给智能体的输入 UI 消息数组（例如用户/助手消息对象）。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isRequired: false,
+      description:
+        '可选的取消信号，用于取消流式传输（例如，客户端断开连接时）。提供一个 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，例如来自 `AbortController`。',
+    },
+    {
+      name: 'timeout',
+      type: 'number | { totalMs?: number }',
+      isRequired: false,
+      description:
+        '超时时间（毫秒）。可以指定为数字或包含 totalMs 属性的对象。如果调用时间超过指定的超时时间，将被中止。可以与 abortSignal 一起使用。',
+    },
+    {
+      name: 'experimental_sandbox',
+      type: 'Experimental_SandboxSession',
+      isRequired: false,
+      description:
+        '可选的实验性沙箱环境，传递给工具执行。工具可以从其执行上下文中访问它。',
+    },
+    {
+      name: 'options',
+      type: 'CALL_OPTIONS',
+      isRequired: false,
+      description:
+        '可选的智能体调用选项，适用于配置了泛型参数 `CALL_OPTIONS` 的智能体。',
+    },
+    {
+      name: 'experimental_transform',
+      type: 'StreamTextTransform | StreamTextTransform[]',
+      isRequired: false,
+      description:
+        '可选的流文本转换，应用于智能体输出。',
+    },
+    {
+      name: 'onStepEnd',
+      type: 'GenerateTextOnStepEndCallback',
+      isRequired: false,
+      description:
+        '每个智能体步骤（LLM/工具调用）完成后调用的回调函数。用于跟踪令牌使用情况、每步性能或记录中间步骤。',
+    },
+    {
+      name: 'onStepFinish',
+      type: 'GenerateTextOnStepFinishCallback',
+      isRequired: false,
+      description:
+        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时作为回退使用。',
+    },
+    {
+      name: '...UIMessageStreamResponseInit & UIMessageStreamOptions',
+      type: 'object',
+      isRequired: false,
+      description:
+        '用于流式传输头部、状态、SSE 流配置以及额外 UI 消息流控制的选项。',
+    },
+  ]}
+/>
+
+## 返回值
+
+一个 `Promise<void>`。当 UI 消息流已完全发送到提供的 ServerResponse 时，该函数完成。
+
+## 示例：Express 路由处理器
+
+```ts
+import { pipeAgentUIStreamToResponse } from 'ai';
+import { openaiWebSearchAgent } from './openai-web-search-agent';
+
+app.post('/chat', async (req, res) => {
+  // 使用 req.body.messages 作为输入 UI 消息
+  await pipeAgentUIStreamToResponse({
+    response: res,
+    agent: openaiWebSearchAgent,
+    uiMessages: req.body.messages,
+    // experimental_sandbox, // 可选
+    // abortSignal: yourController.signal
+    // status: 200,
+    // headers: { ... },
+    // ...更多选项
+  });
+});
+```
+
+## 工作原理
+
+1. **运行智能体：** 使用提供的 UI 消息和选项调用智能体的 `.stream` 方法，根据需要将其转换为模型消息，并传递诸如 `experimental_sandbox` 之类的选项。
+2. **流式传输 UI 消息输出：** 将智能体输出作为 UI 消息流传输到 `ServerResponse`，通过流式 HTTP 响应（包括适当的头部）发送数据。
+3. **中止信号处理：** 如果提供了 `abortSignal`，一旦信号被触发（例如客户端断开连接），流式传输将立即取消。
+4. **无响应返回：** 与返回 `Response` 的 Edge/无服务器 API 不同，此函数直接将字节写入 ServerResponse，并且不返回响应对象。
+
+## 注意事项
+
+- **中止处理：** 为了获得最佳鲁棒性，请使用 `AbortSignal`（例如，连接到 Express/Hono 客户端断开连接），以确保快速取消智能体计算和流式传输。
+- **仅限 Node.js：** 仅适用于 Node.js [ServerResponse](https://nodejs.org/api/http.html#class-httpserverresponse) 对象（例如，在 Express、Hono 的 node 适配器等中），不适用于 Edge/无服务器/Web Response API。
+- **流式传输支持：** 确保您的客户端（以及任何代理）正确支持流式 HTTP 响应，以获得完整效果。
+- **参数名称：** 输入消息的属性是 `uiMessages`（而不是 `messages`），以与 SDK 智能体工具保持一致。
+- 当您的智能体工具在执行期间需要实验性沙箱环境时，请传递 `experimental_sandbox`。
+
+## 参见
+
+- [`createAgentUIStreamResponse`](/docs/reference/ai-sdk-core/create-agent-ui-stream-response)
+- [`Agent`](/docs/reference/ai-sdk-core/agent)
+- [`UIMessage`](/docs/reference/ai-sdk-core/ui-message)

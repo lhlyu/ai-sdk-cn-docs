@@ -1,0 +1,396 @@
+---
+title: 流式传输自定义数据
+description: 学习如何将自定义数据从服务器流式传输到客户端。
+---
+
+# 流式传输自定义数据
+
+在模型响应之外发送额外数据通常非常有用。例如，你可能需要发送状态信息、存储后的消息 ID，或语言模型引用的内容引用。
+
+AI SDK 提供了多个辅助工具，让你能够将额外数据流式传输到客户端，并将其附加到 `UIMessage` 的 parts 数组中：
+
+- `createUIMessageStream`：创建一个数据流
+- `createUIMessageStreamResponse`：创建一个流式传输数据的响应对象
+- `pipeUIMessageStreamToResponse`：将数据流传输到服务器响应对象
+
+这些数据作为响应流的一部分，通过服务器发送事件（Server-Sent Events）进行流式传输。
+
+## 设置类型安全的数据流式传输
+
+首先，定义你的自定义消息类型，并包含数据部分 schema 以确保类型安全：
+
+```tsx filename="ai/types.ts"
+import { UIMessage } from 'ai';
+
+// 定义自定义消息类型，包含数据部分 schema
+export type MyUIMessage = UIMessage<
+  never, // 元数据类型
+  {
+    weather: {
+      city: string;
+      weather?: string;
+      status: 'loading' | 'success';
+    };
+    notification: {
+      message: string;
+      level: 'info' | 'warning' | 'error';
+    };
+  } // 数据类型
+>;
+```
+
+## 从服务器流式传输数据
+
+在服务器端路由处理器中，你可以创建一个 `UIMessageStream`，然后将其传递给 `createUIMessageStreamResponse`：
+
+```tsx filename="route.ts"
+import { openai } from '@ai-sdk/openai';
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+__PROVIDER_IMPORT__;
+import type { MyUIMessage } from '@/ai/types';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const stream = createUIMessageStream<MyUIMessage>({
+    execute: ({ writer }) => {
+      // 1. 发送初始状态（临时 - 不会添加到消息历史中）
+      writer.write({
+        type: 'data-notification',
+        data: { message: '正在处理你的请求...', level: 'info' },
+        transient: true, // 此部分不会添加到消息历史中
+      });
+
+      // 2. 发送来源（适用于 RAG 场景）
+      writer.write({
+        type: 'source',
+        value: {
+          type: 'source',
+          sourceType: 'url',
+          id: 'source-1',
+          url: 'https://weather.com',
+          title: '天气数据来源',
+        },
+      });
+
+      // 3. 发送带有加载状态的数据部分
+      writer.write({
+        type: 'data-weather',
+        id: 'weather-1',
+        data: { city: '旧金山', status: 'loading' },
+      });
+
+      const result = streamText({
+        model: __MODEL__,
+        messages: await convertToModelMessages(messages),
+        onEnd() {
+          // 4. 更新同一数据部分（协调）
+          writer.write({
+            type: 'data-weather',
+            id: 'weather-1', // 相同 ID = 更新现有部分
+            data: {
+              city: '旧金山',
+              weather: '晴朗',
+              status: 'success',
+            },
+          });
+
+          // 5. 发送完成通知（临时）
+          writer.write({
+            type: 'data-notification',
+            data: { message: '请求已完成', level: 'info' },
+            transient: true, // 不会添加到消息历史中
+          });
+        },
+      });
+
+      writer.merge(toUIMessageStream({ stream: result.stream }));
+    },
+  });
+
+  return createUIMessageStreamResponse({ stream });
+}
+```
+
+<Note>
+  你也可以从自定义后端（例如 Python / FastAPI）发送流数据，使用 [UI 消息流协议](/docs/ai-sdk-ui/stream-protocol#ui-message-stream-protocol)。
+</Note>
+
+## 可流式数据类型
+
+### 数据部分（持久化）
+
+常规数据部分会添加到消息历史中，并出现在 `message.parts` 中：
+
+```tsx
+writer.write({
+  type: 'data-weather',
+  id: 'weather-1', // 可选：启用协调
+  data: { city: '旧金山', status: 'loading' },
+});
+```
+
+### 来源
+
+来源对于 RAG 实现非常有用，可以展示引用了哪些文档或 URL：
+
+```tsx
+writer.write({
+  type: 'source',
+  value: {
+    type: 'source',
+    sourceType: 'url',
+    id: 'source-1',
+    url: 'https://example.com',
+    title: '示例来源',
+  },
+});
+```
+
+### 临时数据部分（短暂）
+
+临时部分会发送到客户端，但不会添加到消息历史中。它们只能通过 `useChat` 的 `onData` 处理器访问：
+
+```tsx
+// 服务器端
+writer.write({
+  type: 'data-notification',
+  data: { message: '处理中...', level: 'info' },
+  transient: true, // 不会添加到消息历史中
+});
+
+// 客户端
+const [notification, setNotification] = useState();
+
+const { messages } = useChat({
+  onData: ({ data, type }) => {
+    if (type === 'data-notification') {
+      setNotification({ message: data.message, level: data.level });
+    }
+  },
+});
+```
+
+## 数据部分协调
+
+当你使用相同 ID 写入数据部分时，客户端会自动协调并更新该部分。这可以实现强大的动态体验，例如：
+
+- **协作工件** - 实时更新代码、文档或设计
+- **渐进式数据加载** - 显示加载状态，然后转换为最终结果
+- **实时状态更新** - 更新进度条、计数器或状态指示器
+- **交互式组件** - 构建基于用户交互演变的 UI 元素
+
+协调会自动进行——只需在写入流时使用相同的 `id` 即可。
+
+## 在客户端处理数据
+
+### 使用 onData 回调
+
+`onData` 回调对于处理流式数据（尤其是临时部分）至关重要：
+
+```tsx filename="page.tsx"
+import { useChat } from '@ai-sdk/react';
+import type { MyUIMessage } from '@/ai/types';
+
+const { messages } = useChat<MyUIMessage>({
+  api: '/api/chat',
+  onData: dataPart => {
+    // 处理所有到达的数据部分（包括临时部分）
+    console.log('收到数据部分:', dataPart);
+
+    // 处理不同类型的数据部分
+    if (dataPart.type === 'data-weather') {
+      console.log('天气更新:', dataPart.data);
+    }
+
+    // 处理临时通知（仅在此处可用，不在 message.parts 中）
+    if (dataPart.type === 'data-notification') {
+      showToast(dataPart.data.message, dataPart.data.level);
+    }
+  },
+});
+```
+
+**重要提示：** 临时数据部分**仅**通过 `onData` 回调可用。它们不会出现在 `message.parts` 数组中，因为它们不会被添加到消息历史中。
+
+### 渲染持久化数据部分
+
+你可以从消息 parts 数组中过滤并渲染数据部分：
+
+```tsx filename="page.tsx"
+const result = (
+  <>
+    {messages?.map(message => (
+      <div key={message.id}>
+        {/* 渲染天气数据部分 */}
+        {message.parts
+          .filter(part => part.type === 'data-weather')
+          .map((part, index) => (
+            <div key={index} className="weather-widget">
+              {part.data.status === 'loading' ? (
+                <>正在获取 {part.data.city} 的天气...</>
+              ) : (
+                <>
+                  {part.data.city} 的天气：{part.data.weather}
+                </>
+              )}
+            </div>
+          ))}
+
+        {/* 渲染文本内容 */}
+        {message.parts
+          .filter(part => part.type === 'text')
+          .map((part, index) => (
+            <div key={index}>{part.text}</div>
+          ))}
+
+        {/* 渲染来源 */}
+        {message.parts
+          .filter(part => part.type === 'source')
+          .map((part, index) => (
+            <div key={index} className="source">
+              来源：<a href={part.url}>{part.title}</a>
+            </div>
+          ))}
+      </div>
+    ))}
+  </>
+);
+```
+
+### 完整示例
+
+```tsx filename="page.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+import type { MyUIMessage } from '@/ai/types';
+
+export default function Chat() {
+  const [input, setInput] = useState('');
+
+  const { messages, sendMessage } = useChat<MyUIMessage>({
+    api: '/api/chat',
+    onData: dataPart => {
+      // 处理临时通知
+      if (dataPart.type === 'data-notification') {
+        console.log('通知:', dataPart.data.message);
+      }
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage({ text: input });
+    setInput('');
+  };
+
+  return (
+    <>
+      {messages?.map(message => (
+        <div key={message.id}>
+          {message.role === 'user' ? '用户：' : 'AI：'}
+
+          {/* 渲染天气数据 */}
+          {message.parts
+            .filter(part => part.type === 'data-weather')
+            .map((part, index) => (
+              <span key={index} className="weather-update">
+                {part.data.status === 'loading' ? (
+                  <>正在获取 {part.data.city} 的天气...</>
+                ) : (
+                  <>
+                    {part.data.city} 的天气：{part.data.weather}
+                  </>
+                )}
+              </span>
+            ))}
+
+          {/* 渲染文本内容 */}
+          {message.parts
+            .filter(part => part.type === 'text')
+            .map((part, index) => (
+              <div key={index}>{part.text}</div>
+            ))}
+        </div>
+      ))}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="询问天气..."
+        />
+        <button type="submit">发送</button>
+      </form>
+    </>
+  );
+}
+```
+
+## 使用场景
+
+- **RAG 应用** - 流式传输来源和检索到的文档
+- **实时状态** - 显示加载状态和进度更新
+- **协作工具** - 流式传输共享工件的实时更新
+- **分析** - 发送使用数据而不占用消息历史
+- **通知** - 显示临时提醒和状态消息
+
+## 消息元数据 vs 数据部分
+
+[消息元数据](/docs/ai-sdk-ui/message-metadata)和数据部分都可以让你在消息之外发送额外信息，但它们服务于不同的目的：
+
+### 消息元数据
+
+消息元数据最适合描述整个消息的**消息级别信息**：
+
+- 通过 `message.metadata` 附加到消息级别
+- 使用 `toUIMessageStream` 中的 `messageMetadata` 回调发送
+- 适用于：时间戳、模型信息、令牌使用量、用户上下文
+- 通过自定义元数据类型实现类型安全
+
+```ts
+// 服务器端：发送关于消息的元数据
+return createUIMessageStreamResponse({
+  stream: toUIMessageStream({
+    stream: result.stream,
+    messageMetadata: ({ part }) => {
+      if (part.type === 'finish') {
+        return {
+          model: part.response.modelId,
+          totalTokens: part.totalUsage.totalTokens,
+          createdAt: Date.now(),
+        };
+      }
+    },
+  }),
+});
+```
+
+### 数据部分
+
+数据部分最适合流式传输**动态任意数据**：
+
+- 通过 `message.parts` 添加到消息 parts 数组
+- 使用 `createUIMessageStream` 和 `writer.write()` 进行流式传输
+- 可以使用相同 ID 进行协调/更新
+- 支持不持久化的临时部分
+- 适用于：动态内容、加载状态、交互式组件
+
+```ts
+// 服务器端：将数据作为消息内容的一部分流式传输
+writer.write({
+  type: 'data-weather',
+  id: 'weather-1',
+  data: { city: '旧金山', status: 'loading' },
+});
+```
+
+有关消息元数据的更多详细信息，请参阅[消息元数据文档](/docs/ai-sdk-ui/message-metadata)。

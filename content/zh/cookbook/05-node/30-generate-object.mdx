@@ -1,0 +1,37 @@
+---
+title: 生成对象
+description: 学习如何使用 AI SDK 和 Node 生成结构化数据
+tags: ['node', '结构化数据']
+---
+
+# 生成对象
+
+之前的 `generateText` 和 `streamText` 等函数让我们能够生成非结构化文本。但如果你想要生成 JSON 等结构化数据，可以为 `generateText` 提供一个描述目标对象结构的 `Output`。
+
+`Output.object` 函数要求你使用 [zod](https://zod.dev) 提供模式定义，这是一个用于定义 JavaScript 对象模式的库。通过使用 zod，你还可以用它来验证生成的对象，确保其符合指定的结构。
+
+```ts file='index.ts'
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+
+const result = await generateText({
+  model: 'openai/gpt-4.1',
+  output: Output.object({
+    schema: z.object({
+      recipe: z.object({
+        name: z.string(),
+        ingredients: z.array(
+          z.object({
+            name: z.string(),
+            amount: z.string(),
+          }),
+        ),
+        steps: z.array(z.string()),
+      }),
+    }),
+  }),
+  prompt: '生成一份千层面食谱。',
+});
+
+console.log(JSON.stringify(result.output.recipe, null, 2));
+```

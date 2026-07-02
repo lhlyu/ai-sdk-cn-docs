@@ -1,0 +1,133 @@
+---
+title: Crosshatch
+description: 了解如何使用 AI SDK 的 Crosshatch 提供商。
+---
+
+# Crosshatch 提供商
+
+<Note type="warning">
+  此社区提供商尚不兼容 AI SDK 5。请等待提供商更新，或考虑使用 [兼容 AI SDK 5 的提供商](/providers/ai-sdk-providers)。
+</Note>
+
+[Crosshatch](https://crosshatch.io) 提供商支持对用户共享的数据进行权限访问，从而安全地从主流语言模型进行推理，并基于完整的用户上下文提供个性化响应。
+
+它创建语言模型对象，可与 `generateText` 和 `streamText` 函数一起使用，并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据。
+
+## 安装
+
+Crosshatch 提供商可通过 `@crosshatch/ai-provider` 模块获取。您可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @crosshatch/ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @crosshatch/ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @crosshatch/ai-provider" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @crosshatch/ai-provider" dark />
+  </Tab>
+</Tabs>
+
+[Crosshatch](https://crosshatch.io/) 提供商支持其所有可用模型，例如 OpenAI 的 GPT 和 Anthropic 的 Claude。该提供商还支持用于控制 Crosshatch 自定义数据集成行为的查询接口。此提供商封装了现有的底层提供商（[@ai-sdk/openai](/providers/ai-sdk-providers/openai)、[@ai-sdk/anthropic](/providers/ai-sdk-providers/openai)）。
+
+### 凭证
+
+Crosshatch 提供商通过用户特定的令牌进行身份验证，从而实现对个性化推理的权限访问。
+
+您可以从 [Crosshatch 开发者仪表板](https://platform.crosshatch.io/) 获取合成和测试用户令牌。
+
+生产用户令牌通过 [Link SDK](https://www.npmjs.com/package/@crosshatch/link) 使用您的 Crosshatch 开发者客户端 ID 进行配置和访问。
+
+## 提供商实例
+
+要创建 Crosshatch 提供商实例，请使用 `createCrosshatch` 函数：
+
+```ts
+import createCrosshatch from '@crosshatch/ai-provider';
+```
+
+## 语言模型
+
+您可以使用提供商实例创建 [Crosshatch 模型](https://docs.crosshatch.io/endpoints/ai#supported-model-providers)。
+
+```ts
+import { createCrosshatch } from '@crosshatch/ai-provider';
+const crosshatch = createCrosshatch();
+```
+
+要创建模型实例，请调用提供商实例并在第一个参数中指定要使用的模型。在第二个参数中，指定用户认证令牌、所需上下文和模型参数。您可以使用 Crosshatch 基于权限化的用户上下文和您喜欢的语言模型生成文本。
+
+### 示例：基于上下文生成文本
+
+此示例使用 `gpt-4o-mini` 生成文本。
+
+```ts
+import { generateText } from 'ai';
+import createCrosshatch from '@crosshatch/ai-provider':
+const crosshatch = createCrosshatch();
+
+const { text } = await generateText({
+  model: crosshatch.languageModel("gpt-4o-mini", {
+    token: 'YOUR_ACCESS_TOKEN',
+    replace: {
+      restaurants: {
+        select: ["entity_name", "entity_city", "entity_region"],
+        from: "personalTimeline",
+        where: [
+          { field: "event", op: "=", value: "confirmed" },
+          { field: "entity_subtype2", op: "=", value: "RESTAURANTS" }
+        ],
+        groupby: ["entity_name", "entity_city", "entity_region"],
+        orderby: "count DESC",
+        limit: 5
+      }
+    }
+  }),
+  system: `用户最近在这些餐厅用餐：{restaurants}`,
+  messages: [{role: "user", content: "我在巴黎应该住在哪里？"}]
+});
+```
+
+### 示例：基于上下文推荐项目
+
+使用 Crosshatch 根据用户最近的购买记录重新排序项目。
+
+```ts
+import { streamText, Output } from 'ai';
+import createCrosshatch from `@crosshatch/ai-provider`
+const crosshatch = createCrosshatch();
+
+const itemSummaries = [...]; // 项目列表
+const ids = (itemSummaries?.map(({ itemId }) => itemId) ?? []) as string[];
+
+const { elementStream } = streamText({
+  output: Output.array({
+    element: jsonSchema<{ id: string; reason: string }>({
+      type: "object",
+      properties: {
+        id: { type: "string", enum: ids },
+        reason: { type: "string", description: "解释您的排序理由。" },
+      },
+    }),
+  }),
+  model: crosshatch.languageModel("gpt-4o-mini", {
+    token,
+    replace: {
+      "orders": {
+        select: ["originalTimestamp", "entity_name", "order_total", "order_summary"],
+        from: "personalTimeline",
+        where: [{ field: "event", op: "=", value: "purchased" }],
+        orderBy: [{ field: "originalTimestamp", dir: "desc" }],
+        limit: 5,
+      },
+    },
+  }),
+  system: `根据与用户最近购买记录 {orders} 的匹配度，重新排序以下项目`,
+  messages: [{role: "user", content: "以下是项目列表：${JSON.stringify(itemSummaries)"},],
+})
+```

@@ -1,0 +1,194 @@
+---
+title: runAgentTUI
+description: `runAgentTUI` 函数的 API 参考文档。
+---
+
+# `runAgentTUI()`
+
+在交互式终端 UI 中运行 `ToolLoopAgent`。该终端 UI 读取用户提示词，流式传输智能体响应，渲染 Markdown，显示工具和推理部分，并处理手动工具审批。
+
+`runAgentTUI` 会持续运行，直到用户按下 `Esc` 或 `Ctrl+C` 退出。
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { runAgentTUI } from '@ai-sdk/tui';
+import { ToolLoopAgent } from 'ai';
+
+const agent = new ToolLoopAgent({
+  model: openai('gpt-5'),
+  instructions: '你是一个有用的终端助手。',
+});
+
+await runAgentTUI({
+  title: '助手',
+  agent,
+});
+```
+
+## 导入
+
+<Snippet text={`import { runAgentTUI } from "@ai-sdk/tui"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'options',
+      type: 'RunAgentTUIOptions',
+      isRequired: true,
+      description: '启动终端 UI 的选项。',
+      properties: [
+        {
+          type: 'RunAgentTUIOptions',
+          parameters: [
+            {
+              name: 'agent',
+              type: 'AgentTUIAgent',
+              isRequired: true,
+              description:
+                '要运行的智能体。该智能体不能要求每次调用的选项，也不能使用结构化输出。',
+            },
+            {
+              name: 'title',
+              type: 'string',
+              isOptional: true,
+              description:
+                '终端 UI 中显示的标题。如果省略，则不显示标题。',
+            },
+            {
+              name: 'tools',
+              type: "'full' | 'collapsed' | 'auto-collapsed' | 'hidden'",
+              isOptional: true,
+              description:
+                '控制工具调用部分的显示方式。默认为 `auto-collapsed`。',
+            },
+            {
+              name: 'reasoning',
+              type: "'full' | 'collapsed' | 'auto-collapsed' | 'hidden'",
+              isOptional: true,
+              description:
+                '控制推理部分的显示方式。默认为 `auto-collapsed`。',
+            },
+            {
+              name: 'responseStatistics',
+              type: "'outputTokenCount' | 'outputTokensPerSecond'",
+              isOptional: true,
+              description:
+                '控制响应头部中显示的响应统计信息。默认为 `outputTokensPerSecond`。',
+            },
+            {
+              name: 'contextSize',
+              type: 'number',
+              isOptional: true,
+              description:
+                '模型上下文窗口大小（以 token 计）。当提供此参数时，终端 UI 会将总 token 使用量显示为该上下文窗口的百分比。',
+            },
+            {
+              name: 'sandbox',
+              type: 'Experimental_SandboxSession',
+              isOptional: true,
+              description:
+                '沙箱会话，每次调用时作为 `experimental_sandbox` 传递给智能体。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'returns',
+      type: 'Promise<void>',
+      description: '一个 Promise，在终端 UI 退出时解析。',
+    },
+  ]}
+/>
+
+## 类型
+
+### `AgentTUIAgent`
+
+与终端 UI 兼容的智能体：
+
+```ts
+type AgentTUIAgent = Agent<undefined, any, any, never>;
+```
+
+这意味着该智能体没有每次调用的选项，也没有结构化输出。
+
+### `TerminalPartDisplayMode`
+
+控制终端部分的显示方式：
+
+```ts
+type TerminalPartDisplayMode =
+  | 'full'
+  | 'collapsed'
+  | 'auto-collapsed'
+  | 'hidden';
+```
+
+- `"full"`：显示部分标题和完整内容。
+- `"collapsed"`：仅显示部分标题。
+- `"auto-collapsed"`：显示最新的部分为展开状态，直到出现另一个可见部分，然后将其折叠。
+- `"hidden"`：完全省略该部分。
+
+### `ResponseStatisticsMode`
+
+控制显示的响应统计信息：
+
+```ts
+type ResponseStatisticsMode = 'outputTokenCount' | 'outputTokensPerSecond';
+```
+
+- `"outputTokenCount"`：显示响应中的输出 token 数量。
+- `"outputTokensPerSecond"`：显示响应的输出 token 吞吐量。
+
+## 带工具显示选项的示例
+
+```ts
+await runAgentTUI({
+  title: '助手',
+  agent,
+  tools: 'auto-collapsed',
+  reasoning: 'collapsed',
+  responseStatistics: 'outputTokenCount',
+  contextSize: 200_000,
+});
+```
+
+## 带沙箱的示例
+
+```ts
+import { createJustBashSandbox } from '@ai-sdk/sandbox-just-bash';
+
+const sandboxSession = await createJustBashSandbox({
+  cwd: '/home/user',
+}).createSession();
+
+await runAgentTUI({
+  title: '沙箱助手',
+  agent,
+  sandbox: sandboxSession.restricted(),
+});
+```
+
+沙箱会作为 `experimental_sandbox` 转发到每次 `agent.stream()` 调用，使其可用于工具描述函数和工具 `execute` 函数。当模型需要了解沙箱特定细节（如工作目录或暴露的端口）时，请在智能体指令中包含沙箱描述。
+
+## 兼容性
+
+对于可以直接从自由格式用户输入运行的智能体，使用 `runAgentTUI`。当需要固定提示词、每次调用的选项、结构化输出、自定义结果检查或自定义流处理时，直接使用 `agent.generate()` 或 `agent.stream()`。
+
+## 相关
+
+- [终端 UI 指南](/docs/agents/terminal-ui)
+- [构建智能体](/docs/agents/building-agents)
+- [ToolLoopAgent 指南](/docs/agents/overview#tooloopagent-class)

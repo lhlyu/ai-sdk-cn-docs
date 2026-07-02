@@ -1,0 +1,102 @@
+---
+title: A2A
+description: AI SDK 的 A2A 协议提供商
+---
+
+# A2A
+
+[dracoblue/a2a-ai-provider](https://github.com/dracoblue/a2a-ai-provider) 是一个社区提供商，支持将符合 [A2A 协议](https://a2aproject.github.io/A2A/specification/) 的智能体与 [AI SDK](https://ai-sdk.dev/) 结合使用。这使得开发者能够通过基于 HTTP 的标准化 JSON-RPC 接口，对文本、工具调用和工件进行流式传输、发送和接收。
+
+<Note type="warning">
+  `a2a-ai-provider` 包正在持续开发中。
+</Note>
+
+该提供商支持（通过使用官方 a2a-js SDK [@a2a-js/sdk](https://github.com/a2aproject/a2a-js)）：
+
+- **流式文本响应**：通过 `sendSubscribe` 和 SSE 实现
+- **文件和工件上传**：上传至 A2A 服务器
+- **多模态消息**：支持文本和文件部分
+- **完全符合 JSON-RPC 2.0 规范**：适用于兼容 A2A 的 LLM 智能体
+
+在 [A2A 项目网站](https://a2aproject.github.io/A2A/) 了解更多关于 A2A 的信息。
+
+## 安装
+
+从 npm 安装 `a2a-ai-provider`：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add a2a-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install a2a-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add a2a-ai-provider" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add a2a-ai-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+为 A2A 服务器创建提供商实例：
+
+```ts
+import { a2a } from 'a2a-ai-provider';
+```
+
+## 示例
+
+现在你可以像这样将提供商与 AI SDK 结合使用：
+
+### `generateText`
+
+```ts
+import { a2a } from 'a2a-ai-provider';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: a2a('https://your-a2a-server.example.com'),
+  prompt: '什么是爱？',
+});
+
+console.log(result.text);
+```
+
+### `streamText`
+
+```ts
+import { a2a } from 'a2a-ai-provider';
+import { streamText } from 'ai';
+
+const chatId = 'unique-chat-id'; // 每个对话使用唯一 ID，以在 A2A 服务器中保留历史记录
+
+const streamResult = streamText({
+  model: a2a('https://your-a2a-server.example.com'),
+  prompt: '什么是爱？',
+  providerOptions: {
+    a2a: {
+      contextId: chatId,
+    },
+  },
+});
+
+await streamResult.consumeStream();
+
+console.log(await streamResult.content);
+```
+
+## 功能特性
+
+- **文本流式传输**：逐 token 流式输出 A2A 服务器的结果
+- **文件上传**：在提示词中发送文件
+- **工件处理**：在流式或最终结果中接收文件工件
+
+## 其他资源
+
+- [GitHub 仓库](https://github.com/DracoBlue/a2a-ai-provider)
+- [A2A 协议规范](https://a2aproject.github.io/A2A/specification/)
+- 许可证：MIT

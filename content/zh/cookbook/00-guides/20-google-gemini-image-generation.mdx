@@ -1,0 +1,105 @@
+---
+title: Google Gemini 图像生成
+description: 使用 AI SDK 和 Google Gemini 2.5 Flash Image 生成和编辑图像。
+tags: ['image-generation', 'google', 'gemini']
+---
+
+# 使用 Google Gemini 2.5 Flash 生成和编辑图像
+
+本指南将向你展示如何使用 AI SDK 和 Google 最新的多模态语言模型 Gemini 2.5 Flash Image 生成和编辑图像。
+
+## 生成图像
+
+由于 Gemini 2.5 Flash Image 是一个具有多模态能力的语言模型，你可以使用 `generateText` 或 `streamText` 函数（而非 `generateImage`）来创建图像。模型会根据你的提示词和配置决定以何种模态进行响应。以下是创建第一张图像的方法：
+
+```ts
+import { generateText } from 'ai';
+import fs from 'node:fs';
+import 'dotenv/config';
+
+async function generateImage() {
+  const result = await generateText({
+    model: 'google/gemini-2.5-flash-image',
+    prompt:
+      'Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme',
+  });
+
+  // 保存生成的图像
+  for (const file of result.files) {
+    if (file.mediaType.startsWith('image/')) {
+      const timestamp = Date.now();
+      const fileName = `generated-${timestamp}.png`;
+
+      fs.mkdirSync('output', { recursive: true });
+      await fs.promises.writeFile(`output/${fileName}`, file.uint8Array);
+
+      console.log(`Generated and saved image: output/${fileName}`);
+    }
+  }
+}
+
+generateImage().catch(console.error);
+```
+
+以下是一些需要记住的关键点：
+
+- 生成的图像会返回在 `result.files` 数组中
+- 图像以 `Uint8Array` 数据形式返回
+- 模型利用了 Gemini 的世界知识，因此详细的提示词能带来更好的结果
+
+## 编辑图像
+
+Gemini 2.5 Flash Image 擅长通过自然语言指令编辑现有图像。你可以添加元素、修改样式或转换图像，同时保持其核心特征：
+
+```ts
+import { generateText } from 'ai';
+import fs from 'node:fs';
+import 'dotenv/config';
+
+async function editImage() {
+  const editResult = await generateText({
+    model: 'google/gemini-2.5-flash-image',
+    prompt: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Add a small wizard hat to this cat. Keep everything else the same.',
+          },
+          {
+            type: 'file',
+            // data: DataContent (string | Uint8Array | ArrayBuffer | Buffer) 或 URL
+            data: new URL(
+              'https://raw.githubusercontent.com/vercel/ai/refs/heads/main/examples/ai-functions/data/comic-cat.png',
+            ),
+            mediaType: 'image/jpeg',
+          },
+        ],
+      },
+    ],
+  });
+
+  // 保存编辑后的图像
+  const timestamp = Date.now();
+  fs.mkdirSync('output', { recursive: true });
+
+  for (const file of editResult.files) {
+    if (file.mediaType.startsWith('image/')) {
+      await fs.promises.writeFile(
+        `output/edited-${timestamp}.png`,
+        file.uint8Array,
+      );
+      console.log(`Saved edited image: output/edited-${timestamp}.png`);
+    }
+  }
+}
+
+editImage().catch(console.error);
+```
+
+## 下一步是什么？
+
+你已经学会了如何使用 Google 的 Gemini 2.5 Flash Image 模型，通过文本提示词生成新图像，以及使用自然语言指令编辑现有图像。
+
+如需了解更多高级技术、集成模式和实践示例，请查看我们的 [Cookbook](/cookbook)，那里有构建复杂 AI 驱动应用的全面指南。

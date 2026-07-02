@@ -1,0 +1,43 @@
+---
+title: AI_NoObjectGeneratedError
+description: 了解如何修复 AI_NoObjectGeneratedError 错误
+---
+
+# AI_NoObjectGeneratedError
+
+当 AI 提供商未能生成符合 schema 的可解析对象时，会触发此错误。
+可能由以下原因导致：
+
+- 模型未能生成响应。
+- 模型生成了无法解析的响应。
+- 模型生成的响应未能通过 schema 验证。
+
+## 属性
+
+- `message`：错误消息（可选，默认为 `'No object generated.'`）。
+- `text`：模型生成的文本。根据对象生成模式，可以是原始文本或工具调用文本（可选）。
+- `response`：语言模型响应的元数据，包括响应 ID、时间戳和模型（构造函数中必需）。
+- `usage`：请求的 token 使用量（构造函数中必需）。
+- `finishReason`：请求的完成原因。例如，如果模型生成了最大数量的 token，可能导致 JSON 解析错误，此时值为 `'length'`（构造函数中必需）。
+- `cause`：错误原因（例如 JSON 解析错误）。可用于更详细的错误处理（可选）。
+
+## 检查此错误
+
+您可以使用以下方法检查错误是否为 `AI_NoObjectGeneratedError` 的实例：
+
+```typescript
+import { generateText, NoObjectGeneratedError, Output } from 'ai';
+
+try {
+  await generateText({ model, output: Output.object({ schema }), prompt });
+} catch (error) {
+  if (NoObjectGeneratedError.isInstance(error)) {
+    console.log('NoObjectGeneratedError');
+    console.log('原因:', error.cause);
+    console.log('文本:', error.text);
+    console.log('响应:', error.response);
+    console.log('使用量:', error.usage);
+    console.log('完成原因:', error.finishReason);
+  }
+}
+```

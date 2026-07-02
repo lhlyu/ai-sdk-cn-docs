@@ -1,0 +1,113 @@
+---
+title: Clarifai
+description: 使用 AI SDK 调用 Clarifai 兼容 OpenAI 的 API。
+---
+
+# Clarifai 提供商
+
+[Clarifai](https://docs.clarifai.com/getting-started/quickstart) 是一个用于构建、部署和扩展 AI 驱动应用的平台。它提供了一套用于计算机视觉、自然语言处理和生成式 AI 的工具和 API。Clarifai 通过其全栈 AI 开发平台提供了兼容 OpenAI 的 API，使得使用 AI SDK 集成强大的 AI 功能变得简单。
+
+## 安装
+
+Clarifai 提供商可通过 `@ai-sdk/openai-compatible` 模块获取，因为它兼容 OpenAI API。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/openai-compatible" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+要使用 Clarifai，你可以通过 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建一个自定义提供商实例：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const clarifai = createOpenAICompatible({
+  name: 'clarifai',
+  baseURL: 'https://api.clarifai.com/v2/ext/openai/v1',
+  apiKey: process.env.CLARIFAI_PAT,
+});
+```
+
+<Note>
+  你可以通过在 Clarifai [账户设置](https://clarifai.com/settings/security) 中创建个人访问令牌（PAT）来获取 API 密钥。请确保使用你的 PAT 设置 `CLARIFAI_PAT` 环境变量。
+
+新用户可以在 [Clarifai](https://clarifai.com/signup) 上注册免费账户开始使用。
+
+</Note>
+
+## 语言模型
+
+你可以使用提供商实例与 Clarifai 上提供的各种大型语言模型（LLM）进行交互。例如，使用 [DeepSeek-R1](https://clarifai.com/deepseek-ai/deepseek-chat/models/DeepSeek-R1-0528-Qwen3-8B)，一个强大的开源语言模型：
+
+```ts
+const model = clarifai.chatModel(
+  'https://clarifai.com/deepseek-ai/deepseek-chat/models/DeepSeek-R1-0528-Qwen3-8B',
+);
+```
+
+### 示例 - 生成文本
+
+你可以使用 `generateText` 函数通过 Clarifai 语言模型生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const clarifai = createOpenAICompatible({
+  name: 'clarifai',
+  baseURL: 'https://api.clarifai.com/v2/ext/openai/v1',
+  apiKey: process.env.CLARIFAI_PAT,
+});
+
+const model = clarifai.chatModel(
+  'https://clarifai.com/deepseek-ai/deepseek-chat/models/DeepSeek-R1-0528-Qwen3-8B',
+);
+
+const { text, usage, finishReason } = await generateText({
+  model,
+  prompt: '什么是光合作用？',
+});
+
+console.log(text);
+console.log('Token 使用量：', usage);
+console.log('结束原因：', finishReason);
+```
+
+### 示例 - 流式传输文本
+
+你也可以使用 `streamText` 函数从 Clarifai 模型流式传输文本响应：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { streamText } from 'ai';
+
+const clarifai = createOpenAICompatible({
+  name: 'clarifai',
+  baseURL: 'https://api.clarifai.com/v2/ext/openai/v1',
+  apiKey: process.env.CLARIFAI_PAT,
+});
+
+const model = clarifai.chatModel(
+  'https://clarifai.com/deepseek-ai/deepseek-chat/models/DeepSeek-R1-0528-Qwen3-8B',
+);
+
+const result = streamText({
+  model,
+  prompt: '什么是光合作用？',
+});
+
+for await (const message of result.textStream) {
+  console.log(message);
+}
+```
+
+有关可用模型的完整列表，请参阅 [Clarifai 模型库](https://clarifai.com/explore)。

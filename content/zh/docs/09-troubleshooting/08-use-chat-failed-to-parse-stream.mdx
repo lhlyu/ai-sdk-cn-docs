@@ -1,0 +1,26 @@
+---
+title: useChat 流解析失败
+description: 排查与 Use Chat 流解析失败错误相关的问题。
+---
+
+# `useChat` "流字符串解析失败" 错误
+
+## 问题
+
+我正在使用 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 或 [`useCompletion`](/docs/reference/ai-sdk-ui/use-completion)，并遇到 `"流字符串解析失败。无效代码"` 错误。我使用的是 AI SDK 的 `3.0.20` 或更新版本。
+
+## 背景
+
+AI SDK 在版本 `3.0.20` 中切换到了流数据协议。
+[`useChat`](/docs/reference/ai-sdk-ui/use-chat) 和 [`useCompletion`](/docs/reference/ai-sdk-ui/use-completion) 期望支持数据、工具调用等的流片段。
+你看到的是流解析失败。
+这可能是由于在后端使用了旧版本的 AI SDK、通过自定义提供商提供了文本流，或使用了原始的 LangChain 流结果。
+
+## 解决方案
+
+你可以通过 [`streamProtocol`](/docs/reference/ai-sdk-ui/use-completion#stream-protocol) 参数将 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 和 [`useCompletion`](/docs/reference/ai-sdk-ui/use-completion) 切换为原始文本流处理。
+将其设置为 `text`，如下所示：
+
+```tsx
+const { messages, append } = useChat({ streamProtocol: 'text' });
+```

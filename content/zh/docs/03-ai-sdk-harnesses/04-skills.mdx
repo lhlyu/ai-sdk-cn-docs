@@ -1,0 +1,58 @@
+---
+title: 技能
+description: 在 AI SDK Harness 中使用技能。
+---
+
+# Harness 技能
+
+[技能](https://agentskills.io/) 是可复用的指令包，可用于项目约定、工作流指导、特定领域流程，或任何其他应能被底层 Harness 运行时发现的指令。你可以让技能在会话的生命周期内对 `HarnessAgent` 可用。
+
+## 定义技能
+
+通过 `skills` 设置将技能传递给 `HarnessAgent`：
+
+```ts
+const agent = new HarnessAgent({
+  harness: claudeCode,
+  sandbox: createVercelSandbox({
+    runtime: 'node24',
+    ports: [4000],
+  }),
+  skills: [
+    {
+      name: 'careful-refactors',
+      description: '进行小型、低风险的代码更改。',
+      content:
+        '优先使用最小差异。保留公共 API。在编辑前，阅读 references/checklist.md 并遵循其内容。',
+      files: [
+        {
+          path: 'references/checklist.md',
+          content:
+            '# 重构检查清单\n\n- 确定最小有用的更改。\n- 保留公共 API。\n- 运行最相关的测试。',
+        },
+      ],
+    },
+  ],
+});
+```
+
+每个技能包含：
+
+- `name`：技能的稳定标识符。
+- `description`：面向模型的简短摘要。
+- `content`：完整的指令内容。
+- `files`：可选，与技能捆绑的附加文本文件。
+
+附加文件使用技能相对路径的 POSIX 路径，例如 `reference.md`、`references/codes.md` 或 `templates/config.json`。当智能体需要读取这些文件时，从 `content` 中引用这些路径。
+
+## 何时使用技能
+
+在需要按需提供可复用指令时使用技能，而不是像常规 `instructions` 那样始终加载到智能体的上下文中。
+
+使用 `instructions` 来定义广泛的智能体行为和当前会话的优先级。
+
+## 相关
+
+- [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)

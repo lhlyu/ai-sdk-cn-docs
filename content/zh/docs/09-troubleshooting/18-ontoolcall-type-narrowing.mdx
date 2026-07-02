@@ -1,0 +1,64 @@
+---
+title: onToolCall 的类型错误
+description: 使用 onToolCall 回调时如何处理 TypeScript 类型错误
+---
+
+# onToolCall 的类型错误
+
+在 TypeScript 中使用 `onToolCall` 回调时，尝试直接将工具属性传递给 `addToolOutput` 可能会遇到类型错误。
+
+## 问题
+
+当同时使用静态工具和动态工具时，TypeScript 无法自动收窄 `toolCall.toolName` 的类型，从而导致类型错误：
+
+```tsx
+// ❌ 这会导致 TypeScript 错误
+const { messages, sendMessage, addToolOutput } = useChat({
+  async onToolCall({ toolCall }) {
+    addToolOutput({
+      tool: toolCall.toolName, // 类型 'string' 不能赋值给类型 '"yourTool" | "yourOtherTool"'
+      toolCallId: toolCall.toolCallId,
+      output: someOutput,
+    });
+  },
+});
+```
+
+出现此错误的原因是：
+
+- 静态工具的名称具有特定的字面量类型（例如 `"getWeatherInformation"`）
+- 动态工具的 `toolName` 是泛型 `string`
+- TypeScript 无法保证 `toolCall.toolName` 与你特定的工具名称匹配
+
+## 解决方案
+
+首先检查工具是否为动态工具，以实现正确的类型收窄：
+
+```tsx
+// ✅ 正确的类型收窄方法
+const { messages, sendMessage, addToolOutput } = useChat({
+  async onToolCall({ toolCall }) {
+    // 首先检查是否为动态工具
+    if (toolCall.dynamic) {
+      return;
+    }
+
+    // 现在 TypeScript 知道这是一个具有正确类型的静态工具
+    addToolOutput({
+      tool: toolCall.toolName, // 没有类型错误！
+      toolCallId: toolCall.toolCallId,
+      output: someOutput,
+    });
+  },
+});
+```
+
+<Note>
+  如果你仍在使用已弃用的 `addToolResult` 方法，此解决方案同样适用。建议迁移到 `addToolOutput` 以保持与最新 API 的一致性。
+</Note>
+
+## 相关链接
+
+- [聊天机器人工具使用](/docs/ai-sdk-ui/chatbot-tool-usage)
+- [动态工具](/docs/reference/ai-sdk-core/dynamic-tool)
+- [useChat 参考](/docs/reference/ai-sdk-ui/use-chat)

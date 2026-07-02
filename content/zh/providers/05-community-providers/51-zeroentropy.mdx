@@ -1,0 +1,184 @@
+---
+title: ZeroEntropy
+description: 了解如何使用 ZeroEntropy 社区提供商。
+---
+
+# ZeroEntropy 提供商
+
+[zeroentropy-ai/zeroentropy-ai-provider](https://github.com/zeroentropy-ai/zeroentropy-ai-provider) 是一个社区提供商，它使用 [ZeroEntropy](https://zeroentropy.dev) 为 AI SDK 提供文本嵌入和重排序支持。
+
+## 安装
+
+ZeroEntropy 提供商位于 `zeroentropy-ai-provider` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add zeroentropy-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install zeroentropy-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add zeroentropy-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add zeroentropy-ai-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `zeroentropy-ai-provider` 导入默认的提供商实例 `zeroentropy`：
+
+```ts
+import { zeroentropy } from 'zeroentropy-ai-provider';
+```
+
+如果你需要自定义设置，可以从 `zeroentropy-ai-provider` 导入 `createZeroEntropy`，并使用你的设置创建提供商实例：
+
+```ts
+import { createZeroEntropy } from 'zeroentropy-ai-provider';
+
+const zeroentropy = createZeroEntropy({
+  apiKey: process.env.ZEROENTROPY_API_KEY ?? '',
+});
+```
+
+你可以使用以下可选设置来自定义 ZeroEntropy 提供商实例：
+
+- **baseURL** _string_
+
+  ZeroEntropy API 的基础 URL。默认前缀为 `https://api.zeroentropy.dev/v1`。
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。默认使用 `ZEROENTROPY_API_KEY` 环境变量。从 [ZeroEntropy Dashboard](https://dashboard.zeroentropy.dev) 获取你的 API 密钥。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作中间件来拦截请求，或提供自定义的 fetch 实现（例如用于测试）。
+
+## 文本嵌入模型
+
+你可以使用 `.textEmbeddingModel()` 工厂方法创建调用 [ZeroEntropy 嵌入 API](https://docs.zeroentropy.dev) 的模型。
+
+```ts
+import { zeroentropy } from 'zeroentropy-ai-provider';
+
+const embeddingModel = zeroentropy.textEmbeddingModel('zembed-1');
+```
+
+你可以使用 ZeroEntropy 嵌入模型通过 `embed` 或 `embedMany` 函数生成嵌入：
+
+```ts
+import { zeroentropy } from 'zeroentropy-ai-provider';
+import { embed, embedMany } from 'ai';
+
+// 单个嵌入
+const { embedding } = await embed({
+  model: zeroentropy.textEmbeddingModel('zembed-1'),
+  value: 'sunny day at the beach',
+});
+
+// 批量嵌入
+const { embeddings } = await embedMany({
+  model: zeroentropy.textEmbeddingModel('zembed-1'),
+  values: ['first document', 'second document'],
+});
+```
+
+ZeroEntropy 嵌入模型支持通过 `providerOptions.zeroentropy` 传递额外的提供商选项：
+
+```ts
+import { zeroentropy } from 'zeroentropy-ai-provider';
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: zeroentropy.textEmbeddingModel('zembed-1'),
+  value: 'sunny day at the beach',
+  providerOptions: {
+    zeroentropy: {
+      inputType: 'document',
+      dimensions: 1280,
+    },
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **inputType** _'query' | 'document'_
+
+  输入是搜索查询还是要索引的文档。检索查询使用 `'query'`，被索引的内容使用 `'document'`。默认为 `'document'`。
+
+- **dimensions** _2560 | 1280 | 640 | 320 | 160 | 80 | 40_
+
+  输出向量维度。默认为 `2560`。支持 Matryoshka 表示以实现灵活的维度缩减。
+
+- **latency** _'fast' | 'slow'_
+
+  `'fast'` 用于亚秒级延迟；`'slow'` 用于更高的吞吐量限制。
+
+### 模型能力
+
+| 模型        | 默认维度 | 上下文长度 | 描述                                |
+| ---------- | -------- | ---------- | ----------------------------------- |
+| `zembed-1` | 2560     | 8192       | 多语言嵌入模型，支持 Matryoshka 维度 |
+
+## 重排序模型
+
+你可以使用 `.rerankingModel()` 工厂方法创建调用 [ZeroEntropy 重排序 API](https://docs.zeroentropy.dev) 的模型。
+
+```ts
+import { zeroentropy } from 'zeroentropy-ai-provider';
+import { rerank } from 'ai';
+
+const result = await rerank({
+  model: zeroentropy.rerankingModel('zerank-2'),
+  query: 'talk about rain',
+  documents: ['sunny day at the beach', 'rainy day in the city'],
+  topN: 2,
+});
+```
+
+ZeroEntropy 重排序模型支持通过 `providerOptions.zeroentropy` 传递额外的提供商选项：
+
+```ts
+import { zeroentropy } from 'zeroentropy-ai-provider';
+import { rerank } from 'ai';
+
+const result = await rerank({
+  model: zeroentropy.rerankingModel('zerank-2'),
+  query: 'talk about rain',
+  documents: ['sunny day at the beach', 'rainy day in the city'],
+  topN: 2,
+  providerOptions: {
+    zeroentropy: {
+      latency: 'fast',
+    },
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **latency** _'fast' | 'slow'_
+
+  `'fast'` 用于亚秒级延迟；`'slow'` 用于更高的吞吐量限制。
+
+### 模型能力
+
+| 模型              | 描述                                    |
+| ---------------- | --------------------------------------- |
+| `zerank-2`       | 旗舰级最先进的交叉编码器重排序模型      |
+| `zerank-2-nano`  | 紧凑型 `zerank-2` 变体，适用于低延迟场景 |
+| `zerank-1`       | 上一代重排序模型                        |
+| `zerank-1-small` | 轻量级重排序模型，适用于低延迟场景      |
+
+<Note>
+  请参阅 [ZeroEntropy 文档](https://docs.zeroentropy.dev) 获取可用模型和选项的完整列表。
+</Note>

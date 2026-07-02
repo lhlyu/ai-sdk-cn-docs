@@ -1,0 +1,257 @@
+---
+title: 'Mem0'
+description: '了解如何将 Mem0 AI SDK 提供商用于 AI SDK。'
+---
+
+# Mem0 提供商
+
+[Mem0 提供商](https://github.com/mem0ai/mem0/tree/main/vercel-ai-sdk) 是由 [**Mem0**](https://mem0.ai) 开发的库，用于与 AI SDK 集成。
+该库通过引入持久化记忆功能，为您的应用程序带来增强的 AI 交互能力。
+
+<Note type="info">
+  🎉 好消息！Mem0 AI SDK 现在支持 <strong>工具调用</strong>。
+</Note>
+
+## 安装
+
+Mem0 提供商位于 `@mem0/vercel-ai-provider` 模块中。您可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @mem0/vercel-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @mem0/vercel-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @mem0/vercel-ai-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @mem0/vercel-ai-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+首先，从 [Mem0 仪表盘](https://app.mem0.ai/dashboard/api-keys) 获取您的 **Mem0 API 密钥**。
+
+然后在您的应用程序中初始化 `Mem0 Client`：
+
+```ts
+import { createMem0 } from '@mem0/vercel-ai-provider';
+
+const mem0 = createMem0({
+  provider: 'openai',
+  mem0ApiKey: 'm0-xxx',
+  apiKey: 'provider-api-key',
+  config: {
+    // 在此处配置 LLM 提供商
+  },
+  // 可选的 Mem0 全局配置
+  mem0Config: {
+    user_id: 'mem0-user-id',
+    enable_graph: true,
+  },
+});
+```
+
+<Note>
+  `openai` 提供商被设置为默认值。出于安全考虑，建议使用 `MEM0_API_KEY` 和
+  `OPENAI_API_KEY` 作为环境变量。
+</Note>
+
+<Note>
+  `mem0Config` 是可选的。它用于设置 Mem0 Client 的全局配置
+  （例如 `user_id`、`agent_id`、`app_id`、`run_id`、`org_id`、`project_id`
+  等）。
+</Note>
+
+- 添加记忆以增强上下文：
+
+```ts
+import { LanguageModelV4Prompt } from '@ai-sdk/provider';
+import { addMemories } from '@mem0/vercel-ai-provider';
+
+const messages: LanguageModelV4Prompt = [
+  { role: 'user', content: [{ type: 'text', text: '我喜欢红色汽车。' }] },
+];
+
+await addMemories(messages, { user_id: 'borat' });
+```
+
+## 功能
+
+### 添加和检索记忆
+
+- `retrieveMemories()`：检索提示词的记忆上下文。
+- `getMemories()`：以数组格式从您的配置文件中获取记忆。
+- `addMemories()`：添加用户记忆以增强上下文响应。
+
+```ts
+await addMemories(messages, {
+  user_id: 'borat',
+  mem0ApiKey: 'm0-xxx',
+});
+await retrieveMemories(prompt, {
+  user_id: 'borat',
+  mem0ApiKey: 'm0-xxx',
+});
+await getMemories(prompt, {
+  user_id: 'borat',
+  mem0ApiKey: 'm0-xxx',
+});
+```
+
+<Note>
+  对于独立功能，例如 `addMemories`、`retrieveMemories` 和
+  `getMemories`，您必须将 `MEM0_API_KEY` 设置为环境变量
+  或在函数调用中直接传递它。
+</Note>
+
+<Note>
+  `getMemories` 将以对象数组的形式返回原始记忆，
+  而 `retrieveMemories` 将以字符串格式返回响应，其中包含一个系统提示词，该提示词已注入检索到的记忆。
+</Note>
+
+### 使用记忆上下文生成文本
+
+您可以使用来自 **OpenAI**、**Anthropic**、**Cohere** 和 **Groq** 的语言模型，通过 `generateText` 函数生成文本：
+
+```ts
+import { generateText } from 'ai';
+import { createMem0 } from '@mem0/vercel-ai-provider';
+
+const mem0 = createMem0();
+
+const { text } = await generateText({
+  model: mem0('gpt-4.1', { user_id: 'borat' }),
+  prompt: '推荐一辆好车给我买！',
+});
+```
+
+### 带记忆的结构化消息格式
+
+```ts
+import { generateText } from 'ai';
+import { createMem0 } from '@mem0/vercel-ai-provider';
+
+const mem0 = createMem0();
+
+const { text } = await generateText({
+  model: mem0('gpt-4.1', { user_id: 'borat' }),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '推荐一辆好车给我买。' },
+        { type: 'text', text: '为什么它比其他车更适合我？' },
+      ],
+    },
+  ],
+});
+```
+
+### 带记忆上下文的流式传输响应
+
+```ts
+import { streamText } from 'ai';
+import { createMem0 } from '@mem0/vercel-ai-provider';
+
+const mem0 = createMem0();
+
+const { textStream } = streamText({
+  model: mem0('gpt-4.1', {
+    user_id: 'borat',
+  }),
+  prompt:
+    '推荐一辆好车给我买！为什么它比其他车更适合我？给出每个价格区间的选项。',
+});
+
+for await (const textPart of textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+### 使用工具调用生成响应
+
+```ts
+import { generateText } from 'ai';
+import { createMem0 } from '@mem0/vercel-ai-provider';
+import { z } from 'zod';
+
+const mem0 = createMem0({
+  provider: 'anthropic',
+  apiKey: 'anthropic-api-key',
+  mem0Config: {
+    // 全局用户 ID
+    user_id: 'borat',
+  },
+});
+
+const prompt = '我居住的城市温度是多少？';
+
+const result = await generateText({
+  model: mem0('claude-3-5-sonnet-20240620'),
+  tools: {
+    weather: tool({
+      description: '获取某个位置的天气',
+      parameters: z.object({
+        location: z.string().describe('要获取天气的位置'),
+      }),
+      execute: async ({ location }) => ({
+        location,
+        temperature: 72 + Math.floor(Math.random() * 21) - 10,
+      }),
+    }),
+  },
+  prompt: prompt,
+});
+
+console.log(result);
+```
+
+### 从记忆中获取来源
+
+```ts
+const { text, sources } = await generateText({
+  model: mem0('gpt-4.1'),
+  prompt: '推荐一辆好车给我买！',
+});
+
+console.log(sources);
+```
+
+同样的功能在 `streamText` 函数中也可用。
+
+## 支持的 LLM 提供商
+
+Mem0 提供商支持以下 LLM 提供商：
+
+| 提供商    | 配置值     |
+| --------- | ---------- |
+| OpenAI    | `openai`   |
+| Anthropic | `anthropic`|
+| Google    | `google`   |
+| Groq      | `groq`     |
+| Cohere    | `cohere`   |
+
+## 最佳实践
+
+- **用户标识**：使用唯一的 `user_id` 以实现一致的记忆检索。
+- **记忆清理**：定期清理未使用的记忆数据。
+
+<Note>
+  我们还支持 `agent_id`、`app_id` 和 `run_id`。请参考
+  [文档](https://docs.mem0.ai/api-reference/memory/add-memories)。
+</Note>
+
+## 帮助
+
+- 有关 Vercel AI SDK 的更多详细信息，请访问 [Vercel AI SDK 文档](/docs/introduction)。
+- 有关 Mem0 文档，请参考 [Mem0 平台](https://app.mem0.ai/)。
+- 如果您需要进一步帮助，请随时通过以下方式联系我们：
+
+## 参考
+
+- [Mem0 AI SDK 文档](https://docs.mem0.ai/integrations/vercel-ai-sdk#getting-started)
+- [Mem0 文档](https://docs.mem0.ai)

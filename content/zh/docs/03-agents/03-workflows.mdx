@@ -1,0 +1,386 @@
+---
+title: 工作流模式
+description: 学习使用 AI SDK 构建可靠智能体的工作流模式。
+---
+
+# 工作流模式
+
+将[概览](/docs/agents/overview)中的构建模块与以下模式相结合，为你的智能体增加结构和可靠性：
+
+- [顺序处理](#顺序处理链) - 按顺序执行的步骤
+- [并行处理](#并行处理) - 同时运行的独立任务
+- [评估/反馈循环](#评估器-优化器) - 迭代检查和改进结果
+- [编排](#编排器-工作者) - 协调多个组件
+- [路由](#路由) - 根据上下文分配工作
+
+## 选择你的方法
+
+考虑以下关键因素：
+
+- **灵活性 vs 控制** - LLM 需要多少自由度，以及你必须对其行为施加多大的约束？
+- **容错性** - 在你的用例中，错误的后果是什么？
+- **成本考量** - 更复杂的系统通常意味着更多的 LLM 调用和更高的成本
+- **可维护性** - 更简单的架构更容易调试和修改
+
+**从满足需求的最简单方法开始**。仅在必要时通过以下方式增加复杂性：
+
+1. 将任务分解为清晰的步骤
+2. 为特定能力添加工具
+3. 实施反馈循环以进行质量控制
+4. 为复杂工作流引入多个智能体
+
+让我们看看这些模式的实际示例。
+
+## 模式示例
+
+这些模式改编自 [Anthropic 关于构建有效智能体的指南](https://www.anthropic.com/research/building-effective-agents)，可作为构建模块，你可以组合它们来创建全面的工作流。每种模式都针对任务执行的特定方面。深思熟虑地组合它们，为复杂问题构建可靠的解决方案。
+
+## 顺序处理（链）
+
+最简单的工作流模式按预定义顺序执行步骤。每个步骤的输出成为下一步的输入，形成清晰的操作链。将此模式用于具有明确定义序列的任务，例如内容生成管道或数据转换过程。
+
+```ts
+import { generateText, Output } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+async function generateMarketingCopy(input: string) {
+  const model = __MODEL__;
+
+  // 第一步：生成营销文案
+  const { text: copy } = await generateText({
+    model,
+    prompt: `为以下内容撰写有说服力的营销文案：${input}。专注于利益和情感诉求。`,
+  });
+
+  // 对文案进行质量检查
+  const { output: qualityMetrics } = await generateText({
+    model,
+    output: Output.object({
+      schema: z.object({
+        hasCallToAction: z.boolean(),
+        emotionalAppeal: z.number().min(1).max(10),
+        clarity: z.number().min(1).max(10),
+      }),
+    }),
+    prompt: `评估此营销文案：
+    1. 是否存在行动号召（是/否）
+    2. 情感吸引力（1-10）
+    3. 清晰度（1-10）
+
+    要评估的文案：${copy}`,
+  });
+
+  // 如果质量检查失败，则使用更具体的说明重新生成
+  if (
+    !qualityMetrics.hasCallToAction ||
+    qualityMetrics.emotionalAppeal < 7 ||
+    qualityMetrics.clarity < 7
+  ) {
+    const { text: improvedCopy } = await generateText({
+      model,
+      prompt: `重写此营销文案，要求如下：
+      ${!qualityMetrics.hasCallToAction ? '- 包含清晰的行动号召' : ''}
+      ${qualityMetrics.emotionalAppeal < 7 ? '- 更强的情感吸引力' : ''}
+      ${qualityMetrics.clarity < 7 ? '- 提高清晰度和直接性' : ''}
+
+      原始文案：${copy}`,
+    });
+    return { copy: improvedCopy, qualityMetrics };
+  }
+
+  return { copy, qualityMetrics };
+}
+```
+
+## 路由
+
+此模式让模型根据上下文和中间结果决定工作流中的路径。模型充当智能路由器，在工作流的不同分支之间引导执行流程。在处理需要不同处理方法的多样化输入时使用此模式。在下面的示例中，第一次 LLM 调用的结果决定了第二次调用的模型大小和系统提示词。
+
+```ts
+import { generateText, Output } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+async function handleCustomerQuery(query: string) {
+  const model = __MODEL__;
+
+  // 第一步：对查询类型进行分类
+  const { output: classification } = await generateText({
+    model,
+    output: Output.object({
+      schema: z.object({
+        reasoning: z.string(),
+        type: z.enum(['general', 'refund', 'technical']),
+        complexity: z.enum(['simple', 'complex']),
+      }),
+    }),
+    prompt: `对此客户查询进行分类：
+    ${query}
+
+    确定：
+    1. 查询类型（general、refund 或 technical）
+    2. 复杂度（simple 或 complex）
+    3. 分类的简要理由`,
+  });
+
+  // 根据分类进行路由
+  // 根据查询类型和复杂度设置模型和系统提示词
+  const { text: response } = await generateText({
+    model:
+      classification.complexity === 'simple'
+        ? 'openai/gpt-4o-mini'
+        : 'openai/o4-mini',
+    instructions: {
+      general:
+        '你是一名处理一般咨询的专家级客户服务代理。',
+      refund:
+        '你是一名专门处理退款请求的客户服务代理。请遵循公司政策并收集必要信息。',
+      technical:
+        '你是一名具有深厚产品知识的技术支持专家。专注于清晰的分步故障排除。',
+    }[classification.type],
+    prompt: query,
+  });
+
+  return { response, classification };
+}
+```
+
+## 并行处理
+
+将任务分解为同时执行的独立子任务。此模式使用并行执行来提高效率，同时保持结构化工作流的优势。例如，同时分析多个文档或处理单个输入的不同方面（如代码审查）。
+
+```ts
+import { generateText, Output } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+// 示例：使用多个专业审查员进行并行代码审查
+async function parallelCodeReview(code: string) {
+  const model = __MODEL__;
+
+  // 运行并行审查
+  const [securityReview, performanceReview, maintainabilityReview] =
+    await Promise.all([
+      generateText({
+        model,
+        instructions:
+          '你是一名代码安全专家。专注于识别安全漏洞、注入风险和身份验证问题。',
+        output: Output.object({
+          schema: z.object({
+            vulnerabilities: z.array(z.string()),
+            riskLevel: z.enum(['low', 'medium', 'high']),
+            suggestions: z.array(z.string()),
+          }),
+        }),
+        prompt: `审查此代码：
+      ${code}`,
+      }),
+
+      generateText({
+        model,
+        instructions:
+          '你是一名代码性能专家。专注于识别性能瓶颈、内存泄漏和优化机会。',
+        output: Output.object({
+          schema: z.object({
+            issues: z.array(z.string()),
+            impact: z.enum(['low', 'medium', 'high']),
+            optimizations: z.array(z.string()),
+          }),
+        }),
+        prompt: `审查此代码：
+      ${code}`,
+      }),
+
+      generateText({
+        model,
+        instructions:
+          '你是一名代码质量专家。专注于代码结构、可读性和最佳实践的遵循。',
+        output: Output.object({
+          schema: z.object({
+            concerns: z.array(z.string()),
+            qualityScore: z.number().min(1).max(10),
+            recommendations: z.array(z.string()),
+          }),
+        }),
+        prompt: `审查此代码：
+      ${code}`,
+      }),
+    ]);
+
+  const reviews = [
+    { ...securityReview.output, type: 'security' },
+    { ...performanceReview.output, type: 'performance' },
+    { ...maintainabilityReview.output, type: 'maintainability' },
+  ];
+
+  // 使用另一个模型实例聚合结果
+  const { text: summary } = await generateText({
+    model,
+    instructions: '你是一名技术负责人，负责汇总多个代码审查结果。',
+    prompt: `将这些代码审查结果综合成一个包含关键操作的简洁摘要：
+    ${JSON.stringify(reviews, null, 2)}`,
+  });
+
+  return { reviews, summary };
+}
+```
+
+## 编排器-工作者
+
+一个主模型（编排器）协调专门工作者的执行。每个工作者针对特定的子任务进行优化，而编排器则维护整体上下文并确保结果连贯。此模式擅长处理需要不同类型专业知识或处理的复杂任务。
+
+```ts
+import { generateText, Output } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+async function implementFeature(featureRequest: string) {
+  // 编排器：规划实现
+  const { output: implementationPlan } = await generateText({
+    model: __MODEL__,
+    output: Output.object({
+      schema: z.object({
+        files: z.array(
+          z.object({
+            purpose: z.string(),
+            filePath: z.string(),
+            changeType: z.enum(['create', 'modify', 'delete']),
+          }),
+        ),
+        estimatedComplexity: z.enum(['low', 'medium', 'high']),
+      }),
+    }),
+    instructions:
+      '你是一名规划功能实现的高级软件架构师。',
+    prompt: `分析此功能请求并创建实现计划：
+    ${featureRequest}`,
+  });
+
+  // 工作者：执行计划中的更改
+  const fileChanges = await Promise.all(
+    implementationPlan.files.map(async file => {
+      // 每个工作者专门处理一种类型的更改
+      const workerSystemPrompt = {
+        create:
+          '你是一名专家，擅长按照最佳实践和项目模式实现新文件。',
+        modify:
+          '你是一名专家，擅长修改现有代码，同时保持一致性并避免回归。',
+        delete:
+          '你是一名专家，擅长安全地删除代码，同时确保没有破坏性更改。',
+      }[file.changeType];
+
+      const { output: change } = await generateText({
+        model: __MODEL__,
+        output: Output.object({
+          schema: z.object({
+            explanation: z.string(),
+            code: z.string(),
+          }),
+        }),
+        instructions: workerSystemPrompt,
+        prompt: `为 ${file.filePath} 实现更改以支持：
+        ${file.purpose}
+
+        考虑整体功能上下文：
+        ${featureRequest}`,
+      });
+
+      return {
+        file,
+        implementation: change,
+      };
+    }),
+  );
+
+  return {
+    plan: implementationPlan,
+    changes: fileChanges,
+  };
+}
+```
+
+## 评估器-优化器
+
+通过专门的评估步骤为工作流添加质量控制，以评估中间结果。根据评估结果，工作流可以继续、使用调整后的参数重试或采取纠正措施。这创建了能够自我改进和错误恢复的健壮工作流。
+
+```ts
+import { generateText, Output } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+async function translateWithFeedback(text: string, targetLanguage: string) {
+  let currentTranslation = '';
+  let iterations = 0;
+  const MAX_ITERATIONS = 3;
+
+  // 初始翻译
+  const { text: translation } = await generateText({
+    model: __MODEL__,
+    instructions: '你是一名文学翻译专家。',
+    prompt: `将以下文本翻译成 ${targetLanguage}，保留语气和文化细微差别：
+    ${text}`,
+  });
+
+  currentTranslation = translation;
+
+  // 评估-优化循环
+  while (iterations < MAX_ITERATIONS) {
+    // 评估当前翻译
+    const { output: evaluation } = await generateText({
+      model: __MODEL__,
+      output: Output.object({
+        schema: z.object({
+          qualityScore: z.number().min(1).max(10),
+          preservesTone: z.boolean(),
+          preservesNuance: z.boolean(),
+          culturallyAccurate: z.boolean(),
+          specificIssues: z.array(z.string()),
+          improvementSuggestions: z.array(z.string()),
+        }),
+      }),
+      instructions: '你是一名评估文学翻译的专家。',
+      prompt: `评估此翻译：
+
+      原文：${text}
+      翻译：${currentTranslation}
+
+      考虑：
+      1. 整体质量
+      2. 语气保留
+      3. 细微差别保留
+      4. 文化准确性`,
+    });
+
+    // 检查质量是否达到阈值
+    if (
+      evaluation.qualityScore >= 8 &&
+      evaluation.preservesTone &&
+      evaluation.preservesNuance &&
+      evaluation.culturallyAccurate
+    ) {
+      break;
+    }
+
+    // 根据反馈生成改进的翻译
+    const { text: improvedTranslation } = await generateText({
+      model: __MODEL__,
+      instructions: '你是一名文学翻译专家。',
+      prompt: `根据以下反馈改进此翻译：
+      ${evaluation.specificIssues.join('\n')}
+      ${evaluation.improvementSuggestions.join('\n')}
+
+      原文：${text}
+      当前翻译：${currentTranslation}`,
+    });
+
+    currentTranslation = improvedTranslation;
+    iterations++;
+  }
+
+  return {
+    finalTranslation: currentTranslation,
+    iterationsRequired: iterations,
+  };
+}
+```

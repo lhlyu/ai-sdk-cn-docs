@@ -1,0 +1,362 @@
+---
+title: 子智能体
+description: 将上下文密集型任务委派给专门的子智能体，同时保持主智能体专注。
+---
+
+# 子智能体
+
+子智能体是可由父智能体调用的智能体。父智能体通过工具委派工作，子智能体自主执行后返回结果。
+
+## 工作原理
+
+1. **定义子智能体**，包含其自身的模型、指令和工具
+2. **创建调用子智能体的工具**，供主智能体使用
+3. **子智能体使用独立的上下文窗口独立运行**
+4. **返回结果**（可选择将进度流式传输到 UI）
+5. **使用 `toModelOutput` 控制模型看到的内容**，以生成摘要
+
+## 何时使用子智能体
+
+子智能体会增加延迟和复杂性。当收益大于成本时使用它们：
+
+| 使用子智能体的场景                              | 避免使用子智能体的场景           |
+| ----------------------------------------------- | -------------------------------- |
+| 任务需要探索大量 token                          | 任务简单且专注                   |
+| 需要并行化独立的研究工作                        | 顺序处理即可满足需求             |
+| 上下文可能超出模型限制                          | 上下文保持可管理                 |
+| 希望按能力隔离工具访问权限                      | 所有工具可以安全共存             |
+
+## 为什么使用子智能体？
+
+### 卸载上下文密集型任务
+
+某些任务需要探索大量信息——读取文件、搜索代码库或研究主题。在主智能体中运行这些任务会快速消耗上下文，使智能体随时间推移变得不够连贯。
+
+使用子智能体，您可以：
+
+- 启动一个使用数十万 token 的专用智能体
+- 让它仅返回一个聚焦的摘要（可能 1000 个 token）
+- 保持主智能体的上下文干净且连贯
+
+子智能体完成繁重工作，而主智能体专注于编排。
+
+### 并行化独立工作
+
+对于探索代码库等任务，您可以同时生成多个子智能体来研究不同区域。每个子智能体返回摘要，主智能体综合发现——无需承担所有探索的上下文成本。
+
+### 专业化编排
+
+一个不太常见但有效的模式是使用主智能体纯粹进行编排，将工作委派给不同类型的专业化子智能体。例如：
+
+- 一个具有只读工具的探索子智能体，用于研究代码库
+- 一个具有文件编辑工具的编码子智能体
+- 一个具有特定平台或 API 工具的集成子智能体
+
+这创建了清晰的关注点分离，尽管上下文卸载和并行化是使用子智能体更常见的动机。
+
+## 无流式传输的基本子智能体
+
+最简单的子智能体模式不需要特殊机制。您的主智能体在其 `execute` 函数中拥有一个调用另一个智能体的工具：
+
+```ts
+import { ToolLoopAgent, tool } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+// 为研究任务定义子智能体
+const researchSubagent = new ToolLoopAgent({
+  model: __MODEL__,
+  instructions: `你是一个研究智能体。
+在最终回复中总结你的发现。`,
+  tools: {
+    read: readFileTool, // 在其他地方定义
+    search: searchTool, // 在其他地方定义
+  },
+});
+
+// 创建一个委派给子智能体的工具
+const researchTool = tool({
+  description: '深入研究一个主题或问题。',
+  inputSchema: z.object({
+    task: z.string().describe('要完成的研究任务'),
+  }),
+  execute: async ({ task }, { abortSignal }) => {
+    const result = await researchSubagent.generate({
+      prompt: task,
+      abortSignal,
+    });
+    return result.text;
+  },
+});
+
+// 主智能体使用研究工具
+const mainAgent = new ToolLoopAgent({
+  model: __MODEL__,
+  instructions: '你是一个可以委派研究任务的助手。',
+  tools: {
+    research: researchTool,
+  },
+});
+```
+
+当您不需要在 UI 中显示子智能体的进度时，这种方法效果很好。工具调用会阻塞，直到子智能体完成，然后返回最终的文本响应。
+
+### 处理取消
+
+当用户取消请求时，`abortSignal` 会传播到子智能体。始终传递它以确保清理：
+
+```ts
+execute: async ({ task }, { abortSignal }) => {
+  const result = await researchSubagent.generate({
+    prompt: task,
+    abortSignal, // 如果主请求被中止，则取消子智能体
+  });
+  return result.text;
+},
+```
+
+如果您中止信号，子智能体会停止执行并抛出 `AbortError`。主智能体的工具执行失败，从而停止主循环。
+
+为避免后续消息中出现关于不完整工具调用的错误，请使用带有 `ignoreIncompleteToolCalls` 的 `convertToModelMessages`：
+
+```ts
+import { convertToModelMessages } from 'ai';
+
+const modelMessages = await convertToModelMessages(messages, {
+  ignoreIncompleteToolCalls: true,
+});
+```
+
+这会过滤掉没有对应结果的工具调用。在 [convertToModelMessages](/docs/reference/ai-sdk-ui/convert-to-model-messages) 参考中了解更多信息。
+
+## 流式子智能体进度
+
+当您希望在子智能体工作时显示增量进度时，请使用 [**初步工具结果**](/docs/ai-sdk-core/tools-and-tool-calling#preliminary-tool-results)。此模式使用一个生成器函数，将部分更新发送到 UI。
+
+### 初步工具结果的工作原理
+
+将您的 `execute` 函数从常规函数更改为异步生成器（`async function*`）。每个 `yield` 将初步结果发送到前端：
+
+```ts
+execute: async function* ({ /* 输入 */ }) {
+  // ... 执行工作 ...
+  yield partialResult;
+  // ... 执行更多工作 ...
+  yield updatedResult;
+}
+```
+
+### 构建完整消息
+
+每个 `yield` **完全替换**先前的输出（不会追加）。这意味着您需要一种方法来将子智能体的响应累积成一个随时间增长的完整消息。
+
+`readUIMessageStream` 实用程序处理此问题。它从流中读取每个块，并构建一个包含到目前为止所有接收部分的不断增长的 `UIMessage`：
+
+```ts
+import { readUIMessageStream, toUIMessageStream, tool } from 'ai';
+import { z } from 'zod';
+
+const researchTool = tool({
+  description: '深入研究一个主题或问题。',
+  inputSchema: z.object({
+    task: z.string().describe('要完成的研究任务'),
+  }),
+  execute: async function* ({ task }, { abortSignal }) {
+    // 使用流式传输启动子智能体
+    const result = await researchSubagent.stream({
+      prompt: task,
+      abortSignal,
+    });
+
+    // 每次迭代产生一个完整的、累积的 UIMessage
+    for await (const message of readUIMessageStream({
+      stream: toUIMessageStream({ stream: result.stream }),
+    })) {
+      yield message;
+    }
+  },
+});
+```
+
+每个产生的 `message` 都是一个完整的 `UIMessage`，包含子智能体到目前为止的所有部分（文本、工具调用和工具结果）。前端只需用每个新消息替换其显示。
+
+## 控制模型看到的内容
+
+这就是子智能体在上下文管理方面变得强大的地方。包含子智能体所有工作的完整 `UIMessage` 存储在消息历史中并显示在 UI 中。但您可以使用 `toModelOutput` 控制主智能体的模型实际看到的内容。
+
+### 工作原理
+
+`toModelOutput` 函数将工具的输出映射到发送给模型的 token：
+
+```ts
+const researchTool = tool({
+  description: '深入研究一个主题或问题。',
+  inputSchema: z.object({
+    task: z.string().describe('要完成的研究任务'),
+  }),
+  execute: async function* ({ task }, { abortSignal }) {
+    const result = await researchSubagent.stream({
+      prompt: task,
+      abortSignal,
+    });
+
+    for await (const message of readUIMessageStream({
+      stream: toUIMessageStream({ stream: result.stream }),
+    })) {
+      yield message;
+    }
+  },
+  toModelOutput: ({ output: message }) => {
+    // 仅提取最终文本作为摘要
+    const lastTextPart = message?.parts.findLast(p => p.type === 'text');
+    return {
+      type: 'text',
+      value: lastTextPart?.text ?? '任务完成。',
+    };
+  },
+});
+```
+
+通过此设置：
+
+- **用户看到**：完整的子智能体执行过程——每个工具调用，每个中间步骤
+- **模型看到**：仅最终摘要文本
+
+子智能体可能使用 100,000 个 token 进行探索和推理，但主智能体仅消耗摘要。这使主智能体保持连贯和专注。
+
+### 为子智能体编写摘要指令
+
+为了让 `toModelOutput` 提取有用的摘要，您的子智能体必须生成一个。添加如下显式指令：
+
+```ts
+const researchSubagent = new ToolLoopAgent({
+  model: __MODEL__,
+  instructions: `你是一个研究智能体。自主完成任务。
+
+重要提示：完成后，请将你的发现写成一个清晰的摘要作为最终回复。
+此摘要将返回给主智能体，因此请包含所有相关信息。`,
+  tools: {
+    read: readFileTool,
+    search: searchTool,
+  },
+});
+```
+
+没有此指令，子智能体可能不会生成全面的摘要。它可能只说“完成”，导致 `toModelOutput` 无法提取有用内容。
+
+## 在 UI 中渲染子智能体（使用 useChat）
+
+要显示流式进度，请检查工具部分的 `state` 和 `preliminary` 标志。
+
+### 工具部分状态
+
+| 状态               | 描述                                |
+| ------------------ | ----------------------------------- |
+| `input-streaming`  | 正在生成工具输入                    |
+| `input-available`  | 工具准备执行                        |
+| `output-available` | 工具已产生输出（检查 `preliminary`）|
+| `output-error`     | 工具执行失败                        |
+
+### 检测流式传输与完成
+
+```tsx
+const hasOutput = part.state === 'output-available';
+const isStreaming = hasOutput && part.preliminary === true;
+const isComplete = hasOutput && !part.preliminary;
+```
+
+### 子智能体输出的类型安全
+
+在智能体旁边导出类型，以便在 UI 组件中使用：
+
+```ts filename="lib/agents.ts"
+import { ToolLoopAgent, InferAgentUIMessage } from 'ai';
+
+export const mainAgent = new ToolLoopAgent({
+  // ... 包含 researchTool 的配置
+});
+
+// 为聊天 UI 导出主智能体消息类型
+export type MainAgentMessage = InferAgentUIMessage<typeof mainAgent>;
+```
+
+### 渲染消息和子智能体输出
+
+此示例使用上面定义的类型来渲染主智能体的消息和子智能体的流式输出：
+
+```tsx
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import type { MainAgentMessage } from '@/lib/agents';
+
+export function Chat() {
+  const { messages } = useChat<MainAgentMessage>();
+
+  return (
+    <div>
+      {messages.map(message =>
+        message.parts.map((part, i) => {
+          switch (part.type) {
+            case 'text':
+              return <p key={i}>{part.text}</p>;
+            case 'tool-research':
+              return (
+                <div>
+                  {part.state !== 'input-streaming' && (
+                    <div>研究：{part.input.task}</div>
+                  )}
+                  {part.state === 'output-available' && (
+                    <div>
+                      {part.output.parts.map((nestedPart, i) => {
+                        switch (nestedPart.type) {
+                          case 'text':
+                            return <p key={i}>{nestedPart.text}</p>;
+                          default:
+                            return null;
+                        }
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            default:
+              return null;
+          }
+        }),
+      )}
+    </div>
+  );
+}
+```
+
+## 注意事项
+
+### 子智能体中无工具审批
+
+子智能体工具不能使用审批流程，例如 `toolApproval`（或已弃用的 `needsApproval`）。所有工具必须自动执行，无需用户确认。
+
+### 子智能体上下文是隔离的
+
+每次子智能体调用都从新的上下文窗口开始。这是子智能体的关键优势之一：它们不会继承主智能体的累积上下文，这正是它们能够进行大量探索而不使主对话膨胀的原因。
+
+如果您需要让子智能体访问对话历史，`messages` 在工具的 execute 函数中与 `abortSignal` 一起可用：
+
+```ts
+execute: async ({ task }, { abortSignal, messages }) => {
+  const result = await researchSubagent.generate({
+    messages: [
+      ...messages, // 主智能体的对话历史
+      { role: 'user', content: task }, // 此调用的特定任务
+    ],
+    abortSignal,
+  });
+  return result.text;
+},
+```
+
+请谨慎使用，因为传递完整历史会削弱上下文隔离的部分优势。
+
+### 流式传输增加复杂性
+
+基本模式（无流式传输）更易于实现和调试。仅在需要在 UI 中显示实时进度时添加流式传输。

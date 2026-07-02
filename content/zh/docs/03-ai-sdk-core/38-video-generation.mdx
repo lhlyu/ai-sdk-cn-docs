@@ -1,0 +1,402 @@
+---
+title: 视频生成
+description: 了解如何使用 AI SDK 生成视频。
+---
+
+# 视频生成
+
+<Note>
+  视频生成是一项实验性功能。API 在未来版本中可能会发生变化。
+</Note>
+
+AI SDK 提供了 [`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video) 函数，用于使用视频模型根据给定的提示词生成视频。
+
+```tsx
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只在跑步机上行走的猫',
+});
+```
+
+你可以使用 `base64` 或 `uint8Array` 属性访问视频数据：
+
+```tsx
+const base64 = video.base64; // base64 视频数据
+const uint8Array = video.uint8Array; // Uint8Array 视频数据
+```
+
+## 设置
+
+### 宽高比
+
+宽高比以 `{width}:{height}` 格式的字符串指定。模型仅支持少数几种宽高比，且不同模型和提供商所支持的宽高比各不相同。
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只在跑步机上行走的猫',
+  aspectRatio: '16:9',
+});
+```
+
+### 分辨率
+
+分辨率以 `{width}x{height}` 格式的字符串指定。模型仅支持特定的分辨率，且不同模型和提供商所支持的分辨率各不相同。
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '日落时分宁静的山地景观',
+  resolution: '1280x720',
+});
+```
+
+### 时长
+
+某些视频模型支持指定生成视频的时长（以秒为单位）。
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '云朵在天空中移动的延时摄影',
+  duration: 5,
+});
+```
+
+### 每秒帧数 (FPS)
+
+某些视频模型允许你指定生成视频的每秒帧数。
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只蜂鸟的慢动作',
+  fps: 24,
+});
+```
+
+### 音频生成
+
+某些视频模型可以在生成视频的同时生成音频。使用 `generateAudio` 选项来控制此行为：
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一个爵士乐队在舒适的俱乐部里演奏',
+  generateAudio: true,
+});
+```
+
+### 生成多个视频
+
+`experimental_generateVideo` 支持一次生成多个视频：
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { videos } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一枚火箭发射进入太空',
+  n: 3, // 要生成的视频数量
+});
+```
+
+<Note>
+  `experimental_generateVideo` 会根据需要自动（并行）调用模型，以生成请求数量的视频。
+</Note>
+
+每个视频模型在单次 API 调用中能生成的视频数量都有内部限制。当你使用 `n` 参数请求多个视频时，AI SDK 会通过适当批量处理请求来自动管理此限制。由于计算成本，大多数视频模型每次调用仅支持生成 1 个视频。
+
+如果需要，你可以使用 `maxVideosPerCall` 设置覆盖此行为：
+
+```tsx
+const { videos } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一枚火箭发射进入太空',
+  maxVideosPerCall: 2, // 覆盖默认的批量大小
+  n: 4, // 将进行 2 次调用，每次生成 2 个视频
+});
+```
+
+### 图像到视频生成
+
+某些视频模型支持根据输入图像生成视频。你可以使用提示词对象提供图像：
+
+```tsx highlight={"7-10"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: {
+    image: 'https://example.com/my-image.png',
+    text: '以轻柔的动作让此图像动起来',
+  },
+});
+```
+
+你也可以将图像作为 base64 编码的字符串或 `Uint8Array` 提供：
+
+```tsx
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: {
+    image: imageBase64String, // 或 imageUint8Array
+    text: '让此图像动起来',
+  },
+});
+```
+
+### 首帧和末帧
+
+某些视频模型支持首末帧生成，即你提供视频的起始帧和/或结束帧。使用 `frameImages` 选项以提供商无关的方式传递带有角色标记的图像：
+
+```tsx highlight={"5-16"}
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '猫穿过场景，并在结束时变成一只狗',
+  frameImages: [
+    {
+      image: 'https://example.com/first-frame.png',
+      frameType: 'first_frame',
+    },
+    {
+      image: 'https://example.com/last-frame.png',
+      frameType: 'last_frame',
+    },
+  ],
+});
+```
+
+### 参考图像
+
+某些视频模型支持参考到视频生成，即你提供一个或多个参考图像，模型会将其融入生成的视频中。使用 `inputReferences` 选项以提供商无关的方式传递这些图像：
+
+```tsx highlight={"5-8"}
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '两个角色在熙熙攘攘的市场中相遇',
+  inputReferences: [
+    'https://example.com/character-1.png',
+    'https://example.com/character-2.png',
+  ],
+});
+```
+
+### 提供种子
+
+你可以向 `experimental_generateVideo` 函数提供种子，以控制视频生成过程的输出。如果模型支持，相同的种子将始终生成相同的视频。
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只在跑步机上行走的猫',
+  seed: 1234567890,
+});
+```
+
+### 提供商特定设置
+
+视频模型通常具有提供商甚至模型特定的设置。你可以使用 `providerOptions` 参数将这些设置传递给 `experimental_generateVideo` 函数。提供商的选项将成为请求体属性。
+
+```tsx highlight={"8-10"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: '一只在跑步机上行走的猫',
+  aspectRatio: '16:9',
+  providerOptions: {
+    fal: { loop: true, motionStrength: 0.8 },
+  },
+});
+```
+
+### 中止信号与超时
+
+`experimental_generateVideo` 接受一个可选的 `abortSignal` 参数，类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，你可以使用它来中止视频生成过程或设置超时。
+
+```ts highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只在跑步机上行走的猫',
+  abortSignal: AbortSignal.timeout(60000), // 60 秒后中止
+});
+```
+
+<Note>
+  视频生成通常比图像生成耗时更长。根据模型和视频长度，建议使用更长的超时时间（60 秒或更长）。
+</Note>
+
+### 轮询超时
+
+视频生成是一个异步过程，可能需要几分钟才能完成。大多数提供商使用轮询机制，SDK 会定期检查视频是否就绪。默认轮询超时通常为 5 分钟，对于较长的视频或某些模型来说可能不够。
+
+你可以使用提供商特定的选项配置轮询超时。每个提供商都导出一个用于其选项的类型，你可以与 `satisfies` 一起使用以确保类型安全：
+
+```tsx highlight={"10-12"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal, type FalVideoModelOptions } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: '一个城市从黎明到黄昏的电影感延时摄影',
+  duration: 10,
+  providerOptions: {
+    fal: {
+      pollTimeoutMs: 600000, // 10 分钟
+    } satisfies FalVideoModelOptions,
+  },
+});
+```
+
+<Note>
+  对于生产环境，我们建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000 毫秒），以应对不同模型和视频长度下不同的生成时间。
+</Note>
+
+### 自定义请求头
+
+`experimental_generateVideo` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，你可以使用它向视频生成请求添加自定义请求头。
+
+```ts highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { video } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只在跑步机上行走的猫',
+  headers: { 'X-Custom-Header': 'custom-value' },
+});
+```
+
+### 警告
+
+如果模型返回警告（例如，针对不支持的参数），这些警告将出现在响应的 `warnings` 属性中。
+
+```tsx
+const { video, warnings } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只在跑步机上行走的猫',
+});
+```
+
+### 额外的提供商特定元数据
+
+某些提供商为整体结果或每个视频公开额外的元数据。
+
+```tsx
+const prompt = '一只在跑步机上行走的猫';
+
+const { video, providerMetadata } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt,
+});
+
+// 访问提供商特定的元数据
+const videoMetadata = providerMetadata.fal?.videos[0];
+console.log({
+  duration: videoMetadata?.duration,
+  fps: videoMetadata?.fps,
+  width: videoMetadata?.width,
+  height: videoMetadata?.height,
+});
+```
+
+返回的 `providerMetadata` 的外层键是提供商名称。内层值是元数据。元数据中通常存在一个 `videos` 键，它是一个与顶层 `videos` 键长度相同的数组。
+
+当使用 `n > 1` 生成多个视频时，你还可以通过 `responses` 数组访问每次调用的元数据：
+
+```tsx
+const { videos, responses } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一枚火箭发射进入太空',
+  n: 5, // 可能需要多次 API 调用
+});
+
+// 访问每次单独 API 调用的元数据
+for (const response of responses) {
+  console.log({
+    timestamp: response.timestamp,
+    modelId: response.modelId,
+    // 每次调用的提供商元数据（无损）
+    providerMetadata: response.providerMetadata,
+  });
+}
+```
+
+### 错误处理
+
+当 `experimental_generateVideo` 无法生成有效视频时，会抛出 [`AI_NoVideoGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-video-generated-error) 错误。
+
+当 AI 提供商无法生成视频时会发生此错误。可能由以下原因引起：
+
+- 模型未能生成响应
+- 模型生成的响应无法解析
+
+该错误会保留以下信息以帮助你记录问题：
+
+- `responses`：关于视频模型响应的元数据，包括时间戳、模型和请求头。
+- `cause`：错误的原因。你可以用它来进行更详细的错误处理。
+
+```ts
+import {
+  experimental_generateVideo as generateVideo,
+  NoVideoGeneratedError,
+} from 'ai';
+
+try {
+  await generateVideo({ model, prompt });
+} catch (error) {
+  if (NoVideoGeneratedError.isInstance(error)) {
+    console.log('NoVideoGeneratedError');
+    console.log('Cause:', error.cause);
+    console.log('Responses:', error.responses);
+  }
+}
+```
+
+## 视频模型
+
+| 提供商                                                                   | 模型                           | 功能                                               |
+| ------------------------------------------------------------------------ | ------------------------------ | -------------------------------------------------- |
+| [FAL](/providers/ai-sdk-providers/fal#video-models)                      | `luma-dream-machine/ray-2`     | 文本到视频，图像到视频                             |
+| [FAL](/providers/ai-sdk-providers/fal#video-models)                      | `minimax-video`                | 文本到视频                                         |
+| [Google](/providers/ai-sdk-providers/google#video-models)                | `veo-2.0-generate-001`         | 文本到视频，每次调用最多 4 个视频                  |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models)  | `veo-3.1-generate-001`         | 文本到视频，音频生成                               |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models)  | `veo-3.1-fast-generate-001`    | 文本到视频，音频生成                               |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models)  | `veo-3.0-generate-001`         | 文本到视频，音频生成                               |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models)  | `veo-3.0-fast-generate-001`    | 文本到视频，音频生成                               |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models)  | `veo-2.0-generate-001`         | 文本到视频，每次调用最多 4 个视频                  |
+| [Kling AI](/providers/ai-sdk-providers/klingai#video-models)             | `kling-v2.6-t2v`               | 文本到视频                                         |
+| [Kling AI](/providers/ai-sdk-providers/klingai#video-models)             | `kling-v2.6-i2v`               | 图像到视频                                         |
+| [Kling AI](/providers/ai-sdk-providers/klingai#video-models)             | `kling-v2.6-motion-control`    | 运动控制                                           |
+| [Replicate](/providers/ai-sdk-providers/replicate#video-models)          | `minimax/video-01`             | 文本到视频                                         |
+| [xAI](/providers/ai-sdk-providers/xai#video-models)                      | `grok-imagine-video`           | 文本到视频，图像到视频，编辑，扩展，R2V            |
+
+以上是 AI SDK 提供商支持的视频模型的一小部分。更多信息，请参阅相应提供商的文档。

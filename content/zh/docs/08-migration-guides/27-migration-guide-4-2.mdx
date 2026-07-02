@@ -1,0 +1,97 @@
+---
+title: 将 AI SDK 4.1 迁移至 4.2
+description: 了解如何将 AI SDK 4.1 升级至 4.2。
+---
+
+# 将 AI SDK 4.1 迁移至 4.2
+
+<Note>
+  请查看 [AI SDK 4.2 发布博客文章](https://vercel.com/blog/ai-sdk-4-2) 以获取更多关于该版本的信息。
+</Note>
+
+本指南将帮助您升级至 AI SDK 4.2：
+
+## 稳定版 API
+
+以下 API 已转为稳定版，不再带有 `experimental_` 前缀：
+
+- `customProvider`
+- `providerOptions`（由 `providerMetadata` 重命名而来，用于提供商特定输入）
+- `providerMetadata`（用于提供商特定输出）
+- `streamText` 的 `toolCallStreaming` 选项
+
+## 依赖版本
+
+AI SDK 需要一个非可选的 `zod` 依赖，版本要求为 `^3.23.8`。
+
+## UI 消息部分
+
+在 AI SDK 4.2 中，我们重新设计了 `useChat` 处理模型输出的方式，引入了消息部分和多步骤机制。
+这是一项重大改进，可简化在 UI 中渲染复杂、多模态 AI 响应的过程。
+
+### 变更内容
+
+现在，包含工具调用的助手消息会被合并为一条包含多个部分的消息，而不是为每个步骤创建单独的消息。
+这一变更解决了 AI 应用中的两个关键发展：
+
+1. **多样化的输出类型**：模型现在不仅生成文本，还会生成推理步骤、来源和工具调用。
+2. **交错输出**：在多步骤智能体用例中，这些不同的输出类型经常交错出现。
+
+### 新方法的优势
+
+以前，`useChat` 会将不同的输出类型分开存储，这使得在响应中这些元素交错出现时，难以在 UI 中保持正确的顺序，
+并且在存在工具调用时会导致多条连续的助手消息。例如：
+
+```javascript
+message.content = "最终答案：42";
+message.reasoning = "首先我会计算 X，然后计算 Y……";
+message.toolInvocations = [{toolName: "calculator", args: {...}}];
+```
+
+这种结构具有局限性。新的消息部分方法用有序数组替代了单独的属性，从而保留了精确的顺序：
+
+```javascript
+message.parts = [
+  { type: "text", text: "最终答案：42" },
+  { type: "reasoning", reasoning: "首先我会计算 X，然后计算 Y……" },
+  { type: "tool-invocation", toolInvocation: { toolName: "calculator", args: {...} } },
+];
+```
+
+### 迁移
+
+使用旧消息格式的现有应用程序需要更新其 UI 组件，以处理新的 `parts` 数组。
+为了向后兼容，旧格式的字段仍然可用，但我们建议迁移到新格式，以便更好地支持多模态和多步骤交互。
+
+您可以按如下方式使用带有新消息部分的 `useChat` Hook：
+
+```javascript
+function Chat() {
+  const { messages } = useChat();
+  return (
+    <div>
+      {messages.map(message =>
+        message.parts.map((part, i) => {
+          switch (part.type) {
+            case 'text':
+              return <p key={i}>{part.text}</p>;
+            case 'source':
+              return <p key={i}>{part.source.url}</p>;
+            case 'reasoning':
+              return <div key={i}>{part.reasoning}</div>;
+            case 'tool-invocation':
+              return <div key={i}>{part.toolInvocation.toolName}</div>;
+            case 'file':
+              return (
+                <img
+                  key={i}
+                  src={`data:${part.mediaType};base64,${part.data}`}
+                />
+              );
+          }
+        }),
+      )}
+    </div>
+  );
+}
+```

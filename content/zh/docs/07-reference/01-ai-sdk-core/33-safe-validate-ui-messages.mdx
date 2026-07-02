@@ -1,0 +1,113 @@
+---
+title: safeValidateUIMessages
+description: safeValidateUIMessages 的 API 参考文档
+---
+
+# `safeValidateUIMessages`
+
+`safeValidateUIMessages` 是一个异步函数，用于验证 UI 消息，与 [`validateUIMessages`](https://ai-sdk.dev/docs/reference/ai-sdk-core/validate-ui-messages) 类似，但它不会抛出异常，而是返回一个包含 `success` 键以及 `data` 或 `error` 的对象。
+
+## 基本用法
+
+不使用自定义模式的简单验证：
+
+```typescript
+import { safeValidateUIMessages } from 'ai';
+
+const messages = [
+  {
+    id: '1',
+    role: 'user',
+    parts: [{ type: 'text', text: 'Hello!' }],
+  },
+];
+
+const result = await safeValidateUIMessages({
+  messages,
+});
+
+if (!result.success) {
+  console.error(result.error.message);
+} else {
+  const validatedMessages = result.data;
+}
+```
+
+## 高级用法
+
+使用自定义元数据、数据部分和工具的全面验证：
+
+```typescript
+import { safeValidateUIMessages, tool } from 'ai';
+import { z } from 'zod';
+
+// 定义模式
+const metadataSchema = z.object({
+  timestamp: z.string().datetime(),
+  userId: z.string(),
+});
+
+const dataSchemas = {
+  chart: z.object({
+    data: z.array(z.number()),
+    labels: z.array(z.string()),
+  }),
+  image: z.object({
+    url: z.string().url(),
+    caption: z.string(),
+  }),
+};
+
+const tools = {
+  weather: tool({
+    description: '获取天气信息',
+    parameters: z.object({
+      location: z.string(),
+    }),
+    execute: async ({ location }) => `Weather in ${location}: sunny`,
+  }),
+};
+
+// 包含自定义部分的消息
+const messages = [
+  {
+    id: '1',
+    role: 'user',
+    metadata: { timestamp: '2024-01-01T00:00:00Z', userId: 'user123' },
+    parts: [
+      { type: 'text', text: 'Show me a chart' },
+      {
+        type: 'data-chart',
+        data: { data: [1, 2, 3], labels: ['A', 'B', 'C'] },
+      },
+    ],
+  },
+  {
+    id: '2',
+    role: 'assistant',
+    parts: [
+      {
+        type: 'tool-weather',
+        toolCallId: 'call_123',
+        state: 'output-available',
+        input: { location: 'San Francisco' },
+        output: 'Weather in San Francisco: sunny',
+      },
+    ],
+  },
+];
+
+// 使用所有模式进行验证
+const result = await safeValidateUIMessages({
+  messages,
+  metadataSchema,
+  dataSchemas,
+  tools,
+});
+
+if (!result.success) {
+  console.error(result.error.message);
+} else {
+  const validatedMessages = result.data;
+}
+```

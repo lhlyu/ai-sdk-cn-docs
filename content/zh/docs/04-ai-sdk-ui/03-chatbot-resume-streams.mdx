@@ -1,0 +1,395 @@
+---
+title: 聊天机器人流式恢复
+description: 了解如何在客户端断开连接后恢复聊天机器人流。
+---
+
+# 聊天机器人流式恢复
+
+`useChat` 支持在页面重新加载后恢复正在进行的流。使用此功能构建具有长时间运行生成任务的应用程序。
+
+<Note type="warning">
+  在可恢复流设置中，客户端的终止操作被视为断开连接。关闭标签页、刷新页面或调用 `stop()` 只会关闭当前 HTTP 连接，不应取消底层生成任务。若要允许用户停止生成，请添加一个专门的停止端点，该端点持久化部分响应、取消正在进行的任务并清除活动流。更多详情请参阅[停止活动可恢复流](#stop-an-active-resumable-stream)和[故障排除](/docs/troubleshooting/abort-breaks-resumable-streams)。
+</Note>
+
+## 流恢复的工作原理
+
+流恢复需要在应用程序中持久化消息和活动流。AI SDK 提供了连接存储的工具，但你需要自行设置存储。
+
+**AI SDK 提供：**
+
+- `useChat` 中的 `resume` 选项，可自动重新连接到活动流
+- 通过 `consumeSseStream` 回调访问传出流
+- 自动向恢复端点发送 HTTP 请求
+
+**你需要构建：**
+
+- 存储以跟踪每个聊天对应的流
+- Redis 以存储 UIMessage 流
+- 两个 API 端点：POST 用于创建流，GET 用于恢复流
+- 与 [`resumable-stream`](https://www.npmjs.com/package/resumable-stream) 集成以管理 Redis 存储
+
+## 前提条件
+
+要在聊天应用中实现可恢复流，你需要：
+
+1. **`resumable-stream` 包** - 处理流的发布/订阅机制
+2. **一个 Redis 实例** - 存储流数据（例如[通过 Vercel 使用 Redis](https://vercel.com/marketplace/redis)）
+3. **一个持久化层** - 跟踪每个聊天的活动流 ID（例如数据库）
+
+## 实现
+
+### 1. 客户端：启用流恢复
+
+在 `useChat` Hook 中使用 `resume` 选项启用流恢复。当 `resume` 为 true 时，Hook 在挂载时会自动尝试重新连接到聊天的任何活动流：
+
+```tsx filename="app/chat/[chatId]/chat.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport, type UIMessage } from 'ai';
+
+export function Chat({
+  chatData,
+  resume = false,
+}: {
+  chatData: { id: string; messages: UIMessage[] };
+  resume?: boolean;
+}) {
+  const { messages, sendMessage, status } = useChat({
+    id: chatData.id,
+    messages: chatData.messages,
+    resume, // 启用自动流恢复
+    transport: new DefaultChatTransport({
+      // 你必须发送聊天的 id
+      prepareSendMessagesRequest: ({ id, messages }) => {
+        return {
+          body: {
+            id,
+            message: messages[messages.length - 1],
+          },
+        };
+      },
+    }),
+  });
+
+  return <div>{/* 你的聊天 UI */}</div>;
+}
+```
+
+<Note>
+  你必须在每个请求中发送聊天 ID（参见 `prepareSendMessagesRequest`）。
+</Note>
+
+当你启用 `resume` 时，`useChat` Hook 会在挂载时向 `/api/chat/[id]/stream` 发送 `GET` 请求，以检查并恢复任何活动流。
+
+让我们从创建 POST 处理器来创建可恢复流开始。
+
+### 2. 创建 POST 处理器
+
+POST 处理器使用 `consumeSseStream` 回调创建可恢复流：
+
+```ts filename="app/api/chat/route.ts"
+import { openai } from '@ai-sdk/openai';
+import { readChat, saveChat } from '@util/chat-store';
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  generateId,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from 'ai';
+import { after } from 'next/server';
+import { createResumableStreamContext } from 'resumable-stream';
+
+export async function POST(req: Request) {
+  const {
+    message,
+    id,
+  }: {
+    message: UIMessage | undefined;
+    id: string;
+  } = await req.json();
+
+  const chat = await readChat(id);
+  let messages = chat.messages;
+
+  messages = [...messages, message!];
+
+  // 清除任何先前的活动流并保存用户消息
+  saveChat({ id, messages, activeStreamId: null });
+
+  const result = streamText({
+    model: 'openai/gpt-5-mini',
+    messages: await convertToModelMessages(messages),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      originalMessages: messages,
+      generateMessageId: generateId,
+      onEnd: ({ messages }) => {
+        // 完成后清除活动流
+        saveChat({ id, messages, activeStreamId: null });
+      },
+    }),
+    async consumeSseStream({ stream }) {
+      const streamId = generateId();
+
+      // 从 SSE 流创建可恢复流
+      const streamContext = createResumableStreamContext({ waitUntil: after });
+      await streamContext.createNewResumableStream(streamId, () => stream);
+
+      // 使用活动流 ID 更新聊天
+      saveChat({ id, activeStreamId: streamId });
+    },
+  });
+}
+```
+
+### 3. 实现 GET 处理器
+
+在 `/api/chat/[id]/stream` 创建一个 GET 处理器，它：
+
+1. 从路由参数读取聊天 ID
+2. 加载聊天数据以检查是否有活动流
+3. 如果没有活动流，返回 204（无内容）
+4. 如果找到活动流，则恢复现有流
+
+```ts filename="app/api/chat/[id]/stream/route.ts"
+import { readChat } from '@util/chat-store';
+import { UI_MESSAGE_STREAM_HEADERS } from 'ai';
+import { after } from 'next/server';
+import { createResumableStreamContext } from 'resumable-stream';
+
+export async function GET(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  const chat = await readChat(id);
+
+  if (chat.activeStreamId == null) {
+    // 没有活动流时返回无内容响应
+    return new Response(null, { status: 204 });
+  }
+
+  const streamContext = createResumableStreamContext({
+    waitUntil: after,
+  });
+
+  return new Response(
+    await streamContext.resumeExistingStream(chat.activeStreamId),
+    { headers: UI_MESSAGE_STREAM_HEADERS },
+  );
+}
+```
+
+<Note>
+  Next.js 的 `after` 函数允许在响应发送后继续工作。这确保了可恢复流在初始响应返回给客户端后仍持久化在 Redis 中，从而允许稍后重新连接。
+</Note>
+
+## 工作原理
+
+### 请求生命周期
+
+![显示可恢复流请求架构和生命周期的图表](https://e742qlubrjnjqpp0.public.blob.vercel-storage.com/resume-stream-diagram.png)
+
+上图显示了可恢复流的完整生命周期：
+
+1. **流创建**：当你发送新消息时，POST 处理器使用 `streamText` 生成响应。`consumeSseStream` 回调使用唯一 ID 创建可恢复流，并通过 `resumable-stream` 包将其存储在 Redis 中
+2. **流跟踪**：你的持久化层将 `activeStreamId` 保存在聊天数据中
+3. **客户端重新连接**：当客户端重新连接（页面重新加载）时，`resume` 选项触发对 `/api/chat/[id]/stream` 的 GET 请求
+4. **流恢复**：GET 处理器检查 `activeStreamId` 并使用 `resumeExistingStream` 重新连接。如果没有活动流，则返回 204（无内容）响应
+5. **完成清理**：当流完成时，`onFinish` 回调通过将 `activeStreamId` 设置为 `null` 来清除它
+
+## 自定义恢复端点
+
+默认情况下，`useChat` Hook 在恢复时向 `/api/chat/[id]/stream` 发送 GET 请求。使用 `DefaultChatTransport` 中的 `prepareReconnectToStreamRequest` 选项自定义此端点、凭据和标头：
+
+```tsx filename="app/chat/[chatId]/chat.tsx"
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+
+export function Chat({ chatData, resume }) {
+  const { messages, sendMessage } = useChat({
+    id: chatData.id,
+    messages: chatData.messages,
+    resume,
+    transport: new DefaultChatTransport({
+      // 自定义重新连接设置（可选）
+      prepareReconnectToStreamRequest: ({ id }) => {
+        return {
+          api: `/api/chat/${id}/stream`, // 默认模式
+          // 或使用不同模式：
+          // api: `/api/streams/${id}/resume`,
+          // api: `/api/resume-chat?id=${id}`,
+          credentials: 'include', // 包含 cookie/认证
+          headers: {
+            Authorization: 'Bearer token',
+            'X-Custom-Header': 'value',
+          },
+        };
+      },
+    }),
+  });
+
+  return <div>{/* 你的聊天 UI */}</div>;
+}
+```
+
+这让你可以：
+
+- 匹配现有的 API 路由结构
+- 添加查询参数或自定义路径
+- 与不同的后端架构集成
+
+## 停止活动可恢复流
+
+`useChat` 包含一个 `stop()` 函数，用于终止当前客户端请求。在可恢复流设置中，该终止是断开连接信号，而不是停止生成的请求。
+
+流恢复允许客户端在原始连接关闭后重新连接到活动流。为了实现这一点，服务器即使在没有客户端主动消费流时也保持流运行。如果用户刷新页面、关闭标签页、失去连接或导航离开，客户端稍后可以使用 `resumeStream()` 重新连接。
+
+因此，客户端侧的终止（例如关闭页面或刷新）仅关闭当前 HTTP 连接。它不是取消底层工作的请求。如果你的停止按钮仅调用 `stop()`，模型请求、后台作业、工作流或流写入器可能会继续运行，并且客户端可以重新连接到同一活动流。
+
+要支持显式的停止按钮，请创建一个专门的停止端点。该端点应接受来自客户端的当前助手消息，持久化该部分响应，取消正在生成流的工作，并清除聊天的活动流记录。
+
+流恢复还需要你的应用程序存储从聊天到可恢复流的引用。本指南将此引用称为 `activeStreamId`。恢复端点使用它来查找要重新连接的流。停止端点使用相同的值来查找要取消的工作，并避免清除在停止请求进行时可能已启动的较新流。
+
+### 客户端：发送当前助手消息
+
+聊天设置与上述可恢复流设置相同。要添加停止行为，请在停止本地聊天流之前将最新的部分助手消息发送到你的停止端点。
+
+当客户端知道活动流 ID 时，将其包含在请求中。这允许服务器忽略在较新流已启动后到达的过时停止请求。
+
+```tsx filename="app/chat/[chatId]/chat.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { type UIMessage } from 'ai';
+
+export function Chat({
+  chatData,
+  resume = false,
+}: {
+  chatData: {
+    id: string;
+    messages: UIMessage[];
+    activeStreamId?: string | null;
+  };
+  resume?: boolean;
+}) {
+  const chat = useChat({
+    id: chatData.id,
+    messages: chatData.messages,
+    resume,
+  });
+
+  const stop = () => {
+    const lastMessage = chat.messages[chat.messages.length - 1];
+    const assistantMessage =
+      lastMessage?.role === 'assistant' ? lastMessage : undefined;
+
+    void fetch(`/api/chat/${chatData.id}/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        assistantMessage || chatData.activeStreamId
+          ? {
+              assistantMessage,
+              activeStreamId: chatData.activeStreamId,
+            }
+          : {},
+      ),
+    });
+
+    void chat.stop();
+  };
+
+  return <button onClick={stop}>停止</button>;
+}
+```
+
+停止请求告诉你的服务器取消活动工作。`chat.stop()` 停止本地客户端读取更多数据块。
+
+### 服务器端：停止活动工作并清除流
+
+停止端点应：
+
+1. 加载聊天并读取其 `activeStreamId`
+2. 如果发送了助手快照，则持久化它
+3. 取消正在生成流的工作
+4. 仅当 `activeStreamId` 仍指向同一流时清除它
+
+```ts filename="app/api/chat/[id]/stop/route.ts"
+import { readChat, saveChat } from '@util/chat-store';
+import { type UIMessage } from 'ai';
+
+type StopRequest = {
+  activeStreamId?: string | null;
+  assistantMessage?: UIMessage;
+};
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const chat = await readChat(id);
+
+  if (chat.activeStreamId == null) {
+    return Response.json({ success: true });
+  }
+
+  const activeStreamId = chat.activeStreamId;
+  const body = (await req.json().catch(() => ({}))) as StopRequest;
+
+  if (body.activeStreamId != null && body.activeStreamId !== activeStreamId) {
+    return Response.json({ success: true });
+  }
+
+  if (body.assistantMessage) {
+    await saveAssistantSnapshot({
+      chatId: id,
+      message: body.assistantMessage,
+    });
+  }
+
+  await markStreamAsStopped(activeStreamId);
+  await cancelActiveWork(activeStreamId);
+
+  const latestChat = await readChat(id);
+  if (latestChat.activeStreamId === activeStreamId) {
+    await saveChat({ id, activeStreamId: null });
+  }
+
+  return Response.json({ success: true });
+}
+```
+
+`markStreamAsStopped` 和 `cancelActiveWork` 取决于你的后端。在基于 Redis 的可恢复流设置中，你可能会关闭存储的流并终止正在写入的模型请求。在工作流设置中，你可能会取消拥有该流的工作流运行。在作业队列设置中，你可能会取消作业或写入作业检查的取消标志。
+
+`activeStreamId` 可以标识重放状态、生产者状态或两者。如果这些在你的系统中是分开的，请存储足够的信息与聊天一起，以取消写入流的生成器。
+
+将助手快照作为插入或合并持久化。避免用较旧的客户端快照覆盖较新的服务器写入消息。
+
+### 保持导航与停止分离
+
+不要从路由清理代码中调用停止端点。路由清理是断开连接，而不是显式停止。当用户刷新页面或导航离开时，活动流应保持可恢复。
+
+仅对显式用户操作（例如按下停止按钮）调用停止端点。
+
+在用户停止流后，避免对该聊天进行自动重新连接尝试，直到用户发送另一条消息或显式重试。否则，客户端可能在取消完成之前重新连接。
+
+## 重要考虑因素
+
+- **流过期**：Redis 中的流在设定时间后过期（可在 `resumable-stream` 包中配置）
+- **多个客户端**：多个客户端可以同时连接到同一流
+- **错误处理**：当没有活动流时，GET 处理器返回 204（无内容）状态码
+- **安全性**：确保创建和恢复流的适当身份验证和授权
+- **竞态条件**：在启动新流时清除 `activeStreamId`，以防止恢复过时的流
+
+<br />
+<GithubLink link="https://github.com/vercel/ai/blob/main/examples/next" />

@@ -1,0 +1,78 @@
+---
+title: readStreamableValue
+description: AI SDK RSC 中 readStreamableValue 函数的参考文档
+---
+
+# `readStreamableValue`
+
+<Note type="warning">
+  AI SDK RSC 目前处于实验阶段。生产环境建议使用 [AI SDK
+  UI](/docs/ai-sdk-ui/overview)。如需从 RSC 迁移到 UI，请参阅我们的[迁移指南](/docs/ai-sdk-rsc/migrating-to-ui)。
+</Note>
+
+该函数用于在客户端读取最初通过服务端 [`createStreamableValue`](/docs/reference/ai-sdk-rsc/create-streamable-value) 创建的流式值。
+
+## 导入
+
+<Snippet
+  text={`import { readStreamableValue } from "@ai-sdk/rsc"`}
+  prompt={false}
+/>
+
+## 示例
+
+```ts filename="app/actions.ts"
+async function generate() {
+  'use server';
+  const streamable = createStreamableValue('');
+
+  streamable.append('Hello');
+  streamable.append(' ');
+  streamable.append('World');
+  streamable.done();
+
+  return streamable.value;
+}
+```
+
+```tsx filename="app/page.tsx" highlight="12"
+import { readStreamableValue } from '@ai-sdk/rsc';
+
+export default function Page() {
+  const [generation, setGeneration] = useState('');
+
+  return (
+    <div>
+      <button
+        onClick={async () => {
+          const stream = await generate();
+
+          for await (const value of readStreamableValue(stream)) {
+            setGeneration(value);
+          }
+        }}
+      >
+        生成
+      </button>
+    </div>
+  );
+}
+```
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stream',
+      type: 'StreamableValue',
+      description: '要读取的流式值。',
+    },
+  ]}
+/>
+
+### 返回值
+
+返回一个异步迭代器，包含流式值发出的所有值。

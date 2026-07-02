@@ -1,0 +1,114 @@
+---
+title: 使用图像提示词流式传输结构化数据
+description: 学习如何使用 AI SDK 和 Node 通过图像提示词流式传输结构化数据
+tags: ['node', '流式传输', '结构化数据', '多模态']
+---
+
+# 使用图像提示词流式传输结构化数据
+
+某些支持视觉能力的语言模型可以接受图像作为提示词的一部分。以下是可用于将图像作为输入的一些不同[格式](/docs/reference/ai-sdk-core/generate-text#content-image)。
+
+## URL
+
+```ts file='index.ts'
+import { streamText, Output } from 'ai';
+import dotenv from 'dotenv';
+import { z } from 'zod';
+
+dotenv.config();
+
+async function main() {
+  const { partialOutputStream } = streamText({
+    model: 'openai/gpt-4.1',
+    maxOutputTokens: 512,
+    output: Output.object({
+      schema: z.object({
+        stamps: z.array(
+          z.object({
+            country: z.string(),
+            date: z.string(),
+          }),
+        ),
+      }),
+    }),
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '列出这些护照页面上的所有印章？',
+          },
+          {
+            type: 'file',
+            mediaType: 'image',
+            data: new URL(
+              'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/WW2_Spanish_official_passport.jpg/1498px-WW2_Spanish_official_passport.jpg',
+            ),
+          },
+        ],
+      },
+    ],
+  });
+
+  for await (const partialObject of partialOutputStream) {
+    console.clear();
+    console.log(partialObject);
+  }
+}
+
+main();
+```
+
+## 文件缓冲区
+
+```ts file='index.ts'
+import { streamText, Output } from 'ai';
+import dotenv from 'dotenv';
+import { z } from 'zod';
+import fs from 'fs';
+
+dotenv.config();
+
+async function main() {
+  const { partialOutputStream } = streamText({
+    model: 'openai/gpt-4.1',
+    maxOutputTokens: 512,
+    output: Output.object({
+      schema: z.object({
+        stamps: z.array(
+          z.object({
+            country: z.string(),
+            date: z.string(),
+          }),
+        ),
+      }),
+    }),
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '列出这些护照页面上的所有印章？',
+          },
+          {
+            type: 'file',
+            mediaType: 'image',
+            data: fs.readFileSync('./data/passport.png', {
+              encoding: 'base64',
+            }),
+          },
+        ],
+      },
+    ],
+  });
+
+  for await (const partialObject of partialOutputStream) {
+    console.clear();
+    console.log(partialObject);
+  }
+}
+
+main();
+```

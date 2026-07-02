@@ -1,0 +1,68 @@
+---
+title: 多个流式对象
+description: 学习在应用中处理多个流式对象。
+---
+
+# 多个流
+
+## 多个流式 UI
+
+AI SDK RSC API 允许你在单个请求中组合并返回任意数量的流式 UI 以及其他数据。当你希望将 UI 解耦为更小的组件并分别进行流式传输时，这非常有用。
+
+```tsx file='app/actions.tsx'
+'use server';
+
+import { createStreamableUI } from '@ai-sdk/rsc';
+
+export async function getWeather() {
+  const weatherUI = createStreamableUI();
+  const forecastUI = createStreamableUI();
+
+  weatherUI.update(<div>正在加载天气...</div>);
+  forecastUI.update(<div>正在加载预报...</div>);
+
+  getWeatherData().then(weatherData => {
+    weatherUI.done(<div>{weatherData}</div>);
+  });
+
+  getForecastData().then(forecastData => {
+    forecastUI.done(<div>{forecastData}</div>);
+  });
+
+  // 返回两个流式 UI 以及其他数据字段。
+  return {
+    requestedAt: Date.now(),
+    weather: weatherUI.value,
+    forecast: forecastUI.value,
+  };
+}
+```
+
+客户端代码与之前的示例类似，但[工具调用](/docs/ai-sdk-core/tools-and-tool-calling)将返回包含天气和预报 UI 的新数据结构。根据获取天气和预报数据的速度，这两个组件可能会独立更新。
+
+## 嵌套流式 UI
+
+你可以在其他 UI 组件中流式传输 UI 组件。这允许你创建由更小、可复用组件构建的复杂 UI。在下面的示例中，我们将一个 `historyChart` 流式对象作为属性传递给 `StockCard` 组件。StockCard 可以渲染 `historyChart` 流式对象，并且当服务器响应新数据时，它会自动更新。
+
+```tsx file='app/actions.tsx'
+async function getStockHistoryChart({ symbol: string }) {
+  'use server';
+
+  const ui = createStreamableUI(<Spinner />);
+
+  // 我们需要将其包装在异步 IIFE 中以避免阻塞。
+  (async () => {
+    const price = await getStockPrice({ symbol });
+
+    // 暂时显示一个旋转器作为历史图表。
+    const historyChart = createStreamableUI(<Spinner />);
+    ui.done(<StockCard historyChart={historyChart.value} price={price} />);
+
+    // 获取历史数据，然后更新 UI 的该部分。
+    const historyData = await fetch('https://my-stock-data-api.com');
+    historyChart.done(<HistoryChart data={historyData} />);
+  })();
+
+  return ui;
+}
+```

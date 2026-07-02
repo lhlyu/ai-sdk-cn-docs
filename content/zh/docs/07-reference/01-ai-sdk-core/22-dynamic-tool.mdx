@@ -1,0 +1,229 @@
+---
+title: dynamicTool
+description: 用于创建未知类型动态工具的辅助函数
+---
+
+# `dynamicTool()`
+
+`dynamicTool` 函数用于创建在编译时输入和输出类型未知的工具。这在以下场景中非常有用：
+
+- 无模式的 MCP（模型上下文协议）工具
+- 运行时加载的用户定义函数
+- 从外部源或数据库加载的工具
+- 基于用户输入动态生成工具
+
+与常规的 `tool` 函数不同，`dynamicTool` 接受并返回 `unknown` 类型，使您能够处理具有运行时确定模式的工具。
+
+```ts highlight={"1,4,9,10,11"}
+import { dynamicTool } from 'ai';
+import { z } from 'zod';
+
+export const customTool = dynamicTool({
+  description: '执行自定义用户定义函数',
+  inputSchema: z.object({}),
+  // input 类型为 'unknown'
+  execute: async input => {
+    const { action, parameters } = input as any;
+
+    // 执行您的动态逻辑
+    return {
+      result: `已执行 ${action}，参数为 ${JSON.stringify(parameters)}`,
+    };
+  },
+});
+```
+
+## 导入
+
+<Snippet text={`import { dynamicTool } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'tool',
+      type: 'Object',
+      description: '动态工具定义。',
+      properties: [
+        {
+          type: 'Object',
+          parameters: [
+            {
+              name: 'description',
+              isOptional: true,
+              type: 'string | ((options: { context: Context; experimental_sandbox?: Experimental_SandboxSession }) => string)',
+              description:
+                '关于工具用途的信息，包括模型如何使用以及何时使用该工具的详细信息。提供字符串作为固定描述，或提供函数以在每次模型调用前从工具特定上下文和可选的实验性沙箱中派生描述。'
+            },
+            {
+              name: 'title',
+              isOptional: true,
+              type: 'string',
+              description:
+                '已弃用。请使用 `providerMetadata` 获取特定来源的工具显示元数据。'
+            },
+            {
+              name: 'needsApproval',
+              isOptional: true,
+              type: 'boolean | ((input: unknown, options: { toolCallId: string; messages: ModelMessage[]; context: Context }) => boolean | Promise<boolean>)',
+              description:
+                '已弃用。对于 `generateText`、`streamText` 和 `ToolLoopAgent`，请改用 `toolApproval` 配置审批。现有的 `needsApproval` 用法仍可作为兼容性回退。使用时，可以是布尔值或接收工具输入和执行元数据的函数。'
+            },
+            {
+              name: 'inputSchema',
+              type: 'FlexibleSchema<unknown>',
+              description:
+                '工具期望的输入模式。虽然类型为 unknown，但仍需要模式进行验证。对于完全动态的输入，可以使用带有 z.unknown() 或 z.any() 的 Zod 模式。'
+            },
+            {
+              name: 'execute',
+              type: 'ToolExecuteFunction<unknown, unknown, Context>',
+              description:
+                '一个异步函数，使用工具调用的参数进行调用。输入类型为 unknown，必须在运行时进行验证/转换。',
+                properties: [
+                  {
+                    type: "ToolExecutionOptions<Context>",
+                    parameters: [
+                      {
+                      name: 'toolCallId',
+                      type: 'string',
+                      description: '工具调用的 ID。',
+                    },
+                    {
+                        name: "messages",
+                        type: "ModelMessage[]",
+                        description: "发送给语言模型的消息。"
+                      },
+                      {
+                        name: "abortSignal",
+                        type: "AbortSignal",
+                        isOptional: true,
+                        description: "可选的终止信号。"
+                      },
+                      {
+                        name: "context",
+                        type: "Context",
+                        description: "传递给工具执行的工具特定上下文。该值来自 `toolsContext` 中的匹配条目。"
+                      }
+                    ]
+                  }
+                ]
+            },
+            {
+              name: 'outputSchema',
+              isOptional: true,
+              type: 'Zod Schema | JSON Schema',
+              description:
+                '工具产生的输出模式。用于验证和类型推断。'
+            },
+            {
+              name: 'toModelOutput',
+              isOptional: true,
+              type: '({toolCallId: string; input: unknown; output: unknown}) => ToolResultOutput | PromiseLike<ToolResultOutput>',
+              description: '可选的转换函数，将工具结果映射为语言模型可用的输出。'
+            },
+            {
+              name: 'onInputStart',
+              isOptional: true,
+              type: '(options: ToolExecutionOptions<Context>) => void | PromiseLike<void>',
+              description:
+                '可选函数，在参数流式传输开始时调用。仅在工具用于流式传输上下文时调用。'
+            },
+            {
+              name: 'onInputDelta',
+              isOptional: true,
+              type: '(options: { inputTextDelta: string } & ToolExecutionOptions<Context>) => void | PromiseLike<void>',
+              description:
+                '可选函数，在参数流式传输增量可用时调用。仅在工具用于流式传输上下文时调用。'
+            },
+            {
+              name: 'onInputAvailable',
+              isOptional: true,
+              type: '(options: { input: unknown } & ToolExecutionOptions<Context>) => void | PromiseLike<void>',
+              description:
+                '可选函数，在工具调用可以启动时调用，即使未提供 execute 函数。'
+            },
+            {
+              name: 'providerOptions',
+              isOptional: true,
+              type: 'ProviderOptions',
+              description: '额外的提供商特定元数据。'
+            },
+            {
+              name: 'metadata',
+              isOptional: true,
+              type: 'JSONObject',
+              description:
+                "关于工具本身的可选元数据（例如其来源）。它会传播到生成的工具调用的 toolMetadata 中，以便消费者可以从工具调用/结果部分和 UI 消息部分读取它。对于动态工具（例如 MCP 服务器）的来源标识非常有用。"
+            }
+          ]
+        }
+      ]
+    }
+
+]}
+/>
+
+### 返回值
+
+一个 `Tool<unknown, unknown>`，类型为 `'dynamic'`，可与 `generateText`、`streamText` 和其他 AI SDK 函数一起使用。
+
+## 类型安全用法
+
+当动态工具与静态工具一起使用时，您需要检查 `dynamic` 标志以进行正确的类型收窄：
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  tools: {
+    // 具有已知类型的静态工具
+    weather: weatherTool,
+    // 具有未知类型的动态工具
+    custom: dynamicTool({
+      /* ... */
+    }),
+  },
+  onStepEnd: ({ toolCalls, toolResults }) => {
+    for (const toolCall of toolCalls) {
+      if (toolCall.dynamic) {
+        // 动态工具：输入/输出为 'unknown'
+        console.log('动态工具:', toolCall.toolName);
+        console.log('输入:', toolCall.input);
+        continue;
+      }
+
+      // 静态工具具有完整的类型推断
+      switch (toolCall.toolName) {
+        case 'weather':
+          // TypeScript 知道确切的类型
+          console.log(toolCall.input.location); // string
+          break;
+      }
+    }
+  },
+});
+```
+
+## 与 `useChat` 一起使用
+
+当与 useChat（`UIMessage` 格式）一起使用时，动态工具显示为 `dynamic-tool` 部分：
+
+```tsx
+{
+  message.parts.map(part => {
+    switch (part.type) {
+      case 'dynamic-tool':
+        return (
+          <div>
+            <h4>工具: {part.toolName}</h4>
+            <pre>{JSON.stringify(part.input, null, 2)}</pre>
+          </div>
+        );
+      // ... 处理其他部分类型
+    }
+  });
+}
+```

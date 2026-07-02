@@ -1,0 +1,147 @@
+---
+title: transcribe
+description: transcribe 的 API 参考文档。
+---
+
+# `transcribe()`
+
+根据音频文件生成转录文本。
+
+```ts
+import { transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+const { text: transcript } = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+});
+
+console.log(transcript);
+```
+
+## 导入
+
+<Snippet text={`import { transcribe } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'TranscriptionModelV4',
+      description: '要使用的转录模型。',
+    },
+    {
+      name: 'audio',
+      type: 'DataContent (string | Uint8Array | ArrayBuffer | Buffer) | URL',
+      description: '用于生成转录文本的音频文件。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'Record<string, JSONObject>',
+      isOptional: true,
+      description: '额外的提供商特定选项。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description: '最大重试次数。默认值：2。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '可选的终止信号，用于取消调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description: '请求的额外 HTTP 标头。',
+    },
+    {
+      name: 'download',
+      type: '(options: { url: URL; abortSignal?: AbortSignal }) => Promise<{ data: Uint8Array; mediaType: string | undefined }>',
+      isOptional: true,
+      description:
+        '用于从 URL 获取音频的自定义下载函数。使用 `ai` 中的 `createDownload()` 创建具有自定义大小限制的下载函数，例如 `createDownload({ maxBytes: 50 * 1024 * 1024 })`。默认值：内置下载，限制为 2 GiB。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'text',
+      type: 'string',
+      description: '音频输入的完整转录文本。',
+    },
+    {
+      name: 'segments',
+      type: 'Array<{ text: string; startSecond: number; endSecond: number }>',
+      description:
+        '转录片段数组，每个片段包含一部分转录文本及其在音频中的开始和结束时间（以秒为单位）。',
+    },
+    {
+      name: 'language',
+      type: 'string | undefined',
+      description:
+        '转录文本的语言，采用 ISO-639-1 格式，例如 "en" 表示英语。',
+    },
+    {
+      name: 'durationInSeconds',
+      type: 'number | undefined',
+      description: '转录文本的时长（以秒为单位）。',
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description:
+        '来自模型提供商的警告（例如不支持的设置）。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'Record<string, JSONObject>',
+      isOptional: true,
+      description:
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。具体细节取决于提供商。',
+    },
+    {
+      name: 'responses',
+      type: 'Array<TranscriptionModelResponseMetadata>',
+      description:
+        '来自提供商的响应元数据。如果对模型进行了多次调用，则可能有多个响应。',
+      properties: [
+        {
+          type: 'TranscriptionModelResponseMetadata',
+          parameters: [
+            {
+              name: 'timestamp',
+              type: 'Date',
+              description: '生成响应开始的时间戳。',
+            },
+            {
+              name: 'modelId',
+              type: 'string',
+              description:
+                '用于生成响应的响应模型的 ID。',
+            },
+            {
+              name: 'headers',
+              type: 'Record<string, string>',
+              isOptional: true,
+              description: '响应标头。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>

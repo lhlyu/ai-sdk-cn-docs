@@ -1,0 +1,262 @@
+---
+title: UIMessage
+description: UIMessage API 参考文档
+---
+
+# `UIMessage`
+
+`UIMessage` 作为应用程序状态的真实来源，代表完整的消息历史记录，包括元数据、数据部分和所有上下文信息。与表示传递给模型的状态或上下文的 `ModelMessage` 不同，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
+
+## 类型安全
+
+`UIMessage` 被设计为类型安全的，并接受三个泛型参数以确保整个应用程序的正确类型：
+
+1. **`METADATA`** - 用于附加消息信息的自定义元数据类型
+2. **`DATA_PARTS`** - 用于结构化数据组件的自定义数据部分类型
+3. **`TOOLS`** - 用于类型安全工具交互的工具定义
+
+## 创建你自己的 UIMessage 类型
+
+以下是如何为你的应用程序创建自定义类型化 UIMessage 的示例：
+
+```typescript
+import { InferUITools, ToolSet, UIMessage, tool } from 'ai';
+import z from 'zod';
+
+const metadataSchema = z.object({
+  someMetadata: z.string().datetime(),
+});
+
+type MyMetadata = z.infer<typeof metadataSchema>;
+
+const dataPartSchema = z.object({
+  someDataPart: z.object({}),
+  anotherDataPart: z.object({}),
+});
+
+type MyDataPart = z.infer<typeof dataPartSchema>;
+
+const tools = {
+  someTool: tool({}),
+} satisfies ToolSet;
+
+type MyTools = InferUITools<typeof tools>;
+
+export type MyUIMessage = UIMessage<MyMetadata, MyDataPart, MyTools>;
+```
+
+## `UIMessage` 接口
+
+```typescript
+interface UIMessage<
+  METADATA = unknown,
+  DATA_PARTS extends UIDataTypes = UIDataTypes,
+  TOOLS extends UITools = UITools,
+> {
+  /**
+   * 消息的唯一标识符。
+   */
+  id: string;
+
+  /**
+   * 消息的角色。
+   */
+  role: 'system' | 'user' | 'assistant';
+
+  /**
+   * 消息的元数据。
+   */
+  metadata?: METADATA;
+
+  /**
+   * 消息的各个部分。用于在 UI 中渲染消息。
+   */
+  parts: Array<UIMessagePart<DATA_PARTS, TOOLS>>;
+}
+```
+
+## `UIMessagePart` 类型
+
+### `TextUIPart`
+
+消息的文本部分。
+
+```typescript
+type TextUIPart = {
+  type: 'text';
+  /**
+   * 文本内容。
+   */
+  text: string;
+  /**
+   * 文本部分的状态。
+   */
+  state?: 'streaming' | 'done';
+};
+```
+
+### `ReasoningUIPart`
+
+消息的推理部分。
+
+```typescript
+type ReasoningUIPart = {
+  type: 'reasoning';
+  /**
+   * 推理文本。
+   */
+  text: string;
+  /**
+   * 推理部分的状态。
+   */
+  state?: 'streaming' | 'done';
+  /**
+   * 提供商元数据。
+   */
+  providerMetadata?: Record<string, any>;
+};
+```
+
+### `ToolUIPart`
+
+消息的工具部分，表示工具调用及其结果。
+
+<Note>
+  类型基于工具的名称（例如，对于名为 `someTool` 的工具，类型为 `tool-someTool`）。
+</Note>
+
+```typescript
+type ToolUIPart<TOOLS extends UITools = UITools> = ValueOf<{
+  [NAME in keyof TOOLS & string]: {
+    type: `tool-${NAME}`;
+    toolCallId: string;
+  } & (
+    | {
+        state: 'input-streaming';
+        input: DeepPartial<TOOLS[NAME]['input']> | undefined;
+        providerExecuted?: boolean;
+        output?: never;
+        errorText?: never;
+      }
+    | {
+        state: 'input-available';
+        input: TOOLS[NAME]['input'];
+        providerExecuted?: boolean;
+        output?: never;
+        errorText?: never;
+      }
+    | {
+        state: 'output-available';
+        input: TOOLS[NAME]['input'];
+        output: TOOLS[NAME]['output'];
+        errorText?: never;
+        providerExecuted?: boolean;
+      }
+    | {
+        state: 'output-error';
+        input: TOOLS[NAME]['input'];
+        output?: never;
+        errorText: string;
+        providerExecuted?: boolean;
+      }
+  );
+}>;
+```
+
+### `CustomContentUIPart`
+
+消息的提供商特定自定义内容部分。
+
+```typescript
+type CustomContentUIPart = {
+  type: 'custom';
+  /**
+   * 自定义内容的种类，格式为 `{provider}.{provider-type}`。
+   */
+  kind: `${string}.${string}`;
+  /**
+   * 提供商元数据。
+   */
+  providerMetadata?: Record<string, any>;
+};
+```
+
+### `SourceUrlUIPart`
+
+消息的源 URL 部分。
+
+```typescript
+type SourceUrlUIPart = {
+  type: 'source-url';
+  sourceId: string;
+  url: string;
+  title?: string;
+  providerMetadata?: Record<string, any>;
+};
+```
+
+### `SourceDocumentUIPart`
+
+消息的文档源部分。
+
+```typescript
+type SourceDocumentUIPart = {
+  type: 'source-document';
+  sourceId: string;
+  mediaType: string;
+  title: string;
+  filename?: string;
+  providerMetadata?: Record<string, any>;
+};
+```
+
+### `FileUIPart`
+
+消息的文件部分。
+
+```typescript
+type FileUIPart = {
+  type: 'file';
+  /**
+   * 文件的 IANA 媒体类型。
+   */
+  mediaType: string;
+  /**
+   * 文件的可选文件名。
+   */
+  filename?: string;
+  /**
+   * 文件的 URL。
+   * 可以是托管文件的 URL 或数据 URL。
+   */
+  url: string;
+};
+```
+
+### `DataUIPart`
+
+消息的数据部分，用于自定义数据类型。
+
+<Note>
+  类型基于数据部分的名称（例如，对于名为 `someDataPart` 的数据部分，类型为 `data-someDataPart`）。
+</Note>
+
+```typescript
+type DataUIPart<DATA_TYPES extends UIDataTypes> = ValueOf<{
+  [NAME in keyof DATA_TYPES & string]: {
+    type: `data-${NAME}`;
+    id?: string;
+    data: DATA_TYPES[NAME];
+  };
+}>;
+```
+
+### `StepStartUIPart`
+
+消息的步骤边界部分。
+
+```typescript
+type StepStartUIPart = {
+  type: 'step-start';
+};
+```

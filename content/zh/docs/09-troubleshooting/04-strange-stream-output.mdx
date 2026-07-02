@@ -1,0 +1,38 @@
+---
+title: useChat/useCompletion 流式输出包含 0:... 而非文本
+description: 如何修复 UI 中的异常流式输出
+---
+
+# useChat/useCompletion 流式输出包含 0:... 而非文本
+
+## 问题
+
+我正在使用自定义客户端代码处理通过 `StreamingTextResponse` 发送的服务器响应。我使用的是 AI SDK 的 `3.0.20` 或更新版本。当我发送查询时，UI 流式输出诸如 `0: "Je"`、`0: " suis"`、`0: "des"...` 之类的文本，而不是我期望的文本。
+
+## 背景
+
+AI SDK 在版本 `3.0.20` 中切换到了流数据协议。它发送不同的流部分以支持数据、工具调用等。您看到的是原始流数据协议响应。
+
+## 解决方案
+
+您有以下几种选择：
+
+1. 使用 AI Core 的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数发送原始文本流：
+
+   ```tsx
+   export async function POST(req: Request) {
+     const { prompt } = await req.json();
+
+     const result = streamText({
+       model: openai.completion('gpt-3.5-turbo-instruct'),
+       maxOutputTokens: 2000,
+       prompt,
+     });
+
+     return createTextStreamResponse({
+       stream: toTextStream({ stream: result.stream }),
+     });
+   }
+   ```
+
+2. 将 AI SDK 版本固定为 `3.0.19`。这将保留原始文本流。

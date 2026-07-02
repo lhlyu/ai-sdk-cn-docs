@@ -1,0 +1,83 @@
+---
+title: 流式传输中止时 onEnd 未调用
+description: 排查使用 toUIMessageStream 中止流式传输时 onEnd 回调未执行的问题
+---
+
+# 流式传输中止时 onEnd 未调用
+
+## 问题
+
+当使用 `toUIMessageStream` 并配置 `onEnd` 回调时，流式传输被中止后回调可能不会执行。这是因为中止处理器会立即终止响应，阻止 `onEnd` 回调被触发。
+
+```tsx
+// 服务端代码：中止时 onEnd 未被调用
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    messages: await convertToModelMessages(messages),
+    abortSignal: req.signal,
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      onEnd: async ({ isAborted }) => {
+        // 流式传输中止时此处不会被调用！
+        if (isAborted) {
+          console.log('流式传输已中止');
+          // 处理中止相关的清理操作
+        } else {
+          console.log('流式传输正常完成');
+          // 处理正常完成逻辑
+        }
+      },
+    }),
+  });
+}
+```
+
+## 背景
+
+当流式传输被中止时，响应会立即终止。如果没有正确处理，`onEnd` 回调将没有机会执行，导致无法执行重要的清理操作，例如保存部分结果或记录中止事件。
+
+## 解决方案
+
+在 `createUIMessageStreamResponse` 配置中添加 `consumeSseStream: consumeStream`。这确保中止事件能被正确捕获并转发给 `onEnd` 回调，使其即使在流式传输中止时也能执行。
+
+```tsx
+// 其他导入...
+import {
+  consumeStream,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+} from 'ai';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    messages: await convertToModelMessages(messages),
+    abortSignal: req.signal,
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      onEnd: async ({ isAborted }) => {
+        // 现在即使中止也会被调用！
+        if (isAborted) {
+          console.log('流式传输已中止');
+          // 处理中止相关的清理操作
+        } else {
+          console.log('流式传输正常完成');
+          // 处理正常完成逻辑
+        }
+      },
+    }),
+    consumeSseStream: consumeStream, // 此配置使 onEnd 在中止时也能被调用
+  });
+}
+```

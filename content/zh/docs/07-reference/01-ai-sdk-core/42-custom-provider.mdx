@@ -1,0 +1,202 @@
+---
+title: customProvider
+description: 自定义提供商，使用来自不同提供商的模型（API 参考）
+---
+
+# `customProvider()`
+
+通过自定义提供商，您可以将 ID 映射到任何模型。
+这允许您设置自定义模型配置、别名等。
+自定义提供商还支持回退提供商，这对于包装现有提供商并添加额外功能非常有用。自定义
+提供商可以暴露语言、嵌入、图像、转录、语音、
+重排序、视频、文件和技能能力。
+
+### 示例：自定义模型设置
+
+您可以使用 `customProvider` 创建自定义提供商。
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { customProvider } from 'ai';
+
+// 具有不同模型设置的自定义提供商：
+export const myOpenAI = customProvider({
+  languageModels: {
+    // 具有自定义设置的替换模型：
+    'gpt-5': wrapLanguageModel({
+      model: openai('gpt-5'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'high',
+            },
+          },
+        },
+      }),
+    }),
+    // 具有自定义设置的别名模型：
+    'gpt-4o-reasoning-high': wrapLanguageModel({
+      model: openai('gpt-4o'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'high',
+            },
+          },
+        },
+      }),
+    }),
+  },
+  fallbackProvider: openai,
+});
+```
+
+## 导入
+
+<Snippet text={`import { customProvider } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'languageModels',
+      type: 'Record<string, LanguageModel>',
+      isOptional: true,
+      description:
+        '语言模型记录，其中键是模型 ID，值是 LanguageModel 实例。',
+    },
+    {
+      name: 'embeddingModels',
+      type: 'Record<string, EmbeddingModel<string>>',
+      isOptional: true,
+      description:
+        '文本嵌入模型记录，其中键是模型 ID，值是 EmbeddingModel<string> 实例。',
+    },
+    {
+      name: 'imageModels',
+      type: 'Record<string, ImageModel>',
+      isOptional: true,
+      description:
+        '图像模型记录，其中键是模型 ID，值是图像模型实例。',
+    },
+    {
+      name: 'transcriptionModels',
+      type: 'Record<string, TranscriptionModel>',
+      isOptional: true,
+      description:
+        '转录模型记录，其中键是模型 ID，值是 TranscriptionModel 实例。',
+    },
+    {
+      name: 'speechModels',
+      type: 'Record<string, SpeechModel>',
+      isOptional: true,
+      description:
+        '语音模型记录，其中键是模型 ID，值是 SpeechModel 实例。',
+    },
+    {
+      name: 'rerankingModels',
+      type: 'Record<string, RerankingModel>',
+      isOptional: true,
+      description:
+        '重排序模型记录，其中键是模型 ID，值是 RerankingModel 实例。',
+    },
+    {
+      name: 'videoModels',
+      type: 'Record<string, VideoModel>',
+      isOptional: true,
+      description:
+        '视频模型记录，其中键是模型 ID，值是 VideoModel 实例。',
+    },
+    {
+      name: 'files',
+      type: 'FilesV4',
+      isOptional: true,
+      description:
+        '通过自定义提供商暴露的文件 API 接口。',
+    },
+    {
+      name: 'skills',
+      type: 'SkillsV4',
+      isOptional: true,
+      description:
+        '通过自定义提供商暴露的技能 API 接口。',
+    },
+    {
+      name: 'fallbackProvider',
+      type: 'Provider',
+      isOptional: true,
+      description:
+        '可选的回退提供商，当在自定义提供商中找不到请求的模型或能力时使用。',
+    },
+  ]}
+/>
+
+### 返回值
+
+`customProvider` 函数返回一个 `Provider` 实例。它具有以下方法：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'languageModel',
+      type: '(id: string) => LanguageModel',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回语言模型。',
+    },
+    {
+      name: 'embeddingModel',
+      type: '(id: string) => EmbeddingModel<string>',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回文本嵌入模型。',
+    },
+    {
+      name: 'imageModel',
+      type: '(id: string) => ImageModel',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回图像模型。',
+    },
+    {
+      name: 'transcriptionModel',
+      type: '(id: string) => TranscriptionModel',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回转录模型。',
+    },
+    {
+      name: 'speechModel',
+      type: '(id: string) => SpeechModel',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回语音模型。',
+    },
+    {
+      name: 'rerankingModel',
+      type: '(id: string) => RerankingModel',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回重排序模型。',
+    },
+    {
+      name: 'videoModel',
+      type: '(id: string) => VideoModelV4',
+      description:
+        '一个函数，通过自定义提供商的模型 ID 返回视频模型。',
+    },
+    {
+      name: 'files',
+      type: '() => FilesV4',
+      isOptional: true,
+      description:
+        '一个函数，返回自定义提供商的文件 API 接口，当直接配置或从回退提供商继承时可用。',
+    },
+    {
+      name: 'skills',
+      type: '() => SkillsV4',
+      isOptional: true,
+      description:
+        '一个函数，返回自定义提供商的技能 API 接口，当直接配置或从回退提供商继承时可用。',
+    },
+  ]}
+/>

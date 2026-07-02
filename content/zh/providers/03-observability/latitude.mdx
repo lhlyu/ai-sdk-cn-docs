@@ -1,0 +1,83 @@
+---
+title: Latitude
+description: 使用 Latitude 监控和调试您的 AI SDK 应用程序
+---
+
+# Latitude 可观测性
+
+[Latitude](https://latitude.so) ([GitHub](https://github.com/latitude-dev/latitude-llm)) 是一个开源 MIT 许可的平台，用于 AI 智能体可观测性，支持语义追踪搜索和问题跟踪。它与 AI SDK 集成，可捕获：
+
+- 每次 `generateText`、`streamText` 和工具调用的追踪
+- 每次调用的令牌使用量和延迟
+- 按重复问题分组的错误和失败模式
+
+## 设置
+
+Latitude 的 SDK 注册了一个全局的 OpenTelemetry 追踪器。一旦您注册了 AI SDK 的遥测集成，每次 AI SDK 调用都会自动发出跨度。
+
+安装两个包：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @latitude-data/telemetry @ai-sdk/otel" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @latitude-data/telemetry @ai-sdk/otel" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @latitude-data/telemetry @ai-sdk/otel" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @latitude-data/telemetry @ai-sdk/otel" dark />
+  </Tab>
+</Tabs>
+
+登录 [app.latitude.so](https://app.latitude.so)，从仪表盘获取您的 API 密钥和项目 slug。将它们设置到您的环境中：
+
+```bash filename=".env"
+LATITUDE_API_KEY="..."
+LATITUDE_PROJECT_SLUG="..."
+```
+
+在启动时初始化 Latitude 并注册遥测。之后，每次 AI SDK 调用都会自动发出追踪：
+
+```ts
+import { Latitude } from '@latitude-data/telemetry';
+import { registerTelemetry, generateText } from 'ai';
+import { OpenTelemetry } from '@ai-sdk/otel';
+import { openai } from '@ai-sdk/openai';
+
+const latitude = new Latitude({
+  apiKey: process.env.LATITUDE_API_KEY!,
+  project: process.env.LATITUDE_PROJECT_SLUG!,
+});
+
+registerTelemetry(new OpenTelemetry());
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello',
+});
+
+await latitude.shutdown();
+```
+
+对于命名追踪和每次调用的元数据（标签、用户 ID、会话 ID），将调用包装在 Latitude 的 `capture()` 辅助函数中：
+
+```ts
+import { capture } from '@latitude-data/telemetry';
+
+await capture('generate-support-reply', async () => {
+  const { text } = await generateText({
+    model: openai('gpt-4o'),
+    prompt: 'Hello',
+  });
+  return text;
+});
+```
+
+## 资源
+
+- [Latitude Vercel AI SDK 指南](https://docs.latitude.so/telemetry/frameworks/vercel-ai-sdk)
+- [Latitude 文档](https://docs.latitude.so)
+- [GitHub 仓库](https://github.com/latitude-dev/latitude-llm)

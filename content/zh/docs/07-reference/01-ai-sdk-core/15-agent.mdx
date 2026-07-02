@@ -1,0 +1,257 @@
+---
+title: Agent（接口）
+description: Agent 接口的 API 参考文档。
+---
+
+# `Agent`（接口）
+
+`Agent` 接口定义了一个契约，用于能够根据提示词生成或流式传输 AI 生成响应的智能体。智能体可以封装高级逻辑，例如工具使用、多步骤工作流或提示词处理，从而支持简单和自主的 AI 智能体。
+
+`Agent` 接口的实现（例如 `ToolLoopAgent`）遵循相同的契约，并与所有期望智能体的 SDK API 和实用程序无缝集成。这种设计允许用户提供自定义的智能体类或第三方链的包装器，同时最大限度地提高与 AI SDK 功能的兼容性。
+
+## 接口定义
+
+```ts
+import {
+  ModelMessage,
+  Experimental_SandboxSession,
+} from '@ai-sdk/provider-utils';
+import { ToolSet } from '../generate-text/tool-set';
+import { Output } from '../generate-text/output';
+import { GenerateTextResult } from '../generate-text/generate-text-result';
+import { StreamTextResult } from '../generate-text/stream-text-result';
+
+export type AgentCallParameters<CALL_OPTIONS, TOOLS extends ToolSet = {}> = ([
+  CALL_OPTIONS,
+] extends [never]
+  ? { options?: never }
+  : { options: CALL_OPTIONS }) &
+  (
+    | {
+        /**
+         * 提示词。可以是文本提示词或消息列表。
+         *
+         * 只能使用 `prompt` 或 `messages` 之一，不能同时使用。
+         */
+        prompt: string | Array<ModelMessage>;
+
+        /**
+         * 消息列表。
+         *
+         * 只能使用 `prompt` 或 `messages` 之一，不能同时使用。
+         */
+        messages?: never;
+      }
+    | {
+        /**
+         * 消息列表。
+         *
+         * 只能使用 `prompt` 或 `messages` 之一，不能同时使用。
+         */
+        messages: Array<ModelMessage>;
+
+        /**
+         * 提示词。可以是文本提示词或消息列表。
+         *
+         * 只能使用 `prompt` 或 `messages` 之一，不能同时使用。
+         */
+        prompt?: never;
+      }
+  ) & {
+    /**
+     * 中止信号。
+     */
+    abortSignal?: AbortSignal;
+    /**
+     * 超时时间（毫秒）。可以指定为数字或包含 totalMs 属性的对象。
+     * 如果调用时间超过指定的超时时间，将被中止。
+     * 可以与 abortSignal 一起使用。
+     */
+    timeout?: number | { totalMs?: number };
+    /**
+     * 实验性沙箱环境，会传递给工具执行。
+     */
+    experimental_sandbox?: Experimental_SandboxSession;
+    /**
+     * 智能体操作开始时的回调，在任何 LLM 调用之前触发。
+     */
+    onStart?: GenerateTextOnStartCallback<TOOLS>;
+    /**
+     * 步骤（LLM 调用）开始时的回调，在调用提供商之前触发。
+     */
+    onStepStart?: GenerateTextOnStepStartCallback<TOOLS>;
+    /**
+     * 每次工具执行开始前的回调。
+     */
+    onToolExecutionStart?: OnToolExecutionStartCallback<TOOLS>;
+    /**
+     * 每次工具执行完成后的回调。
+     */
+    onToolExecutionEnd?: OnToolExecutionEndCallback<TOOLS>;
+    /**
+     * 每个步骤（LLM 调用）结束时的回调，包括中间步骤。
+     */
+    onStepEnd?: GenerateTextOnStepEndCallback<TOOLS>;
+    /**
+     * 每个步骤（LLM 调用）结束时的回调，包括中间步骤。
+     *
+     * @deprecated 请改用 `onStepEnd`。
+     */
+    onStepFinish?: GenerateTextOnStepFinishCallback<TOOLS>;
+    /**
+     * 所有步骤完成且响应完整时的回调。
+     */
+    onEnd?: GenerateTextOnEndCallback<TOOLS>;
+    /**
+     * 所有步骤完成且响应完整时的回调。
+     *
+     * @deprecated 请改用 `onEnd`。
+     */
+    onFinish?: GenerateTextOnEndCallback<TOOLS>;
+  };
+
+/**
+ * 智能体接收提示词（文本或消息）并生成或流式传输输出，
+ * 输出包含步骤、工具调用、数据部分等。
+ *
+ * 你可以通过实现 `Agent` 接口来实现自己的智能体，
+ * 或者使用 `ToolLoopAgent` 类。
+ */
+export interface Agent<
+  CALL_OPTIONS = never,
+  TOOLS extends ToolSet = {},
+  OUTPUT extends Output = never,
+> {
+  /**
+   * 智能体接口的规范版本。这将使我们能够
+   * 演进智能体接口并保持向后兼容性。
+   */
+  readonly version: 'agent-v1';
+
+  /**
+   * 智能体的 ID。
+   */
+  readonly id: string | undefined;
+
+  /**
+   * 智能体可以使用的工具。
+   */
+  readonly tools: TOOLS;
+
+  /**
+   * 从智能体生成输出（非流式传输）。
+   */
+  generate(
+    options: AgentCallParameters<CALL_OPTIONS, TOOLS>,
+  ): PromiseLike<GenerateTextResult<TOOLS, OUTPUT>>;
+
+  /**
+   * 从智能体流式传输输出（流式传输）。
+   */
+  stream(
+    options: AgentStreamParameters<CALL_OPTIONS, TOOLS>,
+  ): PromiseLike<StreamTextResult<TOOLS, OUTPUT>>;
+}
+```
+
+## 核心属性与方法
+
+| 名称         | 类型                                             | 描述                                                         |
+| ------------ | ------------------------------------------------ | ------------------------------------------------------------------- |
+| `version`    | `'agent-v1'`                                     | 用于兼容性的接口版本。                                |
+| `id`         | `string \| undefined`                            | 可选的智能体标识符。                                          |
+| `tools`      | `ToolSet`                                        | 此智能体可用的工具集。                           |
+| `generate()` | `PromiseLike<GenerateTextResult<TOOLS, OUTPUT>>` | 为文本提示词或消息生成完整的非流式输出。 |
+| `stream()`   | `PromiseLike<StreamTextResult<TOOLS, OUTPUT>>`   | 为文本提示词或消息流式传输输出（块或步骤）。     |
+
+## 泛型参数
+
+| 参数          | 默认值 | 描述                                                                |
+| -------------- | ------- | -------------------------------------------------------------------------- |
+| `CALL_OPTIONS` | `never` | 可传递给智能体的额外调用选项的可选类型。 |
+| `TOOLS`        | `{}`    | 此智能体可用的工具集的类型。                          |
+| `OUTPUT`       | `never` | 智能体可以生成的额外输出数据的类型。             |
+
+## 方法参数
+
+`generate()` 和 `stream()` 都接受一个 `AgentCallParameters<CALL_OPTIONS, TOOLS>` 对象，包含：
+
+- `prompt`（可选）：字符串提示词或 `ModelMessage` 对象数组
+- `messages`（可选）：`ModelMessage` 对象数组（与 `prompt` 互斥）
+- `options`（可选）：当 `CALL_OPTIONS` 不是 `never` 时的额外调用选项
+- `abortSignal`（可选）：用于取消操作的 `AbortSignal`
+- `timeout`（可选）：超时时间（毫秒）。可以指定为数字或包含 `totalMs` 属性的对象。如果调用时间超过指定的超时时间，将被中止。可以与 `abortSignal` 一起使用。
+- `experimental_sandbox`（可选）：转发给工具执行的实验性沙箱环境。
+- `onStart`（可选）：智能体操作开始时的回调，在任何 LLM 调用之前触发。
+- `onStepStart`（可选）：步骤（LLM 调用）开始时的回调，在调用提供商之前触发。
+- `onToolExecutionStart`（可选）：在工具的 execute 函数运行之前立即触发的回调。
+- `onToolExecutionEnd`（可选）：在工具的 execute 函数完成或出错后立即触发的回调。
+- `onStepEnd`（可选）：每个智能体步骤（LLM/工具调用）完成后的回调。用于跟踪 token 使用情况、每步性能或日志记录。
+- `onStepFinish`（可选）：`onStepEnd` 的已弃用别名。
+- `onEnd`（可选）：所有步骤完成且响应完整时的回调。
+- `onFinish`（可选）：`onEnd` 的已弃用别名。
+
+## 示例：自定义智能体实现
+
+以下是如何实现你自己的智能体：
+
+```ts
+import { Agent, GenerateTextResult, StreamTextResult } from 'ai';
+import type { ModelMessage } from '@ai-sdk/provider-utils';
+
+class MyEchoAgent implements Agent {
+  version = 'agent-v1' as const;
+  id = 'echo';
+  tools = {};
+
+  async generate({ prompt, messages, abortSignal }) {
+    const text = prompt ?? JSON.stringify(messages);
+    return { text, steps: [] };
+  }
+
+  async stream({ prompt, messages, abortSignal }) {
+    const text = prompt ?? JSON.stringify(messages);
+    return {
+      textStream: (async function* () {
+        yield text;
+      })(),
+    };
+  }
+}
+```
+
+## 用法：与智能体交互
+
+所有接受智能体的 SDK 实用程序——包括 [`createAgentUIStream`](/docs/reference/ai-sdk-core/create-agent-ui-stream)、[`createAgentUIStreamResponse`](/docs/reference/ai-sdk-core/create-agent-ui-stream-response) 和 [`pipeAgentUIStreamToResponse`](/docs/reference/ai-sdk-core/pipe-agent-ui-stream-to-response)——都期望一个符合 `Agent` 接口的对象。
+
+你可以使用官方的 [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent)（推荐用于带工具使用的多步骤 AI 工作流），或提供你自己的实现：
+
+```ts
+import { ToolLoopAgent, createAgentUIStream } from "ai";
+
+const agent = new ToolLoopAgent({ ... });
+
+const stream = await createAgentUIStream({
+  agent,
+  messages: [{ role: "user", content: "What is the weather in NYC?" }]
+});
+
+for await (const chunk of stream) {
+  console.log(chunk);
+}
+```
+
+## 参见
+
+- [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent) &mdash; 官方多步骤智能体实现
+- [`createAgentUIStream`](/docs/reference/ai-sdk-core/create-agent-ui-stream)
+- [`GenerateTextResult`](/docs/reference/ai-sdk-core/generate-text)
+- [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text)
+
+## 备注
+
+- 智能体应定义其 `tools` 属性，即使为空（`{}`），以确保与 SDK 实用程序的兼容性。
+- 该接口接受纯提示词和消息数组作为输入，但一次只能使用一种。
+- `CALL_OPTIONS` 泛型参数允许智能体在需要时接受额外的调用特定选项。
+- `abortSignal` 参数支持取消智能体操作。
+- 此设计既可扩展用于复杂的自主智能体，也可用于简单的 LLM 包装器。

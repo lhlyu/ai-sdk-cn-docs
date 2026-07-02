@@ -1,0 +1,49 @@
+---
+title: 并行调用工具
+description: 了解如何在 Node.js 中使用 AI SDK 并行调用工具
+tags: ['node', '工具使用']
+---
+
+# 并行调用工具
+
+部分语言模型支持并行调用工具。当多个工具相互独立且可在同一生成步骤中并行执行时，这一功能尤为实用。
+
+```ts
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  tools: {
+    weather: tool({
+      description: '获取某个地点的天气',
+      inputSchema: z.object({
+        city: z.string().describe('要获取天气的城市'),
+        unit: z
+          .enum(['C', 'F'])
+          .describe('显示温度的单位'),
+      }),
+      execute: async ({ city, unit }) => {
+        // 此函数通常会发起 API 请求获取天气数据
+        const weather = { value: 25, description: '晴' };
+        return `当前${city}天气为${weather.value}°${unit}，${weather.description}！`;
+      },
+    }),
+  },
+  prompt: '巴黎和纽约的天气如何？',
+});
+
+// 模型将并行调用两次 weather 工具
+console.log(result.toolCalls);
+// [
+//   { toolName: 'weather', input: { city: '巴黎', unit: 'C' } },
+//   { toolName: 'weather', input: { city: '纽约', unit: 'C' } }
+// ]
+
+console.log(result.toolResults);
+// [
+//   { toolName: 'weather', input: { city: '巴黎', unit: 'C' }, output: '当前巴黎天气为25°C，晴！' },
+//   { toolName: 'weather', input: { city: '纽约', unit: 'C' }, output: '当前纽约天气为25°C，晴！' }
+// ]
+```

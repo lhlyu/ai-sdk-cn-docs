@@ -1,0 +1,218 @@
+---
+title: 在聊天中渲染可视化界面
+description: 了解如何使用 AI SDK 和 React Server Components 生成文本。
+tags: ['rsc', '生成式用户界面']
+---
+
+# 在聊天中渲染可视化界面
+
+我们已经了解了语言模型如何根据与用户的对话来调用函数并渲染组件。
+
+当我们在 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 中定义多个函数时，模型可以根据用户的意图推理出要调用的正确函数。这意味着你可以编写多个函数，而无需实现复杂的路由逻辑来运行它们。
+
+## 客户端
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState } from 'react';
+import { ClientMessage } from './actions';
+import { useActions, useUIState } from '@ai-sdk/rsc';
+import { generateId } from 'ai';
+
+// 允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [input, setInput] = useState<string>('');
+  const [conversation, setConversation] = useUIState();
+  const { continueConversation } = useActions();
+
+  return (
+    <div>
+      <div>
+        {conversation.map((message: ClientMessage) => (
+          <div key={message.id}>
+            {message.role}: {message.display}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <input
+          type="text"
+          value={input}
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button
+          onClick={async () => {
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              { id: generateId(), role: 'user', display: input },
+            ]);
+
+            const message = await continueConversation(input);
+
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              message,
+            ]);
+          }}
+        >
+          发送消息
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+```tsx filename='components/stock.tsx'
+export async function Stock({ symbol, numOfMonths }) {
+  const data = await fetch(
+    `https://api.example.com/stock/${symbol}/${numOfMonths}`,
+  );
+
+  return (
+    <div>
+      <div>{symbol}</div>
+
+      <div>
+        {data.timeline.map(data => (
+          <div>
+            <div>{data.date}</div>
+            <div>{data.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+```tsx filename='components/flight.tsx'
+export async function Flight({ flightNumber }) {
+  const data = await fetch(`https://api.example.com/flight/${flightNumber}`);
+
+  return (
+    <div>
+      <div>{flightNumber}</div>
+      <div>{data.status}</div>
+      <div>{data.source}</div>
+      <div>{data.destination}</div>
+    </div>
+  );
+}
+```
+
+## 服务端
+
+```tsx filename='app/actions.tsx'
+'use server';
+
+import { getMutableAIState, streamUI } from '@ai-sdk/rsc';
+import { ReactNode } from 'react';
+import { z } from 'zod';
+import { generateId } from 'ai';
+import { Stock } from '@/components/stock';
+import { Flight } from '@/components/flight';
+
+export interface ServerMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ClientMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  display: ReactNode;
+}
+
+export async function continueConversation(
+  input: string,
+): Promise<ClientMessage> {
+  'use server';
+
+  const history = getMutableAIState();
+
+  const result = await streamUI({
+    model: 'openai/gpt-5.4',
+    messages: [...history.get(), { role: 'user', content: input }],
+    text: ({ content, done }) => {
+      if (done) {
+        history.done((messages: ServerMessage[]) => [
+          ...messages,
+          { role: 'assistant', content },
+        ]);
+      }
+
+      return <div>{content}</div>;
+    },
+    tools: {
+      showStockInformation: {
+        description:
+          '获取指定股票代码在过去 numOfMonths 个月内的股票信息',
+        inputSchema: z.object({
+          symbol: z
+            .string()
+            .describe('要获取信息的股票代码'),
+          numOfMonths: z
+            .number()
+            .describe('要获取历史信息的月数'),
+        }),
+        generate: async ({ symbol, numOfMonths }) => {
+          history.done((messages: ServerMessage[]) => [
+            ...messages,
+            {
+              role: 'assistant',
+              content: `正在显示 ${symbol} 的股票信息`,
+            },
+          ]);
+
+          return <Stock symbol={symbol} numOfMonths={numOfMonths} />;
+        },
+      },
+      showFlightStatus: {
+        description: '获取航班状态',
+        inputSchema: z.object({
+          flightNumber: z
+            .string()
+            .describe('要获取状态的航班号'),
+        }),
+        generate: async ({ flightNumber }) => {
+          history.done((messages: ServerMessage[]) => [
+            ...messages,
+            {
+              role: 'assistant',
+              content: `正在显示 ${flightNumber} 的航班状态`,
+            },
+          ]);
+
+          return <Flight flightNumber={flightNumber} />;
+        },
+      },
+    },
+  });
+
+  return {
+    id: generateId(),
+    role: 'assistant',
+    display: result.value,
+  };
+}
+```
+
+```typescript filename='app/ai.ts'
+import { createAI } from '@ai-sdk/rsc';
+import { ServerMessage, ClientMessage, continueConversation } from './actions';
+
+export const AI = createAI<ServerMessage[], ClientMessage[]>({
+  actions: {
+    continueConversation,
+  },
+  initialAIState: [],
+  initialUIState: [],
+});
+```

@@ -1,0 +1,78 @@
+---
+title: 生成文本
+description: 了解如何使用 AI SDK 和 Next.js 生成文本。
+tags: ['next']
+---
+
+# 生成文本
+
+在某些情况下，您可能需要根据提示词生成文本。例如，您可能想要生成问题的回答或总结一段文本。`generateText` 函数可用于根据输入的提示词生成文本。
+
+<Browser>
+  <TextGeneration />
+</Browser>
+
+## 客户端
+
+让我们创建一个简单的 React 组件，当点击按钮时，它会向 `/api/completion` 端点发送 POST 请求。该端点将根据输入的提示词生成文本。
+
+```tsx filename="app/page.tsx"
+'use client';
+
+import { useState } from 'react';
+
+export default function Page() {
+  const [generation, setGeneration] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <div>
+      <div
+        onClick={async () => {
+          setIsLoading(true);
+
+          await fetch('/api/completion', {
+            method: 'POST',
+            body: JSON.stringify({
+              prompt: 'Why is the sky blue?',
+            }),
+          }).then(response => {
+            response.json().then(json => {
+              setGeneration(json.text);
+              setIsLoading(false);
+            });
+          });
+        }}
+      >
+        Generate
+      </div>
+
+      {isLoading ? 'Loading...' : generation}
+    </div>
+  );
+}
+```
+
+## 服务端
+
+让我们为 `/api/completion` 创建一个路由处理程序，它将根据输入的提示词生成文本。该路由将调用 `ai` 模块中的 `generateText` 函数，该函数会根据输入的提示词生成文本并返回。
+
+```typescript filename='app/api/completion/route.ts'
+import { generateText } from 'ai';
+
+export async function POST(req: Request) {
+  const { prompt }: { prompt: string } = await req.json();
+
+  const { text } = await generateText({
+    model: 'openai/gpt-4o',
+    system: 'You are a helpful assistant.',
+    prompt,
+  });
+
+  return Response.json({ text });
+}
+```
+
+---
+
+<GithubLink link="https://github.com/vercel/ai/blob/main/examples/next-openai-pages/pages/basics/generate-text/index.tsx" />

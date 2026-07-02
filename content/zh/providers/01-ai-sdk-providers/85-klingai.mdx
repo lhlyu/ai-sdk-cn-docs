@@ -1,0 +1,365 @@
+---
+title: Kling AI
+description: 了解如何使用 AI SDK 的 Kling AI 提供商。
+---
+
+# Kling AI 提供商
+
+[Kling AI](https://klingai.com/) 提供商支持 Kling AI 的视频生成模型，包括文生视频、图生视频、运动控制以及多镜头视频生成。
+
+## 安装
+
+Kling AI 提供商位于 `@ai-sdk/klingai` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/klingai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/klingai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/klingai" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/klingai" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/klingai` 导入默认的提供商实例 `klingai`：
+
+```ts
+import { klingai } from '@ai-sdk/klingai';
+```
+
+如果你需要自定义设置，可以从 `@ai-sdk/klingai` 导入 `createKlingAI` 并使用你的设置创建提供商实例：
+
+```ts
+import { createKlingAI } from '@ai-sdk/klingai';
+
+const klingai = createKlingAI({
+  accessKey: 'your-access-key',
+  secretKey: 'your-secret-key',
+});
+```
+
+你可以使用以下可选设置来自定义 Kling AI 提供商实例：
+
+- **accessKey** _string_
+
+  Kling AI 访问密钥。默认为 `KLINGAI_ACCESS_KEY` 环境变量。
+
+- **secretKey** _string_
+
+  Kling AI 秘密密钥。默认为 `KLINGAI_SECRET_KEY` 环境变量。
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
+  默认前缀为 `https://api-singapore.klingai.com`。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  你可以将其用作拦截请求的中间件，
+  或为测试等场景提供自定义的 fetch 实现。
+
+## 视频模型
+
+你可以使用 `.video()` 工厂方法创建 Kling AI 视频模型。
+有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
+
+该提供商目前支持四种视频生成模式：文生视频、图生视频、参考图生视频（多图）以及运动控制。
+
+<Note>
+  并非所有选项都受每个模型版本和模式组合的支持。请参阅
+  [KlingAI 能力
+  地图](https://app.klingai.com/global/dev/document-api/apiReference/model/skillsMap)
+  了解跨模型的详细兼容性。
+</Note>
+
+### 文生视频
+
+从文本提示词生成视频：
+
+```ts
+import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: klingai.video('kling-v2.6-t2v'),
+  prompt: 'A chicken flying into the sunset in the style of 90s anime.',
+  aspectRatio: '16:9',
+  duration: 5,
+  providerOptions: {
+    klingai: {
+      mode: 'std',
+    } satisfies KlingAIVideoModelOptions,
+  },
+});
+```
+
+### 图生视频
+
+从起始帧图像生成视频，并可选择添加文本提示词。流行的起始+结束帧功能可通过 `imageTail` 选项使用：
+
+```ts
+import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: klingai.video('kling-v2.6-i2v'),
+  prompt: {
+    image: 'https://example.com/start-frame.png',
+    text: 'The cat slowly turns its head and blinks',
+  },
+  duration: 5,
+  providerOptions: {
+    klingai: {
+      // 起始+结束帧控制需要 Pro 模式
+      mode: 'pro',
+      // 可选：结束帧图像
+      imageTail: 'https://example.com/end-frame.png',
+    } satisfies KlingAIVideoModelOptions,
+  },
+});
+```
+
+### 多镜头视频生成
+
+使用多个分镜镜头生成视频，每个镜头都有自己的提示词和时长（Kling v3.0+）：
+
+```ts
+import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: klingai.video('kling-v3.0-t2v'),
+  prompt: '',
+  aspectRatio: '16:9',
+  duration: 10,
+  providerOptions: {
+    klingai: {
+      mode: 'pro',
+      multiShot: true,
+      shotType: 'customize',
+      multiPrompt: [
+        {
+          index: 1,
+          prompt: 'A sunrise over a calm ocean, warm golden light.',
+          duration: '4',
+        },
+        {
+          index: 2,
+          prompt: 'A flock of seagulls take flight from the beach.',
+          duration: '3',
+        },
+        {
+          index: 3,
+          prompt: 'Waves crash against rocky cliffs at sunset.',
+          duration: '3',
+        },
+      ],
+      sound: 'on',
+    } satisfies KlingAIVideoModelOptions,
+  },
+});
+```
+
+多镜头也适用于图生视频，通过结合起始帧图像和每个镜头的提示词。
+
+### 参考图生视频（多图）
+
+使用顶层的 `inputReferences` 选项，结合参考图像生成视频。
+
+```ts
+import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: klingai.video('kling-v1.6-i2v'),
+  prompt: 'The two characters meet and walk together through a sunny park',
+  inputReferences: [
+    'https://example.com/character-1.png',
+    'https://example.com/character-2.png',
+  ],
+  aspectRatio: '16:9',
+  duration: 5,
+  providerOptions: {
+    klingai: {
+      mode: 'std',
+    } satisfies KlingAIVideoModelOptions,
+  },
+});
+```
+
+### 运动控制
+
+通过将参考视频的运动迁移到角色图像来生成视频：
+
+```ts
+import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: klingai.video('kling-v3.0-motion-control'),
+  prompt: {
+    image: 'https://example.com/character.png',
+    text: 'The character performs a smooth dance move',
+  },
+  providerOptions: {
+    klingai: {
+      videoUrl: 'https://example.com/reference-motion.mp4',
+      characterOrientation: 'image',
+      mode: 'std',
+      // 可选：来自元素库的参考元素（v3.0+，最多1个）
+      elementList: [{ element_id: 829836802793406551 }],
+    } satisfies KlingAIVideoModelOptions,
+  },
+});
+```
+
+### 视频提供商选项
+
+以下提供商选项可通过 `providerOptions.klingai` 使用。选项因模式而异——请参阅
+[KlingAI 能力地图](https://app.klingai.com/global/dev/document-api/apiReference/model/skillsMap) 了解每个模型的支持情况。
+
+#### 通用选项
+
+- **mode** _'std' | 'pro'_
+
+  视频生成模式。`'std'` 性价比高。`'pro'` 质量更高但耗时更长。
+
+- **pollIntervalMs** _number_
+
+  检查任务状态的轮询间隔（毫秒）。默认为 5000。
+
+- **pollTimeoutMs** _number_
+
+  视频生成的最大等待时间（毫秒）。默认为 600000（10 分钟）。
+
+- **watermarkEnabled** _boolean_
+
+  是否同时生成带水印的结果。
+
+#### 文生视频和图生视频选项
+
+- **negativePrompt** _string_
+
+  生成视频中应避免的内容描述（最多 2500 个字符）。
+
+- **sound** _'on' | 'off'_
+
+  是否同时生成音频。仅 V2.6 及后续模型支持，且需要 `mode: 'pro'`。
+
+- **cfgScale** _number_
+
+  视频生成的灵活性。值越高表示对提示词的遵循度越强。范围：[0, 1]。V2.x 模型不支持。
+
+- **cameraControl** _object_
+
+  摄像机运动控制，包含 `type` 预设（`'simple'`、`'down_back'`、`'forward_up'`、`'right_turn_forward'`、`'left_turn_forward'`）和可选的 `config`，其中包含 `horizontal`、`vertical`、`pan`、`tilt`、`roll`、`zoom` 值（范围：[-10, 10]）。
+
+- **multiShot** _boolean_
+
+  启用多镜头视频生成（Kling v3.0+）。启用后，视频将被分割为最多 6 个分镜镜头，每个镜头有独立的提示词和时长。
+
+- **shotType** _'customize' | 'intelligence'_
+
+  多镜头生成的分镜方法。`'customize'` 使用 `multiPrompt` 进行用户定义的镜头。`'intelligence'` 让模型根据主提示词自动分段。当 `multiShot` 为 true 时必需。
+
+- **multiPrompt** _Array&lt;\{index, prompt, duration\}&gt;_
+
+  多镜头生成的每个镜头详情。每个镜头包含 `index`（数字）、`prompt`（字符串，最多 512 个字符）和 `duration`（字符串，以秒为单位）。镜头时长之和必须等于总时长。当 `multiShot` 为 true 且 `shotType` 为 `'customize'` 时必需。
+
+- **voiceList** _Array&lt;\{voice_id: string\}&gt;_
+
+  语音控制的语音参考（Kling v3.0+）。最多 2 个语音。通过提示词中的 `<<<voice_1>>>` 模板语法引用。需要 `sound: 'on'`。在 I2V 端点上不能与 `elementList` 共存。
+
+#### 仅图生视频选项
+
+- **imageTail** _string_
+
+  用于起始+结束帧控制的结束帧图像。接受图像 URL 或原始 base64 编码数据。大多数模型需要 `mode: 'pro'`。
+
+- **staticMask** _string_
+
+  用于运动笔刷的静态笔刷遮罩图像。接受图像 URL 或原始 base64 编码数据。
+
+- **dynamicMasks** _Array_
+
+  用于运动笔刷的动态笔刷配置。最多 6 组，每组包含 `mask`（图像 URL 或 base64）和 `trajectories`（`{x, y}` 坐标数组）。
+
+#### 图生视频和运动控制选项
+
+- **elementList** _Array&lt;\{element_id: number\}&gt;_
+
+  用于元素控制的参考元素（Kling v3.0+）。支持视频角色元素和多图像元素。I2V 最多 3 个元素（不能与 `voiceList` 共存）。运动控制最多 1 个元素。
+
+#### 仅运动控制选项
+
+- **videoUrl** _string_（必需）
+
+  参考运动视频的 URL。支持 .mp4/.mov，最大 100MB，时长 3–30 秒。
+
+- **characterOrientation** _'image' | 'video'_（必需）
+
+  生成视频中角色的朝向。
+  `'image'` 匹配参考图像朝向（最长 10 秒视频）。
+  `'video'` 匹配参考视频朝向（最长 30 秒视频）。
+
+- **keepOriginalSound** _'yes' | 'no'_
+
+  是否保留参考视频的原始声音。默认为 `'yes'`。
+
+<Note>
+  视频生成是一个异步过程，可能需要几分钟。
+  建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保
+  可靠运行。
+</Note>
+
+### 视频模型能力
+
+#### 文生视频
+
+| 模型                       | 描述                                           |
+| -------------------------- | ---------------------------------------------- |
+| `kling-v3.0-t2v`           | 最新 v3.0，多镜头、语音控制、声音（3-15 秒）   |
+| `kling-v2.6-t2v`           | V2.6，Pro 模式下支持声音                       |
+| `kling-v2.5-turbo-t2v`     | 针对速度优化，支持 std 和 pro                  |
+| `kling-v2.1-master-t2v`    | 高质量生成，仅 pro                             |
+| `kling-v2-master-t2v`      | 大师级质量生成                                 |
+| `kling-v1.6-t2v`           | V1.6 生成，支持 std 和 pro                     |
+| `kling-v1-t2v`             | 原始 V1 模型，支持摄像机控制（std）            |
+
+#### 图生视频
+
+| 模型                       | 描述                                                       |
+| -------------------------- | ---------------------------------------------------------- |
+| `kling-v3.0-i2v`           | 最新 v3.0，多镜头、元素/语音控制、声音（3-15 秒）          |
+| `kling-v2.6-i2v`           | V2.6，Pro 模式下支持声音和结束帧                           |
+| `kling-v2.5-turbo-i2v`     | 针对速度优化，Pro 模式下支持结束帧                         |
+| `kling-v2.1-master-i2v`    | 高质量生成，仅 pro                                         |
+| `kling-v2.1-i2v`           | V2.1 生成，Pro 模式下支持结束帧                            |
+| `kling-v2-master-i2v`      | 大师级质量生成                                             |
+| `kling-v1.6-i2v`           | V1.6 生成，Pro 模式下支持结束帧                            |
+| `kling-v1.5-i2v`           | V1.5 生成，Pro 模式下支持结束帧和运动笔刷                  |
+| `kling-v1-i2v`             | 原始 V1 模型，std/pro 模式下支持结束帧和运动笔刷           |
+
+#### 运动控制
+
+| 模型                           | 描述                                                  |
+| ------------------------------ | ----------------------------------------------------- |
+| `kling-v3.0-motion-control`    | 最新 v3.0，通过元素绑定增强面部一致性                 |
+| `kling-v2.6-motion-control`    | 将参考视频的运动迁移到角色图像                         |
+
+<Note>
+  如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+</Note>

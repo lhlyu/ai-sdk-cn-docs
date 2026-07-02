@@ -1,0 +1,186 @@
+---
+title: 跨组件共享 useChat 状态
+description: 了解如何通过 useChat 在多个组件间共享聊天实例，并轻松重置聊天内容。
+tags: ['next', 'useChat', 'context']
+---
+
+# 跨组件共享 useChat 状态
+
+在构建聊天应用时，你可能需要在多个组件中访问同一个聊天实例。这样，你可以在一个组件中显示消息，在另一个组件中处理输入，并从应用的任何位置控制聊天状态。
+
+## 创建聊天上下文
+
+首先，创建一个上下文，用于保存聊天实例并提供与之交互的方法。
+
+```tsx filename='app/chat-context.tsx'
+'use client';
+
+import React, { createContext, useContext, ReactNode, useState } from 'react';
+import { Chat } from '@ai-sdk/react';
+import { DefaultChatTransport, UIMessage } from 'ai';
+
+interface ChatContextValue {
+  // 替换为你自定义的消息类型
+  chat: Chat<UIMessage>;
+  clearChat: () => void;
+}
+
+const ChatContext = createContext<ChatContextValue | undefined>(undefined);
+
+function createChat() {
+  return new Chat<UIMessage>({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+  });
+}
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const [chat, setChat] = useState(() => createChat());
+
+  const clearChat = () => {
+    setChat(createChat());
+  };
+
+  return (
+    <ChatContext.Provider
+      value={{
+        chat,
+        clearChat,
+      }}
+    >
+      {children}
+    </ChatContext.Provider>
+  );
+}
+
+export function useSharedChatContext() {
+  const context = useContext(ChatContext);
+  if (!context) {
+    throw new Error('useSharedChatContext 必须在 ChatProvider 内部使用');
+  }
+  return context;
+}
+```
+
+## 用 Provider 包裹应用
+
+将 ChatProvider 添加到布局中，使聊天上下文对所有子组件可用。
+
+```tsx filename='app/layout.tsx'
+import { ChatProvider } from './chat-context';
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <ChatProvider>{children}</ChatProvider>;
+}
+```
+
+## 显示消息并清除聊天
+
+创建一个组件，用于显示消息并提供清除聊天的按钮。
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useSharedChatContext } from './chat-context';
+import ChatInput from './chat-input';
+
+export default function Chat() {
+  const { chat, clearChat } = useSharedChatContext();
+  const { messages } = useChat({
+    chat,
+  });
+
+  return (
+    <div>
+      <button onClick={clearChat} disabled={messages.length === 0}>
+        清除聊天
+      </button>
+
+      {messages?.map(message => (
+        <div key={message.id}>
+          <strong>{`${message.role}: `}</strong>
+          {message.parts.map((part, index) => {
+            if (part.type === 'text') {
+              return <div key={index}>{part.text}</div>;
+            }
+          })}
+        </div>
+      ))}
+
+      <ChatInput />
+    </div>
+  );
+}
+```
+
+## 在独立组件中处理输入
+
+创建一个输入组件，使用共享的聊天上下文发送消息。
+
+```tsx filename='app/chat-input.tsx'
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+import { useSharedChatContext } from './chat-context';
+
+export default function ChatInput() {
+  const { chat } = useSharedChatContext();
+  const [text, setText] = useState('');
+  const { status, stop, sendMessage } = useChat({ chat });
+
+  return (
+    <form
+      onSubmit={e => {
+        e.preventDefault();
+        if (text.trim() === '') return;
+        sendMessage({ text });
+        setText('');
+      }}
+    >
+      <input
+        placeholder="说点什么..."
+        disabled={status !== 'ready'}
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      {stop && (status === 'streaming' || status === 'submitted') && (
+        <button type="submit" onClick={stop}>
+          停止
+        </button>
+      )}
+    </form>
+  );
+}
+```
+
+## 服务端
+
+使用 AI SDK 创建一个 API 路由来处理聊天消息。
+
+```tsx filename='app/api/chat/route.ts'
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  UIMessage,
+} from 'ai';
+
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const result = streamText({
+    model: 'openai/gpt-4o-mini',
+    messages: await convertToModelMessages(messages),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+<GithubLink link="https://github.com/vercel/ai/tree/main/examples/ai-e2e-next/app/chat/shared-context" />

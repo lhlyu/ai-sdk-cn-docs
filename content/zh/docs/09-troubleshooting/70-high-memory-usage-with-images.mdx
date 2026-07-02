@@ -1,0 +1,111 @@
+---
+title: 处理大量图片时内存占用过高
+description: 排查使用 generateText 或 streamText 处理大量图片时内存占用过高的问题
+---
+
+# 处理大量图片时内存占用过高
+
+## 问题
+
+当使用 `generateText` 或 `streamText` 处理大量图片时（例如在循环或批量处理中），您可能会注意到：
+
+- 内存占用持续增长且不会下降
+- 应用程序最终耗尽内存
+- 即使执行垃圾回收，内存也不会被回收
+
+在使用 `experimental_download` 处理来自 URL 的图片，或在提示词中发送 base64 编码的图片时，此问题尤为明显。
+
+## 背景
+
+默认情况下，AI SDK 会在步骤结果中包含完整的请求消息以及请求和响应体。处理图片时，请求消息和请求体可能包含 base64 编码的图片数据，这些数据可能非常大（单张图片 base64 编码后可达 1MB 以上）。如果处理大量图片并保留对结果的引用，这些数据会在内存中累积。
+
+例如，处理 100 张每张 500KB 的图片，内存中会包含约 50MB 以上的请求体数据。
+
+## 解决方案
+
+使用 `include` 选项禁用请求消息和/或请求及响应体的包含：
+
+```ts
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '描述这张图片' },
+        { type: 'file', mediaType: 'image', data: imageUrl },
+      ],
+    },
+  ],
+  // 默认排除请求和响应体。
+  include: {
+    requestBody: false,
+    responseBody: false,
+  },
+});
+```
+
+### 选项
+
+`include` 选项接受以下参数：
+
+- `requestBody`：设置为 `true` 以在步骤结果中包含请求体。请求体通常存储 base64 编码的图片。默认值：`false`。在 `generateText` 和 `streamText` 中均可使用。
+- `requestMessages`：设置为 `true` 以在步骤结果中包含请求消息。请求消息可能包含图片和文件等大型消息内容。默认值：`false`。在 `generateText` 和 `streamText` 中均可使用。
+- `rawChunks`：设置为 `true` 以在流中包含原始提供商数据块。默认值：`false`。仅在 `streamText` 中可用。
+- `responseBody`：设置为 `true` 以在步骤结果中包含响应体。默认值：`false`。仅在 `generateText` 中可用。
+
+### 使用时机
+
+- **批量处理图片**：在循环中处理大量图片时
+- **长时间运行的智能体**：当智能体在其生命周期内可能处理大量图片时
+- **内存受限环境**：在内存有限的环境中运行时
+
+### 权衡
+
+当您禁用主体包含时：
+
+- 您将无法访问 `result.request.body` 或 `result.response.body`
+- 除非启用 `requestMessages`，否则您将无法访问 `result.request.messages`
+- 调试可能更困难，因为您无法检查原始请求/响应
+- 如果您需要主体用于日志记录或调试，请考虑在下一次迭代之前提取所需的数据
+
+## 示例：处理多张图片
+
+```ts
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const imageUrls = [
+  /* 图片 URL 数组 */
+];
+const results = [];
+
+for (const imageUrl of imageUrls) {
+  const result = await generateText({
+    model: openai('gpt-4o'),
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: '描述这张图片' },
+          { type: 'file', mediaType: 'image', data: imageUrl },
+        ],
+      },
+    ],
+    include: {
+      requestBody: false,
+    },
+  });
+
+  // 仅存储文本结果，而不是完整的结果对象
+  results.push(result.text);
+}
+```
+
+## 了解更多
+
+- [`generateText` API 参考](/docs/reference/ai-sdk-core/generate-text)
+- [`streamText` API 参考](/docs/reference/ai-sdk-core/stream-text)

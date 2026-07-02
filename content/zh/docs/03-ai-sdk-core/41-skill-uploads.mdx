@@ -1,0 +1,194 @@
+---
+title: 技能上传
+description: 了解如何上传技能并在 AI SDK 中使用提供商引用。
+---
+
+# 技能上传
+
+AI SDK 提供了 [`uploadSkill`](/docs/reference/ai-sdk-core/upload-skill)
+函数，用于将自定义技能上传到提供商，并返回一个 `ProviderReference`，
+该引用可传递给后续的推理调用。
+
+**技能** 是一组文件（例如，描述技能行为的 `SKILL.md`），
+提供商可以加载这些文件，例如在沙箱容器环境中。
+
+在 AI SDK 中，上传的技能通过 `ProviderReference` 标识——这是一个
+`Record<string, string>`，将提供商名称映射到提供商特定的标识符。
+此概念也用于其他提供商特定的资产引用，例如上传的媒体文件。
+
+```ts
+import { uploadSkill, generateText } from 'ai';
+import {
+  anthropic,
+  type AnthropicLanguageModelOptions,
+} from '@ai-sdk/anthropic';
+import { readFileSync } from 'fs';
+
+const { providerReference } = await uploadSkill({
+  api: anthropic.skills(),
+  files: [
+    {
+      path: 'my-skill/SKILL.md',
+      content: readFileSync('./SKILL.md'),
+    },
+  ],
+  displayTitle: 'My Skill',
+});
+
+const { text } = await generateText({
+  model: anthropic('claude-sonnet-4-6'),
+  tools: {
+    code_execution: anthropic.tools.codeExecution_20260120(),
+  },
+  prompt: 'Use the skill to complete the task.',
+  providerOptions: {
+    anthropic: {
+      container: {
+        skills: [{ type: 'custom', providerReference }],
+      },
+    } satisfies AnthropicLanguageModelOptions,
+  },
+});
+```
+
+作为简写，你可以直接将提供商实例传递给 `api`，而不是显式调用 `.skills()`——SDK 会为你调用 `.skills()`：
+
+```ts highlight="2"
+const { providerReference } = await uploadSkill({
+  api: anthropic, // 简写，等同于 anthropic.skills()
+  files: [{ path: 'my-skill/SKILL.md', content: readFileSync('./SKILL.md') }],
+  displayTitle: 'My Skill',
+});
+```
+
+## 技能文件
+
+一个技能由一个或多个文件组成，每个文件都有相对路径 `path` 和内容 `content`。
+文件内容可以作为 `Uint8Array`（例如来自 `fs.readFileSync`）或 base64 编码的字符串提供：
+
+```ts
+const { providerReference } = await uploadSkill({
+  api: openai.skills(),
+  files: [
+    {
+      path: 'my-skill/SKILL.md',
+      content: readFileSync('./SKILL.md'), // Uint8Array
+    },
+    {
+      path: 'my-skill/helper.py',
+      content: readFileSync('./helper.py'),
+    },
+  ],
+});
+```
+
+## 上传结果
+
+`uploadSkill` 返回一个 `UploadSkillResult`，包含以下字段：
+
+| 字段               | 类型                | 描述                                                      |
+| ------------------- | ------------------- | ---------------------------------------------------------------- |
+| `providerReference` | `ProviderReference` | 将提供商名称映射到提供商特定的技能 ID               |
+| `displayTitle`      | `string?`           | 人类可读的标题（如果支持且提供）                 |
+| `name`              | `string?`           | 提供商从技能文件中推断的名称               |
+| `description`       | `string?`           | 提供商从技能文件中推断的描述        |
+| `latestVersion`     | `string?`           | 提供商分配的最新版本标识符               |
+| `providerMetadata`  | `object?`           | 额外的提供商特定元数据（例如时间戳）          |
+| `warnings`          | `Warning[]`         | 针对不支持选项的警告（例如 OpenAI 上的 `displayTitle`） |
+
+## 提供商引用
+
+`ProviderReference` 是一个 `Record<string, string>`，将提供商名称映射到
+提供商特定的技能标识符：
+
+```ts
+// 示例 ProviderReference
+{
+  anthropic: 'skill_abc123',
+}
+```
+
+在推理过程中引用技能时，传递 `providerReference`。每个提供商
+从其引用中查找自己的技能 ID。如果当前提供商没有对应的条目，
+则会抛出错误。
+
+## 多提供商使用
+
+如果你想在多个提供商之间使用相同的技能，请将其上传到每个提供商并
+合并引用：
+
+```ts
+const [openaiUpload, anthropicUpload] = await Promise.all([
+  uploadSkill({
+    api: openai.skills(),
+    files: [{ path: 'my-skill/SKILL.md', content: skillSource }],
+  }),
+  uploadSkill({
+    api: anthropic.skills(),
+    files: [{ path: 'my-skill/SKILL.md', content: skillSource }],
+    displayTitle: 'My Skill',
+  }),
+]);
+
+const mergedReference = {
+  ...openaiUpload.providerReference,
+  ...anthropicUpload.providerReference,
+};
+
+// mergedReference: { openai: 'sk_...', anthropic: 'sk_...' }
+```
+
+合并后的引用随后可用于推理调用，无论哪个提供商处理请求——每个提供商都会找到自己的技能 ID。
+
+## 在推理调用中使用技能
+
+如何将技能附加到推理调用取决于提供商。
+
+### Anthropic
+
+在 `providerOptions` 的 `container.skills` 数组中传递 `providerReference`：
+
+```ts
+await generateText({
+  model: anthropic('claude-sonnet-4-6'),
+  tools: {
+    code_execution: anthropic.tools.codeExecution_20260120(),
+  },
+  prompt: '...',
+  providerOptions: {
+    anthropic: {
+      container: {
+        skills: [{ type: 'custom', providerReference }],
+      },
+    } satisfies AnthropicLanguageModelOptions,
+  },
+});
+```
+
+### OpenAI
+
+在 `shell` 工具的 `environment.skills` 数组中传递 `providerReference`：
+
+```ts
+await generateText({
+  model: openai.responses('gpt-5.2'),
+  tools: {
+    shell: openai.tools.shell({
+      environment: {
+        type: 'containerAuto',
+        skills: [{ type: 'skillReference', providerReference }],
+      },
+    }),
+  },
+  prompt: '...',
+});
+```
+
+## 支持的提供商
+
+以下提供商支持 `skills()` 和技能上传：
+
+| 提供商  | 工厂方法               |
+| --------- | -------------------- |
+| Anthropic | `anthropic.skills()` |
+| OpenAI    | `openai.skills()`    |

@@ -1,0 +1,245 @@
+---
+title: 计算机使用入门
+description: 使用 AI SDK 快速上手 Claude 的计算机操作能力
+tags: ['computer-use', 'tools']
+---
+
+# 计算机使用入门
+
+随着 [Claude 3.5 Sonnet 推出计算机操作功能](https://www.anthropic.com/news/3-5-models-and-computer-use)，你现在可以指导 AI 模型像人类一样与计算机交互——移动光标、点击按钮和输入文本。这一能力在利用 Claude 高级推理能力的同时，实现了复杂任务的自动化。
+
+AI SDK 是一个强大的 TypeScript 工具包，用于结合 React、Next.js、Vue、Svelte、Node.js 等流行框架，构建基于 Anthropic Claude 等大语言模型（LLM）的 AI 应用。在本指南中，你将学习如何将计算机操作功能集成到 AI SDK 应用中。
+
+<Note>
+  计算机操作功能目前处于测试阶段，存在一些[限制](https://docs.anthropic.com/en/docs/build-with-claude/computer-use#understand-computer-use-limitations)。该功能有时可能容易出错。Anthropic 建议从低风险任务开始，并实施适当的安全措施。
+</Note>
+
+## 计算机操作
+
+Anthropic 最近发布了 Claude 3.5 Sonnet 模型的新版本，该版本具备“计算机操作”能力。这使得模型能够通过以下基本操作与计算机界面交互：
+
+- 移动光标
+- 点击按钮
+- 输入文本
+- 截取屏幕截图
+- 读取屏幕内容
+
+## 工作原理
+
+计算机操作功能使模型能够通过一系列协调步骤读取和操作屏幕内容。以下是该过程的工作原理：
+
+1. **从提示词和工具开始**
+
+   在请求中添加 Anthropic 定义的计算机操作工具，并为模型提供任务（提示词）。例如：“将图片保存到你的下载文件夹。”
+
+2. **选择合适的工具**
+
+   模型评估哪些计算机工具有助于完成任务。然后发送格式化的 `tool_call` 来使用合适的工具。
+
+3. **执行操作并返回结果**
+
+   AI SDK 通过运行所选工具来处理 Claude 的请求。结果可以通过 `tool_result` 消息发送回 Claude。
+
+4. **通过迭代完成任务**
+
+   Claude 分析每个结果，判断是否需要更多操作。它会继续请求工具使用并处理结果，直到完成任务或需要额外输入。
+
+### 可用工具
+
+计算机操作 API 提供了三个主要工具：
+
+1. **计算机工具**：实现基本的计算机控制，如鼠标移动、点击和键盘输入
+2. **文本编辑器工具**：提供查看和编辑文本文件的功能
+3. **Bash 工具**：允许执行 bash 命令
+
+### 实现注意事项
+
+AI SDK 中的计算机操作工具是预定义的接口，需要你自己实现执行层。虽然 SDK 提供了这些工具的类型定义和结构，但你需要：
+
+1. 设置一个受控环境来执行计算机操作
+2. 实现核心功能，如鼠标控制和键盘输入
+3. 处理屏幕截图的捕获和处理
+4. 设置 Claude 与系统交互的规则和限制
+
+推荐的方法是从 [Anthropic 的参考实现](https://github.com/anthropics/anthropic-quickstarts/tree/main/computer-use-demo) 开始，它提供了：
+
+- 一个为安全计算机操作配置的容器化环境
+- 即用型（Python）计算机操作工具实现
+- 用于 API 交互和工具执行的智能体循环
+- 用于监控和控制的 Web 界面
+
+这个参考实现可以作为理解需求的基础，然后再构建你自己的自定义解决方案。
+
+## AI SDK 入门
+
+<Note>
+  如果你从未使用过 AI SDK，请先阅读[入门指南](/docs/getting-started)。
+</Note>
+
+<Note>
+  如需查看使用 Next.js 和 AI SDK 实现计算机操作的工作示例，请查看我们的 [AI SDK 计算机操作模板](https://github.com/vercel-labs/ai-sdk-computer-use)。
+</Note>
+
+首先，确保已安装 AI SDK 和 [Anthropic AI SDK 提供商](/providers/ai-sdk-providers/anthropic)：
+
+<Snippet text="pnpm add ai @ai-sdk/anthropic" />
+
+你可以使用提供商定义的客户端工具将计算机操作添加到 AI SDK 应用中。这些工具接受各种输入参数（例如计算机工具的显示高度和宽度），然后需要你定义一个 execute 函数。
+
+以下是如何使用 AI SDK 设置计算机工具：
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { getScreenshot, executeComputerAction } from '@/utils/computer-use';
+
+const computerTool = anthropic.tools.computer_20250124({
+  displayWidthPx: 1920,
+  displayHeightPx: 1080,
+  execute: async ({ action, coordinate, text }) => {
+    switch (action) {
+      case 'screenshot': {
+        return {
+          type: 'image',
+          data: getScreenshot(),
+        };
+      }
+      default: {
+        return executeComputerAction(action, coordinate, text);
+      }
+    }
+  },
+  toModelOutput({ output }) {
+    return typeof output === 'string'
+      ? [{ type: 'text', text: output }]
+      : [{ type: 'file-data', data: output.data, mediaType: 'image/png' }];
+  },
+});
+```
+
+`computerTool` 处理两个主要操作：通过 `getScreenshot()` 截取屏幕截图，以及通过 `executeComputerAction()` 执行鼠标移动和点击等计算机操作。请记住，你需要实现这个执行逻辑（例如 `getScreenshot` 和 `executeComputerAction` 函数）来处理实际的计算机交互。`execute` 函数应处理所有与操作系统的底层交互。
+
+最后，要将工具结果发送回模型，请使用 [`toModelOutput()`](/docs/foundations/prompts#multi-modal-tool-results) 函数将文本和图像响应转换为模型可以处理的格式。AI SDK 在使用 Anthropic 模型时，对这些多模态工具结果提供了实验性支持。
+
+<Note>
+  计算机操作需要适当的安全措施，例如使用虚拟机、限制对敏感数据的访问，以及对关键操作实施人工监督。
+</Note>
+
+### 结合文本生成使用计算机工具
+
+定义好工具后，你可以将其与 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数一起使用。
+
+对于一次性文本生成，使用 `generateText`：
+
+```ts
+const result = await generateText({
+  model: 'anthropic/claude-sonnet-4-20250514',
+  prompt: '将光标移动到屏幕中央并截取屏幕截图',
+  tools: { computer: computerTool },
+});
+
+console.log(result.text);
+```
+
+对于流式响应，使用 `streamText` 实时接收更新：
+
+```ts
+const result = streamText({
+  model: 'anthropic/claude-sonnet-4-20250514',
+  prompt: '打开浏览器并导航到 vercel.com',
+  tools: { computer: computerTool },
+});
+
+for await (const chunk of result.textStream) {
+  console.log(chunk);
+}
+```
+
+### 配置多步骤（智能体）生成
+
+要允许模型在无需用户干预的情况下执行多个步骤，请使用 `stopWhen` 参数。这将自动将任何工具结果发送回模型以触发后续生成：
+
+```ts highlight="1,7"
+import { isStepCount } from 'ai';
+
+const stream = streamText({
+  model: 'anthropic/claude-sonnet-4-20250514',
+  prompt: '打开浏览器并导航到 vercel.com',
+  tools: { computer: computerTool },
+  stopWhen: isStepCount(10), // 根据你的用例调整此值
+});
+```
+
+### 组合多个工具
+
+你可以在单个请求中组合多个工具，以实现更复杂的工作流程。AI SDK 支持 Claude 的所有三个计算机操作工具：
+
+```ts
+const computerTool = anthropic.tools.computer_20250124({
+  ...
+});
+
+const bashTool = anthropic.tools.bash_20250124({
+  execute: async ({ command, restart }) => execSync(command).toString()
+});
+
+const textEditorTool = anthropic.tools.textEditor_20250124({
+  execute: async ({
+    command,
+    path,
+    file_text,
+    insert_line,
+    new_str,
+    insert_text,
+    old_str,
+    view_range
+  }) => {
+    // 根据命令处理文件操作
+    switch(command) {
+      return executeTextEditorFunction({
+        command,
+        path,
+        fileText: file_text,
+        insertLine: insert_line,
+        newStr: new_str,
+        insertText: insert_text,
+        oldStr: old_str,
+        viewRange: view_range
+      });
+    }
+  }
+});
+
+
+const response = await generateText({
+  model: 'anthropic/claude-sonnet-4-20250514',
+  prompt: "创建一个名为 example.txt 的新文件，写入 'Hello World'，然后在终端中运行 'cat example.txt'",
+  tools: {
+    computer: computerTool,
+    bash: bashTool,
+    str_replace_editor: textEditorTool,
+  },
+});
+```
+
+<Note>
+  在生产应用中启用计算机操作之前，务必实施适当的[安全措施](#security-measures)并获得用户同意。
+</Note>
+
+### 计算机操作最佳实践
+
+为了在使用计算机操作时获得最佳效果：
+
+1. 指定简单、定义明确的任务，并为每个步骤提供明确的指令
+2. 提示 Claude 通过屏幕截图验证结果
+3. 当 UI 元素难以操作时，使用键盘快捷键
+4. 为可重复任务包含示例屏幕截图
+5. 在系统提示词中为已知任务提供明确的提示
+
+## 安全措施
+
+请记住，计算机操作是一个测试版功能。请注意，它带来了与标准 API 功能或聊天界面不同的独特风险。当使用计算机操作与互联网交互时，这些风险会更高。为了最小化风险，请考虑采取以下预防措施：
+
+1. 使用具有最小权限的专用虚拟机或容器，以防止直接的系统攻击或事故。
+2. 避免让模型访问敏感数据，例如账户登录信息，以防止信息盗窃。
+3. 将互联网访问限制在允许列表中的域名，以减少暴露于恶意内容的风险。
+4. 要求人类确认可能导致重大现实后果的决策，以及需要肯定同意的任务，例如接受 Cookie、执行金融交易或同意服务条款。

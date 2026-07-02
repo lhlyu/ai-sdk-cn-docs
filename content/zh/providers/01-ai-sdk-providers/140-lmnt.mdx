@@ -1,0 +1,153 @@
+---
+title: LMNT
+description: 了解如何使用 AI SDK 的 LMNT 提供商。
+---
+
+# LMNT 提供商
+
+[LMNT](https://lmnt.com/) 提供商为 LMNT 语音合成 API 提供语音模型支持。
+
+## 安装
+
+LMNT 提供商位于 `@ai-sdk/lmnt` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/lmnt" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/lmnt" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/lmnt" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/lmnt" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/lmnt` 导入默认的提供商实例 `lmnt`：
+
+```ts
+import { lmnt } from '@ai-sdk/lmnt';
+```
+
+如果你需要自定义设置，可以从 `@ai-sdk/lmnt` 导入 `createLMNT`，并使用你的设置创建提供商实例：
+
+```ts
+import { createLMNT } from '@ai-sdk/lmnt';
+
+const lmnt = createLMNT({
+  // 自定义设置，例如
+  fetch: customFetch,
+});
+```
+
+你可以使用以下可选设置来自定义 LMNT 提供商实例：
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认为 `LMNT_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作拦截请求的中间件，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 语音模型
+
+你可以使用 `.speech()` 工厂方法创建调用 [LMNT 语音 API](https://docs.lmnt.com/api-reference/speech/synthesize-speech-bytes) 的模型。
+
+第一个参数是模型 ID，例如 `aurora`。
+
+```ts
+const model = lmnt.speech('aurora');
+```
+
+`voice` 参数可以设置为 LMNT 的语音 ID。你可以在 [LMNT 文档](https://docs.lmnt.com/api-reference/voices/list-voices) 中找到可用的语音。
+
+```ts highlight="7"
+import { generateSpeech } from 'ai';
+import { lmnt } from '@ai-sdk/lmnt';
+
+const result = await generateSpeech({
+  model: lmnt.speech('aurora'),
+  text: 'Hello, world!',
+  voice: 'ava',
+  language: 'en',
+});
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项：
+
+```ts highlight="10-14"
+import { generateSpeech } from 'ai';
+import { lmnt } from '@ai-sdk/lmnt';
+import { type LMNTSpeechModelOptions } from '@ai-sdk/lmnt';
+
+const result = await generateSpeech({
+  model: lmnt.speech('aurora'),
+  text: 'Hello, world!',
+  voice: 'ava',
+  language: 'en',
+  providerOptions: {
+    lmnt: {
+      conversational: true,
+      speed: 1.2,
+    } satisfies LMNTSpeechModelOptions,
+  },
+});
+```
+
+### 提供商选项
+
+LMNT 提供商通过 `providerOptions.lmnt` 接受以下选项：
+
+- **format** _'aac' | 'mp3' | 'mulaw' | 'raw' | 'wav'_
+
+  要返回的音频格式。默认为 `'mp3'`。
+
+- **sampleRate** _8000 | 16000 | 24000_
+
+  音频的采样率（以 Hz 为单位）。默认为 `24000`。
+
+- **speed** _number_
+
+  语音的速度。必须在 0.25 到 2 之间。默认为 `1`。
+
+- **seed** _number_
+
+  用于确定性生成的可选种子。
+
+- **conversational** _boolean_
+
+  是否使用对话风格。默认为 `false`。不适用于 `blizzard` 模型。
+
+- **length** _number_
+
+  音频的最大长度（以秒为单位）。最大值为 300。不适用于 `blizzard` 模型。
+
+- **topP** _number_
+
+  Top-p 采样参数。必须在 0 到 1 之间。默认为 `1`。
+
+- **temperature** _number_
+
+  采样的温度参数。必须至少为 0。默认为 `1`。
+
+### 模型能力
+
+| 模型        | 指令                |
+| ---------- | ------------------- |
+| `aurora`   | <Cross size={18} /> |
+| `blizzard` | <Cross size={18} /> |

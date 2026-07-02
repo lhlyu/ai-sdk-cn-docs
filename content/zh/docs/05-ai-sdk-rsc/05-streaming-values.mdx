@@ -1,0 +1,155 @@
+---
+title: 流式传输值
+description: 流式传输 RSC 概述
+---
+
+import { UIPreviewCard, Card } from '@/components/home/card';
+import { EventPlanning } from '@/components/home/event-planning';
+import { Searching } from '@/components/home/searching';
+import { Weather } from '@/components/home/weather';
+
+# 流式传输值
+
+<Note type="warning">
+  AI SDK RSC 目前处于实验阶段。生产环境建议使用 [AI SDK
+  UI](/docs/ai-sdk-ui/overview)。如需从 RSC 迁移到 UI 的指导，请参阅我们的[迁移指南](/docs/ai-sdk-rsc/migrating-to-ui)。
+</Note>
+
+RSC API 提供了多个实用函数，允许你将值从服务器流式传输到客户端。当你需要对流式传输的内容和方式进行更精细的控制时，这非常有用。
+
+<Note>
+  这些实用工具还可以与 [AI SDK Core](/docs/ai-sdk-core)
+  函数（如 [`streamText`](/docs/reference/ai-sdk-core/stream-text)）配合使用，轻松地将 LLM 生成内容从服务器流式传输到客户端。
+</Note>
+
+RSC API 提供了两个函数来创建可流式传输的值：
+
+- [`createStreamableValue`](/docs/reference/ai-sdk-rsc/create-streamable-value) - 创建一个可流式传输（可序列化）的值，可完全控制流的创建、更新和关闭。
+- [`createStreamableUI`](/docs/reference/ai-sdk-rsc/create-streamable-ui) - 创建一个可流式传输的 React 组件，可完全控制流的创建、更新和关闭。
+
+## `createStreamableValue`
+
+RSC API 允许你使用 [`createStreamableValue`](/docs/reference/ai-sdk-rsc/create-streamable-value) 将可序列化的 JavaScript 值（如字符串、数字、对象和数组）从服务器流式传输到客户端。
+
+这在以下场景中非常有用：
+
+- 实时流式传输语言模型的文本生成内容。
+- 流式传输多模态模型的图像和音频生成的缓冲区值。
+- 流式传输多步骤智能体运行的进度更新。
+
+## 创建可流式传输的值
+
+你可以从 `@ai-sdk/rsc` 导入 `createStreamableValue` 并用于创建可流式传输的值。
+
+```tsx file='app/actions.ts'
+'use server';
+
+import { createStreamableValue } from '@ai-sdk/rsc';
+
+export const runThread = async () => {
+  const streamableStatus = createStreamableValue('thread.init');
+
+  setTimeout(() => {
+    streamableStatus.update('thread.run.create');
+    streamableStatus.update('thread.run.update');
+    streamableStatus.update('thread.run.end');
+    streamableStatus.done('thread.end');
+  }, 1000);
+
+  return {
+    status: streamableStatus.value,
+  };
+};
+```
+
+## 读取可流式传输的值
+
+你可以使用 `readStreamableValue` 在客户端读取可流式传输的值。它返回一个异步迭代器，在值更新时生成当前值：
+
+```tsx file='app/page.tsx'
+import { readStreamableValue } from '@ai-sdk/rsc';
+import { runThread } from '@/actions';
+
+export default function Page() {
+  return (
+    <button
+      onClick={async () => {
+        const { status } = await runThread();
+
+        for await (const value of readStreamableValue(status)) {
+          console.log(value);
+        }
+      }}
+    >
+      询问
+    </button>
+  );
+}
+```
+
+在此[示例](/examples/next-app/basics/streaming-text-generation)中了解如何使用 Next.js App Router 和 `createStreamableValue` 流式传输文本生成（使用 `streamText`）。
+
+## `createStreamableUI`
+
+`createStreamableUI` 创建一个包含 React 组件的流。与 AI SDK Core API 不同，此函数不会调用大语言模型。相反，它提供了一个基础工具，用于精细控制 React 组件的流式传输。
+
+## 使用 `createStreamableUI`
+
+让我们看看如何在 Server Action 中使用 `createStreamableUI` 函数。
+
+```tsx filename='app/actions.tsx'
+'use server';
+
+import { createStreamableUI } from '@ai-sdk/rsc';
+
+export async function getWeather() {
+  const weatherUI = createStreamableUI();
+
+  weatherUI.update(<div style={{ color: 'gray' }}>加载中...</div>);
+
+  setTimeout(() => {
+    weatherUI.done(<div>今天是个晴天！</div>);
+  }, 1000);
+
+  return weatherUI.value;
+}
+```
+
+首先，你创建一个具有空状态的可流式传输 UI，然后将其更新为加载消息。1 秒后，你将流标记为完成，并传入实际天气信息作为最终值。`.value` 属性包含可发送到客户端的实际 UI。
+
+## 读取可流式传输的 UI
+
+在客户端，你可以像调用其他 React 组件一样调用 `getWeather` Server Action 并渲染返回的 UI。
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState } from 'react';
+import { readStreamableValue } from '@ai-sdk/rsc';
+import { getWeather } from '@/actions';
+
+export default function Page() {
+  const [weather, setWeather] = useState<React.ReactNode | null>(null);
+
+  return (
+    <div>
+      <button
+        onClick={async () => {
+          const weatherUI = await getWeather();
+          setWeather(weatherUI);
+        }}
+      >
+        天气怎么样？
+      </button>
+
+      {weather}
+    </div>
+  );
+}
+```
+
+当点击按钮时，会调用 `getWeather` 函数，返回的 UI 被设置为 `weather` 状态并渲染在页面上。用户将首先看到加载消息，然后在 1 秒后看到实际天气信息。
+
+在[多个可流式传输对象](/docs/advanced/multiple-streamables)指南中了解更多关于在单个请求中处理多个流的信息。
+
+在[ AI/UI 状态](/docs/ai-sdk-rsc/generative-ui-state)中了解更多关于处理更复杂用例的状态管理。

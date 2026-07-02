@@ -1,0 +1,288 @@
+---
+title: 工具
+description: 了解 AI SDK 中的工具。
+---
+
+# 工具
+
+虽然[大语言模型 (LLM)](/docs/foundations/overview#large-language-models) 具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）以及与外部世界交互（例如获取天气）方面存在困难。
+
+工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一个响应中考虑。
+
+例如，当你向 LLM 询问“伦敦的天气”，并且有一个可用的天气工具时，它可能会调用一个以伦敦为参数的工具。然后，该工具会获取天气数据并将其返回给 LLM。LLM 随后可以在其响应中使用此信息。
+
+## 什么是工具？
+
+工具是一个可以被模型调用来执行特定任务的对象。你可以通过向 `tools` 参数传递一个或多个工具，将工具与 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 一起使用。
+
+一个工具由三个属性组成：
+
+- **`description`**：一个可选的工具描述，可以影响工具被选中的时机。函数工具和动态工具可以使用字符串或从工具上下文和实验性沙盒派生描述的函数。
+- **`inputSchema`**：一个 [Zod 模式](/docs/reference/ai-sdk-core/zod-schema) 或 [JSON 模式](/docs/reference/ai-sdk-core/json-schema)，定义了运行工具所需的输入。该模式由 LLM 使用，也用于验证 LLM 工具调用。
+- **`execute`**：一个可选的异步函数，使用工具调用的参数进行调用。
+
+<Note>
+  `streamUI` 使用 UI 生成器工具，这些工具具有一个可以返回 React 组件的 `generate` 函数。
+</Note>
+
+如果 LLM 决定使用某个工具，它将生成一个工具调用。当生成这些调用时，带有 `execute` 函数的工具会自动运行。工具调用的输出使用工具结果对象返回。
+
+你可以使用 `streamText` 和 `generateText` 的[多步调用](/docs/ai-sdk-core/tools-and-tool-calling#multi-step-calls)自动将工具结果传递回 LLM。
+
+## 工具类型
+
+AI SDK 支持四种类型的工具，每种都有不同的权衡：
+
+### 函数工具
+
+函数工具是完全由你定义的工具，包括描述、输入模式和可选的执行函数。它们与提供商无关，让你完全控制。
+
+```ts
+import { tool } from 'ai';
+import { z } from 'zod';
+
+const weatherTool = tool({
+  description: '获取某个位置的天气',
+  inputSchema: z.object({
+    location: z.string().describe('要获取天气的位置'),
+  }),
+  execute: async ({ location }) => {
+    // 你的实现
+    return { temperature: 72, conditions: 'sunny' };
+  },
+});
+```
+
+**何时使用**：当你需要完全控制、希望提供商可移植或实现特定于应用程序的功能时。
+
+### 动态工具
+
+动态工具是函数式工具，其输入和输出类型在开发时未知。它们对于从外部来源（例如 MCP 服务器、用户定义函数或数据库）加载的工具非常有用。
+
+```ts
+import { dynamicTool } from 'ai';
+import { z } from 'zod';
+
+const runtimeTool = dynamicTool({
+  description: '执行一个在运行时加载的工具',
+  inputSchema: z.object({}),
+  execute: async input => {
+    // input 的类型为 unknown
+    return runRuntimeTool(input);
+  },
+});
+```
+
+**何时使用**：当工具在运行时被发现或生成，并且其确切的 TypeScript 输入/输出类型在编写代码时未知时。
+
+### 提供商定义的工具
+
+提供商定义的工具是指提供商指定工具的 `inputSchema` 和 `description`，但你提供 `execute` 函数的工具。这些有时被称为“客户端工具”，因为执行发生在你这边。
+
+示例包括 Anthropic 的 `bash` 和 `text_editor` 工具。模型经过专门训练，可以有效地使用这些工具，从而在支持的任务上获得更好的性能。
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: anthropic('claude-opus-4-5'),
+  tools: {
+    bash: anthropic.tools.bash_20250124({
+      execute: async ({ command }) => {
+        // 你的运行命令的实现
+        return runCommand(command);
+      },
+    }),
+  },
+  prompt: '列出当前目录中的文件',
+});
+```
+
+**何时使用**：当提供商提供了一个模型经过良好训练的工具，并且你希望在该特定任务上获得更好的性能时。
+
+### 提供商执行的工具
+
+提供商执行的工具是完全在提供商服务器上运行的工具。你配置它们，但提供商处理执行。这些有时被称为“服务器端工具”。
+
+示例包括 OpenAI 的网页搜索和 Anthropic 的代码执行。它们提供开箱即用的功能，无需你设置基础设施。
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: openai('gpt-5.2'),
+  tools: {
+    web_search: openai.tools.webSearch(),
+  },
+  prompt: '今天新闻里发生了什么？',
+});
+```
+
+**何时使用**：当你想要强大的功能（如网页搜索或沙盒代码执行）而无需自己管理基础设施时。
+
+### 比较
+
+| 方面           | 函数工具               | 动态工具                 | 提供商定义的工具       | 提供商执行的工具       |
+| -------------- | ---------------------- | ------------------------ | ---------------------- | ---------------------- |
+| **执行**       | 你的代码               | 你的代码                 | 你的代码               | 提供商的服务器         |
+| **模式**       | 你定义                 | 运行时定义               | 提供商定义             | 提供商定义             |
+| **可移植性**   | 适用于任何提供商       | 适用于任何提供商         | 特定于提供商           | 特定于提供商           |
+| **模型训练**   | 通用工具使用           | 通用工具使用             | 针对工具优化           | 针对工具优化           |
+| **设置**       | 你实现所有内容         | 你加载或生成工具         | 你实现 execute         | 仅配置                 |
+
+<Note>
+  提供商定义的工具和提供商执行的工具在每个提供商的页面中都有文档说明。请参阅 [Anthropic 提供商](/providers/ai-sdk-providers/anthropic) 和 [OpenAI 提供商](/providers/ai-sdk-providers/openai) 获取示例。
+</Note>
+
+## 模式
+
+模式用于定义和验证[工具输入](/docs/ai-sdk-core/tools-and-tool-calling)、工具输出和结构化输出生成。
+
+AI SDK 支持以下模式：
+
+- 直接使用 [Zod](https://zod.dev/) v3 和 v4，或通过 [`zodSchema()`](/docs/reference/ai-sdk-core/zod-schema)
+- 通过 `@ai-sdk/valibot` 的 [`valibotSchema()`](/docs/reference/ai-sdk-core/valibot-schema) 使用 [Valibot](https://valibot.dev/)
+- 兼容[标准 JSON 模式](https://standardschema.dev/json-schema)的模式
+- 通过 [`jsonSchema()`](/docs/reference/ai-sdk-core/json-schema) 使用原始 JSON 模式
+
+<Note>
+  你也可以使用模式进行结构化输出生成，通过 `generateText` 和 `streamText` 的 `output` 设置。
+</Note>
+
+## 细化工具输入
+
+不同的 LLM 提供商可能为相同的工具输入类型生成略有不同的工具输入。例如，一个提供商可能为可选字段生成 `null`，而另一个提供商生成空字符串。
+
+当你不是工具的所有者时，例如使用来自第三方包的工具，你可能无法更改工具的 `inputSchema` 以接受两种形状。在这些情况下，你可以使用实验性的 `experimental_refineToolInput` 选项，在解析后的工具输入被执行以及出现在输出、生命周期回调和遥测中之前对其进行规范化。
+
+```ts
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const result = await generateText({
+  model: 'openai/gpt-5-mini',
+  tools: {
+    search: tool({
+      inputSchema: z.object({
+        query: z.string(),
+        category: z.string().nullable(),
+      }),
+      execute: async ({ query, category }) => {
+        return search({ query, category });
+      },
+    }),
+  },
+  experimental_refineToolInput: {
+    search: input => ({
+      ...input,
+      category: input.category === '' ? null : input.category,
+    }),
+  },
+  prompt: '搜索没有类别的滑雪夹克。',
+});
+```
+
+细化函数是按工具类型化的。每个函数接收其工具的输入，并且必须返回具有相同类型形状的输入。
+
+## 工具包
+
+由于工具是 JavaScript 对象，它们可以像任何其他库一样通过 npm 打包和分发。这使得跨项目和社区共享可重用工具变得容易。
+
+### 使用现成的工具包
+
+安装一个工具包并导入你需要的工具：
+
+```bash
+pnpm add some-tool-package
+```
+
+然后将它们直接传递给 `generateText`、`streamText` 或你的智能体定义：
+
+```ts highlight="2, 8"
+import { generateText, isStepCount } from 'ai';
+import { searchTool } from 'some-tool-package';
+
+const { text } = await generateText({
+  model: 'anthropic/claude-haiku-4.5',
+  prompt: 'Vercel Ship AI 是什么时候？',
+  tools: {
+    webSearch: searchTool,
+  },
+  stopWhen: isStepCount(10),
+});
+```
+
+### 发布你自己的工具
+
+你可以将自己的工具包发布到 npm 供他人使用。只需从你的包中导出工具对象：
+
+```ts filename="my-tools/index.ts"
+import { tool } from 'ai';
+import { z } from 'zod';
+
+export const myTool = tool({
+  description: '一个有用的工具',
+  inputSchema: z.object({
+    query: z.string(),
+  }),
+  execute: async ({ query }) => {
+    // 你的工具逻辑
+    return result;
+  },
+});
+```
+
+任何人都可以通过导入来安装和使用你的工具。
+
+要开始，你可以使用 [AI SDK 工具包模板](https://github.com/vercel-labs/ai-sdk-tool-as-package-template)，它提供了一个现成的起点来发布你自己的工具。
+
+## 工具集
+
+当你使用工具时，通常需要混合使用特定于应用程序的工具和通用工具。社区已经创建了各种工具集和资源来帮助你构建和使用工具。
+
+### 现成的工具包
+
+这些包提供了预构建的工具，你可以立即安装和使用：
+
+- **[@exalabs/ai-sdk](https://www.npmjs.com/package/@exalabs/ai-sdk)** - 网页搜索工具，让 AI 搜索网络并获取实时信息。
+- **[@parallel-web/ai-sdk-tools](https://www.npmjs.com/package/@parallel-web/ai-sdk-tools)** - 由 Parallel Web API 驱动的网页搜索和提取工具，用于实时信息和内容提取。
+- **[@perplexity-ai/ai-sdk](https://www.npmjs.com/package/@perplexity-ai/ai-sdk)** - 使用 Perplexity 的搜索 API 进行实时结果和高级过滤的网页搜索。
+- **[@tavily/ai-sdk](https://www.npmjs.com/package/@tavily/ai-sdk)** - 用于企业级智能体实时探索网络的搜索、提取、爬取和映射工具。
+- **[Stripe 智能体工具](https://docs.stripe.com/agents?framework=vercel)** - 用于与 Stripe 交互的工具。
+- **[StackOne ToolSet](https://docs.stackone.com/agents/typescript/frameworks/vercel-ai-sdk)** - 数百个[企业 SaaS](https://www.stackone.com/integrations) 平台的智能体集成。
+- **[agentic](https://docs.agentic.so/marketplace/ts-sdks/ai-sdk)** - 包含 20 多个工具的集合，可连接到外部 API，例如 [Exa](https://exa.ai/) 或 [E2B](https://e2b.dev/)。
+- **[Amazon Bedrock AgentCore](https://github.com/aws/bedrock-agentcore-sdk-typescript)** - 完全托管的 AI 智能体服务，包括 [**Browser**](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/built-in-tools.html)（一个快速安全的基于云的浏览器运行时，使智能体能够与 Web 应用程序交互、填写表单、浏览网站和提取信息）和 [**Code Interpreter**](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/built-in-tools.html)（一个隔离的沙盒环境，用于智能体执行 Python、JavaScript 和 TypeScript 代码，提高准确性并扩展解决复杂端到端任务的能力）。
+- **[@airweave/vercel-ai-sdk](https://www.npmjs.com/package/@airweave/vercel-ai-sdk)** - 跨 35 多个数据源（Notion、Slack、Google Drive、数据库等）的统一语义搜索，适用于 AI 智能体。
+- **[Composio](https://docs.composio.dev/providers/vercel)** - 250 多个工具，如 GitHub、Gmail、Salesforce 和[更多](https://composio.dev/tools)。
+- **[JigsawStack](http://www.jigsawstack.com/docs/integration/vercel)** - 超过 30 个小型自定义微调模型，可用于特定用途。
+- **[AI Tools Registry](https://ai-tools-registry.vercel.app)** - 一个与 Shadcn 兼容的工具定义和组件注册表，适用于 AI SDK。
+- **[Toolhouse](https://docs.toolhouse.ai/toolhouse/toolhouse-sdk/using-vercel-ai)** - 用 3 行代码实现超过 25 种不同操作的 AI 函数调用。
+- **[bash-tool](https://www.npmjs.com/package/bash-tool)** - 为 AI 智能体提供 `bash`、`readFile` 和 `writeFile` 工具。支持 [@vercel/sandbox](https://vercel.com/docs/vercel-sandbox) 实现完整的 VM 隔离。
+
+### MCP 工具
+
+这些是作为 MCP 服务器提供的预构建工具：
+
+- **[Smithery](https://smithery.ai/docs/integrations/vercel_ai_sdk)** - 一个包含 6,000 多个 MCP 的开放市场，包括 [Browserbase](https://browserbase.com/) 和 [Exa](https://exa.ai/)。
+- **[Pipedream](https://pipedream.com/docs/connect/mcp/ai-frameworks/vercel-ai-sdk)** - 开发者工具包，让你轻松地将 3,000 多个集成添加到你的应用或 AI 智能体中。
+- **[Apify](https://docs.apify.com/platform/integrations/vercel-ai-sdk)** - Apify 提供了一个[市场](https://apify.com/store)，其中包含数千个用于网页抓取、数据提取和浏览器自动化的工具。
+
+### 工具构建教程
+
+这些教程和指南帮助你构建与特定服务集成的工具：
+
+- **[browserbase](https://docs.browserbase.com/integrations/vercel/introduction#vercel-ai-integration)** - 构建运行无头浏览器的浏览器工具的教程。
+- **[browserless](https://docs.browserless.io/ai-integrations/vercel-ai-sdk)** - 集成浏览器自动化（自托管或基于云）的指南。
+- **[AI Tool Maker](https://github.com/nihaocami/ai-tool-maker)** - 一个 CLI 工具，用于从 OpenAPI 规范生成 AI SDK 工具。
+- **[Interlify](https://www.interlify.com/docs/integrate-with-vercel-ai)** - 将 API 转换为工具的指南。
+- **[DeepAgent](https://deepagent.amardeep.space/docs/vercel-ai-sdk)** - 一套包含 50 多个 AI 工具和集成的套件，可与 Tavily、E2B、Airtable 和[更多](https://deepagent.amardeep.space/docs)等 API 无缝连接。
+
+<Note>
+  你是否拥有与 AI SDK 兼容的开源工具或工具库？请[提交拉取请求](https://github.com/vercel/ai/pulls)将它们添加到此列表。
+</Note>
+
+## 了解更多
+
+AI SDK Core 的[工具调用](/docs/ai-sdk-core/tools-and-tool-calling)和[智能体](/docs/agents)文档包含有关工具和工具调用的更多信息。

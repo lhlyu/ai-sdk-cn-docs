@@ -1,0 +1,119 @@
+---
+title: createUIMessageStreamResponse
+description: createUIMessageStreamResponse 的 API 参考文档。
+---
+
+# `createUIMessageStreamResponse`
+
+`createUIMessageStreamResponse` 函数创建一个 Response 对象，用于将 UI 消息流式传输到客户端。
+
+## 导入
+
+<Snippet
+  text={`import { createUIMessageStreamResponse } from "ai"`}
+  prompt={false}
+/>
+
+## 示例
+
+```tsx
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+__PROVIDER_IMPORT__;
+
+const response = createUIMessageStreamResponse({
+  status: 200,
+  statusText: 'OK',
+  headers: {
+    'Custom-Header': 'value',
+  },
+  stream: createUIMessageStream({
+    execute({ writer }) {
+      // 写入自定义数据（类型必须为 'data-<name>'）
+      writer.write({
+        type: 'data-message',
+        data: { content: 'Hello' },
+      });
+
+      // 使用 start/delta/end 模式写入文本内容
+      writer.write({
+        type: 'text-start',
+        id: 'greeting-text',
+      });
+      writer.write({
+        type: 'text-delta',
+        id: 'greeting-text',
+        delta: 'Hello, world!',
+      });
+      writer.write({
+        type: 'text-end',
+        id: 'greeting-text',
+      });
+
+      // 写入来源信息（扁平属性，非嵌套）
+      writer.write({
+        type: 'source-url',
+        sourceId: 'source-1',
+        url: 'https://example.com',
+        title: '示例来源',
+      });
+
+      // 与 LLM 流合并
+      const result = streamText({
+        model: __MODEL__,
+        prompt: '说你好',
+      });
+
+      writer.merge(toUIMessageStream({ stream: result.stream }));
+    },
+  }),
+});
+```
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stream',
+      type: 'ReadableStream<UIMessageChunk>',
+      description: '要发送到客户端的 UI 消息流。',
+    },
+    {
+      name: 'status',
+      type: 'number',
+      isOptional: true,
+      description: '响应的状态码。默认为 200。',
+    },
+    {
+      name: 'statusText',
+      type: 'string',
+      isOptional: true,
+      description: '响应的状态文本。',
+    },
+    {
+      name: 'headers',
+      type: 'Headers | Record<string, string>',
+      isOptional: true,
+      description: '响应的附加标头。',
+    },
+    {
+      name: 'consumeSseStream',
+      type: '(options: { stream: ReadableStream<string> }) => PromiseLike<void> | void',
+      isOptional: true,
+      description: '可选的回调函数，用于消费服务器发送事件流。',
+    },
+  ]}
+/>
+
+### 返回值
+
+`Response`
+
+一个 Response 对象，用于流式传输 UI 消息块，并包含指定的状态、标头和内容。

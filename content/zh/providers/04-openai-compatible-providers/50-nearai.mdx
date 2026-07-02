@@ -1,0 +1,111 @@
+---
+title: NEAR AI Cloud
+description: 使用 NEAR AI Cloud 兼容 OpenAI 的 API 与 AI SDK。
+---
+
+# NEAR AI Cloud 提供商
+
+[NEAR AI Cloud](https://cloud.near.ai) 通过兼容 OpenAI 的 API 提供基于 TEE 的推理服务。您可以通过 `@ai-sdk/openai-compatible` 模块将其与 AI SDK 结合使用。
+
+## 环境配置
+
+NEAR AI Cloud 提供商可通过 `@ai-sdk/openai-compatible` 模块获取，因为它兼容 OpenAI API。您可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @ai-sdk/openai-compatible" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+要使用 NEAR AI Cloud，您可以通过 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const nearai = createOpenAICompatible({
+  name: 'nearai',
+  baseURL: 'https://cloud-api.near.ai/v1',
+  apiKey: process.env.NEARAI_API_KEY,
+  transformRequestBody: body => {
+    const { reasoning_effort, ...rest } = body;
+    return rest;
+  },
+});
+```
+
+<Note>
+  您可以在 [NEAR AI Cloud](https://cloud.near.ai) 中创建 API 密钥。请确保使用您的 API 密钥设置 `NEARAI_API_KEY` 环境变量。
+</Note>
+
+## 语言模型
+
+您可以使用提供商实例创建 NEAR AI Cloud 模型。第一个参数是来自[公共模型目录](https://cloud-api.near.ai/v1/model/list)的模型 ID，例如 `zai-org/GLM-5.1-FP8`。
+
+```ts
+const model = nearai('zai-org/GLM-5.1-FP8');
+```
+
+### 示例
+
+您可以使用 NEAR AI Cloud 语言模型通过 `generateText` 函数生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const nearai = createOpenAICompatible({
+  name: 'nearai',
+  baseURL: 'https://cloud-api.near.ai/v1',
+  apiKey: process.env.NEARAI_API_KEY,
+  transformRequestBody: body => {
+    const { reasoning_effort, ...rest } = body;
+    return rest;
+  },
+});
+
+const { text } = await generateText({
+  model: nearai('zai-org/GLM-5.1-FP8'),
+  prompt: '用一句话介绍一下你自己。',
+});
+
+console.log(text);
+```
+
+NEAR AI Cloud 语言模型还可以通过 `streamText` 函数以流式传输方式生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { streamText } from 'ai';
+
+const nearai = createOpenAICompatible({
+  name: 'nearai',
+  baseURL: 'https://cloud-api.near.ai/v1',
+  apiKey: process.env.NEARAI_API_KEY,
+  transformRequestBody: body => {
+    const { reasoning_effort, ...rest } = body;
+    return rest;
+  },
+});
+
+const result = streamText({
+  model: nearai('zai-org/GLM-5.1-FP8'),
+  prompt: '写一首关于私有推理的短俳句。',
+});
+
+for await (const message of result.textStream) {
+  console.log(message);
+}
+```
+
+您可以使用 NEAR AI Cloud 模型目录中任何受支持的 `modelId`。模型元数据包括上下文长度、模态以及该模型是否支持 TEE 认证。

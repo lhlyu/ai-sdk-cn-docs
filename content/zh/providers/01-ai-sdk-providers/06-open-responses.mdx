@@ -1,0 +1,99 @@
+---
+title: Open Responses
+description: 了解如何使用 AI SDK 的 Open Responses 提供商。
+---
+
+# Open Responses 提供商
+
+[Open Responses](https://www.openresponses.org/) 提供商为兼容 Open Responses 的 API 提供语言模型支持。
+
+## 安装
+
+Open Responses 提供商位于 `@ai-sdk/open-responses` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/open-responses" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/open-responses" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/open-responses" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @ai-sdk/open-responses" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+使用 `createOpenResponses` 创建一个 Open Responses 提供商实例：
+
+```ts
+import { createOpenResponses } from '@ai-sdk/open-responses';
+
+const openResponses = createOpenResponses({
+  name: 'aProvider',
+  url: 'http://localhost:1234/v1/responses',
+});
+```
+
+`name` 和 `url` 选项是必需的：
+
+- **name** _string_
+
+  提供商名称。用作提供商选项和元数据的键。
+
+- **url** _string_
+
+  Open Responses API POST 端点的 URL。
+
+你可以使用以下可选设置来自定义 Open Responses 提供商实例：
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+
+## 语言模型
+
+Open Responses 提供商实例是一个函数，你可以调用它来创建语言模型：
+
+```ts
+const model = openResponses('mistralai/ministral-3-14b-reasoning');
+```
+
+你可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，
+并且它们支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据
+（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+
+### 示例
+
+```ts
+import { createOpenResponses } from '@ai-sdk/open-responses';
+import { generateText } from 'ai';
+
+const openResponses = createOpenResponses({
+  name: 'aProvider',
+  url: 'http://localhost:1234/v1/responses',
+});
+
+const { text } = await generateText({
+  model: openResponses('mistralai/ministral-3-14b-reasoning'),
+  prompt: '发明一个新节日并描述其传统。',
+});
+```
+
+## 注意事项
+
+- 停止序列、`topK` 和 `seed` 不受支持，会被忽略并给出警告。
+- 用户消息中的图像输入支持使用图像媒体类型的 `file` 部分。

@@ -1,0 +1,271 @@
+---
+title: 处理加载状态
+description: 使用 AI SDK RSC 处理加载状态的概述
+---
+
+# 处理加载状态
+
+<Note type="warning">
+  AI SDK RSC 目前处于实验阶段。我们建议在生产环境中使用 [AI SDK
+  UI](/docs/ai-sdk-ui/overview)。如需从 RSC 迁移到 UI 的指导，请参阅我们的[迁移指南](/docs/ai-sdk-rsc/migrating-to-ui)。
+</Note>
+
+由于语言模型的响应通常需要较长时间才能完成，因此能够向用户展示加载状态至关重要。这提供了系统正在处理其请求的视觉反馈，有助于维持良好的用户体验。
+
+使用 AI SDK RSC 处理加载状态有三种方法：
+
+- 像传统 Next.js 应用程序中那样管理加载状态。这涉及在客户端设置加载状态变量，并在收到响应时更新它。
+- 将加载状态从服务器流式传输到客户端。这种方法允许您在更细粒度的级别上跟踪加载状态，并向用户提供更详细的反馈。
+- 将加载组件从服务器流式传输到客户端。这种方法允许您在等待模型响应时将 React 服务器组件流式传输到客户端。
+
+## 在客户端处理加载状态
+
+### 客户端
+
+让我们创建一个简单的 Next.js 页面，该页面在提交表单时调用 `generateResponse` 函数。该函数将接收用户的提示词（`input`），然后生成响应（`response`）。为了处理加载状态，使用 `loading` 状态变量。提交表单时，将 `loading` 设置为 `true`，收到响应时，将其设置回 `false`。在流式传输响应期间，输入字段将被禁用。
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState } from 'react';
+import { generateResponse } from './actions';
+import { readStreamableValue } from '@ai-sdk/rsc';
+
+// 强制页面为动态页面，并允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [input, setInput] = useState<string>('');
+  const [generation, setGeneration] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  return (
+    <div>
+      <div>{generation}</div>
+      <form
+        onSubmit={async e => {
+          e.preventDefault();
+          setLoading(true);
+          const response = await generateResponse(input);
+
+          let textContent = '';
+
+          for await (const delta of readStreamableValue(response)) {
+            textContent = `${textContent}${delta}`;
+            setGeneration(textContent);
+          }
+          setInput('');
+          setLoading(false);
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          disabled={loading}
+          className="disabled:opacity-50"
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button>发送消息</button>
+      </form>
+    </div>
+  );
+}
+```
+
+### 服务器
+
+现在让我们实现 `generateResponse` 函数。使用 `streamText` 函数生成对输入的响应。
+
+```typescript filename='app/actions.ts'
+'use server';
+
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+import { createStreamableValue } from '@ai-sdk/rsc';
+
+export async function generateResponse(prompt: string) {
+  const stream = createStreamableValue();
+
+  (async () => {
+    const { textStream } = streamText({
+      model: __MODEL__,
+      prompt,
+    });
+
+    for await (const text of textStream) {
+      stream.update(text);
+    }
+
+    stream.done();
+  })();
+
+  return stream.value;
+}
+```
+
+## 从服务器流式传输加载状态
+
+如果您希望在更细粒度的级别上跟踪加载状态，可以创建一个新的可流式传输值来存储自定义变量，然后在前端读取它。让我们更新示例，创建一个新的可流式传输值来跟踪加载状态：
+
+### 服务器
+
+```typescript filename='app/actions.ts' highlight='9,22,25'
+'use server';
+
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+import { createStreamableValue } from '@ai-sdk/rsc';
+
+export async function generateResponse(prompt: string) {
+  const stream = createStreamableValue();
+  const loadingState = createStreamableValue({ loading: true });
+
+  (async () => {
+    const { textStream } = streamText({
+      model: __MODEL__,
+      prompt,
+    });
+
+    for await (const text of textStream) {
+      stream.update(text);
+    }
+
+    stream.done();
+    loadingState.done({ loading: false });
+  })();
+
+  return { response: stream.value, loadingState: loadingState.value };
+}
+```
+
+### 客户端
+
+```tsx filename='app/page.tsx' highlight="22,30-34"
+'use client';
+
+import { useState } from 'react';
+import { generateResponse } from './actions';
+import { readStreamableValue } from '@ai-sdk/rsc';
+
+// 强制页面为动态页面，并允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [input, setInput] = useState<string>('');
+  const [generation, setGeneration] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  return (
+    <div>
+      <div>{generation}</div>
+      <form
+        onSubmit={async e => {
+          e.preventDefault();
+          setLoading(true);
+          const { response, loadingState } = await generateResponse(input);
+
+          let textContent = '';
+
+          for await (const responseDelta of readStreamableValue(response)) {
+            textContent = `${textContent}${responseDelta}`;
+            setGeneration(textContent);
+          }
+          for await (const loadingDelta of readStreamableValue(loadingState)) {
+            if (loadingDelta) {
+              setLoading(loadingDelta.loading);
+            }
+          }
+          setInput('');
+          setLoading(false);
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          disabled={loading}
+          className="disabled:opacity-50"
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button>发送消息</button>
+      </form>
+    </div>
+  );
+}
+```
+
+这允许您向用户提供关于生成过程的更详细反馈。
+
+## 使用 `streamUI` 流式传输加载组件
+
+如果您正在使用 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui) 函数，您可以将加载状态以 React 组件的形式流式传输到客户端。`streamUI` 支持使用 [JavaScript 生成器函数](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*)，这允许您在某个阻塞工作完成时产生一些值（在本例中为 React 组件）。
+
+## 服务器
+
+```ts
+'use server';
+
+import { openai } from '@ai-sdk/openai';
+import { streamUI } from '@ai-sdk/rsc';
+
+export async function generateResponse(prompt: string) {
+  const result = await streamUI({
+    model: openai('gpt-4o'),
+    prompt,
+    text: async function* ({ content }) {
+      yield <div>加载中...</div>;
+      return <div>{content}</div>;
+    },
+  });
+
+  return result.value;
+}
+```
+
+<Note>
+  请记住将文件从 `.ts` 更新为 `.tsx`，因为您在 `streamUI` 函数中定义了一个 React 组件。
+</Note>
+
+## 客户端
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { generateResponse } from './actions';
+import { readStreamableValue } from '@ai-sdk/rsc';
+
+// 强制页面为动态页面，并允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [input, setInput] = useState<string>('');
+  const [generation, setGeneration] = useState<React.ReactNode>();
+
+  return (
+    <div>
+      <div>{generation}</div>
+      <form
+        onSubmit={async e => {
+          e.preventDefault();
+          const result = await generateResponse(input);
+          setGeneration(result);
+          setInput('');
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button>发送消息</button>
+      </form>
+    </div>
+  );
+}
+```

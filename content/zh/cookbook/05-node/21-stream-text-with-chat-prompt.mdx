@@ -1,0 +1,37 @@
+---
+title: 使用聊天提示词流式传输文本
+description: 了解如何使用 AI SDK 和 Node 通过聊天提示词流式传输文本
+tags: ['node', 'streaming', 'chat']
+---
+
+# 使用聊天提示词流式传输文本
+
+文本生成有时需要很长时间才能完成，尤其是当响应内容较大时。在这种情况下，将聊天补全实时流式传输到客户端非常有用。这允许客户端在模型生成新消息时即时显示，而无需用户等待生成完成。
+
+```ts file='index.ts'
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: 'openai/gpt-4o',
+  maxOutputTokens: 1024,
+  system: '你是一个乐于助人的聊天机器人。',
+  messages: [
+    {
+      role: 'user',
+      content: [{ type: 'text', text: '你好！' }],
+    },
+    {
+      role: 'assistant',
+      content: [{ type: 'text', text: '你好！今天我能帮你什么？' }],
+    },
+    {
+      role: 'user',
+      content: [{ type: 'text', text: '我需要电脑方面的帮助。' }],
+    },
+  ],
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```

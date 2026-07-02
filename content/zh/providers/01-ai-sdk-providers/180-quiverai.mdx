@@ -1,0 +1,204 @@
+---
+title: QuiverAI
+description: 了解如何将 QuiverAI 模型与 AI SDK 结合使用。
+---
+
+# QuiverAI 提供商
+
+[QuiverAI](https://quiver.ai/) 可直接根据文本提示词生成 SVG 文档，也能将光栅图像矢量化处理为干净的 SVG。AI SDK 的 QuiverAI 提供商通过 `generateImage` 公开这两种操作。
+
+## 安装
+
+QuiverAI 提供商可通过 `@ai-sdk/quiverai` 模块获取。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/quiverai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/quiverai" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/quiverai" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/quiverai" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/quiverai` 导入默认的提供商实例 `quiverai`：
+
+```ts
+import { quiverai } from '@ai-sdk/quiverai';
+```
+
+如果需要自定义设置，可以导入 `createQuiverAI` 并使用你的配置创建提供商实例：
+
+```ts
+import { createQuiverAI } from '@ai-sdk/quiverai';
+
+const quiverai = createQuiverAI({
+  apiKey: 'your-api-key', // 可选，默认为 QUIVERAI_API_KEY 环境变量
+  baseURL: 'custom-url', // 可选，默认为 QUIVERAI_BASE_URL 或 https://api.quiver.ai/v1
+  headers: {
+    /* 自定义请求头 */
+  }, // 可选
+});
+```
+
+你可以使用以下可选设置来自定义 QuiverAI 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
+  默认前缀为 `https://api.quiver.ai/v1`。它也会从环境中读取 `QUIVERAI_BASE_URL`。
+
+- **apiKey** _string_
+
+  API 密钥，作为 `Bearer` 令牌在 `Authorization` 请求头中发送。
+  默认为 `QUIVERAI_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义请求头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  你可以将其用作中间件来拦截请求，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 图像模型
+
+你可以使用 `.image()` 工厂方法创建 QuiverAI 图像模型。
+有关使用 AI SDK 生成图像的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+
+### 基本用法
+
+```ts
+import { quiverai } from '@ai-sdk/quiverai';
+import { generateImage } from 'ai';
+import fs from 'fs';
+
+const { image } = await generateImage({
+  model: quiverai.image('arrow-1.1'),
+  prompt: 'A logo for the next AI Design startup',
+});
+
+const filename = `image-${Date.now()}.svg`;
+fs.writeFileSync(filename, image.uint8Array);
+console.log(`Saved SVG to ${filename}`);
+```
+
+QuiverAI 返回 SVG 文档。生成的 SVG 字节可通过 `result.image.uint8Array`（或生成多张图像时的 `result.images`）获取。
+
+### 模型能力
+
+QuiverAI 提供三种 Arrow 模型：
+
+| 模型             | 描述                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| `arrow-1`       | 基础文本转 SVG 模型。最多接受 4 张参考图像。                         |
+| `arrow-1.1`     | 改进的文本转 SVG 模型。最多接受 4 张参考图像。                       |
+| `arrow-1.1-max` | 更高品质的变体，具有扩展上下文。最多接受 16 张参考图像。             |
+
+### 提供商选项
+
+你可以使用 `providerOptions.quiverai` 对请求进行微调：
+
+```ts
+import { quiverai, type QuiverAIImageModelOptions } from '@ai-sdk/quiverai';
+import { generateImage } from 'ai';
+
+await generateImage({
+  model: quiverai.image('arrow-1.1'),
+  prompt: 'A geometric unicorn icon',
+  providerOptions: {
+    quiverai: {
+      instructions: 'Use a flat monochrome style with clean geometry.',
+      temperature: 0.4,
+      topP: 0.95,
+      maxOutputTokens: 4096,
+    } satisfies QuiverAIImageModelOptions,
+  },
+});
+```
+
+支持的选项：
+
+- **operation** _'generate' | 'vectorize'_
+
+  选择文本转 SVG 生成（`generate`，默认）或图像转 SVG 矢量化（`vectorize`）。
+
+- **instructions** _string_
+
+  基于提示词生成的额外样式指导。
+
+- **temperature** _number_ (0-2)
+
+  采样温度。
+
+- **topP** _number_ (0-1)
+
+  核采样 top-p 值。
+
+- **presencePenalty** _number_ (-2 到 2)
+
+  存在惩罚。
+
+- **maxOutputTokens** _number_ (1-131072)
+
+  最大输出令牌数。
+
+- **autoCrop** _boolean_
+
+  矢量化时，自动裁剪输入图像。仅与 `operation: 'vectorize'` 一起使用。
+
+- **targetSize** _number_ (128-4096)
+
+  矢量化时，目标画布大小（像素）。仅与 `operation: 'vectorize'` 一起使用。
+
+### 参考图像
+
+通过 `prompt.images` 传递参考图像：
+
+```ts
+await generateImage({
+  model: quiverai.image('arrow-1.1'),
+  prompt: {
+    text: 'A geometric unicorn icon',
+    images: ['https://example.com/reference-1.png'],
+  },
+});
+```
+
+`arrow-1` 和 `arrow-1.1` 最多接受 4 张参考图像。`arrow-1.1-max` 最多接受 16 张。
+
+### 矢量化光栅图像
+
+将 `operation` 设置为 `vectorize`，并在 `prompt.images` 中传递单张图像：
+
+```ts
+import { quiverai, type QuiverAIImageModelOptions } from '@ai-sdk/quiverai';
+import { generateImage } from 'ai';
+import fs from 'fs';
+
+const { image } = await generateImage({
+  model: quiverai.image('arrow-1.1'),
+  prompt: {
+    images: [fs.readFileSync('./logo.png')],
+  },
+  providerOptions: {
+    quiverai: {
+      operation: 'vectorize',
+      autoCrop: true,
+      targetSize: 1024,
+    } satisfies QuiverAIImageModelOptions,
+  },
+});
+
+fs.writeFileSync('logo.svg', image.uint8Array);
+```

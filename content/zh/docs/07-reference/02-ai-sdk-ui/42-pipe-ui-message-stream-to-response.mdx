@@ -1,0 +1,77 @@
+---
+title: pipeUIMessageStreamToResponse
+description: 学习使用 pipeUIMessageStreamToResponse 辅助函数将流式数据管道传输到 ServerResponse 对象。
+---
+
+# `pipeUIMessageStreamToResponse`
+
+`pipeUIMessageStreamToResponse` 函数将流式数据管道传输到 Node.js ServerResponse 对象（参见[流式数据](/docs/ai-sdk-ui/streaming-data)）。
+
+## 导入
+
+<Snippet
+  text={`import { pipeUIMessageStreamToResponse } from "ai"`}
+  prompt={false}
+/>
+
+## 示例
+
+```tsx
+pipeUIMessageStreamToResponse({
+  response: serverResponse,
+  status: 200,
+  statusText: 'OK',
+  headers: {
+    'Custom-Header': 'value',
+  },
+  stream: myUIMessageStream,
+  consumeSseStream: ({ stream }) => {
+    // 可选：独立消费 SSE 流
+    console.log('正在消费 SSE 流:', stream);
+  },
+});
+```
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'response',
+      type: 'ServerResponse',
+      description: '用于管道传输数据的 Node.js ServerResponse 对象。',
+    },
+    {
+      name: 'stream',
+      type: 'ReadableStream<UIMessageChunk>',
+      description: '要管道传输到响应的 UI 消息流。',
+    },
+    {
+      name: 'status',
+      type: 'number',
+      isOptional: true,
+      description: '响应的状态码。',
+    },
+    {
+      name: 'statusText',
+      type: 'string',
+      isOptional: true,
+      description: '响应的状态文本。',
+    },
+    {
+      name: 'headers',
+      type: 'Headers | Record<string, string>',
+      isOptional: true,
+      description: '响应的附加标头。',
+    },
+    {
+      name: 'consumeSseStream',
+      type: '({ stream }: { stream: ReadableStream<string> }) => PromiseLike<void> | void',
+      isOptional: true,
+      description:
+        '可选函数，用于独立消费 SSE 流。该流会被分流，此函数接收一个副本。',
+    },
+  ]}
+/>

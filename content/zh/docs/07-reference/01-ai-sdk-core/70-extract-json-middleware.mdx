@@ -1,0 +1,147 @@
+---
+title: extractJsonMiddleware
+description: 从文本内容中提取 JSON 的中间件，通过移除 Markdown 代码围栏实现
+---
+
+# `extractJsonMiddleware()`
+
+`extractJsonMiddleware` 是一个中间件函数，通过移除 Markdown 代码围栏和其他格式，从文本内容中提取 JSON。当使用 `Output.object()` 配合将 JSON 响应包裹在 Markdown 代码块中的模型时（例如 ` ```json ... ``` `），此功能非常有用。
+
+```ts
+import { extractJsonMiddleware } from 'ai';
+
+const middleware = extractJsonMiddleware();
+```
+
+## 导入
+
+<Snippet text={`import { extractJsonMiddleware } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'transform',
+      type: '(text: string) => string',
+      isOptional: true,
+      description:
+        '应用于文本内容的自定义转换函数。接收原始文本并应返回转换后的文本。如果未提供，默认转换会移除 Markdown 代码围栏。',
+    },
+  ]}
+/>
+
+### 返回值
+
+返回一个中间件对象，该对象：
+
+- 处理流式和非流式响应
+- 从文本内容中移除 Markdown 代码围栏（` ```json ` 和 ` ``` `）
+- 当提供 `transform` 函数时，应用自定义转换
+- 通过高效缓冲保持正确的流式行为
+
+## 使用示例
+
+### 基本用法
+
+在使用结构化输出时，从模型响应中移除 Markdown 代码围栏：
+
+```ts
+import {
+  generateText,
+  wrapLanguageModel,
+  extractJsonMiddleware,
+  Output,
+} from 'ai';
+import { z } from 'zod';
+
+const result = await generateText({
+  model: wrapLanguageModel({
+    model: yourModel,
+    middleware: extractJsonMiddleware(),
+  }),
+  output: Output.object({
+    schema: z.object({
+      recipe: z.object({
+        name: z.string(),
+        steps: z.array(z.string()),
+      }),
+    }),
+  }),
+  prompt: '生成一份千层面食谱。',
+});
+
+console.log(result.output);
+```
+
+### 流式传输
+
+该中间件也适用于流式响应：
+
+```ts
+import {
+  streamText,
+  wrapLanguageModel,
+  extractJsonMiddleware,
+  Output,
+} from 'ai';
+import { z } from 'zod';
+
+const { partialOutputStream } = streamText({
+  model: wrapLanguageModel({
+    model: yourModel,
+    middleware: extractJsonMiddleware(),
+  }),
+  output: Output.object({
+    schema: z.object({
+      recipe: z.object({
+        ingredients: z.array(z.string()),
+        steps: z.array(z.string()),
+      }),
+    }),
+  }),
+  prompt: '生成一份详细食谱。',
+});
+
+for await (const partialObject of partialOutputStream) {
+  console.log(partialObject);
+}
+```
+
+### 自定义转换函数
+
+对于使用不同格式的模型，你可以提供自定义转换：
+
+```ts
+import { extractJsonMiddleware } from 'ai';
+
+const middleware = extractJsonMiddleware({
+  transform: text =>
+    text
+      .replace(/^PREFIX/, '')
+      .replace(/SUFFIX$/, '')
+      .trim(),
+});
+```
+
+## 工作原理
+
+该中间件以两种方式处理文本内容：
+
+### 非流式传输 (generateText)
+
+1. 接收模型的完整响应
+2. 应用转换函数以移除 Markdown 围栏（或自定义格式）
+3. 返回清理后的文本内容
+
+### 流式传输 (streamText)
+
+1. 缓冲初始内容以检测 Markdown 围栏前缀（` ```json\n `）
+2. 如果检测到围栏，则移除前缀并切换到流式模式
+3. 维护一个小型后缀缓冲区以处理结束围栏（` \n``` `）
+4. 当流结束时，从缓冲区中移除任何尾部围栏
+5. 对于自定义转换，缓冲所有内容并在最后应用转换
+
+这种方法确保了高效的流式传输，同时正确处理可能跨多个数据块分割的代码围栏。

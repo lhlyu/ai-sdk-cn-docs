@@ -1,0 +1,133 @@
+---
+title: Hono
+description: 在 Hono 服务器中使用 AI SDK 的示例。
+tags: ['api servers', 'streaming']
+---
+
+# Hono
+
+你可以在 [Hono](https://hono.dev/) 服务器中使用 AI SDK 来生成文本和对象，并将其流式传输到客户端。
+
+## 示例
+
+这些示例启动一个简单的 HTTP 服务器，监听 8080 端口。你可以使用 `curl` 进行测试：
+
+```bash
+curl -X POST http://localhost:8080
+```
+
+<Note>
+  这些示例使用了 Vercel AI Gateway。请确保你的 AI Gateway API 密钥已设置在
+  `AI_GATEWAY_API_KEY` 环境变量中。
+</Note>
+
+**完整示例**：[github.com/vercel/ai/examples/hono](https://github.com/vercel/ai/tree/main/examples/hono)
+
+### UI 消息流
+
+你可以使用 `createUIMessageStreamResponse` 配合 `toUIMessageStream` 来创建格式正确的流式响应。
+
+```ts filename='index.ts'
+import { serve } from '@hono/node-server';
+import {
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/', async c => {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+});
+
+serve({ fetch: app.fetch, port: 8080 });
+```
+
+### 文本流
+
+你可以使用 `createTextStreamResponse` 配合 `toTextStream` 来返回文本流响应。
+
+```ts filename='index.ts'
+import { serve } from '@hono/node-server';
+import { createTextStreamResponse, streamText, toTextStream } from 'ai';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/text', async c => {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '写一首关于编程的短诗。',
+  });
+  return createTextStreamResponse({
+    stream: toTextStream({ stream: result.stream }),
+  });
+});
+
+serve({ fetch: app.fetch, port: 8080 });
+```
+
+### 发送自定义数据
+
+你可以使用 `createUIMessageStream` 和 `createUIMessageStreamResponse` 向客户端发送自定义数据。
+
+```ts filename='index.ts'
+import { serve } from '@hono/node-server';
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/stream-data', async c => {
+  // 立即开始流式传输响应
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      writer.write({ type: 'start' });
+
+      writer.write({
+        type: 'data-custom',
+        data: {
+          custom: 'Hello, world!',
+        },
+      });
+
+      const result = streamText({
+        model: 'openai/gpt-4o',
+        prompt: '发明一个新节日并描述其传统。',
+      });
+
+      writer.merge(
+        toUIMessageStream({
+          stream: result.stream,
+          sendStart: false,
+          onError: error => {
+            // 出于安全原因，错误消息默认会被屏蔽。
+            // 如果你想向客户端暴露错误消息，可以在此处进行：
+            return error instanceof Error ? error.message : String(error);
+          },
+        }),
+      );
+    },
+  });
+  return createUIMessageStreamResponse({ stream });
+});
+
+serve({ fetch: app.fetch, port: 8080 });
+```
+
+## 故障排除
+
+- 通过[代理](/docs/troubleshooting/streaming-not-working-when-proxied)时流式传输无法正常工作

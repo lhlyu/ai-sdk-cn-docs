@@ -1,0 +1,236 @@
+---
+title: 嵌入
+description: 了解如何使用 AI SDK 嵌入值。
+---
+
+# 嵌入
+
+嵌入是一种将单词、短语或图像表示为高维空间向量的方法。
+在这个空间中，相似的单词彼此靠近，单词之间的距离可用于衡量它们的相似度。
+
+## 嵌入单个值
+
+AI SDK 提供了 [`embed`](/docs/reference/ai-sdk-core/embed) 函数来嵌入单个值，这对于查找相似单词或短语、或对文本进行聚类等任务非常有用。
+你可以将其与嵌入模型一起使用，例如 `openai.embeddingModel('text-embedding-3-large')` 或 `mistral.embeddingModel('mistral-embed')`。
+
+```tsx
+import { embed } from 'ai';
+
+// 'embedding' 是一个单一的嵌入对象 (number[])
+const { embedding } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+});
+```
+
+## 嵌入多个值
+
+在加载数据时，例如为检索增强生成（RAG）准备数据存储时，通常需要一次嵌入多个值（批量嵌入）。
+
+AI SDK 为此提供了 [`embedMany`](/docs/reference/ai-sdk-core/embed-many) 函数。
+与 `embed` 类似，你可以将其与嵌入模型一起使用，
+例如 `openai.embeddingModel('text-embedding-3-large')` 或 `mistral.embeddingModel('mistral-embed')`。
+
+```tsx
+import { embedMany } from 'ai';
+
+// 'embeddings' 是一个嵌入对象数组 (number[][])。
+// 其排序顺序与输入值相同。
+const { embeddings } = await embedMany({
+  model: 'openai/text-embedding-3-small',
+  values: [
+    'sunny day at the beach',
+    'rainy afternoon in the city',
+    'snowy night in the mountains',
+  ],
+});
+```
+
+## 嵌入相似度
+
+嵌入值后，你可以使用 [`cosineSimilarity`](/docs/reference/ai-sdk-core/cosine-similarity) 函数计算它们之间的相似度。
+这对于在数据集中查找相似单词或短语等任务非常有用。
+你还可以根据相似度对相关项目进行排序和过滤。
+
+```ts highlight={"1,9"}
+import { cosineSimilarity, embedMany } from 'ai';
+
+const { embeddings } = await embedMany({
+  model: 'openai/text-embedding-3-small',
+  values: ['sunny day at the beach', 'rainy afternoon in the city'],
+});
+
+console.log(
+  `余弦相似度: ${cosineSimilarity(embeddings[0], embeddings[1])}`,
+);
+```
+
+## Token 用量
+
+许多提供商根据生成嵌入所使用的 token 数量收费。
+`embed` 和 `embedMany` 都在结果对象的 `usage` 属性中提供 token 用量信息：
+
+```ts highlight={"3,8"}
+import { embed } from 'ai';
+
+const { embedding, usage } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+});
+
+console.log(usage); // { tokens: 10 }
+```
+
+## 设置
+
+### 提供商选项
+
+可以使用 `providerOptions` 为特定于提供商的参数配置嵌入模型设置：
+
+```ts highlight={"4-8"}
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+  providerOptions: {
+    openai: {
+      dimensions: 512, // 减少嵌入维度
+    },
+  },
+});
+```
+
+Google 的 `gemini-embedding-2` 模型（也可作为 `gemini-embedding-2-preview` 使用）通过 `providerOptions.google.content` 支持多模态嵌入内容。每个条目对应相同索引处的值，可以包含 `{ text: string }`、`{ inlineData: { mimeType: string; data: string } }` 或 `{ fileData: { fileUri: string; mimeType: string } }` 部分。`fileUri` 可以引用远程内容，例如 HTTP URL 或 Google Cloud Storage URI（`gs://...`）。
+
+### 并行请求
+
+`embedMany` 函数现在支持通过可配置的 `maxParallelCalls` 进行并行处理以优化性能：
+
+```ts highlight={"3"}
+import { embedMany } from 'ai';
+
+const { embeddings, usage } = await embedMany({
+  maxParallelCalls: 2, // 限制并行请求数
+  model: 'openai/text-embedding-3-small',
+  values: [
+    'sunny day at the beach',
+    'rainy afternoon in the city',
+    'snowy night in the mountains',
+  ],
+});
+```
+
+### 重试
+
+`embed` 和 `embedMany` 都接受一个可选的 `maxRetries` 参数，类型为 `number`，
+你可以使用它来设置嵌入过程的最大重试次数。
+默认为 `2` 次重试（总共 3 次尝试）。你可以将其设置为 `0` 以禁用重试。
+
+```ts highlight={"6"}
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+  maxRetries: 0, // 禁用重试
+});
+```
+
+### 中止信号与超时
+
+`embed` 和 `embedMany` 都接受一个可选的 `abortSignal` 参数，
+类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
+你可以使用它来中止嵌入过程或设置超时。
+
+```ts highlight={"6"}
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+  abortSignal: AbortSignal.timeout(1000), // 1 秒后中止
+});
+```
+
+### 自定义请求头
+
+`embed` 和 `embedMany` 都接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，
+你可以使用它向嵌入请求添加自定义请求头。
+
+```ts highlight={"6"}
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+  headers: { 'X-Custom-Header': 'custom-value' },
+});
+```
+
+## 响应信息
+
+`embed` 和 `embedMany` 都返回包含原始提供商响应的响应信息：
+
+```ts highlight={"3,8"}
+import { embed } from 'ai';
+
+const { embedding, response } = await embed({
+  model: 'openai/text-embedding-3-small',
+  value: 'sunny day at the beach',
+});
+
+console.log(response); // 原始提供商响应
+```
+
+## 嵌入中间件
+
+你可以使用 `wrapEmbeddingModel` 和 `EmbeddingModelMiddleware` 来增强嵌入模型，例如设置默认值。
+
+以下是一个使用内置 `defaultEmbeddingSettingsMiddleware` 的示例：
+
+```ts
+import {
+  defaultEmbeddingSettingsMiddleware,
+  embed,
+  wrapEmbeddingModel,
+  gateway,
+} from 'ai';
+
+const embeddingModelWithDefaults = wrapEmbeddingModel({
+  model: gateway.embeddingModel('google/gemini-embedding-001'),
+  middleware: defaultEmbeddingSettingsMiddleware({
+    settings: {
+      providerOptions: {
+        google: {
+          outputDimensionality: 256,
+          taskType: 'CLASSIFICATION',
+        },
+      },
+    },
+  }),
+});
+```
+
+## 嵌入提供商与模型
+
+多个提供商提供嵌入模型：
+
+| 提供商                                                                        | 模型                            | 嵌入维度 | 多模态              |
+| ----------------------------------------------------------------------------- | ------------------------------- | -------- | ------------------- |
+| [OpenAI](/providers/ai-sdk-providers/openai#embedding-models)                 | `text-embedding-3-large`        | 3072     | <Cross size={18} /> |
+| [OpenAI](/providers/ai-sdk-providers/openai#embedding-models)                 | `text-embedding-3-small`        | 1536     | <Cross size={18} /> |
+| [OpenAI](/providers/ai-sdk-providers/openai#embedding-models)                 | `text-embedding-ada-002`        | 1536     | <Cross size={18} /> |
+| [Google](/providers/ai-sdk-providers/google#embedding-models)                 | `gemini-embedding-001`          | 3072     | <Cross size={18} /> |
+| [Google](/providers/ai-sdk-providers/google#embedding-models)                 | `gemini-embedding-2`            | 3072     | <Check size={18} /> |
+| [Google](/providers/ai-sdk-providers/google#embedding-models)                 | `gemini-embedding-2-preview`    | 3072     | <Check size={18} /> |
+| [Mistral](/providers/ai-sdk-providers/mistral#embedding-models)               | `mistral-embed`                 | 1024     | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-english-v3.0`            | 1024     | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-multilingual-v3.0`       | 1024     | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-english-light-v3.0`      | 384      | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-multilingual-light-v3.0` | 384      | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-english-v2.0`            | 4096     | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-english-light-v2.0`      | 1024     | <Cross size={18} /> |
+| [Cohere](/providers/ai-sdk-providers/cohere#embedding-models)                 | `embed-multilingual-v2.0`       | 768      | <Cross size={18} /> |
+| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#embedding-models) | `amazon.titan-embed-text-v1`    | 1536     | <Cross size={18} /> |
+| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#embedding-models) | `amazon.titan-embed-text-v2:0`  | 1024     | <Cross size={18} /> |

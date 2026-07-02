@@ -1,0 +1,166 @@
+---
+title: 从 AI SDK 3.0 迁移到 3.1
+description: 了解如何将 AI SDK 从 3.0 升级到 3.1。
+---
+
+# 从 AI SDK 3.0 迁移到 3.1
+
+<Note>
+  有关此版本的更多信息，请查看 [AI SDK 3.1 发布博客文章](https://vercel.com/blog/vercel-ai-sdk-3-1-modelfusion-joins-the-team)。
+</Note>
+
+本指南将帮助你：
+
+- 升级到 AI SDK 3.1
+- 从旧版提供商迁移到 AI SDK Core
+- 从 [`render`](/docs/reference/ai-sdk-rsc/render) 迁移到 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui)
+
+升级到 AI SDK 3.1 不需要使用新发布的 AI SDK Core API 或 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui) 函数。
+
+## 升级
+
+### AI SDK
+
+要更新到 AI SDK 3.1 版本，请使用你偏好的包管理器运行以下命令：
+
+<Snippet text="pnpm add ai@3.1" />
+
+## 后续步骤
+
+AI SDK 3.1 的发布引入了多项新功能，改进了你使用 SDK 构建 AI 应用的方式：
+
+- AI SDK Core，一个全新的统一 API，用于与大语言模型（LLM）交互。
+- [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui)，一个基于 AI SDK Core 函数构建的新抽象，简化了流式 UI 的构建。
+
+## 从旧版提供商迁移到 AI SDK Core
+
+在 AI SDK Core 之前，你必须使用模型提供商的 SDK 来查询其模型。
+
+在以下路由处理器中，你使用 OpenAI SDK 查询其模型。然后将该响应通过管道传递给 `OpenAIStream` 函数，该函数返回一个 [`ReadableStream`](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream)，你可以使用新的 `StreamingTextResponse` 将其传递给客户端。
+
+```tsx
+import OpenAI from 'openai';
+import { OpenAIStream, StreamingTextResponse } from 'ai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4.1',
+    stream: true,
+    messages,
+  });
+
+  const stream = OpenAIStream(response);
+
+  return new StreamingTextResponse(stream);
+}
+```
+
+使用 AI SDK Core，对于任何实现了 [AI SDK 语言模型规范](/providers/community-providers/custom-providers) 的提供商，你都有一个统一的 API。
+
+让我们看看上面的例子，但重构后使用了 AI SDK Core API 以及 AI SDK OpenAI 提供商。在这个例子中，你从 `ai` 包中导入要使用的 LLM 函数，从 `@ai-sdk/openai` 中导入 OpenAI 提供商，然后调用模型并使用 `toDataStreamResponse()` 辅助函数返回响应。
+
+```tsx
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+__PROVIDER_IMPORT__;
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = await streamText({
+    model: __MODEL__,
+    messages,
+  });
+
+  return result.toUIMessageStreamResponse();
+}
+```
+
+## 从 `render` 迁移到 `streamUI`
+
+AI SDK RSC API 作为 3.0 版本的一部分发布。该 API 引入了 [`render`](/docs/reference/ai-sdk-rsc/render) 函数，这是一个用于使用 OpenAI 模型创建可流式 UI 的辅助函数。借助新的 AI SDK Core API，现在可以使用任何兼容的提供商实现可流式 UI。
+
+以下示例 Server Action 使用 `render` 函数，直接通过 OpenAI 使用模型提供商。你首先使用 OpenAI SDK 创建一个 OpenAI 提供商实例。然后，将其传递给 `render` 函数的 provider 键，同时传递一个返回 React 服务器组件的工具，该工具在工具的 `render` 键中定义。
+
+```tsx
+import { render } from '@ai-sdk/rsc';
+import OpenAI from 'openai';
+import { z } from 'zod';
+import { Spinner, Weather } from '@/components';
+import { getWeather } from '@/utils';
+
+const openai = new OpenAI();
+
+async function submitMessage(userInput = 'What is the weather in SF?') {
+  'use server';
+
+  return render({
+    provider: openai,
+    model: 'gpt-4.1',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant' },
+      { role: 'user', content: userInput },
+    ],
+    text: ({ content }) => <p>{content}</p>,
+    tools: {
+      get_city_weather: {
+        description: 'Get the current weather for a city',
+        parameters: z
+          .object({
+            city: z.string().describe('the city'),
+          })
+          .required(),
+        render: async function* ({ city }) {
+          yield <Spinner />;
+          const weather = await getWeather(city);
+          return <Weather info={weather} />;
+        },
+      },
+    },
+  });
+}
+```
+
+使用新的 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui) 函数，你现在可以使用任何兼容的 AI SDK 提供商。在这个例子中，你导入 AI SDK OpenAI 提供商。然后，将其传递给新的 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui) 函数的 [`model`](/docs/reference/ai-sdk-rsc/stream-ui#model) 键。最后，声明一个工具并返回一个 React 服务器组件，该组件在工具的 [`generate`](/docs/reference/ai-sdk-rsc/stream-ui#tools-generate) 键中定义。
+
+```tsx
+import { streamUI } from '@ai-sdk/rsc';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+import { Spinner, Weather } from '@/components';
+import { getWeather } from '@/utils';
+
+async function submitMessage(userInput = 'What is the weather in SF?') {
+  'use server';
+
+  const result = await streamUI({
+    model: __MODEL__,
+    system: 'You are a helpful assistant',
+    messages: [{ role: 'user', content: userInput }],
+    text: ({ content }) => <p>{content}</p>,
+    tools: {
+      get_city_weather: {
+        description: 'Get the current weather for a city',
+        parameters: z
+          .object({
+            city: z.string().describe('Name of the city'),
+          })
+          .required(),
+        generate: async function* ({ city }) {
+          yield <Spinner />;
+          const weather = await getWeather(city);
+          return <Weather info={weather} />;
+        },
+      },
+    },
+  });
+
+  return result.value;
+}
+```

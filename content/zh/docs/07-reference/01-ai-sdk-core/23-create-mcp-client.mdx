@@ -1,0 +1,639 @@
+---
+title: createMCPClient
+description: 创建用于连接 MCP 服务器的客户端
+---
+
+# `createMCPClient()`
+
+创建一个轻量级的模型上下文协议（MCP）客户端，用于连接 MCP 服务器。该客户端提供：
+
+- **工具**：MCP 工具与 AI SDK 工具之间的自动转换
+- **资源**：列出、读取和发现 MCP 服务器资源模板的方法
+- **提示词**：列出可用提示词和检索提示消息的方法
+- **补全**：为提示词参数和资源模板变量请求自动补全建议的方法
+- **引导**：支持处理工具执行期间服务器对额外输入的请求
+
+目前不支持接收来自 MCP 服务器的通知，以及客户端的自定义配置。
+
+## 导入
+
+<Snippet
+  text={`import { createMCPClient } from "@ai-sdk/mcp"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'config',
+      type: 'MCPClientConfig',
+      description: 'MCP 客户端的配置。',
+      properties: [
+        {
+          type: 'MCPClientConfig',
+          parameters: [
+            {
+              name: 'transport',
+              type: 'MCPTransportConfig | MCPTransport',
+              description: '消息传输层的配置。',
+              properties: [
+                {
+                  type: 'MCPTransport',
+                  description:
+                    '客户端传输实例，用于 stdio 或自定义传输',
+                  parameters: [
+                    {
+                      name: 'start',
+                      type: '() => Promise<void>',
+                      description: '启动传输的方法',
+                    },
+                    {
+                      name: 'send',
+                      type: '(message: JSONRPCMessage) => Promise<void>',
+                      description:
+                        '通过传输发送消息的方法',
+                    },
+                    {
+                      name: 'close',
+                      type: '() => Promise<void>',
+                      description: '关闭传输的方法',
+                    },
+                    {
+                      name: 'onclose',
+                      type: '() => void',
+                      description:
+                        '传输关闭时调用的方法',
+                    },
+                    {
+                      name: 'onerror',
+                      type: '(error: Error) => void',
+                      description:
+                        '传输遇到错误时调用的方法',
+                    },
+                    {
+                      name: 'onmessage',
+                      type: '(message: JSONRPCMessage) => void',
+                      description:
+                        '传输收到消息时调用的方法',
+                    },
+                  ],
+                },
+                {
+                  type: 'MCPTransportConfig',
+                  parameters: [
+                    {
+                      name: 'type',
+                      type: "'sse' | 'http'",
+                      description: '使用服务器发送事件进行通信',
+                    },
+                    {
+                      name: 'url',
+                      type: 'string',
+                      description: 'MCP 服务器的 URL',
+                    },
+                    {
+                      name: 'headers',
+                      type: 'Record<string, string>',
+                      isOptional: true,
+                      description:
+                        '随请求发送的额外 HTTP 头。',
+                    },
+                    {
+                      name: 'authProvider',
+                      type: 'OAuthClientProvider',
+                      isOptional: true,
+                      description:
+                        '可选的 OAuth 提供商，用于授权访问受保护的远程 MCP 服务器。在提供商上实现 `validateAuthorizationServerURL`，以在获取元数据之前将发现的 OAuth 授权服务器 URL 加入白名单。',
+                    },
+                    {
+                      name: 'redirect',
+                      type: "'follow' | 'error'",
+                      isOptional: true,
+                      description:
+                        "控制传输请求的 HTTP 重定向处理方式。设置为 'follow' 以允许重定向响应。默认为 'error'，拒绝任何重定向响应，防止服务器将请求重定向到非预期主机。",
+                    },
+                    {
+                      name: 'initialSessionId',
+                      type: 'string',
+                      isOptional: true,
+                      description:
+                        '初始化后，用于恢复 Streamable HTTP 请求的初始 MCP 会话 ID。与 initialInitializeResult 配合使用 createMCPClient。仅 HTTP 传输使用。',
+                    },
+                    {
+                      name: 'initialProtocolVersion',
+                      type: 'string',
+                      isOptional: true,
+                      description:
+                        '初始化协商之前发送的初始 MCP 协议版本。仅 HTTP 传输使用。',
+                    },
+                    {
+                      name: 'onSessionIdChange',
+                      type: '(sessionId: string | undefined) => void',
+                      isOptional: true,
+                      description:
+                        '当 Streamable HTTP 服务器创建、更改或清除 MCP 会话 ID 时调用的回调。仅 HTTP 传输使用。',
+                    },
+                    {
+                      name: 'onSessionExpired',
+                      type: '(sessionId: string) => void',
+                      isOptional: true,
+                      description:
+                        '当 Streamable HTTP 请求对现有 MCP 会话 ID 返回 404 时调用的回调。传输在报告底层 HTTP 错误之前清除会话 ID。仅 HTTP 传输使用。',
+                    },
+                    {
+                      name: 'terminateSessionOnClose',
+                      type: 'boolean',
+                      isOptional: true,
+                      description:
+                        'close() 是否应为当前 MCP 会话 ID 发送 DELETE。当应用程序打算稍后重新附加到会话时设置为 false。默认为 true。仅 HTTP 传输使用。',
+                    },
+                    {
+                      name: 'fetch',
+                      type: 'FetchFunction',
+                      isOptional: true,
+                      description:
+                        '可选的用于 HTTP 请求的自定义 fetch 实现。适用于需要请求本地 fetch 的运行时。',
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              name: 'clientName',
+              type: 'string',
+              isOptional: true,
+              description: '客户端名称。默认为 "ai-sdk-mcp-client"。',
+            },
+            {
+              name: 'name',
+              type: 'string',
+              isOptional: true,
+              description:
+                '已弃用。请改用 `clientName`。默认为 "ai-sdk-mcp-client"。',
+            },
+            {
+              name: 'version',
+              type: 'string',
+              isOptional: true,
+              description: '客户端版本。默认为 "1.0.0"',
+            },
+            {
+              name: 'onUncaughtError',
+              type: '(error: unknown) => void',
+              isOptional: true,
+              description: '未捕获错误的处理程序',
+            },
+            {
+              name: 'maxRetries',
+              type: 'number',
+              isOptional: true,
+              description:
+                '临时 MCP 工具调用失败的最大重试次数。设置为 0 以禁用重试。默认为 0。重试是选择加入的，适用于 tools/call 请求。',
+            },
+            {
+              name: 'initialInitializeResult',
+              type: 'InitializeResult',
+              isOptional: true,
+              description:
+                '来自先前 MCP 会话的初始化结果。提供时，客户端启动传输并重用此元数据，而无需发送新的初始化请求。',
+            },
+            {
+              name: 'capabilities',
+              type: 'ClientCapabilities',
+              isOptional: true,
+              description:
+                '可选的在初始化期间通告的客户端能力。例如，设置 { elicitation: {} } 以启用处理来自服务器的引导请求。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>
+
+### 返回值
+
+返回一个 Promise，解析为具有以下属性和方法的 `MCPClient`：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'initializeResult',
+      type: 'InitializeResult',
+      description:
+        '此客户端使用的完整初始化结果，来自初始化期间的服务器或来自 initialInitializeResult。',
+    },
+    {
+      name: 'serverInfo',
+      type: 'Configuration',
+      description:
+        '已连接 MCP 服务器的信息（名称、版本、可选标题），在初始化握手期间报告。',
+    },
+    {
+      name: 'instructions',
+      type: 'string',
+      isOptional: true,
+      description:
+        '服务器在初始化握手期间提供的可选说明。描述如何使用服务器及其功能。适用于包含在 LLM 系统提示词中。',
+    },
+    {
+      name: 'tools',
+      type: `async (options?: {
+        schemas?: TOOL_SCHEMAS
+      }) => Promise<McpToolSet<TOOL_SCHEMAS>>`,
+      description: '获取 MCP 服务器上可用的工具。',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'schemas',
+              type: 'TOOL_SCHEMAS',
+              isOptional: true,
+              description:
+                '用于编译时类型检查的模式定义。未提供时，模式从服务器推断。每个工具模式可以包含 inputSchema 用于类型化输入，以及可选的 outputSchema 用于服务器返回 structuredContent 时的类型化输出。',
+            },
+          ],
+        },
+        {
+          type: 'TOOL_SCHEMAS',
+          parameters: [
+            {
+              name: 'inputSchema',
+              type: 'FlexibleSchema',
+              description:
+                '定义工具预期输入参数的 Zod 模式或 JSON 模式。',
+            },
+            {
+              name: 'outputSchema',
+              type: 'FlexibleSchema',
+              isOptional: true,
+              description:
+                '定义预期输出结构的 Zod 模式或 JSON 模式。提供时，客户端从工具结果中提取并验证 structuredContent，为您提供类型化输出。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'listTools',
+      type: `async (options?: {
+        params?: PaginatedRequest['params'];
+        options?: RequestOptions;
+      }) => Promise<ListToolsResult>`,
+      description:
+        '列出 MCP 服务器上可用的工具定义，而不将其转换为 AI SDK 工具。',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'params',
+              type: "PaginatedRequest['params']",
+              isOptional: true,
+              description: '可选的分页参数，包括 cursor。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'callTool',
+      type: `async (args: {
+        name: string;
+        arguments?: Record<string, unknown>;
+        options?: RequestOptions;
+      }) => Promise<CallToolResult>`,
+      description:
+        '调用 MCP 服务器上的工具。这对于主机中介的调用很有用，例如 MCP Apps iframe 请求。',
+      properties: [
+        {
+          type: 'args',
+          parameters: [
+            {
+              name: 'name',
+              type: 'string',
+              description: '要调用的 MCP 工具的名称。',
+            },
+            {
+              name: 'arguments',
+              type: 'Record<string, unknown>',
+              isOptional: true,
+              description: '传递给 MCP 工具的参数。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'toolsFromDefinitions',
+      type: `(definitions: ListToolsResult, options?: {
+        schemas?: TOOL_SCHEMAS
+      }) => McpToolSet<TOOL_SCHEMAS>`,
+      description:
+        '将现有的 MCP 工具定义转换为 AI SDK 工具，而无需再次列出工具。',
+      properties: [
+        {
+          type: 'parameters',
+          parameters: [
+            {
+              name: 'definitions',
+              type: 'ListToolsResult',
+              description:
+                '工具定义，通常由 `listTools` 返回。',
+            },
+            {
+              name: 'schemas',
+              type: 'TOOL_SCHEMAS',
+              isOptional: true,
+              description:
+                '可选的用于编译时类型检查和类型化输出的模式定义。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'listResources',
+      type: `async (options?: {
+        params?: PaginatedRequest['params'];
+        options?: RequestOptions;
+      }) => Promise<ListResourcesResult>`,
+      description: '列出 MCP 服务器上所有可用的资源。',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'params',
+              type: "PaginatedRequest['params']",
+              isOptional: true,
+              description: '可选的分页参数，包括 cursor。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'readResource',
+      type: `async (args: {
+        uri: string;
+        options?: RequestOptions;
+      }) => Promise<ReadResourceResult>`,
+      description: '通过 URI 读取特定资源的内容。',
+      properties: [
+        {
+          type: 'args',
+          parameters: [
+            {
+              name: 'uri',
+              type: 'string',
+              description: '要读取的资源的 URI。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'listResourceTemplates',
+      type: `async (options?: {
+        options?: RequestOptions;
+      }) => Promise<ListResourceTemplatesResult>`,
+      description:
+        '列出 MCP 服务器上所有可用的资源模板。',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'complete',
+      type: `async (args: CompleteRequestParams & {
+        options?: RequestOptions;
+      }) => Promise<CompleteResult>`,
+      description:
+        '为提示词参数或资源模板变量请求自动补全建议。服务器必须通告 completions 能力。',
+      properties: [
+        {
+          type: 'args',
+          parameters: [
+            {
+              name: 'ref',
+              type: "{ type: 'ref/prompt'; name: string } | { type: 'ref/resource'; uri: string }",
+              description:
+                '对正在补全的提示词或资源模板的引用。',
+            },
+            {
+              name: 'argument',
+              type: '{ name: string; value: string }',
+              description:
+                '要补全的参数名称和当前部分值。',
+            },
+            {
+              name: 'context',
+              type: '{ arguments: Record<string, string> }',
+              isOptional: true,
+              description:
+                '先前解析的参数值，用于为多参数提示词或资源模板提供上下文。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'experimental_listPrompts',
+      type: `async (options?: {
+        params?: PaginatedRequest['params'];
+        options?: RequestOptions;
+      }) => Promise<ListPromptsResult>`,
+      description:
+        '列出 MCP 服务器上可用的提示词。此方法是实验性的，未来可能会更改。',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'params',
+              type: "PaginatedRequest['params']",
+              isOptional: true,
+              description: '可选的分页参数，包括 cursor。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'experimental_getPrompt',
+      type: `async (args: {
+        name: string;
+        arguments?: Record<string, unknown>;
+        options?: RequestOptions;
+      }) => Promise<GetPromptResult>`,
+      description:
+        '按名称检索提示词，可选地传递参数。此方法是实验性的，未来可能会更改。',
+      properties: [
+        {
+          type: 'args',
+          parameters: [
+            {
+              name: 'name',
+              type: 'string',
+              description: '要检索的提示词名称。',
+            },
+            {
+              name: 'arguments',
+              type: 'Record<string, unknown>',
+              isOptional: true,
+              description: '可选的要填入提示词的参数。',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                '可选的请求选项，包括 signal 和 timeout。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'onElicitationRequest',
+      type: `(
+        schema: typeof ElicitationRequestSchema,
+        handler: (request: ElicitationRequest) => Promise<ElicitResult> | ElicitResult
+      ) => void`,
+      description:
+        '注册一个处理程序，用于处理来自 MCP 服务器的引导请求。当服务器在工具执行期间需要额外输入时，处理程序会收到请求。',
+      properties: [
+        {
+          type: 'parameters',
+          parameters: [
+            {
+              name: 'schema',
+              type: 'typeof ElicitationRequestSchema',
+              description:
+                '用于验证请求的模式。必须是 ElicitationRequestSchema。',
+            },
+            {
+              name: 'handler',
+              type: '(request: ElicitationRequest) => Promise<ElicitResult> | ElicitResult',
+              description:
+                '处理引导请求的函数。请求包含一条消息和 requestedSchema。处理程序必须返回一个包含 action（"accept"、"decline" 或 "cancel"）的对象，并在接受时可选地包含 content。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'close',
+      type: '() => Promise<void>',
+      description:
+        '关闭与 MCP 服务器的连接并清理资源。',
+    },
+  ]}
+/>
+
+## 示例
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+import { generateText } from 'ai';
+import { Experimental_StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio';
+
+let client;
+
+try {
+  client = await createMCPClient({
+    transport: new Experimental_StdioMCPTransport({
+      command: 'node server.js',
+    }),
+  });
+
+  const tools = await client.tools();
+
+  const response = await generateText({
+    model: __MODEL__,
+    tools,
+    messages: [{ role: 'user', content: '查询数据' }],
+  });
+
+  console.log(response);
+} catch (error) {
+  console.error('错误:', error);
+} finally {
+  // 确保即使发生错误也关闭客户端
+  if (client) {
+    await client.close();
+  }
+}
+```
+
+## 错误处理
+
+客户端在以下情况下抛出 `MCPClientError`：
+
+- 客户端初始化失败
+- 协议版本不匹配
+- 缺少服务器能力
+- 连接失败
+
+对于工具执行，错误会作为 `CallToolError` 错误传播。
+
+对于未知错误，客户端暴露一个 `onUncaughtError` 回调，可用于手动记录或处理未被已知错误类型覆盖的错误。

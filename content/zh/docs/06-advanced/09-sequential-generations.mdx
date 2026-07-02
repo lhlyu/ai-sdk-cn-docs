@@ -1,0 +1,55 @@
+---
+title: 顺序生成
+description: 了解如何使用 AI SDK 实现顺序生成（"链式调用"）
+---
+
+# 顺序生成
+
+在使用 AI SDK 时，您可能需要创建生成序列（通常称为"链"或"管道"），其中前一个生成的输出成为下一个生成的输入。这对于创建更复杂的 AI 驱动工作流或将大型任务分解为更小、更易管理的步骤非常有用。
+
+## 示例
+
+在顺序链中，一个生成的输出直接用作下一个生成的输入。这使您可以创建一系列相互依赖的生成，每个步骤都建立在前一步骤的基础上。
+
+以下是如何实现顺序操作的示例：
+
+```typescript
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+async function sequentialActions() {
+  // 生成博客文章创意
+  const ideasGeneration = await generateText({
+    model: __MODEL__,
+    prompt: '生成 10 个关于制作意大利面的博客文章创意。',
+  });
+
+  console.log('生成的创意：\n', ideasGeneration);
+
+  // 挑选最佳创意
+  const bestIdeaGeneration = await generateText({
+    model: __MODEL__,
+    prompt: `以下是一些关于制作意大利面的博客文章创意：
+${ideasGeneration}
+
+从以上列表中挑选最佳创意，并解释其为何最佳。`,
+  });
+
+  console.log('\n最佳创意：\n', bestIdeaGeneration);
+
+  // 生成大纲
+  const outlineGeneration = await generateText({
+    model: __MODEL__,
+    prompt: `我们已选定以下关于制作意大利面的博客文章创意：
+${bestIdeaGeneration}
+
+基于此创意创建一份详细的博客文章大纲。`,
+  });
+
+  console.log('\n博客文章大纲：\n', outlineGeneration);
+}
+
+sequentialActions().catch(console.error);
+```
+
+在此示例中，我们首先生成博客文章创意，然后挑选最佳创意，最后基于该创意创建大纲。每个步骤都使用前一步骤的输出作为下一个生成的输入。

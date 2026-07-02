@@ -1,0 +1,169 @@
+---
+title: PostHog
+description: 使用 PostHog 监控和分析 LLM 使用情况
+---
+
+# PostHog LLM 分析
+
+[PostHog](https://posthog.com/) 是一个开源产品分析平台。通过 PostHog LLM 分析集成，您可以结合产品分析追踪 LLM 使用情况，从而了解 AI 功能如何影响用户行为。PostHog 提供：
+
+- [LLM 分析](https://posthog.com/docs/llm-analytics/start-here) — 按模型和用户统计成本、延迟和 Token 用量
+- [产品分析](https://posthog.com/docs/product-analytics) — 将 AI 使用情况与用户行为和业务指标关联
+- [实验](https://posthog.com/docs/experiments) — 对提示词、模型和 AI 功能进行 A/B 测试
+
+## 设置
+
+PostHog 通过 [OpenTelemetry](https://opentelemetry.io/docs/) 支持 [AI SDK 遥测数据](/docs/ai-sdk-core/telemetry)。`@posthog/ai` 包中的 `PostHogTraceExporter` 会将 `gen_ai.*` 跨度发送到 PostHog 的 OTLP 摄取端点，并自动转换为 `$ai_generation` 事件。
+
+<Tabs items={["Next.js", "Node.js"]}>
+<Tab>
+
+Next.js 通过 [instrumentation hook](https://nextjs.org/docs/app/building-your-application/optimizing/open-telemetry) 内置了对 OpenTelemetry 插桩的支持。
+
+**步骤 1.** 安装依赖
+
+```bash
+npm install @posthog/ai @opentelemetry/sdk-node @opentelemetry/resources @ai-sdk/otel
+```
+
+**步骤 2.** 在项目根目录创建 `instrumentation.ts` 文件，并在 OTel 设置中注册 AI SDK 遥测集成：
+
+```ts filename="instrumentation.ts"
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { PostHogTraceExporter } from '@posthog/ai/otel';
+
+registerTelemetry(new LegacyOpenTelemetry());
+
+export function register() {
+  const sdk = new NodeSDK({
+    resource: resourceFromAttributes({
+      'service.name': 'my-nextjs-app',
+    }),
+    traceExporter: new PostHogTraceExporter({
+      apiKey: process.env.POSTHOG_API_KEY!,
+      host: 'https://us.i.posthog.com', // 欧盟地区请使用 https://eu.i.posthog.com
+    }),
+  });
+  sdk.start();
+}
+```
+
+**步骤 3.** 在路由处理程序或服务器操作中启用遥测功能使用 AI SDK
+
+```ts highlight="6-11"
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Tell me a fun fact about hedgehogs.',
+  telemetry: {
+    functionId: 'my-ai-function',
+    metadata: {
+      posthog_distinct_id: 'user_123', // 可选：将事件关联到 PostHog 用户
+    },
+  },
+});
+```
+
+</Tab>
+<Tab>
+
+**步骤 1.** 安装依赖
+
+```bash
+npm install @posthog/ai @opentelemetry/sdk-node @opentelemetry/resources @ai-sdk/otel
+```
+
+**步骤 2.** 使用 PostHog 的追踪导出器初始化 OpenTelemetry SDK
+
+```ts filename="tracing.ts"
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { PostHogTraceExporter } from '@posthog/ai/otel';
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+
+const sdk = new NodeSDK({
+  resource: resourceFromAttributes({
+    'service.name': 'my-ai-app',
+  }),
+  traceExporter: new PostHogTraceExporter({
+    apiKey: '<your-posthog-project-api-key>',
+    host: 'https://us.i.posthog.com', // 欧盟地区请使用 https://eu.i.posthog.com
+  }),
+});
+sdk.start();
+registerTelemetry(new LegacyOpenTelemetry());
+```
+
+**步骤 3.** 使用 AI SDK。集成注册后，遥测数据会自动捕获：
+
+```ts highlight="6-12"
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Tell me a fun fact about hedgehogs.',
+  telemetry: {
+    functionId: 'my-ai-function',
+    metadata: {
+      posthog_distinct_id: 'user_123', // 可选：将事件关联到 PostHog 用户
+    },
+  },
+});
+
+console.log(result.text);
+
+await sdk.shutdown();
+```
+
+</Tab>
+</Tabs>
+
+<Note>
+  该集成支持 `streamText` 等流式函数。每次流式调用都会生成 `ai.streamText` 跨度，并被 PostHog 捕获。
+</Note>
+
+## 配置
+
+### 将事件关联到 PostHog 用户
+
+在 `metadata` 字段中传递 `posthog_distinct_id`，可将 LLM 事件关联到 PostHog 中的特定用户。如果省略，事件将以匿名方式捕获。
+
+```ts highlight="6"
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Write a short story about a cat.',
+  telemetry: {
+    metadata: {
+      posthog_distinct_id: 'user_123',
+    },
+  },
+});
+```
+
+### 隐私控制
+
+您可以通过将 `recordInputs` 和 `recordOutputs` 设置为 `false` 来禁用输入和输出的记录：
+
+```ts highlight="5-6"
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Write a short story about a cat.',
+  telemetry: {
+    recordInputs: false,
+    recordOutputs: false,
+  },
+});
+```
+
+## 资源
+
+- [PostHog LLM 分析文档](https://posthog.com/docs/llm-analytics/start-here)
+- [PostHog AI SDK 包](https://www.npmjs.com/package/@posthog/ai)
+- [PostHog](https://posthog.com/)

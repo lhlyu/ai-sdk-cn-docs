@@ -1,0 +1,71 @@
+---
+title: 检索增强生成
+description: 了解如何使用 AI SDK 和 Node 实现检索增强生成
+tags: ['node']
+---
+
+# 检索增强生成
+
+检索增强生成（RAG）是一种通过在生成过程中从外部来源提供相关信息来增强语言模型能力的技术。这种方法使模型能够访问并整合其原始训练数据中可能不存在的、最新的或特定领域的知识。
+
+本示例使用[以下文章](https://raw.githubusercontent.com/run-llama/llama_index/main/docs/docs/examples/data/paul_graham/paul_graham_essay.txt)作为输入（`essay.txt`）。本示例使用简单的内存向量数据库来存储和检索相关信息。你也可以查看我们的[知识库智能体示例](/cookbook/node/knowledge-base-agent)，该示例使用 Upstash Search 生成嵌入并管理知识库。
+
+如需更深入的指南，请查看 [RAG 聊天机器人指南](/cookbook/guides/rag-chatbot)，该指南将向你展示如何使用 [Next.js](https://nextjs.org)、[Drizzle ORM](https://orm.drizzle.team/) 和 [Postgres](https://postgresql.org) 构建 RAG 聊天机器人。
+
+```ts
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { cosineSimilarity, embed, embedMany, generateText } from 'ai';
+
+dotenv.config();
+
+async function main() {
+  const db: { embedding: number[]; value: string }[] = [];
+
+  const essay = fs.readFileSync(path.join(__dirname, 'essay.txt'), 'utf8');
+  const chunks = essay
+    .split('.')
+    .map(chunk => chunk.trim())
+    .filter(chunk => chunk.length > 0 && chunk !== '\n');
+
+  const { embeddings } = await embedMany({
+    model: 'openai/text-embedding-3-small',
+    values: chunks,
+  });
+  embeddings.forEach((e, i) => {
+    db.push({
+      embedding: e,
+      value: chunks[i],
+    });
+  });
+
+  const input =
+    'What were the two main things the author worked on before college?';
+
+  const { embedding } = await embed({
+    model: 'openai/text-embedding-3-small',
+    value: input,
+  });
+  const context = db
+    .map(item => ({
+      document: item,
+      similarity: cosineSimilarity(embedding, item.embedding),
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 3)
+    .map(r => r.document.value)
+    .join('\n');
+
+  const { text } = await generateText({
+    model: 'openai/gpt-4o',
+    prompt: `Answer the following question based only on the provided context:
+             ${context}
+
+             Question: ${input}`,
+  });
+  console.log(text);
+}
+
+main().catch(console.error);
+```

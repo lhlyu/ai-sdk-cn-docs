@@ -1,0 +1,31 @@
+---
+title: Azure OpenAI 流式传输缓慢
+description: 了解如何排查 Azure OpenAI 流式传输缓慢的问题。
+---
+
+# Azure OpenAI 流式传输缓慢
+
+## 问题
+
+使用 Azure 托管的 OpenAI 时，流式传输速度缓慢且以大数据块形式传输。
+
+## 原因
+
+这是 Microsoft Azure 的问题。部分用户已报告以下解决方案：
+
+- **更新内容筛选设置**：
+  在 [Azure AI Studio](https://ai.azure.com/) 中，进入“共享资源” > “内容筛选器”，创建新的内容筛选器，并将“输出筛选器”下的“流式传输模式（预览）”从“默认”更改为“异步筛选”。
+
+## 解决方案
+
+你可以使用 [`smoothStream` 转换](/docs/ai-sdk-core/generating-text#smoothing-streams) 来逐词流式传输。
+
+```tsx highlight="6"
+import { smoothStream, streamText } from 'ai';
+
+const result = streamText({
+  model,
+  prompt,
+  experimental_transform: smoothStream(),
+});
+```

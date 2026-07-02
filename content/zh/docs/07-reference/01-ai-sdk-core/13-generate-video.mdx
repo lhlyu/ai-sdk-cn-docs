@@ -1,0 +1,282 @@
+---
+title: experimental_generateVideo
+description: experimental_generateVideo 的 API 参考文档。
+---
+
+# `experimental_generateVideo()`
+
+<Note>
+  视频生成是一个实验性功能。API 在未来的版本中可能会发生变化。
+</Note>
+
+使用视频模型根据给定的提示词生成视频。
+
+它非常适合需要以编程方式生成视频的场景，例如创建视觉内容、动画或从图像生成视频。
+
+```ts
+import { experimental_generateVideo as generateVideo } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { videos } = await generateVideo({
+  model: __VIDEO_MODEL__,
+  prompt: '一只猫在跑步机上行走',
+  aspectRatio: '16:9',
+});
+
+console.log(videos);
+```
+
+## 导入
+
+<Snippet
+  text={`import { experimental_generateVideo } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'VideoModelV4',
+      description: '要使用的视频模型。',
+    },
+    {
+      name: 'prompt',
+      type: 'string | GenerateVideoPrompt',
+      description: '用于生成视频的输入提示词。',
+      properties: [
+        {
+          type: 'GenerateVideoPrompt',
+          type: 'object',
+          description:
+            '用于视频生成的提示词对象，可包含可选的输入图像',
+          parameters: [
+            {
+              name: 'image',
+              type: 'DataContent',
+              description:
+                '用于图像到视频生成的输入图像。可以是 URL 字符串、base64 编码的字符串、`Uint8Array`、`ArrayBuffer` 或 `Buffer`。',
+            },
+            {
+              name: 'text',
+              type: 'string',
+              description: '文本提示词。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'n',
+      type: 'number',
+      isOptional: true,
+      description: '要生成的视频数量。默认值：1。',
+    },
+    {
+      name: 'aspectRatio',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的视频的宽高比。格式：`{width}:{height}`。',
+    },
+    {
+      name: 'resolution',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的视频的分辨率。格式：`{width}x{height}`。',
+    },
+    {
+      name: 'duration',
+      type: 'number',
+      isOptional: true,
+      description: '视频的时长（秒）。',
+    },
+    {
+      name: 'fps',
+      type: 'number',
+      isOptional: true,
+      description: '视频的帧率。',
+    },
+    {
+      name: 'seed',
+      type: 'number',
+      isOptional: true,
+      description: '视频生成的种子。',
+    },
+    {
+      name: 'frameImages',
+      type: 'Array<{ image: DataContent; frameType: "first_frame" | "last_frame" }>',
+      isOptional: true,
+      description: '用于首尾帧生成的带角色标签的图像输入。',
+    },
+    {
+      name: 'inputReferences',
+      type: 'Array<DataContent>',
+      isOptional: true,
+      description: '用于参考图到视频生成的参考图像输入。',
+    },
+    {
+      name: 'generateAudio',
+      type: 'boolean',
+      isOptional: true,
+      description:
+        '模型是否应在生成视频的同时生成音频。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description: '额外的提供商特定选项。',
+    },
+    {
+      name: 'maxVideosPerCall',
+      type: 'number',
+      isOptional: true,
+      description:
+        '每次 API 调用生成的最大视频数量。当 n 超过此值时，将进行多次 API 调用。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description: '最大重试次数。默认值：2。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '可选的终止信号，用于取消调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description: '请求的额外 HTTP 头。',
+    },
+    {
+      name: 'download',
+      type: '(options: { url: URL; abortSignal?: AbortSignal }) => Promise<{ data: Uint8Array; mediaType: string | undefined }>',
+      isOptional: true,
+      description:
+        '用于从 URL 获取视频的自定义下载函数。使用 `ai` 中的 `createDownload()` 创建带有自定义大小限制的下载函数，例如 `createDownload({ maxBytes: 50 * 1024 * 1024 })`。默认值：内置下载，限制为 2 GiB。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'video',
+      type: 'GeneratedFile',
+      description: '生成的第一个视频。',
+      properties: [
+        {
+          type: 'GeneratedFile',
+          parameters: [
+            {
+              name: 'base64',
+              type: 'string',
+              description: '视频的 base64 编码字符串。',
+            },
+            {
+              name: 'uint8Array',
+              type: 'Uint8Array',
+              description: '视频的 Uint8Array 表示。',
+            },
+            {
+              name: 'mediaType',
+              type: 'string',
+              description:
+                '视频的 IANA 媒体类型（例如 video/mp4）。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'videos',
+      type: 'Array<GeneratedFile>',
+      description: '生成的所有视频。',
+      properties: [
+        {
+          type: 'GeneratedFile',
+          parameters: [
+            {
+              name: 'base64',
+              type: 'string',
+              description: '视频的 base64 编码字符串。',
+            },
+            {
+              name: 'uint8Array',
+              type: 'Uint8Array',
+              description: '视频的 Uint8Array 表示。',
+            },
+            {
+              name: 'mediaType',
+              type: 'string',
+              description:
+                '视频的 IANA 媒体类型（例如 video/mp4）。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description:
+        '来自模型提供商的警告（例如不支持的设置）。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'VideoModelProviderMetadata',
+      isOptional: true,
+      description:
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。元数据中通常存在一个 `videos` 键，它是一个与顶层 `videos` 键长度相同的数组。具体细节取决于提供商。',
+    },
+    {
+      name: 'responses',
+      type: 'Array<VideoModelResponseMetadata>',
+      description:
+        '来自提供商的响应元数据。如果对模型进行了多次调用，则可能存在多个响应。',
+      properties: [
+        {
+          type: 'VideoModelResponseMetadata',
+          parameters: [
+            {
+              name: 'timestamp',
+              type: 'Date',
+              description: '生成响应开始的时间戳。',
+            },
+            {
+              name: 'modelId',
+              type: 'string',
+              description:
+                '用于生成响应的响应模型 ID。',
+            },
+            {
+              name: 'headers',
+              type: 'Record<string, string>',
+              isOptional: true,
+              description: '响应头。',
+            },
+            {
+              name: 'providerMetadata',
+              type: 'VideoModelProviderMetadata',
+              isOptional: true,
+              description:
+                '此单独 API 调用的提供商特定元数据。当进行多次调用时，用于访问每次调用的元数据。',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>

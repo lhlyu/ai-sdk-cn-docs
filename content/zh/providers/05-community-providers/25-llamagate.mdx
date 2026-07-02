@@ -1,0 +1,202 @@
+---
+title: LlamaGate
+description: AI SDK 的 LlamaGate 提供商
+---
+
+# LlamaGate
+
+[LlamaGate](https://llamagate.dev) 是一个兼容 OpenAI 的 API 网关，提供对 26 个以上开源大语言模型的访问，价格具有竞争力。非常适合希望以实惠价格使用 Llama、Qwen、DeepSeek 和 Mistral 等模型的独立开发者和初创公司。
+
+- **26 个以上开源模型**：访问 Llama、Mistral、DeepSeek R1、Qwen 等模型
+- **兼容 OpenAI 的 API**：可直接替换现有的 OpenAI 集成
+- **有竞争力的定价**：每 100 万 token 仅需 $0.02-$0.55
+- **视觉模型**：Qwen VL、LLaVA 用于多模态任务
+- **推理模型**：DeepSeek R1 用于复杂问题求解
+- **代码模型**：CodeLlama、DeepSeek Coder、Qwen Coder
+- **嵌入模型**：Nomic Embed Text、Qwen 3 Embedding
+
+在 [LlamaGate 文档](https://llamagate.dev/docs) 中了解更多关于 LlamaGate 功能的信息。
+
+## 设置
+
+LlamaGate 提供商位于 `@llamagate/ai-sdk-provider` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @llamagate/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @llamagate/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @llamagate/ai-sdk-provider" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add @llamagate/ai-sdk-provider" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+要创建 LlamaGate 提供商实例，请使用 `createLlamaGate` 函数：
+
+```typescript
+import { createLlamaGate } from '@llamagate/ai-sdk-provider';
+
+const llamagate = createLlamaGate({
+  apiKey: 'YOUR_LLAMAGATE_API_KEY',
+});
+```
+
+你可以从 [LlamaGate 控制台](https://llamagate.dev/dashboard) 获取 LlamaGate API 密钥。
+
+或者，你也可以使用默认实例，它会从 `LLAMAGATE_API_KEY` 环境变量中读取：
+
+```typescript
+import { llamagate } from '@llamagate/ai-sdk-provider';
+```
+
+## 语言模型
+
+LlamaGate 通过 `llamagate()` 函数或 `llamagate.chatModel()` 提供聊天模型：
+
+```typescript
+// 默认用法
+const model = llamagate('llama-3.1-8b');
+
+// 显式聊天模型
+const chatModel = llamagate.chatModel('qwen3-8b');
+```
+
+### 可用模型
+
+| 模型 ID               | 描述                      | 上下文 |
+| --------------------- | ------------------------- | ------ |
+| `llama-3.1-8b`        | Llama 3.1 8B Instruct     | 131K   |
+| `llama-3.2-3b`        | Llama 3.2 3B              | 131K   |
+| `qwen3-8b`            | Qwen 3 8B                 | 32K    |
+| `mistral-7b-v0.3`     | Mistral 7B v0.3           | 32K    |
+| `deepseek-r1-8b`      | DeepSeek R1 8B（推理）    | 64K    |
+| `deepseek-r1-7b-qwen` | DeepSeek R1 Distill Qwen 7B | 131K |
+| `openthinker-7b`      | OpenThinker 7B            | 32K    |
+| `dolphin3-8b`         | Dolphin 3 8B              | 128K   |
+| `qwen2.5-coder-7b`    | Qwen 2.5 Coder 7B         | 32K    |
+| `codellama-7b`        | CodeLlama 7B              | 16K    |
+| `qwen3-vl-8b`         | Qwen 3 VL 8B（视觉）      | 32K    |
+| `llava-7b`            | LLaVA 1.5 7B（视觉）      | 4K     |
+| `gemma3-4b`           | Gemma 3 4B（视觉）        | 128K   |
+
+你可以在 [LlamaGate 模型文档](https://llamagate.dev/docs/models) 中找到完整的可用模型列表。
+
+## 嵌入模型
+
+LlamaGate 通过 `llamagate.textEmbeddingModel()` 提供文本嵌入模型：
+
+```typescript
+const embeddingModel = llamagate.textEmbeddingModel('nomic-embed-text');
+```
+
+### 可用嵌入模型
+
+| 模型 ID               | 描述                | 上下文 |
+| --------------------- | ------------------- | ------ |
+| `nomic-embed-text`    | Nomic Embed Text    | 8K     |
+| `embeddinggemma-300m` | EmbeddingGemma 300M | 2K     |
+| `qwen3-embedding-8b`  | Qwen 3 Embedding 8B | 40K    |
+
+## 示例
+
+以下是在 AI SDK 中使用 LlamaGate 的示例：
+
+### `generateText`
+
+```typescript
+import { createLlamaGate } from '@llamagate/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const llamagate = createLlamaGate({
+  apiKey: 'YOUR_LLAMAGATE_API_KEY',
+});
+
+const { text } = await generateText({
+  model: llamagate('llama-3.1-8b'),
+  prompt: '用简单的术语解释量子计算。',
+});
+
+console.log(text);
+```
+
+### `streamText`
+
+```typescript
+import { createLlamaGate } from '@llamagate/ai-sdk-provider';
+import { streamText } from 'ai';
+
+const llamagate = createLlamaGate({
+  apiKey: 'YOUR_LLAMAGATE_API_KEY',
+});
+
+const result = streamText({
+  model: llamagate('qwen3-8b'),
+  prompt: '写一个关于机器人的短篇故事。',
+});
+
+for await (const chunk of result) {
+  console.log(chunk);
+}
+```
+
+### `embed`
+
+```typescript
+import { createLlamaGate } from '@llamagate/ai-sdk-provider';
+import { embed } from 'ai';
+
+const llamagate = createLlamaGate({
+  apiKey: 'YOUR_LLAMAGATE_API_KEY',
+});
+
+const { embedding } = await embed({
+  model: llamagate.textEmbeddingModel('nomic-embed-text'),
+  value: '敏捷的棕色狐狸跳过了懒狗。',
+});
+
+console.log(embedding);
+```
+
+### 视觉
+
+```typescript
+import { createLlamaGate } from '@llamagate/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const llamagate = createLlamaGate({
+  apiKey: 'YOUR_LLAMAGATE_API_KEY',
+});
+
+const { text } = await generateText({
+  model: llamagate('qwen3-vl-8b'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '这张图片里有什么？' },
+        {
+          type: 'file',
+          mediaType: 'image',
+          data: new URL('https://example.com/image.jpg'),
+        },
+      ],
+    },
+  ],
+});
+
+console.log(text);
+```
+
+## 其他资源
+
+- [LlamaGate 网站](https://llamagate.dev)
+- [LlamaGate 文档](https://llamagate.dev/docs)
+- [LlamaGate 控制台](https://llamagate.dev/dashboard)
+- [GitHub 仓库](https://github.com/llamagate/llama-gate)

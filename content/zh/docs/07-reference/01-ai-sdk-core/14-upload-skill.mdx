@@ -1,0 +1,114 @@
+---
+title: uploadSkill
+description: uploadSkill 的 API 参考文档。
+---
+
+# `uploadSkill()`
+
+将技能（一组文件）上传到提供商，并返回一个可在后续推理调用中使用的 `ProviderReference`。
+
+```ts
+import { uploadSkill } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { readFileSync } from 'fs';
+
+const { providerReference } = await uploadSkill({
+  api: anthropic.skills(),
+  files: [
+    {
+      path: 'my-skill/SKILL.md',
+      content: readFileSync('./SKILL.md'),
+    },
+  ],
+  displayTitle: 'My Skill',
+});
+```
+
+## 导入
+
+<Snippet text={`import { uploadSkill } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'api',
+      type: 'SkillsV4 | ProviderV4',
+      description:
+        '用于上传的技能 API 接口。可以是 `SkillsV4` 实例（例如 `anthropic.skills()`），也可以是提供商实例（例如 `anthropic`），此时会自动调用 `.skills()`。',
+    },
+    {
+      name: 'files',
+      type: 'SkillsV4File[]',
+      description:
+        '构成技能的文件。每个文件包含相对路径 `path` 和内容 `content`（可以是 `Uint8Array` 或 base64 编码的字符串）。',
+    },
+    {
+      name: 'displayTitle',
+      type: 'string',
+      isOptional: true,
+      description: '技能的人类可读标题。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description: '额外的提供商特定选项。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'providerReference',
+      type: 'ProviderReference',
+      description:
+        '一个 `Record<string, string>`，将提供商名称映射到提供商特定的技能标识符。在推理调用中引用技能时使用此值。',
+    },
+    {
+      name: 'displayTitle',
+      type: 'string',
+      isOptional: true,
+      description:
+        '提供商返回的人类可读标题（如果支持）。',
+    },
+    {
+      name: 'name',
+      type: 'string',
+      isOptional: true,
+      description:
+        '提供商根据上传文件推断的技能名称。',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      isOptional: true,
+      description:
+        '提供商根据上传文件推断的技能描述。',
+    },
+    {
+      name: 'latestVersion',
+      type: 'string',
+      isOptional: true,
+      description: '提供商分配的最新版本标识符。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata',
+      isOptional: true,
+      description:
+        '上传返回的额外提供商特定元数据。',
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description: '来自提供商的警告（例如不支持的设置）。',
+    },
+  ]}
+/>

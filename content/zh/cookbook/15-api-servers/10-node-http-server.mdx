@@ -1,0 +1,128 @@
+---
+title: Node.js HTTP 服务器
+description: 了解如何在 Node.js HTTP 服务器中使用 AI SDK
+tags: ['api servers', 'streaming']
+---
+
+# Node.js HTTP 服务器
+
+你可以在 Node.js HTTP 服务器中使用 AI SDK 生成文本并将其流式传输到客户端。
+
+## 示例
+
+以下示例启动一个简单的 HTTP 服务器，监听 8080 端口。你可以使用 `curl` 进行测试：
+
+```bash
+curl -X POST http://localhost:8080
+```
+
+<Note>
+  示例使用了 Vercel AI Gateway。请确保你的 AI Gateway API 密钥已设置在 `AI_GATEWAY_API_KEY` 环境变量中。
+</Note>
+
+**完整示例**：[github.com/vercel/ai/examples/node-http-server](https://github.com/vercel/ai/tree/main/examples/node-http-server)
+
+### UI 消息流
+
+你可以使用 `pipeUIMessageStreamToResponse` 辅助函数将流数据管道传输到服务器响应。
+
+```ts filename='index.ts'
+import {
+  pipeUIMessageStreamToResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+import { createServer } from 'http';
+
+createServer(async (req, res) => {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+
+  pipeUIMessageStreamToResponse({
+    response: res,
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}).listen(8080);
+```
+
+### 发送自定义数据
+
+`createUIMessageStream` 和 `pipeUIMessageStreamToResponse` 可用于向客户端发送自定义数据。
+
+```ts filename='index.ts'
+import {
+  createUIMessageStream,
+  pipeUIMessageStreamToResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+import { createServer } from 'http';
+
+createServer(async (req, res) => {
+  switch (req.url) {
+    case '/stream-data': {
+      const stream = createUIMessageStream({
+        execute: ({ writer }) => {
+          // 写入一些自定义数据
+          writer.write({ type: 'start' });
+
+          writer.write({
+            type: 'data-custom',
+            data: {
+              custom: 'Hello, world!',
+            },
+          });
+
+          const result = streamText({
+            model: 'openai/gpt-4o',
+            prompt: '发明一个新节日并描述其传统。',
+          });
+
+          writer.merge(
+            toUIMessageStream({
+              stream: result.stream,
+              sendStart: false,
+              onError: error => {
+                // 出于安全原因，错误消息默认被屏蔽。
+                // 如果你想向客户端暴露错误消息，可以在此处进行：
+                return error instanceof Error ? error.message : String(error);
+              },
+            }),
+          );
+        },
+      });
+
+      pipeUIMessageStreamToResponse({ stream, response: res });
+
+      break;
+    }
+  }
+}).listen(8080);
+```
+
+### 文本流
+
+你可以使用 `pipeTextStreamToResponse` 将文本流发送到客户端。
+
+```ts filename='index.ts'
+import { pipeTextStreamToResponse, streamText, toTextStream } from 'ai';
+import { createServer } from 'http';
+
+createServer(async (req, res) => {
+  const result = streamText({
+    model: 'openai/gpt-4o',
+    prompt: '发明一个新节日并描述其传统。',
+  });
+
+  pipeTextStreamToResponse({
+    response: res,
+    stream: toTextStream({ stream: result.stream }),
+  });
+}).listen(8080);
+```
+
+## 故障排除
+
+- 通过[代理](/docs/troubleshooting/streaming-not-working-when-proxied)时流式传输无法正常工作

@@ -1,0 +1,150 @@
+---
+title: 从数据库恢复消息
+description: 了解如何使用 AI SDK 和 React Server Components 从外部数据库恢复消息
+tags: ['rsc', '工具调用']
+---
+
+# 从数据库恢复消息
+
+在构建 AI 应用时，你可能希望从数据库恢复之前的对话，以便用户能够继续对话或回顾历史交互。AI SDK 提供了通过 `initialAIState` 和 `onGetUIState` 恢复对话状态的机制。
+
+## 客户端
+
+```tsx filename='app/layout.tsx'
+import { ServerMessage } from './actions';
+import { AI } from './ai';
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  // 从数据库获取存储的消息
+  const savedMessages: ServerMessage[] = getSavedMessages();
+
+  return (
+    <html lang="en">
+      <body>
+        <AI initialAIState={savedMessages} initialUIState={[]}>
+          {children}
+        </AI>
+      </body>
+    </html>
+  );
+}
+```
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { ClientMessage } from './actions';
+import { useActions, useUIState } from '@ai-sdk/rsc';
+import { generateId } from 'ai';
+
+export default function Home() {
+  const [conversation, setConversation] = useUIState();
+  const [input, setInput] = useState<string>('');
+  const { continueConversation } = useActions();
+
+  return (
+    <div>
+      <div className="conversation-history">
+        {conversation.map((message: ClientMessage) => (
+          <div key={message.id} className={`message ${message.role}`}>
+            {message.role}: {message.display}
+          </div>
+        ))}
+      </div>
+
+      <div className="input-area">
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="输入你的消息..."
+        />
+        <button
+          onClick={async () => {
+            // 将用户消息添加到 UI
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              { id: generateId(), role: 'user', display: input },
+            ]);
+
+            // 获取 AI 响应
+            const message = await continueConversation(input);
+
+            // 将 AI 响应添加到 UI
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              message,
+            ]);
+
+            setInput('');
+          }}
+        >
+          发送
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+## 服务端
+
+服务端实现负责处理消息的恢复，并将其转换为适合显示的格式。
+
+```tsx filename='app/ai.ts'
+import { createAI } from '@ai-sdk/rsc';
+import { ServerMessage, ClientMessage, continueConversation } from './actions';
+import { Stock } from '@ai-studio/components/stock';
+import { generateId } from 'ai';
+
+export const AI = createAI<ServerMessage[], ClientMessage[]>({
+  actions: {
+    continueConversation,
+  },
+  onGetUIState: async () => {
+    'use server';
+
+    // 获取当前 AI 状态（存储的消息）
+    const history: ServerMessage[] = getAIState();
+
+    // 将服务端消息转换为客户端消息
+    return history.map(({ role, content }) => ({
+      id: generateId(),
+      role,
+      display:
+        role === 'function' ? <Stock {...JSON.parse(content)} /> : content,
+    }));
+  },
+});
+```
+
+```tsx filename='app/actions.tsx'
+'use server';
+
+import { getAIState } from '@ai-sdk/rsc';
+import type { ReactNode } from 'react';
+
+export interface ServerMessage {
+  role: 'user' | 'assistant' | 'function';
+  content: string;
+}
+
+export interface ClientMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'function';
+  display: ReactNode;
+}
+
+// 从数据库获取已保存消息的函数
+export async function getSavedMessages(): Promise<ServerMessage[]> {
+  'use server';
+
+  // 在此实现你的数据库获取逻辑
+  return await fetchMessagesFromDatabase();
+}
+```

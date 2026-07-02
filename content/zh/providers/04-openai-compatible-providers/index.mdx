@@ -1,0 +1,552 @@
+---
+title: OpenAI 兼容提供商
+description: 使用 AI SDK 与 OpenAI 兼容的提供商。
+---
+
+# OpenAI 兼容提供商
+
+你可以使用 [OpenAI 兼容提供商](https://www.npmjs.com/package/@ai-sdk/openai-compatible) 包来接入实现了 OpenAI API 的语言模型提供商。
+
+下面我们重点介绍通用设置和提供商实例的创建。你也可以[编写一个基于 OpenAI 兼容包的自定义提供商包](/providers/openai-compatible-providers/custom-providers)。
+
+我们为以下 OpenAI 兼容提供商提供了详细文档：
+
+- [LM Studio](/providers/openai-compatible-providers/lmstudio)
+- [NIM](/providers/openai-compatible-providers/nim)
+- [Heroku](/providers/openai-compatible-providers/heroku)
+- [Clarifai](/providers/openai-compatible-providers/clarifai)
+- [NEAR AI Cloud](/providers/openai-compatible-providers/nearai)
+
+这些提供商的通用设置和提供商实例创建方式相同。
+
+## 设置
+
+OpenAI 兼容提供商可通过 `@ai-sdk/openai-compatible` 模块获取。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/openai-compatible" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/openai-compatible" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+要使用 OpenAI 兼容提供商，你可以通过 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+  includeUsage: true, // 在流式响应中包含用量信息
+});
+```
+
+你可以使用以下可选设置来自定义提供商实例：
+
+- **baseURL** _string_
+
+  设置 API 调用的 URL 前缀。
+
+- **apiKey** _string_
+
+  用于认证请求的 API 密钥。如果指定，会在请求头中添加 `Authorization` 头，值为 `Bearer <apiKey>`。这会在 `headers` 选项中可能指定的任何头之前添加。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  可选的请求自定义头。这些头会在可能通过 `apiKey` 选项添加的任何头之后添加到请求头中。
+
+- **queryParams** _Record&lt;string,string&gt;_
+
+  可选的请求 URL 自定义查询参数。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作拦截请求的中间件，或为测试等场景提供自定义 fetch 实现。
+
+- **includeUsage** _boolean_
+
+  在流式响应中包含用量信息。启用后，用量数据将包含在流式请求的响应元数据中。默认为 `undefined`（`false`）。
+
+- **supportsStructuredOutputs** _boolean_
+
+  如果提供商支持结构化输出，则设置为 true。仅与 `provider()`、`provider.chatModel()` 和 `provider.languageModel()` 相关。
+
+- **transformRequestBody** _(args: Record&lt;string, any&gt;) =&gt; Record&lt;string, any&gt;_
+
+  可选函数，用于在发送请求到 API 之前转换请求体。这对于可能需要与官方 OpenAI API 不同请求格式的代理提供商非常有用。
+
+- **metadataExtractor** _MetadataExtractor_
+
+  可选的元数据提取器，用于从 API 响应中捕获提供商特定的元数据。详情请参见[自定义元数据提取](#自定义元数据提取)。
+
+## 语言模型
+
+你可以使用提供商实例创建提供商模型。第一个参数是模型 ID，例如 `model-id`。
+
+```ts
+const model = provider('model-id');
+```
+
+你也可以使用以下工厂方法：
+
+- `provider.languageModel('model-id')` - 创建聊天语言模型（等同于 `provider('model-id')`）
+- `provider.chatModel('model-id')` - 创建聊天语言模型
+
+### 支持的能力
+
+使用此提供商创建的聊天模型支持以下能力：
+
+- **文本生成** - 生成文本补全
+- **流式传输** - 实时流式传输文本响应
+- **工具调用** - 调用工具/函数并支持流式传输
+- **结构化数据** - 生成带模式验证的 JSON（当启用 `supportsStructuredOutputs` 时）
+- **推理内容** - 支持返回推理/思考令牌的模型（例如 DeepSeek R1）
+- **系统消息** - 支持系统提示词
+- **多模态输入** - 支持图像和其他内容类型（取决于提供商）
+
+### 示例
+
+你可以使用提供商语言模型通过 `generateText` 函数生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { text } = await generateText({
+  model: provider('model-id'),
+  prompt: '写一份供 4 人食用的素食千层面食谱。',
+});
+```
+
+### 为自动补全包含模型 ID
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+type ExampleChatModelIds =
+  | 'meta-llama/Llama-3-70b-chat-hf'
+  | 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'
+  | (string & {});
+
+type ExampleCompletionModelIds =
+  | 'codellama/CodeLlama-34b-Instruct-hf'
+  | 'Qwen/Qwen2.5-Coder-32B-Instruct'
+  | (string & {});
+
+type ExampleEmbeddingModelIds =
+  | 'BAAI/bge-large-en-v1.5'
+  | 'bert-base-uncased'
+  | (string & {});
+
+type ExampleImageModelIds = 'dall-e-3' | 'stable-diffusion-xl' | (string & {});
+
+const model = createOpenAICompatible<
+  ExampleChatModelIds,
+  ExampleCompletionModelIds,
+  ExampleEmbeddingModelIds,
+  ExampleImageModelIds
+>({
+  name: 'example',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.example.com/v1',
+});
+
+// 后续对例如 `model.chatModel` 的调用将自动补全模型 ID
+// 来自 `ExampleChatModelIds` 列表，同时仍允许自由格式的字符串。
+
+const { text } = await generateText({
+  model: model.chatModel('meta-llama/Llama-3-70b-chat-hf'),
+  prompt: '写一份供 4 人食用的素食千层面食谱。',
+});
+```
+
+### 自定义查询参数
+
+某些提供商可能需要自定义查询参数。例如 [Azure AI 模型推理 API](https://learn.microsoft.com/en-us/azure/machine-learning/reference-model-inference-chat-completions?view=azureml-api-2) 需要 `api-version` 查询参数。
+
+你可以通过可选的 `queryParams` 提供商设置来设置这些参数。这些参数将添加到提供商发出的所有请求中。
+
+```ts highlight="7-9"
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+  queryParams: {
+    'api-version': '1.0.0',
+  },
+});
+```
+
+例如，使用上述配置，API 请求将在 URL 中包含查询参数，如：
+`https://api.provider.com/v1/chat/completions?api-version=1.0.0`。
+
+## 图像模型
+
+你可以使用 `.imageModel()` 工厂方法创建图像模型：
+
+```ts
+const model = provider.imageModel('model-id');
+```
+
+### 基本图像生成
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateImage } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { images } = await generateImage({
+  model: provider.imageModel('model-id'),
+  prompt: '日落时分的未来城市天际线',
+  size: '1024x1024',
+});
+```
+
+### 图像编辑
+
+OpenAI 兼容提供商通过 `/images/edits` 端点支持图像编辑。通过 `prompt.images` 传递输入图像以转换或编辑现有图像。
+
+#### 基本图像编辑
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateImage } from 'ai';
+import fs from 'fs';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const imageBuffer = fs.readFileSync('./input-image.png');
+
+const { images } = await generateImage({
+  model: provider.imageModel('model-id'),
+  prompt: {
+    text: '将猫变成狗，但保留原始图像的风格',
+    images: [imageBuffer],
+  },
+});
+```
+
+#### 使用遮罩进行修复
+
+使用遮罩编辑图像的特定部分：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateImage } from 'ai';
+import fs from 'fs';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const image = fs.readFileSync('./input-image.png');
+const mask = fs.readFileSync('./mask.png');
+
+const { images } = await generateImage({
+  model: provider.imageModel('model-id'),
+  prompt: {
+    text: '一个阳光充足的室内休闲区，带有一个包含火烈鸟的游泳池',
+    images: [image],
+    mask,
+  },
+});
+```
+
+<Note>
+  输入图像可以作为 `Buffer`、`ArrayBuffer`、`Uint8Array`、base64 编码字符串或 URL 提供。提供商将自动下载基于 URL 的图像并将其转换为适当格式。
+</Note>
+
+## 嵌入模型
+
+你可以使用 `.embeddingModel()` 工厂方法创建嵌入模型：
+
+```ts
+const model = provider.embeddingModel('model-id');
+```
+
+### 示例
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { embed } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { embedding } = await embed({
+  model: provider.embeddingModel('text-embedding-model'),
+  value: '敏捷的棕色狐狸跳过了懒狗',
+});
+```
+
+### 嵌入模型选项
+
+以下提供商选项可通过 `providerOptions` 用于嵌入模型：
+
+- **dimensions** _number_
+
+  生成的输出嵌入应具有的维度数。仅支持允许维度配置的模型。
+
+- **user** _string_
+
+  代表最终用户的唯一标识符，可帮助提供商监控和检测滥用。
+
+```ts
+const { embedding } = await embed({
+  model: provider.embeddingModel('text-embedding-model'),
+  value: '敏捷的棕色狐狸跳过了懒狗',
+  providerOptions: {
+    providerName: {
+      dimensions: 512,
+      user: 'user-123',
+    },
+  },
+});
+```
+
+## 补全模型
+
+你可以使用 `.completionModel()` 工厂方法创建补全模型（用于文本补全，而非聊天）：
+
+```ts
+const model = provider.completionModel('model-id');
+```
+
+### 示例
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { text } = await generateText({
+  model: provider.completionModel('completion-model-id'),
+  prompt: '敏捷的棕色狐狸',
+});
+```
+
+### 补全模型选项
+
+以下提供商选项可通过 `providerOptions` 用于补全模型：
+
+- **echo** _boolean_
+
+  在补全之外回显提示词。
+
+- **logitBias** _Record&lt;string, number&gt;_
+
+  修改指定令牌在补全中出现的可能性。接受一个 JSON 对象，该对象将令牌（由其令牌 ID 指定）映射到 -100 到 100 之间的相关偏差值。
+
+- **suffix** _string_
+
+  插入文本补全之后的后缀。
+
+- **user** _string_
+
+  代表最终用户的唯一标识符，可帮助提供商监控和检测滥用。
+
+```ts
+const { text } = await generateText({
+  model: provider.completionModel('completion-model-id'),
+  prompt: '敏捷的棕色狐狸',
+  providerOptions: {
+    providerName: {
+      echo: true,
+      suffix: ' 结束。',
+      user: 'user-123',
+    },
+  },
+});
+```
+
+## 聊天模型选项
+
+以下提供商选项可通过 `providerOptions` 用于聊天模型：
+
+- **user** _string_
+
+  代表最终用户的唯一标识符，可帮助提供商监控和检测滥用。
+
+- **reasoningEffort** _string_
+
+  推理模型的推理努力程度。具体值取决于提供商。
+
+- **textVerbosity** _string_
+
+  控制生成文本的详细程度。具体值取决于提供商。
+
+- **strictJsonSchema** _boolean_
+
+  是否使用严格的 JSON 模式验证。为 true 时，模型使用受限解码来保证模式合规性。仅在提供商支持结构化输出且提供了模式时使用。默认为 `true`。
+
+```ts
+const { text } = await generateText({
+  model: provider('model-id'),
+  prompt: '逐步解决：15 * 23 等于多少？',
+  providerOptions: {
+    providerName: {
+      user: 'user-123',
+      reasoningEffort: 'high',
+    },
+  },
+});
+```
+
+## 提供商特定选项
+
+OpenAI 兼容提供商支持在请求体中添加提供商特定选项。这些选项通过请求体中的 `providerOptions` 字段指定。
+
+例如，如果你创建一个名为 `providerName` 的提供商实例，你可以像这样向请求体添加 `customOption` 字段：
+
+```ts
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { text } = await generateText({
+  model: provider('model-id'),
+  prompt: '你好',
+  providerOptions: {
+    providerName: { customOption: 'magic-value' },
+  },
+});
+```
+
+请注意，`providerOptions` 键将采用驼峰命名法。如果你将提供商名称设置为 `provider-name`，选项仍需要在 `providerOptions.providerName` 上设置。
+
+发送给提供商的请求体将包含 `customOption` 字段，其值为 `magic-value`。这为你提供了一种简单的方法，无需修改提供商或 AI SDK 代码即可向请求添加提供商特定选项。
+
+## 自定义元数据提取
+
+OpenAI 兼容提供商支持通过元数据提取器从 API 响应中提取提供商特定的元数据。这些提取器允许你捕获提供商返回的标准响应格式之外的附加信息。
+
+元数据提取器接收来自提供商的原始、未处理的响应数据，使你能够完全灵活地提取提供商可能包含的任何自定义字段或实验性功能。这在以下情况下特别有用：
+
+- 与包含非标准响应字段的提供商合作
+- 试验 Beta 或预览功能
+- 捕获提供商特定的指标或调试信息
+- 支持快速的提供商 API 演进，无需 SDK 更改
+
+元数据提取器适用于流式和非流式聊天补全，由两个主要组件组成：
+
+1. 从完整响应中提取元数据的函数
+2. 一个流式提取器，可以在流式响应中跨块累积元数据
+
+以下是一个捕获标准数据和自定义提供商数据的元数据提取器示例：
+
+```typescript
+import { MetadataExtractor } from '@ai-sdk/openai-compatible';
+
+const myMetadataExtractor: MetadataExtractor = {
+  // 处理完整的非流式响应
+  extractMetadata: ({ parsedBody }) => {
+    // 你可以访问完整的原始响应
+    // 提取提供商包含的任何字段
+    return {
+      myProvider: {
+        standardUsage: parsedBody.usage,
+        experimentalFeatures: parsedBody.beta_features,
+        customMetrics: {
+          processingTime: parsedBody.server_timing?.total_ms,
+          modelVersion: parsedBody.model_version,
+          // ... 任何其他提供商特定数据
+        },
+      },
+    };
+  },
+
+  // 处理流式响应
+  createStreamExtractor: () => {
+    let accumulatedData = {
+      timing: [],
+      customFields: {},
+    };
+
+    return {
+      // 处理每个块的原始数据
+      processChunk: parsedChunk => {
+        if (parsedChunk.server_timing) {
+          accumulatedData.timing.push(parsedChunk.server_timing);
+        }
+        if (parsedChunk.custom_data) {
+          Object.assign(accumulatedData.customFields, parsedChunk.custom_data);
+        }
+      },
+      // 从累积数据构建最终元数据
+      buildMetadata: () => ({
+        myProvider: {
+          streamTiming: accumulatedData.timing,
+          customData: accumulatedData.customFields,
+        },
+      }),
+    };
+  },
+};
+```
+
+你可以在创建提供商实例时提供元数据提取器：
+
+```typescript
+const provider = createOpenAICompatible({
+  name: 'my-provider',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+  metadataExtractor: myMetadataExtractor,
+});
+```
+
+提取的元数据将包含在响应的 `providerMetadata` 字段下：
+
+```typescript
+const { text, providerMetadata } = await generateText({
+  model: provider('model-id'),
+  prompt: '你好',
+});
+
+console.log(providerMetadata.myProvider.customMetric);
+```
+
+这使你能够在不同提供商之间保持一致的接口的同时，访问提供商特定的信息。

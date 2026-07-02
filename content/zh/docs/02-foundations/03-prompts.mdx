@@ -1,0 +1,587 @@
+---
+title: 提示词
+description: 了解 AI SDK 中使用的提示词结构。
+---
+
+# 提示词
+
+提示词是你给[大语言模型 (LLM)](/docs/foundations/overview#large-language-models) 的指令，告诉它要做什么。这就像你向别人问路一样；你的问题越清晰，得到的指引就越好。
+
+许多 LLM 提供商提供了复杂的接口来指定提示词。它们涉及不同的角色和消息类型。虽然这些接口功能强大，但可能难以使用和理解。
+
+为了简化提示词的使用，AI SDK 支持文本提示词、消息提示词和系统提示词。
+
+## 文本提示词
+
+文本提示词是字符串。它们非常适合简单的生成用例，例如，为同一提示词文本的变体重复生成内容。
+
+你可以使用 AI SDK 函数（如 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 或 [`generateText`](/docs/reference/ai-sdk-core/generate-text)）提供的 `prompt` 属性来设置文本提示词。你可以以任何方式组织文本并注入变量，例如使用模板字面量。
+
+```ts highlight="3"
+const result = await generateText({
+  model: __MODEL__,
+  prompt: '发明一个新的节日并描述其传统。',
+});
+```
+
+你还可以使用模板字面量为提示词提供动态数据。
+
+```ts highlight="3-5"
+const result = await generateText({
+  model: __MODEL__,
+  prompt:
+    `我计划去 ${destination} 旅行 ${lengthOfStay} 天。` +
+    `请推荐最适合我的旅游活动。`,
+});
+```
+
+## 系统提示词
+
+系统提示词是给模型的初始指令集，用于指导和约束模型的行为和响应。你可以使用 `instructions` 属性设置系统提示词。系统提示词同时适用于 `prompt` 和 `messages` 属性。默认情况下，`prompt` 或 `messages` 中的系统消息会被拒绝；请使用 `instructions` 属性设置系统指令，或者当你需要发送包含系统消息的现有消息历史时，设置 `allowSystemInMessages: true`。
+
+<Note type="warning">
+  选择使用 `allowSystemInMessages` 可能会带来提示词注入风险，用户可以通过注入系统消息来覆盖或设置系统提示词。在大多数情况下，只有受信任的服务器端代码应通过 `instructions` 属性设置系统指令。
+</Note>
+
+```ts highlight="3-6"
+const result = await generateText({
+  model: __MODEL__,
+  instructions:
+    `你帮助规划旅行行程。` +
+    `响应用户的请求，列出` +
+    `他们目的地的最佳停留点。`,
+  prompt:
+    `我计划去 ${destination} 旅行 ${lengthOfStay} 天。` +
+    `请推荐最适合我的旅游活动。`,
+});
+```
+
+## 消息提示词
+
+消息提示词是用户、助手和工具消息的数组。它们非常适合聊天界面和更复杂的多模态提示词。你可以使用 `messages` 属性来设置消息提示词。
+
+每条消息都有一个 `role` 属性和一个 `content` 属性。内容可以是文本（对于用户和助手消息），也可以是该消息类型的相关部分（数据）数组。
+
+```ts highlight="3-7"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    { role: 'user', content: '你好！' },
+    { role: 'assistant', content: '你好，我能帮你什么？' },
+    { role: 'user', content: '在柏林哪里能买到最好的咖喱香肠？' },
+  ],
+});
+```
+
+你可以在 `content` 属性中发送一个包含文本和其他内容部分的数组，而不是发送纯文本。
+
+<Note type="warning">
+  并非所有语言模型都支持所有消息和内容类型。例如，某些模型可能无法处理多模态输入或工具消息。[了解更多关于选定模型的能力](./providers-and-models#model-capabilities)。
+</Note>
+
+### 提供商选项
+
+你可以传递额外的提供商特定元数据，以在 3 个级别启用提供商特定功能。
+
+#### 函数调用级别
+
+像 [`streamText`](/docs/reference/ai-sdk-core/stream-text#provider-options) 或 [`generateText`](/docs/reference/ai-sdk-core/generate-text#provider-options) 这样的函数接受 `providerOptions` 属性。
+
+当你不需要对提供商选项的应用位置进行精细控制时，应在函数调用级别添加提供商选项。
+
+```ts
+const { text } = await generateText({
+  model: azure('your-deployment-name'),
+  providerOptions: {
+    openai: {
+      reasoningEffort: 'low',
+    },
+  },
+});
+```
+
+#### 消息级别
+
+为了在消息级别精细控制提供商选项的应用，你可以将 `providerOptions` 传递给消息对象：
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  instructions: {
+    role: 'system',
+    content: '缓存系统消息',
+    providerOptions: {
+      // 在系统消息上设置缓存控制断点
+      anthropic: { cacheControl: { type: 'ephemeral' } },
+    },
+  },
+  prompt: '发明一个新的节日并描述其传统。',
+});
+```
+
+#### 消息部分级别
+
+某些提供商特定选项需要在消息部分级别进行配置：
+
+```ts
+import { ModelMessage } from 'ai';
+
+const messages: ModelMessage[] = [
+  {
+    role: 'user',
+    content: [
+      {
+        type: 'text',
+        text: '详细描述这张图片。',
+        providerOptions: {
+          openai: { imageDetail: 'low' },
+        },
+      },
+      {
+        type: 'file',
+        mediaType: 'image',
+        data: 'https://github.com/vercel/ai/blob/main/examples/ai-functions/data/comic-cat.png?raw=true',
+        // 为图片部分设置图片细节配置：
+        providerOptions: {
+          openai: { imageDetail: 'low' },
+        },
+      },
+    ],
+  },
+];
+```
+
+<Note type="warning">
+  AI SDK UI 钩子（如 [`useChat`](/docs/reference/ai-sdk-ui/use-chat)）返回 `UIMessage` 对象数组，这些对象不支持提供商选项。我们建议使用 [`convertToModelMessages`](/docs/reference/ai-sdk-ui/convert-to-model-messages) 函数，在应用或附加带有 `providerOptions` 的消息或消息部分之前，将 `UIMessage` 对象转换为 [`ModelMessage`](/docs/reference/ai-sdk-core/model-message) 对象。
+</Note>
+
+### 用户消息
+
+#### 文本部分
+
+文本内容是最常见的内容类型。它是一个传递给模型的字符串。
+
+如果你只需要在消息中发送文本内容，`content` 属性可以是一个字符串，但你也可以用它来发送多个内容部分。
+
+```ts highlight="7-10"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: '在柏林哪里能买到最好的咖喱香肠？',
+        },
+      ],
+    },
+  ],
+});
+```
+
+#### 图片部分
+
+用户消息可以包含图片部分。图片可以是以下之一：
+
+- base64 编码的图片：
+  - 包含 base-64 编码内容的 `string`
+  - 数据 URL `string`，例如 `data:image/png;base64,...`
+- 二进制图片：
+  - `ArrayBuffer`
+  - `Uint8Array`
+  - `Buffer`
+- URL：
+  - http(s) URL `string`，例如 `https://example.com/image.png`
+  - `URL` 对象，例如 `new URL('https://example.com/image.png')`
+
+##### 示例：二进制图片 (Buffer)
+
+```ts highlight="8-11"
+const result = await generateText({
+  model,
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '详细描述这张图片。' },
+        {
+          type: 'file',
+          mediaType: 'image',
+          data: fs.readFileSync('./data/comic-cat.png'),
+        },
+      ],
+    },
+  ],
+});
+```
+
+##### 示例：Base-64 编码图片 (string)
+
+```ts highlight="8-11"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '详细描述这张图片。' },
+        {
+          type: 'file',
+          mediaType: 'image',
+          data: fs.readFileSync('./data/comic-cat.png').toString('base64'),
+        },
+      ],
+    },
+  ],
+});
+```
+
+##### 示例：图片 URL (string)
+
+```ts highlight="8-12"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '详细描述这张图片。' },
+        {
+          type: 'file',
+          mediaType: 'image',
+          data: 'https://github.com/vercel/ai/blob/main/examples/ai-functions/data/comic-cat.png?raw=true',
+        },
+      ],
+    },
+  ],
+});
+```
+
+#### 文件部分
+
+<Note type="warning">
+  目前只有少数提供商和模型支持文件部分：[Google Generative AI](/providers/ai-sdk-providers/google)、[Google Vertex AI](/providers/ai-sdk-providers/google-vertex)、[OpenAI](/providers/ai-sdk-providers/openai)（用于 `wav` 和 `mp3` 音频，配合 `gpt-4o-audio-preview`）、[Anthropic](/providers/ai-sdk-providers/anthropic)、[OpenAI](/providers/ai-sdk-providers/openai)（用于 `pdf`）。
+</Note>
+
+用户消息可以包含文件部分。文件可以是以下之一：
+
+- base64 编码的文件：
+  - 包含 base-64 编码内容的 `string`
+  - 数据 URL `string`，例如 `data:image/png;base64,...`
+- 二进制数据：
+  - `ArrayBuffer`
+  - `Uint8Array`
+  - `Buffer`
+- URL：
+  - http(s) URL `string`，例如 `https://example.com/some.pdf`
+  - `URL` 对象，例如 `new URL('https://example.com/some.pdf')`
+
+你需要指定所发送文件的 MIME 类型。
+
+##### 示例：来自 Buffer 的 PDF 文件
+
+```ts highlight="12-15"
+import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: google('gemini-2.5-flash'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '这个文件是关于什么的？' },
+        {
+          type: 'file',
+          mediaType: 'application/pdf',
+          data: fs.readFileSync('./data/example.pdf'),
+          filename: 'example.pdf', // 可选，并非所有提供商都使用
+        },
+      ],
+    },
+  ],
+});
+```
+
+##### 示例：来自 Buffer 的 mp3 音频文件
+
+```ts highlight="12-14"
+import { openai } from '@ai-sdk/openai';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: openai('gpt-4o-audio-preview'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '音频在说什么？' },
+        {
+          type: 'file',
+          mediaType: 'audio/mpeg',
+          data: fs.readFileSync('./data/galileo.mp3'),
+        },
+      ],
+    },
+  ],
+});
+```
+
+#### 自定义下载函数（实验性）
+
+你可以使用自定义下载函数来实现限流、重试、认证、缓存等功能。
+
+当模型不支持文件时，默认下载实现会自动并行下载文件。
+
+自定义下载函数可以通过 `experimental_download` 属性传递：
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  experimental_download: async (
+    requestedDownloads: Array<{
+      url: URL;
+      isUrlSupportedByModel: boolean;
+    }>,
+  ): PromiseLike<
+    Array<{
+      data: Uint8Array;
+      mediaType: string | undefined;
+    } | null>
+  > => {
+    // ... 下载文件并返回顺序相似的数组
+  },
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'file',
+          data: new URL('https://api.company.com/private/document.pdf'),
+          mediaType: 'application/pdf',
+        },
+      ],
+    },
+  ],
+});
+```
+
+<Note>
+  `experimental_download` 选项是实验性的，可能在未来的版本中发生变化。
+</Note>
+
+### 助手消息
+
+助手消息是角色为 `assistant` 的消息。它们通常是助手的先前响应，可以包含文本、推理和工具调用部分。
+
+#### 示例：包含文本内容的助手消息
+
+```ts highlight="5"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    { role: 'user', content: '你好！' },
+    { role: 'assistant', content: '你好，我能帮你什么？' },
+  ],
+});
+```
+
+#### 示例：包含数组中文本内容的助手消息
+
+```ts highlight="7"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    { role: 'user', content: '你好！' },
+    {
+      role: 'assistant',
+      content: [{ type: 'text', text: '你好，我能帮你什么？' }],
+    },
+  ],
+});
+```
+
+#### 示例：包含工具调用内容的助手消息
+
+```ts highlight="7-14"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    { role: 'user', content: '这块奶酪有多少卡路里？' },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool-call',
+          toolCallId: '12345',
+          toolName: 'get-nutrition-data',
+          input: { cheese: 'Roquefort' },
+        },
+      ],
+    },
+  ],
+});
+```
+
+#### 示例：包含文件内容的助手消息
+
+<Note>
+  此内容部分用于模型生成的文件。只有少数模型支持此功能，并且仅支持它们可以生成的文件类型。
+</Note>
+
+```ts highlight="9-11"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    { role: 'user', content: '生成一张罗克福奶酪的图片！' },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'file',
+          mediaType: 'image/png',
+          data: fs.readFileSync('./data/roquefort.jpg'),
+        },
+      ],
+    },
+  ],
+});
+```
+
+### 工具消息
+
+<Note>
+  [工具](/docs/foundations/tools)（也称为函数调用）是你可以提供给 LLM 以扩展其内置功能的程序。这可以是调用外部 API 到调用 UI 中的函数等任何内容。在[下一节](/docs/foundations/tools)中了解更多关于工具的信息。
+</Note>
+
+对于支持[工具](/docs/foundations/tools)调用的模型，助手消息可以包含工具调用部分，工具消息可以包含工具输出部分。单个助手消息可以调用多个工具，单个工具消息可以包含多个工具结果。
+
+```ts highlight="14-42"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: '这块奶酪有多少卡路里？',
+        },
+        {
+          type: 'file',
+          mediaType: 'image',
+          data: fs.readFileSync('./data/roquefort.jpg'),
+        },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool-call',
+          toolCallId: '12345',
+          toolName: 'get-nutrition-data',
+          input: { cheese: 'Roquefort' },
+        },
+        // 这里可能有更多工具调用（并行调用）
+      ],
+    },
+    {
+      role: 'tool',
+      content: [
+        {
+          type: 'tool-result',
+          toolCallId: '12345', // 需要与工具调用 ID 匹配
+          toolName: 'get-nutrition-data',
+          output: {
+            type: 'json',
+            value: {
+              name: '奶酪，罗克福',
+              calories: 369,
+              fat: 31,
+              protein: 22,
+            },
+          },
+        },
+        // 这里可能有更多工具结果（并行调用）
+      ],
+    },
+  ],
+});
+```
+
+#### 多模态工具结果
+
+工具结果可以是多部分和多模态的，例如文本和图片。你可以使用 `output: { type: 'content', value: [...] }` 来指定多部分工具结果。
+
+```ts highlight="14-27"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    // ...
+    {
+      role: 'tool',
+      content: [
+        {
+          type: 'tool-result',
+          toolCallId: '12345', // 需要与工具调用 ID 匹配
+          toolName: 'get-nutrition-data',
+          // 对于不支持多部分工具结果的模型，
+          // 你可以包含一个常规的输出部分：
+          output: {
+            type: 'json',
+            value: {
+              name: '奶酪，罗克福',
+              calories: 369,
+              fat: 31,
+              protein: 22,
+            },
+          },
+        },
+        {
+          type: 'tool-result',
+          toolCallId: '12345', // 需要与工具调用 ID 匹配
+          toolName: 'get-nutrition-data',
+          // 对于支持多部分工具结果的模型，
+          // 你可以包含一个多部分内容部分：
+          output: {
+            type: 'content',
+            value: [
+              {
+                type: 'text',
+                text: '以下是奶酪的营养数据：',
+              },
+              {
+                type: 'file-data',
+                data: fs
+                  .readFileSync('./data/roquefort-nutrition-data.png')
+                  .toString('base64'),
+                mediaType: 'image/png',
+              },
+            ],
+          },
+        },
+      ],
+    },
+  ],
+});
+```
+
+### 系统消息
+
+系统消息是在用户消息之前发送给模型的消息，用于指导助手的行为。你也可以使用 `instructions` 属性。
+
+```ts highlight="4"
+const result = await generateText({
+  model: __MODEL__,
+  messages: [
+    { role: 'system', content: '你帮助规划旅行行程。' },
+    {
+      role: 'user',
+      content:
+        '我计划去柏林旅行 3 天。请推荐最适合我的旅游活动。',
+    },
+  ],
+});
+```

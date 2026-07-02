@@ -1,0 +1,337 @@
+---
+title: 输出
+description: Output 的 API 参考文档。
+---
+
+# `Output`
+
+`Output` 对象为使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 生成结构化数据提供了输出规范。它允许你指定生成数据的预期形状，并自动处理验证。
+
+```ts
+import { generateText, Output } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const { output } = await generateText({
+  model: __MODEL__,
+  output: Output.object({
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  }),
+  prompt: '生成一个用户档案。',
+});
+```
+
+## 导入
+
+<Snippet text={`import { Output } from "ai"`} prompt={false} />
+
+## 输出类型
+
+### `Output.text()`
+
+用于纯文本生成的输出规范。当未指定 `output` 时，这是默认行为。
+
+```ts
+import { generateText, Output } from 'ai';
+
+const { output } = await generateText({
+  model: yourModel,
+  output: Output.text(),
+  prompt: '讲个笑话。',
+});
+// output 是一个字符串
+```
+
+#### 参数
+
+无需参数。
+
+#### 返回值
+
+一个 `Output<string, string>` 规范，用于生成纯文本，无需模式验证。
+
+---
+
+### `Output.object()`
+
+用于使用模式生成类型化对象的输出规范。输出会根据提供的模式进行验证，以确保类型安全。
+
+```ts
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+
+const { output } = await generateText({
+  model: yourModel,
+  output: Output.object({
+    schema: z.object({
+      name: z.string(),
+      age: z.number().nullable(),
+      labels: z.array(z.string()),
+    }),
+  }),
+  prompt: '生成一个测试用户的信息。',
+});
+// output 符合模式类型
+```
+
+#### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'schema',
+      type: 'FlexibleSchema<OBJECT>',
+      description:
+        '定义要生成对象结构的模式。支持 Zod 模式、标准 JSON 模式和自定义 JSON 模式。',
+    },
+    {
+      name: 'name',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选名称。某些提供商用于额外的 LLM 指导，例如通过工具或模式名称。',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选描述。某些提供商用于额外的 LLM 指导，例如通过工具或模式描述。',
+    },
+  ]}
+/>
+
+#### 返回值
+
+一个 `Output<OBJECT, DeepPartial<OBJECT>>` 规范，其中：
+
+- 完整输出会针对模式进行完全验证
+- 部分输出（在流式传输期间）是模式类型的深度部分版本
+
+<Note>
+  通过 `streamText` 流式传输的部分输出无法根据你提供的模式进行验证，因为不完整的数据可能尚未符合预期的结构。
+</Note>
+
+---
+
+### `Output.array()`
+
+用于生成类型化元素数组的输出规范。每个元素都会根据提供的元素模式进行验证。
+
+```ts
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+
+const { output } = await generateText({
+  model: yourModel,
+  output: Output.array({
+    element: z.object({
+      location: z.string(),
+      temperature: z.number(),
+      condition: z.string(),
+    }),
+  }),
+  prompt: '列出旧金山和巴黎的天气。',
+});
+// output 是一个天气对象数组
+```
+
+#### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'element',
+      type: 'FlexibleSchema<ELEMENT>',
+      description:
+        '定义每个数组元素结构的模式。支持 Zod 模式、Valibot 模式或 JSON 模式。',
+    },
+    {
+      name: 'name',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选名称。某些提供商用于额外的 LLM 指导，例如通过工具或模式名称。',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选描述。某些提供商用于额外的 LLM 指导，例如通过工具或模式描述。',
+    },
+  ]}
+/>
+
+#### 返回值
+
+一个 `Output<Array<ELEMENT>, Array<ELEMENT>>` 规范，其中：
+
+- 完整输出是一个所有元素都经过验证的数组
+- 部分输出仅包含完全验证的元素（不完整的元素会被排除）
+
+#### 使用 `elementStream` 进行流式传输
+
+当将 `streamText` 与 `Output.array()` 一起使用时，你可以使用 `elementStream` 在元素生成时对其进行迭代：
+
+```ts
+import { streamText, Output } from 'ai';
+import { z } from 'zod';
+
+const { elementStream } = streamText({
+  model: yourModel,
+  output: Output.array({
+    element: z.object({
+      name: z.string(),
+      class: z.string(),
+      description: z.string(),
+    }),
+  }),
+  prompt: '为一个奇幻角色扮演游戏生成 3 个英雄描述。',
+});
+
+for await (const hero of elementStream) {
+  console.log(hero); // 每个英雄都是完整且经过验证的
+}
+```
+
+<Note>
+  `elementStream` 发出的每个元素都是完整且经过你的元素模式验证的，确保每个项目在生成时都具有类型安全。
+</Note>
+
+---
+
+### `Output.choice()`
+
+用于从预定义的字符串选项集中进行选择的输出规范。适用于分类任务或固定枚举答案。
+
+```ts
+import { generateText, Output } from 'ai';
+
+const { output } = await generateText({
+  model: yourModel,
+  output: Output.choice({
+    options: ['sunny', 'rainy', 'snowy'] as const,
+  }),
+  prompt: '今天的天气是晴天、雨天还是雪天？',
+});
+// output 是 'sunny' | 'rainy' | 'snowy'
+```
+
+#### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'options',
+      type: 'Array<CHOICE>',
+      description:
+        '模型可以从中选择的字符串选项数组。输出将是这些值中的一个。',
+    },
+    {
+      name: 'name',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选名称。某些提供商用于额外的 LLM 指导，例如通过工具或模式名称。',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选描述。某些提供商用于额外的 LLM 指导，例如通过工具或模式描述。',
+    },
+  ]}
+/>
+
+#### 返回值
+
+一个 `Output<CHOICE, CHOICE>` 规范，其中：
+
+- 完整输出被验证为提供的选项之一
+
+---
+
+### `Output.json()`
+
+用于非结构化 JSON 生成的输出规范。当你想要生成任意 JSON 而不强制执行特定模式时，请使用此方法。
+
+```ts
+import { generateText, Output } from 'ai';
+
+const { output } = await generateText({
+  model: yourModel,
+  output: Output.json(),
+  prompt:
+    '对于每个城市，以 JSON 对象形式返回当前温度和天气状况。',
+});
+// output 是任何有效的 JSON 值
+```
+
+#### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'name',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选名称。某些提供商用于额外的 LLM 指导，例如通过工具或模式名称。',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      isOptional: true,
+      description:
+        '要生成的输出的可选描述。某些提供商用于额外的 LLM 指导，例如通过工具或模式描述。',
+    },
+  ]}
+/>
+
+#### 返回值
+
+一个 `Output<JSONValue, JSONValue>` 规范，它：
+
+- 验证输出是否为有效的 JSON
+- 不强制执行任何特定结构
+
+<Note>
+  使用 `Output.json()` 时，AI SDK 仅检查响应是否为有效的 JSON；它不验证值的结构或类型。如果你需要模式验证，请改用 `Output.object()` 或 `Output.array()`。
+</Note>
+
+## 错误处理
+
+当 `generateText` 使用结构化输出无法生成有效对象时，它会抛出一个 [`NoObjectGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-object-generated-error)。
+
+```ts
+import { generateText, Output, NoObjectGeneratedError } from 'ai';
+
+try {
+  await generateText({
+    model: yourModel,
+    output: Output.object({ schema }),
+    prompt: '生成一个用户档案。',
+  });
+} catch (error) {
+  if (NoObjectGeneratedError.isInstance(error)) {
+    console.log('NoObjectGeneratedError');
+    console.log('原因:', error.cause);
+    console.log('文本:', error.text);
+    console.log('响应:', error.response);
+    console.log('用量:', error.usage);
+  }
+}
+```
+
+## 参见
+
+- [生成结构化数据](/docs/ai-sdk-core/generating-structured-data)
+- [`generateText()`](/docs/reference/ai-sdk-core/generate-text)
+- [`streamText()`](/docs/reference/ai-sdk-core/stream-text)
+- [`zod-schema`](/docs/reference/ai-sdk-core/zod-schema)
+- [`json-schema`](/docs/reference/ai-sdk-core/json-schema)

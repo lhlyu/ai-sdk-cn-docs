@@ -1,0 +1,217 @@
+---
+title: UI
+description: 使用 AI SDK 与 useChat 集成。
+---
+
+# 使用 AI SDK UI 的 Harnesses
+
+Harness 流与 AI SDK UI 消息流兼容。你可以在客户端使用
+`useChat()`，并从服务器路由流式传输 `HarnessAgent` 的输出。
+
+与基于模型的聊天路由的主要区别在于会话管理。
+Harness 拥有自己的对话状态，因此路由应为聊天 ID 恢复或创建
+`HarnessAgentSession`，而不是将整个 UI 消息历史重放到模型中。
+
+## 客户端
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { useState } from 'react';
+
+export default function Page() {
+  const [input, setInput] = useState('');
+  const { messages, sendMessage, status } = useChat({
+    id: 'example-chat',
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+  });
+
+  return (
+    <>
+      {messages.map(message => (
+        <div key={message.id}>
+          <strong>{message.role === 'user' ? '你: ' : 'AI: '}</strong>
+          {message.parts.map((part, index) => {
+            if (part.type === 'text') {
+              return <span key={index}>{part.text}</span>;
+            }
+
+            if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
+              return <pre key={index}>{JSON.stringify(part, null, 2)}</pre>;
+            }
+
+            return null;
+          })}
+        </div>
+      ))}
+
+      <form
+        onSubmit={event => {
+          event.preventDefault();
+          if (input.trim()) {
+            sendMessage({ text: input });
+            setInput('');
+          }
+        }}
+      >
+        <input
+          value={input}
+          onChange={event => setInput(event.target.value)}
+          disabled={status !== 'ready'}
+        />
+        <button type="submit" disabled={status !== 'ready'}>
+          发送
+        </button>
+      </form>
+    </>
+  );
+}
+```
+
+## 智能体
+
+在服务器上定义 `HarnessAgent`：
+
+```ts filename='app/api/chat/agent.ts'
+import { HarnessAgent } from '@ai-sdk/harness/agent';
+import { claudeCode } from '@ai-sdk/harness-claude-code';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+
+export const agent = new HarnessAgent({
+  harness: claudeCode,
+  sandbox: createVercelSandbox({
+    runtime: 'node24',
+    ports: [4000],
+  }),
+  instructions: '你是一个有用的编码助手。',
+});
+```
+
+## 会话存储
+
+仅持久化 `session.detach()` 返回的不透明恢复状态。如果
+轮次因审批而暂停或意外中断，该恢复状态会在内部携带
+继续状态。聊天 ID 也可以作为 harness
+`sessionId`，这为沙箱在请求和进程之间提供了稳定的身份。
+
+```ts filename='app/api/chat/session-store.ts'
+import type {
+  HarnessAgentResumeSessionState,
+  HarnessAgentSession,
+} from '@ai-sdk/harness/agent';
+
+const states: Record<string, HarnessAgentResumeSessionState | undefined> = {};
+
+type SessionFactory = {
+  createSession(options?: {
+    sessionId?: string;
+    resumeFrom?: HarnessAgentResumeSessionState;
+  }): Promise<HarnessAgentSession>;
+};
+
+export async function resumeOrCreateSession({
+  agent,
+  chatId,
+}: {
+  agent: SessionFactory;
+  chatId: string;
+}) {
+  const resumeFrom = states[chatId];
+
+  return agent.createSession(
+    resumeFrom ? { sessionId: chatId, resumeFrom } : { sessionId: chatId },
+  );
+}
+
+export async function detachAndPersist({
+  chatId,
+  session,
+}: {
+  chatId: string;
+  session: HarnessAgentSession;
+}) {
+  states[chatId] = await session.detach();
+}
+```
+
+在生产环境中，请使用持久化存储而非内存映射。
+
+## 路由
+
+将 UI 消息转换为模型消息，运行 harness 轮次，并将
+结果流转换回 UI 消息流：
+
+```ts filename='app/api/chat/route.ts'
+import { agent } from './agent';
+import { detachAndPersist, resumeOrCreateSession } from './session-store';
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+  type UIMessage,
+} from 'ai';
+
+export async function POST(request: Request) {
+  const body: {
+    id?: string;
+    messages: UIMessage[];
+  } = await request.json();
+
+  if (!body.id) {
+    throw new Error('缺少聊天 ID');
+  }
+
+  const chatId = body.id;
+  const messages = await convertToModelMessages(body.messages);
+  const session = await resumeOrCreateSession({ agent, chatId });
+  const result = await agent.stream({ session, messages });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      onEnd: async () => {
+        await detachAndPersist({ chatId, session });
+      },
+    }),
+  });
+}
+```
+
+除非你将智能体包装以注入所需的会话，否则不要直接对 `HarnessAgent` 使用 `createAgentUIStreamResponse`。`HarnessAgent.stream()` 每次调用都需要 `session`。
+
+## 分离或停止
+
+当你希望暂停 harness 运行时并保持沙箱温暖以供下一个请求使用时，请使用 `session.detach()`。基于桥接的适配器通常可以高效地重新附加或重放。如果轮次未完成，`detach()` 会在返回的恢复状态中包含轮次继续状态。
+
+当你希望保存恢复状态并在每个轮次后停止运行时和沙箱时，请使用 `session.stop()`。下一个请求从持久化状态恢复，并在接受新提示词之前继续任何未完成的轮次。
+
+## 渲染 Harness 部件
+
+Harness 输出包含与 AI SDK 模型流相同的 UI 消息部件形状：
+
+- 用于生成内容的 `text` 和 `reasoning` 部件。
+- 类型化工具部件，例如 `tool-bash`、`tool-read` 或宿主工具如 `tool-weather`。
+- 用于动态事件（如 `fileChange` 和 `compaction`）的 `dynamic-tool` 部件。
+
+以与渲染普通 AI SDK 工具部件相同的方式渲染类型化的 harness 内置部件。检查 `part.state` 以获取 `input-streaming`、`input-available` 和 `output-available`。
+
+## 类型安全的工具部件
+
+在 `HarnessAgent` 会话选项成为基础 `Agent` 调用参数的一部分之前，从 `agent.tools` 推断 UI 工具：
+
+```ts
+import type { InferUITools, UIMessage } from 'ai';
+import { agent } from './agent';
+
+export type HarnessMessage = UIMessage<
+  unknown,
+  never,
+  InferUITools<typeof agent.tools>
+>;
+```
+
+然后在客户端使用 `useChat<HarnessMessage>()`。

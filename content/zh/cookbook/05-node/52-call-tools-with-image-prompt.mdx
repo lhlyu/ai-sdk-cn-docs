@@ -1,0 +1,45 @@
+---
+title: 使用图片提示词调用工具
+description: 了解如何使用 AI SDK 和 Node 通过图片提示词调用工具
+tags: ['node', '工具调用', '多模态']
+---
+
+# 使用图片提示词调用工具
+
+部分支持视觉能力的语言模型可以接受图片作为提示词的一部分。以下是可用于将图片作为输入的不同[格式](/docs/reference/ai-sdk-core/generate-text#content-image)。
+
+```ts
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const result = await generateText({
+  model: 'openai/gpt-4.1',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '你能帮我记录这顿饭吗？' },
+        {
+          type: 'file',
+          mediaType: 'image',
+          data: new URL(
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Cheeseburger_%2817237580619%29.jpg/640px-Cheeseburger_%2817237580619%29.jpg',
+          ),
+        },
+      ],
+    },
+  ],
+  tools: {
+    logFood: tool({
+      description: '记录食物项目',
+      inputSchema: z.object({
+        name: z.string(),
+        calories: z.number(),
+      }),
+      execute({ name, calories }) {
+        storeInDatabase({ name, calories }); // 在此处实现你的逻辑
+      },
+    }),
+  },
+});
+```

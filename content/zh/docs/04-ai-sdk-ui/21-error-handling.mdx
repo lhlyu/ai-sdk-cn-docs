@@ -1,0 +1,183 @@
+---
+title: 错误处理
+description: 了解如何在 AI SDK UI 中处理错误
+---
+
+# 错误处理与警告
+
+## 警告
+
+当某些功能可能无法按预期工作时，AI SDK 会显示警告。这些警告有助于在问题引发错误之前进行修复。
+
+### 警告出现时机
+
+在以下情况下，浏览器控制台会显示警告：
+
+- **不支持的功能**：您使用了 AI 模型不支持的功能或设置（例如某些选项或参数）。
+- **兼容性警告**：某项功能在兼容模式下使用，其运行方式可能与预期不同或效果不佳。
+- **其他警告**：AI 模型报告了其他类型的问题，例如一般性问题或提示性消息。
+
+### 警告消息
+
+所有警告均以“AI SDK Warning:”开头，便于查找。例如：
+
+```
+AI SDK Warning: The feature "temperature" is not supported by this model
+```
+
+### 关闭警告
+
+默认情况下，控制台会显示警告。您可以控制此行为：
+
+#### 关闭所有警告
+
+设置全局变量以完全关闭警告：
+
+```ts
+globalThis.AI_SDK_LOG_WARNINGS = false;
+```
+
+#### 自定义警告处理器
+
+您也可以提供自己的函数来处理警告。该函数接收提供商 ID、模型 ID 和警告列表。
+
+```ts
+globalThis.AI_SDK_LOG_WARNINGS = ({ warnings, provider, model }) => {
+  // 以您自己的方式处理警告
+};
+```
+
+## 错误处理
+
+### 错误辅助对象
+
+每个 AI SDK UI Hook 还会返回一个 [error](/docs/reference/ai-sdk-ui/use-chat#error) 对象，您可以使用它在 UI 中渲染错误。您可以使用该错误对象来显示错误消息、禁用提交按钮或显示重试按钮。
+
+<Note>
+  我们建议向用户显示通用错误消息，例如“出了点问题”。这是避免泄露服务器信息的好做法。
+</Note>
+
+```tsx file="app/page.tsx" highlight="8,28-35,41"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+
+export default function Chat() {
+  const [input, setInput] = useState('');
+  const { messages, sendMessage, error, regenerate } = useChat();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage({ text: input });
+    setInput('');
+  };
+
+  return (
+    <div>
+      {messages.map(m => (
+        <div key={m.id}>
+          {m.role}:{' '}
+          {m.parts
+            .filter(part => part.type === 'text')
+            .map(part => part.text)
+            .join('')}
+        </div>
+      ))}
+
+      {error && (
+        <>
+          <div>发生了错误。</div>
+          <button type="button" onClick={() => regenerate()}>
+            重试
+          </button>
+        </>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          disabled={error != null}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+#### 替代方案：替换最后一条消息
+
+或者，您可以编写一个自定义提交处理器，在出现错误时替换最后一条消息。
+
+```tsx file="app/page.tsx" highlight="13-15,17-18,35"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
+
+export default function Chat() {
+  const [input, setInput] = useState('');
+  const { sendMessage, error, messages, setMessages } = useChat();
+
+  function customSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (error != null) {
+      setMessages(messages.slice(0, -1)); // 移除最后一条消息
+    }
+
+    sendMessage({ text: input });
+    setInput('');
+  }
+
+  return (
+    <div>
+      {messages.map(m => (
+        <div key={m.id}>
+          {m.role}:{' '}
+          {m.parts
+            .filter(part => part.type === 'text')
+            .map(part => part.text)
+            .join('')}
+        </div>
+      ))}
+
+      {error && <div>发生了错误。</div>}
+
+      <form onSubmit={customSubmit}>
+        <input value={input} onChange={e => setInput(e.target.value)} />
+      </form>
+    </div>
+  );
+}
+```
+
+### 错误处理回调
+
+可以通过将 [`onError`](/docs/reference/ai-sdk-ui/use-chat#on-error) 回调函数作为选项传递给 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 或 [`useCompletion`](/docs/reference/ai-sdk-ui/use-completion) Hook 来处理错误。该回调函数接收一个错误对象作为参数。
+
+```tsx file="app/page.tsx" highlight="6-9"
+import { useChat } from '@ai-sdk/react';
+
+export default function Page() {
+  const {
+    /* ... */
+  } = useChat({
+    // 处理错误：
+    onError: error => {
+      console.error(error);
+    },
+  });
+}
+```
+
+### 注入错误以进行测试
+
+您可能希望创建错误用于测试。只需在路由处理器中抛出错误即可轻松实现：
+
+```ts file="app/api/chat/route.ts"
+export async function POST(req: Request) {
+  throw new Error('这是一个测试错误');
+}
+```

@@ -1,0 +1,67 @@
+---
+title: AI_UIMessageStreamError
+description: 了解如何修复 AI_UIMessageStreamError
+---
+
+# AI_UIMessageStreamError
+
+当 UI 消息流包含无效或顺序错乱的数据块时，会触发此错误。
+
+常见原因：
+
+- 收到 `text-delta` 数据块，但缺少前置的 `text-start` 数据块
+- 收到 `text-end` 数据块，但缺少前置的 `text-start` 数据块
+- 收到 `reasoning-delta` 数据块，但缺少前置的 `reasoning-start` 数据块
+- 收到 `reasoning-end` 数据块，但缺少前置的 `reasoning-start` 数据块
+- 收到 `tool-input-delta` 数据块，但缺少前置的 `tool-input-start` 数据块
+- 尝试访问不存在的工具调用
+
+当上游请求在**任何令牌流式传输之前**失败，且自定义传输尝试向 UI 流写入内联错误消息但缺少正确的起始数据块时，通常会出现此错误。
+
+## 属性
+
+- `chunkType`：导致错误的数据块类型（例如 `text-delta`、`reasoning-end`、`tool-input-delta`）
+- `chunkId`：与失败数据块关联的 ID（部分 ID 或 toolCallId）
+- `message`：包含错误详细信息的消息
+
+## 检查此错误
+
+您可以使用以下方法检查错误是否为 `AI_UIMessageStreamError` 的实例：
+
+```typescript
+import { UIMessageStreamError } from 'ai';
+
+if (UIMessageStreamError.isInstance(error)) {
+  console.log('数据块类型:', error.chunkType);
+  console.log('数据块 ID:', error.chunkId);
+  // 处理错误
+}
+```
+
+## 常见解决方案
+
+1. **确保数据块顺序正确**：在发送任何 `*-delta` 或 `*-end` 数据块之前，始终先发送对应 ID 的 `*-start` 数据块：
+
+   ```typescript
+   // 正确顺序
+   writer.write({ type: 'text-start', id: 'my-text' });
+   writer.write({ type: 'text-delta', id: 'my-text', delta: '你好' });
+   writer.write({ type: 'text-end', id: 'my-text' });
+   ```
+
+2. **验证 ID 匹配**：确保 `*-delta` 和 `*-end` 数据块中使用的 `id` 与对应 `*-start` 数据块中使用的 `id` 一致。
+
+3. **正确处理错误路径**：在自定义传输中编写错误消息时，确保发出完整的 start/delta/end 序列：
+
+   ```typescript
+   // 在自定义传输中处理错误时
+   writer.write({ type: 'text-start', id: errorId });
+   writer.write({
+     type: 'text-delta',
+     id: errorId,
+     delta: '请求失败...',
+   });
+   writer.write({ type: 'text-end', id: errorId });
+   ```
+
+4. **检查流生产者逻辑**：审查您的流式传输实现，确保数据块按正确顺序发送，尤其是在处理并发操作或合并流时。

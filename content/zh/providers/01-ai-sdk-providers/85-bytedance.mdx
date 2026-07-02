@@ -1,0 +1,352 @@
+---
+title: ByteDance
+description: 了解如何在 AI SDK 中使用 ByteDance Seedance 视频模型。
+---
+
+# ByteDance 提供商
+
+[ByteDance](https://www.bytedance.com/) 提供商通过 [BytePlus ModelArk](https://docs.byteplus.com/en/docs/ModelArk/Video_Generation_API) 平台支持 Seedance 系列视频生成模型。Seedance 提供高质量的文本转视频和图像转视频生成能力，包括音视频同步、首尾帧控制以及多参考图像生成。
+
+## 安装
+
+ByteDance 提供商可通过 `@ai-sdk/bytedance` 模块获取。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/bytedance" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/bytedance" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/bytedance" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/bytedance" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/bytedance` 导入默认的提供商实例 `byteDance`：
+
+```ts
+import { byteDance } from '@ai-sdk/bytedance';
+```
+
+如果你需要自定义设置，可以导入 `createByteDance` 并使用你的配置创建提供商实例：
+
+```ts
+import { createByteDance } from '@ai-sdk/bytedance';
+
+const byteDance = createByteDance({
+  apiKey: 'your-api-key', // 可选，默认为 ARK_API_KEY 环境变量
+  baseURL: 'custom-url', // 可选
+  headers: {
+    /* 自定义请求头 */
+  }, // 可选
+});
+```
+
+你可以使用以下可选设置来自定义 ByteDance 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
+  默认前缀为 `https://ark.ap-southeast.bytepluses.com/api/v3`。
+
+- **apiKey** _string_
+
+  通过 `Authorization` 请求头发送的 API 密钥。
+  默认为 `ARK_API_KEY` 环境变量。
+  你可以从 BytePlus 控制台[获取 API 密钥](https://console.byteplus.com/ark/apiKey)。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  包含在请求中的自定义请求头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  你可以将其用作拦截请求的中间件，
+  或为测试等场景提供自定义 fetch 实现。
+
+## 视频模型
+
+你可以使用 `.video()` 工厂方法创建 ByteDance 视频模型。
+有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
+
+### 文本转视频
+
+根据文本提示词生成视频：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('seedance-1-0-pro-250528'),
+  prompt:
+    'Photorealistic style: Under a clear blue sky, a vast expanse of white daisy fields stretches out. The camera gradually zooms in and fixates on a close-up of a single daisy.',
+  aspectRatio: '16:9',
+  duration: 5,
+  providerOptions: {
+    bytedance: {
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+
+console.log(video.url);
+```
+
+### 图像转视频
+
+根据首帧图像和可选的文本提示词生成视频：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('seedance-1-5-pro-251215'),
+  prompt: {
+    image: 'https://example.com/first-frame.png',
+    text: 'The cat slowly turns its head and blinks',
+  },
+  duration: 5,
+  providerOptions: {
+    bytedance: {
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+```
+
+### 带音频的图像转视频
+
+Seedance 1.5 Pro 支持在生成视频的同时生成同步音频：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('seedance-1-5-pro-251215'),
+  prompt: {
+    image: 'https://example.com/pianist.png',
+    text: 'A young man sits at a piano, playing calmly. Gentle piano music plays in sync with his movements.',
+  },
+  duration: 5,
+  providerOptions: {
+    bytedance: {
+      generateAudio: true,
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+```
+
+### 首尾帧视频
+
+在起始和结束关键帧图像之间生成平滑过渡：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('seedance-1-5-pro-251215'),
+  prompt: {
+    image: 'https://example.com/first-frame.jpg',
+    text: 'Create a 360-degree orbiting camera shot based on this photo',
+  },
+  duration: 5,
+  providerOptions: {
+    bytedance: {
+      lastFrameImage: 'https://example.com/last-frame.jpg',
+      generateAudio: true,
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+```
+
+### 多参考图像转视频
+
+使用 Seedance 1.0 Lite I2V 模型，你可以提供多个参考图像（1-4 张），模型会忠实还原物体的形状、颜色和纹理：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('seedance-1-0-lite-i2v-250428'),
+  prompt:
+    'A boy wearing glasses and a blue T-shirt from [Image 1] and a corgi dog from [Image 2], sitting on the lawn from [Image 3], in 3D cartoon style',
+  aspectRatio: '16:9',
+  duration: 5,
+  providerOptions: {
+    bytedance: {
+      referenceImages: [
+        'https://example.com/boy.png',
+        'https://example.com/corgi.png',
+        'https://example.com/lawn.png',
+      ],
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+```
+
+### 参考视频
+
+Seedance 2.0 支持参考视频，用于指导生成视频的风格、运动或构图：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('dreamina-seedance-2-0-260128'),
+  prompt:
+    'First-person perspective promotional ad, using the composition and camera movement from the reference video',
+  aspectRatio: '16:9',
+  duration: 4,
+  providerOptions: {
+    bytedance: {
+      referenceVideos: ['https://example.com/reference-video.mp4'],
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+```
+
+### 参考音频
+
+Seedance 2.0 支持参考音频，用作生成视频的背景音乐或音效：
+
+```ts
+import {
+  byteDance,
+  type ByteDanceVideoProviderOptions,
+} from '@ai-sdk/bytedance';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: byteDance.video('dreamina-seedance-2-0-260128'),
+  prompt: 'A serene mountain landscape at sunrise with gentle camera movement',
+  aspectRatio: '16:9',
+  duration: 4,
+  providerOptions: {
+    bytedance: {
+      referenceAudio: ['https://example.com/background-music.mp3'],
+      generateAudio: true,
+      watermark: false,
+    } satisfies ByteDanceVideoProviderOptions,
+  },
+});
+```
+
+### 视频提供商选项
+
+以下提供商选项可通过 `providerOptions.bytedance` 使用：
+
+#### 生成选项
+
+- **watermark** _boolean_
+
+  是否在生成的视频中添加水印。
+
+- **generateAudio** _boolean_
+
+  是否为视频生成同步音频。仅 Seedance 1.5 Pro 支持。
+
+- **cameraFixed** _boolean_
+
+  是否在生成过程中固定相机。
+
+- **returnLastFrame** _boolean_
+
+  是否返回生成视频的最后一帧。适用于串联连续视频。
+
+- **serviceTier** _'default' | 'flex'_
+
+  推理层级。`'default'` 用于在线推理。`'flex'` 用于离线推理，价格为 50%，但延迟更高（响应时间以小时计）。
+
+- **draft** _boolean_
+
+  启用草稿样本模式，用于低成本预览生成。仅 Seedance 1.5 Pro 支持。生成 480p 预览视频，以便在提交全质量生成之前快速迭代。
+
+#### 图像输入选项
+
+- **lastFrameImage** _string_
+
+  用于首尾帧视频生成的最后一帧图像 URL。模型在首帧（通过 `image` 提示词提供）和此尾帧之间生成平滑过渡。Seedance 1.5 Pro、1.0 Pro 和 1.0 Lite I2V 支持。
+
+- **referenceImages** _string[]_
+
+  用于多参考图像转视频生成的参考图像 URL 数组（1-4 张图像）。模型从每张图像中提取关键特征并在视频中还原。在提示词中使用 `[Image 1]`、`[Image 2]` 等来引用特定图像。Seedance 1.0 Lite I2V 支持。
+
+#### 媒体参考选项
+
+- **referenceVideos** _string[]_
+
+  用于参考引导视频生成的参考视频 URL 数组（最多 3 个视频，每个最长 15 秒）。模型使用参考视频来指导风格、运动或构图。Seedance 2.0 支持。
+
+- **referenceAudio** _string[]_
+
+  用于音频引导视频生成的参考音频 URL 数组（最多 3 个，每个最长 15 秒）。模型使用参考音频作为背景音乐或同步音效。支持数据 URI（例如 `data:audio/wav;base64,...`）。Seedance 2.0 支持。
+
+#### 轮询选项
+
+- **pollIntervalMs** _number_
+
+  控制视频处理期间检查 API 完成状态的频率。默认为 3000 毫秒。
+
+- **pollTimeoutMs** _number_
+
+  等待视频生成完成的最长时间，超时后停止。默认为 300000 毫秒（5 分钟）。
+
+<Note>
+  视频生成是一个异步过程，可能需要几分钟时间。建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000 毫秒）以确保可靠运行。
+</Note>
+
+### 视频模型能力
+
+| 模型                   | 模型 ID                             | 能力                                                                                                                                     |
+| ----------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Seedance 2.0            | `dreamina-seedance-2-0-260128`      | T2V、I2V、参考视频（最多 3 个）、参考音频（最多 3 个）、音视频同步。时长：4-15 秒。分辨率：480p、720p。                      |
+| Seedance 2.0 Fast       | `dreamina-seedance-2-0-fast-260128` | T2V、I2V、参考视频（最多 3 个）、参考音频（最多 3 个）、音视频同步。针对速度优化。时长：4-15 秒。分辨率：480p、720p。 |
+| Seedance 1.5 Pro        | `seedance-1-5-pro-251215`           | T2V、I2V（首帧）、I2V（首尾帧）、音视频同步、草稿模式。时长：4-12 秒。分辨率：480p、720p、1080p。                    |
+| Seedance 1.0 Pro        | `seedance-1-0-pro-250528`           | T2V、I2V（首帧）、I2V（首尾帧）。时长：2-12 秒。分辨率：480p、720p、1080p。                                                  |
+| Seedance 1.0 Pro Fast   | `seedance-1-0-pro-fast-251015`      | T2V、I2V（首帧）。针对速度和成本优化。时长：2-12 秒。                                                                           |
+| Seedance 1.0 Lite (T2V) | `seedance-1-0-lite-t2v-250428`      | 仅文本转视频。时长：2-12 秒。分辨率：480p、720p、1080p。                                                                              |
+| Seedance 1.0 Lite (I2V) | `seedance-1-0-lite-i2v-250428`      | I2V（首帧）、I2V（首尾帧）、多参考图像（1-4 张）。时长：2-12 秒。分辨率：480p、720p。                                |
+
+支持的宽高比：`16:9`、`4:3`、`1:1`、`3:4`、`9:16`、`21:9`、`adaptive`（仅图像转视频）。
+
+所有模型输出 24 fps 的 MP4 视频。
+
+<Note>
+  如有需要，你也可以传递任何模型 ID 字符串，例如用于此处尚未列出的未来模型。
+</Note>

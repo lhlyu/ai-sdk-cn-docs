@@ -1,0 +1,165 @@
+---
+title: OpenCode
+description: 了解如何使用 OpenCode 提供商，通过统一接口访问多个 AI 模型。
+---
+
+# OpenCode 提供商
+
+[ai-sdk-provider-opencode-sdk](https://github.com/ben-vargas/ai-sdk-provider-opencode-sdk) 社区提供商支持通过 [OpenCode SDK](https://www.npmjs.com/package/@opencode-ai/sdk) 使用多个 AI 提供商（Anthropic、OpenAI、Google）。OpenCode 是一个基于终端的 AI 编码助手，为各种 AI 模型提供统一接口。
+
+## 版本兼容性
+
+| 提供商版本 | AI SDK 版本 | NPM 标签    | 状态     |
+| ---------- | ----------- | ----------- | -------- |
+| 1.x        | v6          | `latest`    | 稳定     |
+| 0.x        | v5          | `ai-sdk-v5` | 维护中   |
+
+```bash
+# AI SDK v6（默认）
+npm install ai-sdk-provider-opencode-sdk ai
+
+# AI SDK v5
+npm install ai-sdk-provider-opencode-sdk@ai-sdk-v5 ai@^5.0.0
+```
+
+## 安装
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add ai-sdk-provider-opencode-sdk" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install ai-sdk-provider-opencode-sdk" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add ai-sdk-provider-opencode-sdk" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="bun add ai-sdk-provider-opencode-sdk" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `ai-sdk-provider-opencode-sdk` 导入默认的提供商实例 `opencode`：
+
+```ts
+import { opencode } from 'ai-sdk-provider-opencode-sdk';
+```
+
+如果需要自定义设置，可以导入 `createOpencode` 并使用你的配置创建提供商实例：
+
+```ts
+import { createOpencode } from 'ai-sdk-provider-opencode-sdk';
+
+const opencode = createOpencode({
+  autoStartServer: true,
+  serverTimeout: 10000,
+  defaultSettings: {
+    agent: 'build',
+  },
+});
+```
+
+提供商设置：
+
+- **hostname** _string_ - 服务器主机名（默认：`127.0.0.1`）。
+- **port** _number_ - 服务器端口（默认：`4096`）。
+- **autoStartServer** _boolean_ - 自动启动 OpenCode 服务器（默认：`true`）。
+- **serverTimeout** _number_ - 服务器启动超时时间，单位毫秒（默认：`10000`）。
+- **defaultSettings** _object_ - 应用于所有模型调用的默认设置。
+
+## 语言模型
+
+模型使用 `providerID/modelID` 格式指定：
+
+```ts
+const model = opencode('anthropic/claude-sonnet-4-5-20250929');
+```
+
+**模型快捷方式**（导出为 `OpencodeModels`）：
+
+```ts
+import { OpencodeModels } from 'ai-sdk-provider-opencode-sdk';
+
+// Anthropic Claude
+opencode(OpencodeModels['claude-opus-4-5']); // anthropic/claude-opus-4-5-20251101
+opencode(OpencodeModels['claude-sonnet-4-5']); // anthropic/claude-sonnet-4-5-20250929
+opencode(OpencodeModels['claude-haiku-4-5']); // anthropic/claude-haiku-4-5-20251001
+
+// OpenAI GPT
+opencode(OpencodeModels['gpt-4o']); // openai/gpt-4o
+opencode(OpencodeModels['gpt-4o-mini']); // openai/gpt-4o-mini
+
+// Google Gemini
+opencode(OpencodeModels['gemini-3.1-pro-preview']); // google/gemini-3.1-pro-preview
+opencode(OpencodeModels['gemini-2.5-pro']); // google/gemini-2.5-pro
+opencode(OpencodeModels['gemini-2.5-flash']); // google/gemini-2.5-flash
+opencode(OpencodeModels['gemini-2.0-flash']); // google/gemini-2.0-flash
+```
+
+你也可以使用完整的模型标识符：
+
+```ts
+opencode('openai/gpt-5.1-codex');
+opencode('openai/gpt-5.1-codex-max');
+opencode('google/gemini-3.1-pro-preview');
+```
+
+### 示例
+
+```ts
+import { opencode } from 'ai-sdk-provider-opencode-sdk';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: opencode('anthropic/claude-sonnet-4-5-20250929'),
+  prompt: '写一份适合4人份的素食千层面食谱。',
+});
+```
+
+### 模型设置
+
+```ts
+const model = opencode('anthropic/claude-opus-4-5-20251101', {
+  agent: 'build', // 'build' | 'plan' | 'general' | 'explore'
+  sessionTitle: '我的任务',
+  systemPrompt: '你是一个乐于助人的助手。',
+});
+```
+
+### 模型能力
+
+| 提供商   | 图像输入             | 对象生成             | 工具使用             | 工具流式传输         |
+| -------- | -------------------- | -------------------- | -------------------- | -------------------- |
+| Anthropic | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| OpenAI   | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| Google   | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+
+<Note>
+  工具使用和工具流式传输显示 ❌，因为此提供商不支持 AI SDK 自定义工具（通过 Zod 模式传递给 `generateText`/`streamText`）。自定义工具定义会被明确忽略。OpenCode 在服务端执行工具，可通过流式传输事件观察到。图像输入仅支持数据 URL 和 base64。对象生成使用基于提示词的 JSON 模式。
+</Note>
+
+## 服务器管理
+
+OpenCode 作为托管服务器运行。使用完毕后，请确保释放提供商：
+
+```ts
+import { opencode } from 'ai-sdk-provider-opencode-sdk';
+
+// 使用完毕后
+await opencode.dispose();
+
+// 或者如果需要直接访问客户端管理器：
+// await opencode.getClientManager().dispose();
+```
+
+客户端管理器会在进程退出时（SIGINT、SIGTERM）自动清理。
+
+## 要求
+
+- Node.js 22 或更高版本
+- 已安装 OpenCode CLI（`npm install -g opencode`）
+- 在 OpenCode 中配置了提供商凭证（Anthropic、OpenAI 或 Google API 密钥）
+
+更多详情，请参阅[提供商文档](https://github.com/ben-vargas/ai-sdk-provider-opencode-sdk)。

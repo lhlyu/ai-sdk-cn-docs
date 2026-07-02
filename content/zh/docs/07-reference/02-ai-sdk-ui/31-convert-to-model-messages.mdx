@@ -1,0 +1,255 @@
+---
+title: convertToModelMessages
+description: 将 useChat 消息转换为 AI 函数可用的 ModelMessages（API 参考）
+---
+
+# `convertToModelMessages()`
+
+`convertToModelMessages` 函数用于将 `useChat` Hook 中的 UI 消息数组转换为 `ModelMessage` 对象数组。这些 `ModelMessage` 对象与 `streamText` 等 AI 核心函数兼容。
+
+```ts filename="app/api/chat/route.ts"
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+__PROVIDER_IMPORT__;
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    messages: await convertToModelMessages(messages),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+## 导入
+
+<Snippet text={`import { convertToModelMessages } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'messages',
+      type: 'Message[]',
+      description:
+        '来自 useChat Hook 的 UI 消息数组，需要被转换',
+    },
+    {
+      name: 'options',
+      type: '{ tools?: ToolSet, ignoreIncompleteToolCalls?: boolean, convertDataPart?: (part: DataUIPart) => TextPart | FilePart | undefined }',
+      description:
+        '可选配置对象。提供 tools 以启用多模态工具响应。设置 ignoreIncompleteToolCalls 为 true 可跳过没有结果的工具调用（默认值：false）。使用 convertDataPart 将自定义数据部分转换为模型兼容的内容。',
+    },
+  ]}
+/>
+
+### 返回值
+
+一个 Promise，解析为 [`ModelMessage`](/docs/reference/ai-sdk-core/model-message) 对象数组。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'Promise<ModelMessage[]>',
+      type: 'Promise',
+      description:
+        '一个 Promise，解析为 ModelMessage 对象数组',
+    },
+  ]}
+/>
+
+## 工具审批状态
+
+`convertToModelMessages` 在将 UI 消息转换回 `ModelMessage` 以用于后续的 `generateText` 或 `streamText` 调用时，会保留工具审批状态。
+
+- 处于 `approval-requested` 状态的工具部分变为 `tool-approval-request` 内容部分。
+- 处于 `approval-responded` 状态的工具部分变为 `tool-approval-response` 内容部分，包含 `reason`（如果存在）。
+- 自动审批元数据通过转发 `approval.isAutomatic` 到 `tool-approval-request` 部分来保留。
+- 被拒绝的工具审批也会生成一个合成的 `tool-result`，包含 `output: { type: 'execution-denied', reason?: string }`，以便模型获得完整的工具生命周期，并在下一步中对拒绝做出响应。
+
+## 多模态工具响应
+
+`convertToModelMessages` 函数支持可以返回多模态内容的工具。这在工具需要返回非文本内容（如图像）时非常有用。
+
+```ts
+import { tool } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const screenshotTool = tool({
+  inputSchema: z.object({}),
+  execute: async () => 'imgbase64',
+  toModelOutput: ({ output }) => [
+    { type: 'file-data', data: output, mediaType: 'image/png' },
+  ],
+});
+
+const result = streamText({
+  model: __MODEL__,
+  messages: convertToModelMessages(messages, {
+    tools: {
+      screenshot: screenshotTool,
+    },
+  }),
+});
+```
+
+工具可以实现可选的 `toModelOutput` 方法，将其结果转换为多模态内容。内容是一个内容部分数组，每个部分都有一个 `type`（例如 'text'、'image'）和相应的数据。
+
+## 自定义数据部分转换
+
+`convertToModelMessages` 函数支持转换附加到用户消息的自定义数据部分。这在用户需要在其消息中包含额外上下文（URL、代码文件、JSON 配置）时非常有用。
+
+### 基本用法
+
+默认情况下，用户消息中的数据部分在转换过程中会被过滤掉。要包含它们，请提供一个 `convertDataPart` 回调，将数据部分转换为模型可以理解的文本或文件部分：
+
+```ts filename="app/api/chat/route.ts"
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+} from 'ai';
+
+type CustomUIMessage = UIMessage<
+  never,
+  {
+    url: { url: string; title: string; content: string };
+    'code-file': { filename: string; code: string; language: string };
+  }
+>;
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: __MODEL__,
+    messages: convertToModelMessages<CustomUIMessage>(messages, {
+      convertDataPart: part => {
+        // 将 URL 附件转换为文本
+        if (part.type === 'data-url') {
+          return {
+            type: 'text',
+            text: `[参考: ${part.data.title}](${part.data.url})\n\n${part.data.content}`,
+          };
+        }
+
+        // 将代码文件附件转换为文本
+        if (part.type === 'data-code-file') {
+          return {
+            type: 'text',
+            text: `\`\`\`${part.data.language}\n// ${part.data.filename}\n${part.data.code}\n\`\`\``,
+          };
+        }
+
+        // 其他数据部分被忽略
+      },
+    }),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+### 使用场景
+
+**附加 URL 内容**
+允许用户将 URL 附加到其消息中，内容被获取并格式化为模型可用的形式：
+
+```ts
+// 客户端
+sendMessage({
+  parts: [
+    { type: 'text', text: '分析这篇文章' },
+    {
+      type: 'data-url',
+      data: {
+        url: 'https://example.com/article',
+        title: '重要文章',
+        content: '...',
+      },
+    },
+  ],
+});
+```
+
+**包含代码文件作为上下文**
+让用户在对话中引用代码文件：
+
+```ts
+convertDataPart: part => {
+  if (part.type === 'data-code-file') {
+    return {
+      type: 'text',
+      text: `\`\`\`${part.data.language}\n${part.data.code}\n\`\`\``,
+    };
+  }
+};
+```
+
+**选择性包含**
+只有你返回文本或文件模型消息部分的数据部分才会被包含，其他所有数据部分都会被忽略。
+
+```ts
+const result = convertToModelMessages<
+  UIMessage<
+    unknown,
+    {
+      url: { url: string; title: string };
+      code: { code: string; language: string };
+      note: { text: string };
+    }
+  >
+>(messages, {
+  convertDataPart: part => {
+    if (part.type === 'data-url') {
+      return {
+        type: 'text',
+        text: `[${part.data.title}](${part.data.url})`,
+      };
+    }
+
+    // data-code 和 data-node 被忽略
+  },
+});
+```
+
+### 类型安全
+
+泛型参数确保自定义数据部分的完全类型安全：
+
+```ts
+type MyUIMessage = UIMessage<
+  unknown,
+  {
+    url: { url: string; content: string };
+    config: { key: string; value: string };
+  }
+>;
+
+// TypeScript 知道 part.data 的确切形状
+convertToModelMessages<MyUIMessage>(messages, {
+  convertDataPart: part => {
+    if (part.type === 'data-url') {
+      // part.data 的类型为 { url: string; content: string }
+      return { type: 'text', text: part.data.url };
+    }
+    // 返回 undefined 以跳过此部分
+  },
+});
+```

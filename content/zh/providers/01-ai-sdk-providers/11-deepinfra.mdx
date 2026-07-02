@@ -1,0 +1,289 @@
+---
+title: DeepInfra
+description: 了解如何通过 AI SDK 使用 DeepInfra 的模型。
+---
+
+# DeepInfra 提供商
+
+[DeepInfra](https://deepinfra.com) 提供商支持通过 DeepInfra API 使用最先进的模型，包括 Llama 3、Mixtral、Qwen 以及许多其他流行的开源模型。
+
+## 安装
+
+DeepInfra 提供商可通过 `@ai-sdk/deepinfra` 模块获得。你可以使用以下命令安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/deepinfra" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/deepinfra" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/deepinfra" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/deepinfra" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/deepinfra` 导入默认的提供商实例 `deepInfra`：
+
+```ts
+import { deepInfra } from '@ai-sdk/deepinfra';
+```
+
+如果你需要自定义设置，可以从 `@ai-sdk/deepinfra` 导入 `createDeepInfra` 并使用你的设置创建提供商实例：
+
+```ts
+import { createDeepInfra } from '@ai-sdk/deepinfra';
+
+const deepInfra = createDeepInfra({
+  apiKey: process.env.DEEPINFRA_API_KEY ?? '',
+});
+```
+
+你可以使用以下可选设置来自定义 DeepInfra 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
+  默认前缀是 `https://api.deepinfra.com/v1`。
+
+  注意：语言模型和嵌入使用 OpenAI 兼容的端点，位于 `{baseURL}/openai`，
+  而图像模型使用 `{baseURL}/inference`。
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。它默认为
+  `DEEPINFRA_API_KEY` 环境变量。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作拦截请求的中间件，
+  或为测试等提供自定义的 fetch 实现。
+
+## 语言模型
+
+你可以使用提供商实例创建语言模型。第一个参数是模型 ID，例如：
+
+```ts
+import { deepInfra } from '@ai-sdk/deepinfra';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: deepInfra('meta-llama/Meta-Llama-3.1-70B-Instruct'),
+  prompt: '写一份供4人食用的素食千层面食谱。',
+});
+```
+
+DeepInfra 语言模型也可以在 `streamText` 函数中使用（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+
+## 模型能力
+
+| 模型                                               | 图像输入            | 对象生成            | 工具使用            | 工具流式传输        |
+| --------------------------------------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8` | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `meta-llama/Llama-4-Scout-17B-16E-Instruct`         | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `meta-llama/Llama-3.3-70B-Instruct-Turbo`           | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Llama-3.3-70B-Instruct`                 | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Meta-Llama-3.1-405B-Instruct`           | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo`      | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Meta-Llama-3.1-70B-Instruct`            | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo`       | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `meta-llama/Meta-Llama-3.1-8B-Instruct`             | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `meta-llama/Llama-3.2-11B-Vision-Instruct`          | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `meta-llama/Llama-3.2-90B-Vision-Instruct`          | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `mistralai/Mixtral-8x7B-Instruct-v0.1`              | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `deepseek-ai/DeepSeek-V3`                           | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `deepseek-ai/DeepSeek-R1`                           | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `deepseek-ai/DeepSeek-R1-Distill-Llama-70B`         | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `deepseek-ai/DeepSeek-R1-Turbo`                     | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `nvidia/Llama-3.1-Nemotron-70B-Instruct`            | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
+| `Qwen/Qwen2-7B-Instruct`                            | <Cross size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `Qwen/Qwen2.5-72B-Instruct`                         | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `Qwen/Qwen2.5-Coder-32B-Instruct`                   | <Cross size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `Qwen/QwQ-32B-Preview`                              | <Cross size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `google/codegemma-7b-it`                            | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `google/gemma-2-9b-it`                              | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| `microsoft/WizardLM-2-8x22B`                        | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+
+<Note>
+  上表列出了热门模型。请参阅 [DeepInfra
+  文档](https://deepinfra.com) 获取完整的可用模型列表。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+</Note>
+
+## 图像模型
+
+你可以使用 `.image()` 工厂方法创建 DeepInfra 图像模型。
+有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+
+```ts
+import { deepInfra } from '@ai-sdk/deepinfra';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: deepInfra.image('stabilityai/sd3.5'),
+  prompt: '日落时分的未来城市景观',
+  aspectRatio: '16:9',
+});
+```
+
+<Note>
+  模型对 `size` 和 `aspectRatio` 参数的支持因模型而异。请查看 [DeepInfra 的模型页面](https://deepinfra.com/models/text-to-image) 上的各个模型文档，了解支持的选项和其他参数。
+</Note>
+
+### 模型特定选项
+
+你可以使用 `providerOptions.deepinfra` 字段传递模型特定参数：
+
+```ts
+import { deepInfra } from '@ai-sdk/deepinfra';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: deepInfra.image('stabilityai/sd3.5'),
+  prompt: '日落时分的未来城市景观',
+  aspectRatio: '16:9',
+  providerOptions: {
+    deepinfra: {
+      num_inference_steps: 30, // 控制去噪步数 (1-50)
+    },
+  },
+});
+```
+
+### 图像编辑
+
+DeepInfra 通过 `Qwen/Qwen-Image-Edit` 等模型支持图像编辑。通过 `prompt.images` 传递输入图像，以转换或编辑现有图像。
+
+#### 基本图像编辑
+
+使用文本提示转换现有图像：
+
+```ts
+const imageBuffer = readFileSync('./input-image.png');
+
+const { images } = await generateImage({
+  model: deepInfra.image('Qwen/Qwen-Image-Edit'),
+  prompt: {
+    text: '把猫变成一只金毛寻回犬',
+    images: [imageBuffer],
+  },
+  size: '1024x1024',
+});
+```
+
+#### 使用蒙版进行修复
+
+使用蒙版编辑图像的特定部分。蒙版中的透明区域表示应编辑图像的位置：
+
+```ts
+const image = readFileSync('./input-image.png');
+const mask = readFileSync('./mask.png');
+
+const { images } = await generateImage({
+  model: deepInfra.image('Qwen/Qwen-Image-Edit'),
+  prompt: {
+    text: '一个阳光明媚的室内休闲区，带有一个有火烈鸟的游泳池',
+    images: [image],
+    mask: mask,
+  },
+});
+```
+
+#### 多图像组合
+
+将多个参考图像组合成一个输出：
+
+```ts
+const cat = readFileSync('./cat.png');
+const dog = readFileSync('./dog.png');
+
+const { images } = await generateImage({
+  model: deepInfra.image('Qwen/Qwen-Image-Edit'),
+  prompt: {
+    text: '创建一个场景，让两只动物在一起，像朋友一样玩耍',
+    images: [cat, dog],
+  },
+});
+```
+
+<Note>
+  输入图像可以作为 `Buffer`、`ArrayBuffer`、`Uint8Array` 或
+  base64 编码的字符串提供。DeepInfra 在 `https://api.deepinfra.com/v1/openai/images/edits` 使用 OpenAI 兼容的图像编辑 API。
+</Note>
+
+### 模型能力
+
+对于支持宽高比的模型，通常支持以下比例：
+`1:1 (默认), 16:9, 1:9, 3:2, 2:3, 4:5, 5:4, 9:16, 9:21`
+
+对于支持尺寸参数的模型，尺寸通常必须满足：
+
+- 是 32 的倍数
+- 宽度和高度在 256 到 1440 像素之间
+- 默认尺寸为 1024x1024
+
+| 模型                                  | 尺寸规范             | 备注                                                    |
+| -------------------------------------- | ------------------------ | -------------------------------------------------------- |
+| `stabilityai/sd3.5`                    | 宽高比             | 优质基础模型，8B 参数                |
+| `black-forest-labs/FLUX-1.1-pro`       | 尺寸                     | 最新的最先进模型，具有卓越的提示跟随能力 |
+| `black-forest-labs/FLUX-1-schnell`     | 尺寸                     | 1-4 步快速生成                             |
+| `black-forest-labs/FLUX-1-dev`         | 尺寸                     | 针对解剖学准确性进行了优化                        |
+| `black-forest-labs/FLUX-pro`           | 尺寸                     | 旗舰 Flux 模型                                      |
+| `black-forest-labs/FLUX.1-Kontext-dev` | 尺寸                     | 图像编辑和转换模型                   |
+| `black-forest-labs/FLUX.1-Kontext-pro` | 尺寸                     | 专业图像编辑和转换            |
+| `stabilityai/sd3.5-medium`             | 宽高比             | 平衡的 2.5B 参数模型                            |
+| `stabilityai/sdxl-turbo`               | 宽高比             | 针对快速生成进行了优化            |
+
+有关更多详细信息和定价信息，请参阅 [DeepInfra 文本到图像模型页面](https://deepinfra.com/models/text-to-image)。
+
+## 嵌入模型
+
+你可以使用 `.embeddingModel()` 工厂方法创建 DeepInfra 嵌入模型。
+有关使用 AI SDK 进行嵌入模型的更多信息，请参见 [embed()](/docs/reference/ai-sdk-core/embed)。
+
+```ts
+import { deepInfra } from '@ai-sdk/deepinfra';
+import { embed } from 'ai';
+
+const { embedding } = await embed({
+  model: deepInfra.embeddingModel('BAAI/bge-large-en-v1.5'),
+  value: '阳光明媚的海滩日',
+});
+```
+
+### 模型能力
+
+| 模型                                                 | 维度 | 最大令牌数 |
+| ----------------------------------------------------- | ---------- | ---------- |
+| `BAAI/bge-base-en-v1.5`                               | 768        | 512        |
+| `BAAI/bge-large-en-v1.5`                              | 1024       | 512        |
+| `BAAI/bge-m3`                                         | 1024       | 8192       |
+| `intfloat/e5-base-v2`                                 | 768        | 512        |
+| `intfloat/e5-large-v2`                                | 1024       | 512        |
+| `intfloat/multilingual-e5-large`                      | 1024       | 512        |
+| `sentence-transformers/all-MiniLM-L12-v2`             | 384        | 256        |
+| `sentence-transformers/all-MiniLM-L6-v2`              | 384        | 256        |
+| `sentence-transformers/all-mpnet-base-v2`             | 768        | 384        |
+| `sentence-transformers/clip-ViT-B-32`                 | 512        | 77         |
+| `sentence-transformers/clip-ViT-B-32-multilingual-v1` | 512        | 77         |
+| `sentence-transformers/multi-qa-mpnet-base-dot-v1`    | 768        | 512        |
+| `sentence-transformers/paraphrase-MiniLM-L6-v2`       | 384        | 128        |
+| `shibing624/text2vec-base-chinese`                    | 768        | 512        |
+| `thenlper/gte-base`                                   | 768        | 512        |
+| `thenlper/gte-large`                                  | 1024       | 512        |
+
+<Note>
+  有关可用嵌入模型的完整列表，请参阅 [DeepInfra
+  嵌入页面](https://deepinfra.com/models/embeddings)。
+</Note>

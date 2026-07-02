@@ -1,0 +1,104 @@
+---
+title: 读取 UIMessage 流
+description: 学习如何读取 UIMessage 流。
+---
+
+# 读取 UI 消息流
+
+`UIMessage` 流在传统聊天场景之外也很有用。你可以将其用于终端 UI、客户端自定义流处理或 React 服务器组件 (RSC)。
+
+`readUIMessageStream` 辅助函数将 `UIMessageChunk` 对象流转换为 `UIMessage` 对象的 `AsyncIterableStream`，让你能够在消息构建过程中对其进行处理。
+
+## 基本用法
+
+```tsx
+import { readUIMessageStream, streamText, toUIMessageStream } from 'ai';
+__PROVIDER_IMPORT__;
+
+async function main() {
+  const result = streamText({
+    model: __MODEL__,
+    prompt: '写一个关于机器人的短篇故事。',
+  });
+
+  for await (const uiMessage of readUIMessageStream({
+    stream: toUIMessageStream({ stream: result.stream }),
+  })) {
+    console.log('当前消息状态:', uiMessage);
+  }
+}
+```
+
+## 工具调用集成
+
+处理包含工具调用的流式响应：
+
+```tsx
+import { readUIMessageStream, streamText, toUIMessageStream, tool } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+async function handleToolCalls() {
+  const result = streamText({
+    model: __MODEL__,
+    tools: {
+      weather: tool({
+        description: '获取某个地点的天气',
+        inputSchema: z.object({
+          location: z.string().describe('要获取天气的地点'),
+        }),
+        execute: ({ location }) => ({
+          location,
+          temperature: 72 + Math.floor(Math.random() * 21) - 10,
+        }),
+      }),
+    },
+    prompt: '东京的天气怎么样？',
+  });
+
+  for await (const uiMessage of readUIMessageStream({
+    stream: toUIMessageStream({ stream: result.stream }),
+  })) {
+    // 处理不同的部分类型
+    uiMessage.parts.forEach(part => {
+      switch (part.type) {
+        case 'text':
+          console.log('文本:', part.text);
+          break;
+        case 'tool-call':
+          console.log('调用的工具:', part.toolName, '参数:', part.args);
+          break;
+        case 'tool-result':
+          console.log('工具结果:', part.result);
+          break;
+      }
+    });
+  }
+}
+```
+
+## 恢复对话
+
+从先前的消息状态恢复流式传输：
+
+```tsx
+import { readUIMessageStream, streamText, toUIMessageStream } from 'ai';
+__PROVIDER_IMPORT__;
+
+async function resumeConversation(lastMessage: UIMessage) {
+  const result = streamText({
+    model: __MODEL__,
+    messages: [
+      { role: 'user', content: '继续我们之前的对话。' },
+    ],
+  });
+
+  // 从最后一条消息恢复
+  for await (const uiMessage of readUIMessageStream({
+    stream: toUIMessageStream({ stream: result.stream }),
+    message: lastMessage, // 从此消息恢复
+  })) {
+    console.log('恢复后的消息:', uiMessage);
+  }
+}
+```

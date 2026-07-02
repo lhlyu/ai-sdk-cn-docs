@@ -1,0 +1,90 @@
+---
+title: uploadFile
+description: uploadFile 的 API 参考文档。
+---
+
+# `uploadFile()`
+
+将文件上传到提供商，并返回一个 `ProviderReference`，该引用可用于后续的 API 调用，例如在传递给 `generateText` 或 `streamText` 的消息内容部分中。
+
+```ts
+import { uploadFile } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import fs from 'node:fs';
+
+const { providerReference } = await uploadFile({
+  api: openai.files(),
+  data: fs.readFileSync('./photo.png'),
+  filename: 'photo.png',
+});
+```
+
+## 导入
+
+<Snippet text={`import { uploadFile } from "ai"`} prompt={false} />
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'api',
+      type: 'FilesV4 | ProviderV4',
+      description:
+        '用于上传的文件 API 接口。可以是 `FilesV4` 实例（例如 `openai.files()`），也可以是提供商实例本身（例如 `openai`），此时会自动调用 `.files()`。',
+    },
+    {
+      name: 'data',
+      type: 'DataContent',
+      description:
+        '要上传的文件数据。可以是 `Uint8Array`、base64 编码的字符串、`ArrayBuffer` 或 `Buffer`。不支持 URL——请先获取内容再传入字节。',
+    },
+    {
+      name: 'mediaType',
+      type: 'string',
+      isOptional: true,
+      description:
+        '文件的 IANA 媒体类型（例如 `image/png`、`application/pdf`）。如果未提供，则从文件字节自动检测。',
+    },
+    {
+      name: 'filename',
+      type: 'string',
+      isOptional: true,
+      description: '上传文件的文件名。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description:
+        '额外的提供商特定选项。例如，OpenAI 需要 `purpose` 字段。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'providerReference',
+      type: 'ProviderReference',
+      description:
+        '一个 `Record<string, string>`，将提供商名称映射到提供商特定的文件标识符。将其作为消息内容部分中的 `data` 或 `image` 字段传递。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata',
+      isOptional: true,
+      description:
+        '上传返回的额外提供商特定元数据。',
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description: '来自提供商的警告（例如不支持的设置）。',
+    },
+  ]}
+/>

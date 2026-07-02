@@ -1,0 +1,160 @@
+---
+title: 流式传输用户界面后记录 Token 用量
+description: 了解如何使用 AI SDK 和 React Server Components 在流式传输用户界面后记录 Token 用量
+tags: ['rsc', 'usage']
+---
+
+# 流式传输用户界面后记录 Token 用量
+
+当你使用 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui) 流式传输结构化数据时，
+你可能需要记录 Token 用量以用于计费目的。
+
+## `onFinish` 回调
+
+你可以使用 `onFinish` 回调来记录 Token 用量。
+该回调在流式传输完成时被调用。
+
+```tsx filename='app/page.tsx'
+'use client';
+
+import { useState } from 'react';
+import { ClientMessage } from './actions';
+import { useActions, useUIState } from '@ai-sdk/rsc';
+import { generateId } from 'ai';
+
+// 允许流式响应最长 30 秒
+export const maxDuration = 30;
+
+export default function Home() {
+  const [input, setInput] = useState<string>('');
+  const [conversation, setConversation] = useUIState();
+  const { continueConversation } = useActions();
+
+  return (
+    <div>
+      <div>
+        {conversation.map((message: ClientMessage) => (
+          <div key={message.id}>
+            {message.role}: {message.display}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <input
+          type="text"
+          value={input}
+          onChange={event => {
+            setInput(event.target.value);
+          }}
+        />
+        <button
+          onClick={async () => {
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              { id: generateId(), role: 'user', display: input },
+            ]);
+
+            const message = await continueConversation(input);
+
+            setConversation((currentConversation: ClientMessage[]) => [
+              ...currentConversation,
+              message,
+            ]);
+          }}
+        >
+          发送消息
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+## 服务端
+
+```tsx filename='app/actions.tsx' highlight={"57-63"}
+'use server';
+
+import { getMutableAIState, streamUI } from '@ai-sdk/rsc';
+import { ReactNode } from 'react';
+import { z } from 'zod';
+import { generateId } from 'ai';
+
+export interface ServerMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ClientMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  display: ReactNode;
+}
+
+export async function continueConversation(
+  input: string,
+): Promise<ClientMessage> {
+  'use server';
+
+  const history = getMutableAIState();
+
+  const result = await streamUI({
+    model: 'openai/gpt-5.4',
+    messages: [...history.get(), { role: 'user', content: input }],
+    text: ({ content, done }) => {
+      if (done) {
+        history.done((messages: ServerMessage[]) => [
+          ...messages,
+          { role: 'assistant', content },
+        ]);
+      }
+
+      return <div>{content}</div>;
+    },
+    tools: {
+      deploy: {
+        description: '将仓库部署到 Vercel',
+        inputSchema: z.object({
+          repositoryName: z
+            .string()
+            .describe('仓库名称，例如：vercel/ai-chatbot'),
+        }),
+        generate: async function* ({ repositoryName }) {
+          yield <div>正在克隆仓库 {repositoryName}...</div>; // [!code highlight:5]
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          yield <div>正在构建仓库 {repositoryName}...</div>;
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return <div>{repositoryName} 已部署！</div>;
+        },
+      },
+    },
+    onFinish: ({ usage }) => {
+      const { promptTokens, completionTokens, totalTokens } = usage;
+      // 你自己的逻辑，例如保存聊天历史或记录用量
+      console.log('提示词 Token 数：', promptTokens);
+      console.log('补全 Token 数：', completionTokens);
+      console.log('总 Token 数：', totalTokens);
+    },
+  });
+
+  return {
+    id: generateId(),
+    role: 'assistant',
+    display: result.value,
+  };
+}
+```
+
+```typescript filename='app/ai.ts'
+import { createAI } from '@ai-sdk/rsc';
+import { ServerMessage, ClientMessage, continueConversation } from './actions';
+
+export const AI = createAI<ServerMessage[], ClientMessage[]>({
+  actions: {
+    continueConversation,
+  },
+  initialAIState: [],
+  initialUIState: [],
+});
+```

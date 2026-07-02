@@ -1,0 +1,145 @@
+---
+title: SigNoz
+description: 使用 SigNoz 监控、观测和调试您的 AI SDK 应用
+---
+
+# SigNoz 可观测性
+
+[SigNoz](https://signoz.io/) 是一款满足您所有监控和可观测性需求的单一工具。以下是您应选择 SigNoz 的几个理由：
+
+- 单一工具即可实现可观测性（日志、指标和链路追踪）
+- 基于 [OpenTelemetry](https://opentelemetry.io/) 开源标准构建，让您摆脱任何形式的供应商锁定
+- 关联日志、指标和链路追踪，在调试时提供更丰富的上下文
+- 使用 ClickHouse（被 Uber 和 Cloudflare 等公司采用）作为数据存储——一种针对可观测性数据极其快速且高度优化的存储方案
+- 提供 DIY 查询构建器、PromQL 和 ClickHouse 查询，满足您所有关于可观测性数据的查询需求
+
+# 设置
+
+- 创建 [SigNoz 云账户](https://signoz.io/teams/)
+- 生成 SigNoz 采集密钥
+
+## 为您的 Next.js 应用添加埋点
+
+请查看[此处](https://signoz.io/docs/instrumentation/opentelemetry-nextjs/)关于如何在 Next.js 应用中设置 OpenTelemetry 埋点并在 SigNoz 中查看应用链路追踪的详细说明。
+
+## 直接将链路追踪数据发送到 SigNoz 云
+
+**步骤 1.** 安装 OpenTelemetry 包
+
+```bash
+npm install @vercel/otel @opentelemetry/api @ai-sdk/otel
+```
+
+**步骤 2.** 更新 **`next.config.mjs`** 以包含 instrumentationHook
+
+> 此步骤仅在使用 NextJs 14 及以下版本时需要
+
+```jsx
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // 包含 instrumentationHook 实验性功能
+  experimental: {
+    instrumentationHook: true,
+  },
+};
+export default nextConfig;
+```
+
+**步骤 3.** 创建 **`instrumentation.ts`** 文件（在项目根目录）
+
+```jsx
+import { registerTelemetry } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+import { registerOTel, OTLPHttpJsonTraceExporter } from '@vercel/otel';
+// 添加 otel 日志记录
+import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR); // 调试时可将 diag 日志级别设置为 DEBUG
+
+registerTelemetry(new LegacyOpenTelemetry());
+
+export function register() {
+  registerOTel({
+    serviceName: '<service_name>',
+    traceExporter: new OTLPHttpJsonTraceExporter({
+      url: 'https://ingest.<region>.signoz.cloud:443/v1/traces',
+      headers: { 'signoz-ingestion-key': '<your-ingestion-key>' },
+    }),
+  });
+}
+```
+
+- **`<service_name>`** 是您的服务名称
+- 将 **`<region>`** 设置为与您的 SigNoz 云[**区域**](https://signoz.io/docs/ingestion/signoz-cloud/overview/#endpoint)匹配
+- 将 **`<your-ingestion-key>`** 替换为您的 SigNoz [**采集密钥**](https://signoz.io/docs/ingestion/signoz-cloud/keys/)
+
+> 埋点文件应位于项目根目录，而不是 app 或 pages 目录内。如果您使用 src 文件夹，请将文件放在 src 内，与 pages 和 app 同级。
+
+现在，您的 Next.js 应用应该已正确添加埋点。
+
+## 为 Vercel AI SDK 启用遥测
+
+Vercel AI SDK 使用 [OpenTelemetry](https://signoz.io/blog/what-is-opentelemetry/) 收集遥测数据。OpenTelemetry 是一个开源的可观测性框架，旨在提供标准化的埋点来收集遥测数据。
+
+## 启用遥测
+
+有关 Vercel AI SDK 遥测选项的更多详细信息，请访问[此处](https://ai-sdk.dev/docs/ai-sdk-core/telemetry#telemetry)。
+
+安装 `@ai-sdk/otel` 并将 `registerTelemetry` 添加到您的 `instrumentation.ts`（参见上述步骤 3）后，每次 AI SDK 调用都会自动捕获遥测数据：
+
+```jsx
+const result = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: '写一个关于猫的短篇故事。',
+});
+```
+
+您还可以控制是否记录函数的输入值和输出值。默认情况下，两者都启用。您可以通过将 `recordInputs` 和 `recordOutputs` 选项设置为 `false` 来禁用它们。
+
+```jsx
+telemetry: { recordInputs: false, recordOutputs: false }
+```
+
+出于隐私、数据传输和性能方面的考虑，禁用输入和输出的记录可能很有用。例如，如果输入包含敏感信息，您可能希望禁用记录输入。
+
+## 遥测元数据
+
+您可以提供 `functionId` 来标识遥测数据对应的函数，以及 `context` 来在遥测数据中包含附加信息。
+
+```jsx
+const result = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: '写一个关于猫的短篇故事。',
+  context: {
+    something: 'custom',
+    someOtherThing: 'other-value',
+  },
+  telemetry: {
+    functionId: 'my-awesome-function',
+  },
+});
+```
+
+## 自定义 Tracer
+
+如果您希望链路追踪使用不同于 `@opentelemetry/api` 单例提供的 `TracerProvider`，请将自定义 `Tracer` 传递给 `LegacyOpenTelemetry` 构造函数：
+
+```jsx
+import { registerTelemetry, generateText } from 'ai';
+import { LegacyOpenTelemetry } from '@ai-sdk/otel';
+
+const tracerProvider = new NodeTracerProvider();
+registerTelemetry(
+  new LegacyOpenTelemetry({
+    tracer: tracerProvider.getTracer('ai'),
+  }),
+);
+
+const result = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: '写一个关于猫的短篇故事。',
+});
+```
+
+现在，您的 Vercel AI SDK 命令应自动发出链路追踪、Span 和事件。有关生成的 Span 和事件类型的更多详细信息，请参见[此处](https://ai-sdk.dev/docs/ai-sdk-core/telemetry#collected-data)。
+
+最后，您应该能够在 SigNoz 云的链路追踪选项卡中查看这些数据。

@@ -1,0 +1,267 @@
+---
+title: 编写自定义提供商
+description: 利用 AI SDK OpenAI 兼容包，为兼容 OpenAI 的提供商创建自定义提供商包。
+---
+
+# 编写自定义提供商
+
+你可以创建自己的提供商包，利用 AI SDK 的 [OpenAI 兼容包](https://www.npmjs.com/package/@ai-sdk/openai-compatible)。将提供商包发布到 [npm](https://www.npmjs.com/) 可以让用户轻松使用该提供商的模型，并及时了解你可能做出的任何更改。以下是一个示例结构：
+
+### 文件结构
+
+```bash
+packages/example/
+├── src/
+│   ├── example-chat-settings.ts       # 聊天模型类型和设置
+│   ├── example-completion-settings.ts # 补全模型类型和设置
+│   ├── example-embedding-settings.ts  # 嵌入模型类型和设置
+│   ├── example-image-settings.ts      # 图像模型类型和设置
+│   ├── example-provider.ts            # 主提供商实现
+│   ├── example-provider.test.ts       # 提供商测试
+│   └── index.ts                       # 公共导出
+├── package.json
+├── tsconfig.json
+├── tsup.config.ts                     # 构建配置
+└── README.md
+```
+
+### 关键文件
+
+1. **example-chat-settings.ts** - 定义聊天模型 ID 和设置：
+
+```ts
+export type ExampleChatModelId =
+  | 'example/chat-model-1'
+  | 'example/chat-model-2'
+  | (string & {});
+```
+
+补全、嵌入和图像设置的实现方式与聊天设置类似。
+
+2. **example-provider.ts** - 主提供商实现：
+
+```ts
+import { LanguageModelV4, EmbeddingModelV4 } from '@ai-sdk/provider';
+import {
+  OpenAICompatibleChatLanguageModel,
+  OpenAICompatibleCompletionLanguageModel,
+  OpenAICompatibleEmbeddingModel,
+  OpenAICompatibleImageModel,
+} from '@ai-sdk/openai-compatible';
+import {
+  FetchFunction,
+  loadApiKey,
+  withoutTrailingSlash,
+} from '@ai-sdk/provider-utils';
+// 在此处导入你的模型 ID 和设置。
+
+export interface ExampleProviderSettings {
+  /**
+示例 API 密钥。
+*/
+  apiKey?: string;
+  /**
+API 调用的基础 URL。
+*/
+  baseURL?: string;
+  /**
+要包含在请求中的自定义标头。
+*/
+  headers?: Record<string, string>;
+  /**
+要包含在请求 URL 中的可选自定义 URL 查询参数。
+*/
+  queryParams?: Record<string, string>;
+  /**
+自定义 fetch 实现。你可以将其用作中间件来拦截请求，
+或提供自定义 fetch 实现以进行测试等。
+*/
+  fetch?: FetchFunction;
+}
+
+export interface ExampleProvider {
+  /**
+创建用于文本生成的模型。
+*/
+  (
+    modelId: ExampleChatModelId,
+    settings?: ExampleChatSettings,
+  ): LanguageModelV4;
+
+  /**
+创建用于文本生成的聊天模型。
+*/
+  chatModel(
+    modelId: ExampleChatModelId,
+    settings?: ExampleChatSettings,
+  ): LanguageModelV4;
+
+  /**
+创建用于文本生成的补全模型。
+*/
+  completionModel(
+    modelId: ExampleCompletionModelId,
+    settings?: ExampleCompletionSettings,
+  ): LanguageModelV4;
+
+  /**
+创建用于文本生成的文本嵌入模型。
+*/
+  .embeddingModel(
+    modelId: ExampleEmbeddingModelId,
+    settings?: ExampleEmbeddingSettings,
+  ): EmbeddingModelV4<string>;
+
+  /**
+创建用于图像生成的图像模型。
+*/
+  imageModel(
+    modelId: ExampleImageModelId,
+    settings?: ExampleImageSettings,
+  ): ImageModelV4;
+}
+
+export function createExample(
+  options: ExampleProviderSettings = {},
+): ExampleProvider {
+  const baseURL = withoutTrailingSlash(
+    options.baseURL ?? 'https://api.example.com/v1',
+  );
+  const getHeaders = () => ({
+    Authorization: `Bearer ${loadApiKey({
+      apiKey: options.apiKey,
+      environmentVariableName: 'EXAMPLE_API_KEY',
+      description: '示例 API 密钥',
+    })}`,
+    ...options.headers,
+  });
+
+  interface CommonModelConfig {
+    provider: string;
+    url: ({ path }: { path: string }) => string;
+    headers: () => Record<string, string>;
+    fetch?: FetchFunction;
+  }
+
+  const getCommonModelConfig = (modelType: string): CommonModelConfig => ({
+    provider: `example.${modelType}`,
+    url: ({ path }) => {
+      const url = new URL(`${baseURL}${path}`);
+      if (options.queryParams) {
+        url.search = new URLSearchParams(options.queryParams).toString();
+      }
+      return url.toString();
+    },
+    headers: getHeaders,
+    fetch: options.fetch,
+  });
+
+  const createChatModel = (
+    modelId: ExampleChatModelId,
+    settings: ExampleChatSettings = {},
+  ) => {
+    return new OpenAICompatibleChatLanguageModel(
+      modelId,
+      settings,
+      getCommonModelConfig('chat'),
+    );
+  };
+
+  const createCompletionModel = (
+    modelId: ExampleCompletionModelId,
+    settings: ExampleCompletionSettings = {},
+  ) =>
+    new OpenAICompatibleCompletionLanguageModel(
+      modelId,
+      settings,
+      getCommonModelConfig('completion'),
+    );
+
+  const create.embeddingModel = (
+    modelId: ExampleEmbeddingModelId,
+    settings: ExampleEmbeddingSettings = {},
+  ) =>
+    new OpenAICompatibleEmbeddingModel(
+      modelId,
+      settings,
+      getCommonModelConfig('embedding'),
+    );
+
+  const createImageModel = (
+    modelId: ExampleImageModelId,
+    settings: ExampleImageSettings = {},
+  ) =>
+    new OpenAICompatibleImageModel(
+      modelId,
+      settings,
+      getCommonModelConfig('image'),
+    );
+
+  const provider = (
+    modelId: ExampleChatModelId,
+    settings?: ExampleChatSettings,
+  ) => createChatModel(modelId, settings);
+
+  provider.completionModel = createCompletionModel;
+  provider.chatModel = createChatModel;
+  provider.embeddingModel = create.embeddingModel;
+  provider.imageModel = createImageModel;
+
+  return provider;
+}
+
+// 导出默认实例
+export const example = createExample();
+```
+
+3. **index.ts** - 公共导出：
+
+```ts
+export { createExample, example } from './example-provider';
+export type {
+  ExampleProvider,
+  ExampleProviderSettings,
+} from './example-provider';
+```
+
+4. **package.json** - 包配置：
+
+```js
+{
+  "name": "@company-name/example",
+  "version": "0.0.1",
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^0.0.7",
+    "@ai-sdk/provider": "^1.0.2",
+    "@ai-sdk/provider-utils": "^2.0.4",
+    // ...其他依赖
+  },
+  // ...其他脚本和模块构建配置
+}
+```
+
+### 使用方法
+
+发布后，用户可以像这样使用你的提供商：
+
+```ts
+import { example } from '@company-name/example';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: example('example/chat-model-1'),
+  prompt: '你好，你怎么样？',
+});
+```
+
+此结构提供了一个干净、类型安全的实现，它利用了 OpenAI 兼容包，同时保持了与其他 AI SDK 提供商使用方式的一致性。
+
+### 内部 API
+
+在开发提供商时，你可能需要使用 OpenAI 兼容包的一些内部 API。你可以从 `@ai-sdk/openai-compatible/internal` 包中导入它们，例如：
+
+```ts
+import { convertToOpenAICompatibleChatMessages } from '@ai-sdk/openai-compatible/internal';
+```
+
+你可以在 AI SDK [GitHub 仓库](https://github.com/vercel/ai/blob/main/packages/openai-compatible/src/internal/index.ts) 中查看最新的可用导出。

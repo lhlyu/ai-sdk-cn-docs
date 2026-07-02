@@ -1,0 +1,83 @@
+---
+title: filterActiveTools
+description: 将工具集过滤为当前活跃的工具（API 参考）
+---
+
+# `filterActiveTools()`
+
+<Note type="warning">`filterActiveTools` 是一个实验性功能。</Note>
+
+`filterActiveTools` 将工具集过滤为仅包含 `activeTools` 中列出的字符串工具名称。
+如果 `activeTools` 为 `undefined`，则返回原始工具集。
+如果 `tools` 为 `undefined`，则返回 `undefined`。
+
+`filterActiveTools` 可用于限制在特定步骤中向模型发送哪些工具。
+
+```ts
+import { experimental_filterActiveTools as filterActiveTools, tool } from 'ai';
+import { z } from 'zod';
+
+const tools = {
+  weather: tool({
+    description: '获取某个城市的天气',
+    inputSchema: z.object({ city: z.string() }),
+  }),
+  time: tool({
+    description: '获取某个城市的当前时间',
+    inputSchema: z.object({ city: z.string() }),
+  }),
+};
+
+const activeTools = ['weather'] as const;
+
+const filteredTools = filterActiveTools({
+  tools,
+  activeTools,
+});
+```
+
+## 导入
+
+<Snippet
+  text={`import { experimental_filterActiveTools as filterActiveTools } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'tools',
+      type: 'ToolSet | undefined',
+      description: '要过滤的工具集。',
+    },
+    {
+      name: 'activeTools',
+      type: 'ActiveTools<TOOLS>',
+      description:
+        '应保持活跃的工具名称。省略时，返回所有工具。',
+    },
+  ]}
+/>
+
+### 返回值
+
+过滤后的工具集，若 `tools` 为 `undefined` 则返回 `undefined`。
+
+当 `activeTools` 作为字面量数组（如 `["weather"] as const`）提供时，
+TypeScript 会将返回类型缩小到仅包含该子集工具。
+
+## 类型
+
+### `ActiveTools`
+
+```ts
+type ActiveTools<TOOLS extends ToolSet> =
+  | ReadonlyArray<keyof TOOLS & string>
+  | undefined;
+```
+
+`ActiveTools` 仅接受工具集中的字符串键，因为工具名称在运行时是字符串。
