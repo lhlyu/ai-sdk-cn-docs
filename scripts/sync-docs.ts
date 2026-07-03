@@ -51,6 +51,7 @@ const zhFiles = await listMdxFiles(zhDir);
 const zhFileSet = new Set(zhFiles);
 const nextSources: Record<string, SourceRecord> = {};
 const report: ReportItem[] = [];
+const syncedAt = new Date().toISOString();
 
 for (const relPath of enFiles) {
   const sourcePath = joinPath(enDir, relPath);
@@ -112,6 +113,7 @@ await writeJson(reportPath, {
     repo: repoUrl,
     commit: sourceCommit,
   },
+  syncedAt,
   summary: summarize(report),
   items: report,
 });

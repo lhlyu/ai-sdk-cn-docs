@@ -1,6 +1,6 @@
 # AI SDK 中文文档
 
-本项目用于维护 AI SDK 文档的中文版本。
+本项目用于维护 [Vercel AI SDK](https://github.com/vercel/ai) 文档的中文版本。
 
 它会从官方仓库 `vercel/ai` 同步 `content/` 下的英文 MDX 文档到 `content/en`，计算文件 hash，并根据同步报告判断哪些中文文档需要新增、更新或提示删除。中文文档生成到 `content/zh`，站点使用 Rspress 和 Bun 渲染。
 

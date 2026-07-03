@@ -1,0 +1,146 @@
+---
+title: "experimental_streamTranscribe"
+description: "experimental_streamTranscribe 的 API 参考文档。"
+---
+
+# `experimental_streamTranscribe()`
+
+<Note type="warning">
+  `experimental_streamTranscribe` 是一个实验性功能。
+</Note>
+
+使用支持流式传输的转录模型，从实时原始音频中流式传输转录文本。
+
+```ts
+import { experimental_streamTranscribe as streamTranscribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = streamTranscribe({
+  model: openai.transcription('gpt-realtime-whisper'),
+  audio: audioStream, // ReadableStream<Uint8Array | string>
+  inputAudioFormat: { type: 'audio/pcm', rate: 24000 },
+});
+
+for await (const part of result.fullStream) {
+  if (part.type === 'transcript-delta') {
+    process.stdout.write(part.delta);
+  }
+}
+
+console.log(await result.text);
+```
+
+## 导入
+
+<Snippet
+  text={`import { experimental_streamTranscribe as streamTranscribe } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'TranscriptionModelV4',
+      description:
+        '要使用的转录模型。该模型必须支持流式传输（`doStream`）。字符串模型 ID 通过全局提供商（默认为 AI Gateway）解析，但目前尚不支持流式转录。',
+    },
+    {
+      name: 'audio',
+      type: 'ReadableStream<Uint8Array | string>',
+      description:
+        '要转录的原始音频块。`Uint8Array` 块包含原始音频字节；`string` 块包含 base64 编码的原始音频字节。',
+    },
+    {
+      name: 'inputAudioFormat',
+      type: '{ type: string; rate?: number }',
+      description:
+        '原始音频块的输入音频格式，例如 `{ type: "audio/pcm", rate: 24000 }`。支持的格式因提供商而异（例如 `audio/pcm`、`audio/pcmu`、`audio/pcma`）。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'Record<string, JSONObject>',
+      isOptional: true,
+      description: '额外的提供商特定选项。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '可选的取消信号，用于取消调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description:
+        '额外的 HTTP/WebSocket 头信息（如果提供商支持）。',
+    },
+    {
+      name: 'includeRawChunks',
+      type: 'boolean',
+      isOptional: true,
+      description:
+        '当为 true 时，提供商会在流中包含原始提供商块，作为 `raw` 部分。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'fullStream',
+      type: 'AsyncIterableStream<TranscriptionStreamPart>',
+      description:
+        '转录部分的流：`transcript-delta`、`transcript-partial`、`transcript-final`、`raw` 和 `error`。',
+    },
+    {
+      name: 'text',
+      type: 'Promise<string>',
+      description: '音频输入的完整转录文本。',
+    },
+    {
+      name: 'segments',
+      type: 'Promise<Array<{ text: string; startSecond: number; endSecond: number }>>',
+      description:
+        '包含时间信息的最终转录片段（如果可用）。',
+    },
+    {
+      name: 'language',
+      type: 'Promise<string | undefined>',
+      description:
+        '转录文本的语言（ISO-639-1 格式，如果可用）。',
+    },
+    {
+      name: 'durationInSeconds',
+      type: 'Promise<number | undefined>',
+      description: '转录文本的时长（秒，如果可用）。',
+    },
+    {
+      name: 'warnings',
+      type: 'Promise<Warning[]>',
+      description:
+        '调用的警告信息，例如不支持的设置。当提供商发出流开始信号时解析。',
+    },
+    {
+      name: 'responses',
+      type: 'Promise<Array<TranscriptionModelResponseMetadata>>',
+      description: '响应元数据（时间戳、模型 ID、头信息）。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'Promise<Record<string, JSONObject>>',
+      description: '额外的提供商特定元数据。',
+    },
+  ]}
+/>
+
+<Note>
+  结果 Promise 会在流被消费时逐步确定。如果你提前停止消费 `fullStream`（例如通过 `break` 退出循环），底层提供商连接将被关闭，未完成的 Promise 结果将被拒绝。
+</Note>
