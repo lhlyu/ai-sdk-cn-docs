@@ -34,6 +34,7 @@ const metadataDir = joinPath(root, 'metadata');
 const sourcesPath = joinPath(metadataDir, 'sources.json');
 const translationStatePath = joinPath(metadataDir, 'translation-state.json');
 const reportPath = joinPath(metadataDir, 'sync-report.json');
+const syncPath = joinPath(metadataDir, 'sync.json');
 const readmePath = joinPath(root, 'README.md');
 
 await mkdir(tempRoot);
@@ -114,6 +115,10 @@ await writeJson(reportPath, {
   translationState: relativePath(root, translationStatePath),
   summary: summarize(report),
   items: report,
+});
+await writeJson(syncPath, {
+  syncedAt,
+  sourceCommit,
 });
 await updateReadmeSyncInfo(syncedAt, sourceCommit);
 

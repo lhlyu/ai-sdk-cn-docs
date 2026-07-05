@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import matter from 'gray-matter';
 import { defineConfig, type RspressPlugin, type SidebarGroup, type SidebarItem } from '@rspress/core';
 import { normalizeMdxFrontmatter } from './lib/frontmatter';
+import sync from './metadata/sync.json';
 
 type DocPage = {
   filepath: string;
@@ -230,23 +231,20 @@ function contentPagesPlugin(): RspressPlugin {
 }
 
 function readSyncInfo(): SyncInfo | undefined {
-  const reportPath = join(root, 'metadata/sync-report.json');
-  const raw = readFileSync(reportPath, 'utf8');
-  const report = JSON.parse(raw) as {
+  const syncPath = join(root, 'metadata/sync.json');
+  const info = sync as {
     syncedAt?: unknown;
-    source?: {
-      commit?: unknown;
-    };
+    sourceCommit?: unknown;
   };
 
-  if (typeof report.syncedAt !== 'string') {
-    throw new Error(`${reportPath}: missing syncedAt`);
+  if (typeof info.syncedAt !== 'string') {
+    throw new Error(`${syncPath}: missing syncedAt`);
   }
 
-  const sourceCommit = typeof report.source?.commit === 'string' ? report.source.commit : undefined;
+  const sourceCommit = typeof info.sourceCommit === 'string' ? info.sourceCommit : undefined;
   return {
-    syncedAt: report.syncedAt,
-    displayTime: formatSyncTime(report.syncedAt),
+    syncedAt: info.syncedAt,
+    displayTime: formatSyncTime(info.syncedAt),
     sourceCommit,
     shortSourceCommit: sourceCommit?.slice(0, 7),
   };
