@@ -21,8 +21,16 @@ type AdditionalPage = {
   filepath?: string;
 };
 
+type SyncInfo = {
+  syncedAt: string;
+  displayTime: string;
+  sourceCommit?: string;
+  shortSourceCommit?: string;
+};
+
 const root = process.cwd();
 const zhRoot = join(root, 'content/zh');
+const syncInfo = readSyncInfo();
 const pages = readPages();
 const aliasPages: AdditionalPage[] = [
   aliasPage('/docs', '/docs/introduction', '文档'),
@@ -181,6 +189,8 @@ function contentPagesPlugin(): RspressPlugin {
             '',
             'AI SDK 是一个 TypeScript 工具包，用于通过 React、Next.js、Vue、Svelte、Node.js 等技术构建 AI 应用和智能体。',
             '',
+            ...homeSyncStatus(syncInfo),
+            '',
             '<div className="doc-home-actions">',
             '<ButtonLink href="/docs/introduction">开始阅读</ButtonLink>',
             '<ButtonLink href="/docs/getting-started/nextjs-app-router">快速入门</ButtonLink>',
@@ -217,6 +227,59 @@ function contentPagesPlugin(): RspressPlugin {
       ];
     },
   };
+}
+
+function readSyncInfo(): SyncInfo | undefined {
+  const reportPath = join(root, 'metadata/sync-report.json');
+  const raw = readFileSync(reportPath, 'utf8');
+  const report = JSON.parse(raw) as {
+    syncedAt?: unknown;
+    source?: {
+      commit?: unknown;
+    };
+  };
+
+  if (typeof report.syncedAt !== 'string') {
+    throw new Error(`${reportPath}: missing syncedAt`);
+  }
+
+  const sourceCommit = typeof report.source?.commit === 'string' ? report.source.commit : undefined;
+  return {
+    syncedAt: report.syncedAt,
+    displayTime: formatSyncTime(report.syncedAt),
+    sourceCommit,
+    shortSourceCommit: sourceCommit?.slice(0, 7),
+  };
+}
+
+function homeSyncStatus(info: SyncInfo | undefined): string[] {
+  if (!info) return [];
+
+  return [
+    `<div className="doc-sync-status">`,
+    `<span>最近同步</span>`,
+    `<time dateTime="${info.syncedAt}">${info.displayTime}</time>`,
+    info.shortSourceCommit ? `<code>${info.shortSourceCommit}</code>` : '',
+    `</div>`,
+  ].filter(Boolean);
+}
+
+function formatSyncTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid syncedAt: ${value}`);
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
 }
 
 function aliasPage(routePath: string, target: string, title: string): AdditionalPage {

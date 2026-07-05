@@ -13,12 +13,23 @@ type ReportItem = {
   path: string;
   sourcePath?: string;
   targetPath?: string;
+  sourceHash?: string;
+  sourceCommit?: string;
   status: PageStatus;
 };
 
 type SyncReport = {
+  source?: {
+    commit?: string;
+  };
   summary: Record<PageStatus, number>;
   items: ReportItem[];
+};
+
+type TranslationRecord = {
+  sourceHash: string;
+  sourceCommit: string;
+  translatedAt?: string;
 };
 
 type ChatCompletionResponse = {
@@ -41,6 +52,7 @@ type ChatCompletionResponse = {
 const root = process.cwd();
 const reportPath = `${root}/metadata/sync-report.json`;
 const glossaryPath = `${root}/metadata/glossary.json`;
+const translationStatePath = `${root}/metadata/translation-state.json`;
 const translateStatuses = new Set<PageStatus>([
   "new",
   "changed",
@@ -57,6 +69,7 @@ const interactiveProgress = process.stdout.isTTY && Bun.env.CI !== "1";
 
 const report = await readJson<SyncReport>(reportPath);
 const glossary = await readJson<Record<string, string>>(glossaryPath);
+const translationState = await readTranslationState();
 const targets = report.items.filter(
   (item) =>
     translateStatuses.has(item.status) && item.sourcePath && item.targetPath,
@@ -82,6 +95,7 @@ let completed = 0;
 let failed = 0;
 const failedItems: string[] = [];
 let nextIndex = 0;
+let stateWriteQueue = Promise.resolve();
 
 await Promise.all(
   Array.from(
@@ -163,6 +177,7 @@ async function translateItem(
   validateTranslatedMdx(translated, item.path);
   await ensureParentDir(targetPath);
   await Bun.write(targetPath, ensureTrailingNewline(translated));
+  await markTranslated(item);
 }
 
 async function translateMdx(
@@ -259,6 +274,61 @@ async function readJson<T>(path: string): Promise<T> {
   }
 
   return JSON.parse(await file.text()) as T;
+}
+
+async function readJsonWithFallback<T>(path: string, fallback: T): Promise<T> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) {
+    return fallback;
+  }
+
+  return JSON.parse(await file.text()) as T;
+}
+
+async function writeJson(path: string, value: unknown): Promise<void> {
+  await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function readTranslationState(): Promise<Record<string, TranslationRecord>> {
+  const state = await readJsonWithFallback<Record<string, TranslationRecord>>(
+    translationStatePath,
+    {},
+  );
+  if (Object.keys(state).length > 0) {
+    return state;
+  }
+
+  return readJsonWithFallback<Record<string, TranslationRecord>>(
+    `${root}/metadata/sources.json`,
+    {},
+  );
+}
+
+async function markTranslated(item: ReportItem): Promise<void> {
+  if (!item.sourceHash) {
+    throw new Error(`${item.path}: missing sourceHash in sync report`);
+  }
+
+  const sourceCommit = item.sourceCommit ?? report.source?.commit;
+  if (!sourceCommit) {
+    throw new Error(`${item.path}: missing sourceCommit in sync report`);
+  }
+
+  translationState[item.path] = {
+    sourceHash: item.sourceHash,
+    sourceCommit,
+    translatedAt: new Date().toISOString(),
+  };
+  stateWriteQueue = stateWriteQueue.then(() =>
+    writeJson(translationStatePath, sortRecordByKey(translationState)),
+  );
+  await stateWriteQueue;
+}
+
+function sortRecordByKey<T>(record: Record<string, T>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(record).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 async function ensureParentDir(path: string): Promise<void> {

@@ -3,6 +3,7 @@ import { $, Glob } from 'bun';
 type SourceRecord = {
   sourceHash: string;
   sourceCommit: string;
+  translatedAt?: string;
 };
 
 type PageStatus =
@@ -31,7 +32,9 @@ const enDir = joinPath(root, 'content/en');
 const zhDir = joinPath(root, 'content/zh');
 const metadataDir = joinPath(root, 'metadata');
 const sourcesPath = joinPath(metadataDir, 'sources.json');
+const translationStatePath = joinPath(metadataDir, 'translation-state.json');
 const reportPath = joinPath(metadataDir, 'sync-report.json');
+const readmePath = joinPath(root, 'README.md');
 
 await mkdir(tempRoot);
 await mkdir(metadataDir);
@@ -45,11 +48,11 @@ await rm(enDir);
 await mkdir(joinPath(root, 'content'));
 await cp(joinPath(cloneDir, 'content'), enDir);
 
-const previous = await readJson<Record<string, SourceRecord>>(sourcesPath, {});
+const previous = await readTranslationState();
 const enFiles = await listMdxFiles(enDir);
 const zhFiles = await listMdxFiles(zhDir);
 const zhFileSet = new Set(zhFiles);
-const nextSources: Record<string, SourceRecord> = {};
+const enFileSet = new Set(enFiles);
 const report: ReportItem[] = [];
 const syncedAt = new Date().toISOString();
 
@@ -69,11 +72,6 @@ for (const relPath of enFiles) {
     status = hasTarget ? 'unchanged' : 'missing_target';
   }
 
-  nextSources[relPath] = {
-    sourceHash,
-    sourceCommit,
-  };
-
   report.push({
     path: relPath,
     sourcePath: relativePath(root, sourcePath),
@@ -86,7 +84,7 @@ for (const relPath of enFiles) {
 }
 
 for (const relPath of Object.keys(previous).sort()) {
-  if (!nextSources[relPath]) {
+  if (!enFileSet.has(relPath)) {
     report.push({
       path: relPath,
       targetPath: relativePath(root, joinPath(zhDir, relPath)),
@@ -97,7 +95,7 @@ for (const relPath of Object.keys(previous).sort()) {
 }
 
 for (const relPath of zhFileSet) {
-  if (!nextSources[relPath]) {
+  if (!enFileSet.has(relPath)) {
     report.push({
       path: relPath,
       targetPath: relativePath(root, joinPath(zhDir, relPath)),
@@ -107,16 +105,17 @@ for (const relPath of zhFileSet) {
 }
 
 report.sort((left, right) => left.path.localeCompare(right.path));
-await writeJson(sourcesPath, nextSources);
 await writeJson(reportPath, {
   source: {
     repo: repoUrl,
     commit: sourceCommit,
   },
   syncedAt,
+  translationState: relativePath(root, translationStatePath),
   summary: summarize(report),
   items: report,
 });
+await updateReadmeSyncInfo(syncedAt, sourceCommit);
 
 console.log(`synced vercel/ai content at ${sourceCommit}`);
 console.table(summarize(report));
@@ -156,8 +155,58 @@ async function readJson<T>(path: string, fallback: T): Promise<T> {
   return JSON.parse(await file.text()) as T;
 }
 
+async function readTranslationState(): Promise<Record<string, SourceRecord>> {
+  const translationStateFile = Bun.file(translationStatePath);
+  if (await translationStateFile.exists()) {
+    return JSON.parse(await translationStateFile.text()) as Record<string, SourceRecord>;
+  }
+
+  return readJson<Record<string, SourceRecord>>(sourcesPath, {});
+}
+
 async function writeJson(path: string, value: unknown): Promise<void> {
   await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function updateReadmeSyncInfo(syncedAt: string, sourceCommit: string): Promise<void> {
+  const start = '<!-- sync-info:start -->';
+  const end = '<!-- sync-info:end -->';
+  const content = await Bun.file(readmePath).text();
+  const block = [
+    start,
+    `最近同步：${formatSyncTime(syncedAt)}（上游 commit: \`${sourceCommit.slice(0, 7)}\`）`,
+    end,
+  ].join('\n');
+
+  if (!content.includes(start) || !content.includes(end)) {
+    await Bun.write(readmePath, `${content.trimEnd()}\n\n${block}\n`);
+    return;
+  }
+
+  const pattern = new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}`);
+  await Bun.write(readmePath, content.replace(pattern, block));
+}
+
+function formatSyncTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid syncedAt: ${value}`);
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function summarize(items: ReportItem[]) {

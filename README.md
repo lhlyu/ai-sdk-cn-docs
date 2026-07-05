@@ -4,6 +4,8 @@
 
 它会从官方仓库 `vercel/ai` 同步 `content/` 下的英文 MDX 文档到 `content/en`，计算文件 hash，并根据同步报告判断哪些中文文档需要新增、更新或提示删除。中文文档生成到 `content/zh`，站点使用 Rspress 和 Bun 渲染。
 
+同步报告基于 `metadata/translation-state.json` 判断中文文档最后一次成功翻译对应的英文 hash。`docs:sync` 只生成英文内容和报告，不推进翻译状态；`docs:translate` 只有在单个文件翻译、校验、写入都成功后，才更新该文件的翻译状态。
+
 `content/` 和 `scripts/` 是内容与同步翻译流程的边界，站点兼容逻辑放在 `rspress.config.ts` 和 `theme/` 下，不直接改写内容文件。
 
 ## 配置环境变量
@@ -82,3 +84,7 @@ bun run build
 ```bash
 bun run start
 ```
+
+<!-- sync-info:start -->
+最近同步：2026/07/05 10:42:21（上游 commit: `77f9f68`）
+<!-- sync-info:end -->
