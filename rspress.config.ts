@@ -112,6 +112,9 @@ export default defineConfig({
     performance: {
       buildCache: false,
     },
+    server: {
+      historyApiFallback: true,
+    },
   },
   i18nSource(source) {
     for (const [key, value] of Object.entries(zhCnI18n)) {
