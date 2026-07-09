@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Note from './components/Note';
 import Snippet from './components/Snippet';
+import InstallPackages from './components/InstallPackages';
 import Tabs from './components/Tabs';
 import Tab from './components/Tab';
 import PropertiesTable from './components/PropertiesTable';
@@ -41,6 +42,7 @@ function missing(name: string) {
 const mdxComponents = {
   Note,
   Snippet,
+  InstallPackages,
   Tabs,
   Tab,
   PropertiesTable,
