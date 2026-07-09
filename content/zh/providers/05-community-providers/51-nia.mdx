@@ -1,40 +1,27 @@
 ---
-title: Nia
-description: 了解如何将 Nia 与 AI SDK 结合使用。
+title: "Nia"
+description: "了解如何将 Nia 与 AI SDK 结合使用。"
 ---
 
 # Nia
 
-[Nozomio Labs](https://www.trynia.ai/) 开发的 [Nia](https://www.trynia.ai/) 是一个提供技术性、最新上下文的 API。它可以让你索引文档、仓库、PDF 和数据集，然后通过 AI 进行搜索，让你的智能体获得真实答案，而非幻觉。 [`@nozomioai/nia-ai-sdk`](https://www.npmjs.com/package/@nozomioai/nia-ai-sdk) 包通过工具、中间件和直接流式传输助手将 Nia 与 AI SDK 集成。
+由 Nozomio Labs 开发的 [Nia](https://www.trynia.ai/) 是一个提供技术性、最新上下文的 API。它允许你索引文档、代码仓库、PDF 和数据集，然后通过 AI 进行搜索，让你的智能体获得真实答案，而非幻觉。 [`@nozomioai/nia-ai-sdk`](https://www.npmjs.com/package/@nozomioai/nia-ai-sdk) 包通过工具、中间件和直接流式传输辅助函数，将 Nia 与 AI SDK 集成。
 
 它专为以下工作流设计：
 
-- 将 Nia Tracer 作为工具调用，用于公共 GitHub 和文档研究
-- 将 Nia Oracle 作为工具调用，用于对索引仓库、文档、PDF 和数据集进行基于事实的研究
-- 将 Nia Document Agent 作为工具调用，用于深度文档分析和结构化提取
-- 使用 Nia 支持的中间件增强现有 AI SDK 模型
+- 将 Nia Tracer 作为工具，用于公共 GitHub 和文档研究
+- 将 Nia Oracle 作为工具，用于对索引的代码仓库、文档、PDF 和数据集进行基于事实的研究
+- 将 Nia Document Agent 作为工具，用于深度文档分析和结构化提取
+- 使用 Nia 支持的中间件增强现有的 AI SDK 模型
 - 在应用中直接流式传输 Tracer、Oracle 或 Document Agent 事件
 
-了解更多信息，请参阅 [Nia 文档](https://docs.trynia.ai/)。
+更多信息请参阅 [Nia 文档](https://docs.trynia.ai/)。
 
 ## 设置
 
-Nia 适配器位于 `@nozomioai/nia-ai-sdk` 包中。你可以通过以下方式安装：
+Nia 适配器位于 `@nozomioai/nia-ai-sdk` 包中。你可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @nozomioai/nia-ai-sdk" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @nozomioai/nia-ai-sdk" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @nozomioai/nia-ai-sdk" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add @nozomioai/nia-ai-sdk" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@nozomioai/nia-ai-sdk" />
 
 如果你想将 Nia 中间件与某个模型提供商一起使用，请同时安装该提供商。例如：
 
@@ -91,13 +78,13 @@ const result = await generateText({
 console.log(result.text);
 ```
 
-你可以将任何服务键设置为 `false` 以完全禁用它，例如，如果你只需要 Tracer，可以设置 `oracle: false`。当提供时，每个服务的传输选项（例如单独的 `apiKey`）会覆盖顶层选项。
+你可以将任何服务键设置为 `false` 以完全禁用它，例如，如果你只需要 Tracer，可以设置 `oracle: false`。每个服务的传输选项（例如单独的 `apiKey`）在提供时会覆盖顶层选项。
 
-SDK 还导出了 `createTracerTool()`、`createOracleTool()` 和 `createDocumentAgentTool()`，用于当你只需要单个工具时。
+该 SDK 还导出了 `createTracerTool()`、`createOracleTool()` 和 `createDocumentAgentTool()`，用于当你只需要单个工具时。
 
 ## 中间件用法
 
-当你希望 Nia 在基础模型运行之前丰富最后一条用户消息时，请使用中间件。
+当你希望在基础模型运行之前，让 Nia 丰富最后一条用户消息时，可以使用中间件。
 
 ### `withOracleContext`
 
@@ -116,7 +103,7 @@ const model = withOracleContext(openai('gpt-4.1'), {
 
 const result = await generateText({
   model,
-  prompt: '对于检索，我应该如何考虑 AI SDK 中间件？',
+  prompt: '我应该如何考虑用于检索的 AI SDK 中间件？',
 });
 
 console.log(result.text);
@@ -126,9 +113,9 @@ console.log(result.text);
 
 为了获得更多控制，较低级别的 `createTracerMiddleware()`、`createOracleMiddleware()` 和 `createDocumentAgentMiddleware()` 导出会返回原始的 `LanguageModelMiddleware` 对象，你可以自行组合。
 
-## 直接流式传输助手
+## 直接流式传输辅助函数
 
-如果你需要原始的 Nia 作业事件，请使用直接流式传输助手：
+如果你需要原始的 Nia 任务事件，请使用直接流式传输辅助函数：
 
 - `streamTracer()`
 - `streamOracle()`

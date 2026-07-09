@@ -1,26 +1,26 @@
 ---
-title: Expo
-description: 学习如何使用 AI SDK 和 Expo 构建你的第一个智能体。
+title: "Expo"
+description: "了解如何使用 AI SDK 和 Expo 构建你的第一个智能体。"
 ---
 
 # Expo 快速入门
 
-在本快速入门教程中，你将使用 [Expo](https://expo.dev/) 构建一个带有流式聊天用户界面的简单智能体。在此过程中，你将学习在自己的项目中使用 SDK 所需的关键概念和技术。
+在本快速入门教程中，你将使用 [Expo](https://expo.dev/) 构建一个带有流式聊天用户界面的简单智能体。在此过程中，你将学习在项目中使用 SDK 所需的关键概念和技术。
 
-如果你不熟悉[提示词工程](/docs/advanced/prompt-engineering)和[HTTP 流式传输](/docs/foundations/streaming)的概念，可以选择先阅读这些文档。
+如果你不熟悉[提示词工程](/docs/advanced/prompt-engineering)和 [HTTP 流式传输](/docs/foundations/streaming)的概念，可以选择先阅读这些文档。
 
 ## 前提条件
 
-要完成本快速入门，你需要：
+要遵循本快速入门，你需要：
 
-- 本地开发机器上安装 Node.js 22+ 和 pnpm。
+- 在本地开发机器上安装 Node.js 22+ 和 pnpm。
 - 一个 [Vercel AI Gateway](https://vercel.com/ai-gateway) API 密钥。
 
-如果你还没有获取 Vercel AI Gateway API 密钥，可以通过在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
+如果你尚未获得 Vercel AI Gateway API 密钥，可以通过在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
 
 ## 创建你的应用
 
-首先创建一个新的 Expo 应用。此命令将创建一个名为 `my-ai-app` 的新目录，并在其中设置一个基本的 Expo 应用。
+首先创建一个新的 Expo 应用程序。此命令将创建一个名为 `my-ai-app` 的新目录，并在其中设置一个基本的 Expo 应用程序。
 
 <Snippet text="pnpm create expo-app@latest my-ai-app" />
 
@@ -30,34 +30,19 @@ description: 学习如何使用 AI SDK 和 Expo 构建你的第一个智能体�
 
 <Note>本指南需要 Expo 52 或更高版本。</Note>
 
-### 安装依赖
+### 安装依赖项
 
-安装 `ai` 和 `@ai-sdk/react`，即 AI 包和 AI SDK 的 React Hook。AI SDK 的 [Vercel AI Gateway 提供商](/providers/ai-sdk-providers/ai-gateway) 随 `ai` 包一起提供。你还需要安装 `zod`，这是一个用于定义工具输入的模式验证库。
+安装 `ai` 和 `@ai-sdk/react`，即 AI 包和 AI SDK 的 React Hooks。AI SDK 的 [Vercel AI Gateway 提供商](/providers/ai-sdk-providers/ai-gateway) 随 `ai` 包一起提供。你还需要安装 `zod`，这是一个用于定义工具输入的模式验证库。
 
 <Note>
-  本指南使用 Vercel AI Gateway 提供商，这样你可以使用一个 API 密钥访问来自不同提供商的数百个模型，但你可以通过安装其包来切换到任何提供商或模型。查看可用的 [AI SDK 提供商](/providers/ai-sdk-providers) 了解更多信息。
+  本指南使用 Vercel AI Gateway 提供商，因此你可以使用一个 API 密钥访问来自不同提供商的数百个模型，但你可以通过安装其包来切换到任何提供商或模型。查看可用的 [AI SDK 提供商](/providers/ai-sdk-providers) 以获取更多信息。
 </Note>
 
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add ai @ai-sdk/react zod" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install ai @ai-sdk/react zod" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add ai @ai-sdk/react zod" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="bun add ai @ai-sdk/react zod" dark />
-    </Tab>
-  </Tabs>
-</div>
+<InstallPackages packages="ai @ai-sdk/react zod" />
 
 ### 配置你的 AI Gateway API 密钥
 
-在你的项目根目录创建一个 `.env.local` 文件，并添加你的 AI Gateway API 密钥。此密钥用于向 Vercel AI Gateway 验证你的应用。
+在项目根目录创建一个 `.env.local` 文件，并添加你的 AI Gateway API 密钥。此密钥用于验证你的应用程序与 Vercel AI Gateway 的连接。
 
 <Snippet text="touch .env.local" />
 
@@ -67,7 +52,7 @@ description: 学习如何使用 AI SDK 和 Expo 构建你的第一个智能体�
 AI_GATEWAY_API_KEY=xxxxxxxxx
 ```
 
-将 `xxxxxxxxx` 替换为你的实际 Vercel AI Gateway API 密钥。
+将 `xxxxxxxxx` 替换为你实际的 Vercel AI Gateway API 密钥。
 
 <Note className="mb-4">
   AI SDK 的 Vercel AI Gateway 提供商将默认使用 `AI_GATEWAY_API_KEY` 环境变量。
@@ -107,9 +92,9 @@ export async function POST(req: Request) {
 
 让我们看看这段代码中发生了什么：
 
-1. 定义一个异步的 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和聊天机器人之间的对话历史，为聊天机器人提供生成下一次回复所需的上下文。
+1. 定义一个异步的 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和聊天机器人之间的对话历史，为聊天机器人提供进行下一次生成所需的上下文。
 2. 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数。此函数接受一个配置对象，其中包含一个 `model` 提供商（从 `ai` 导入）和 `messages`（在步骤 1 中定义）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。
-3. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回，以创建一个流式响应对象。
+3. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建一个流式响应对象。
 4. 最后，将结果返回给客户端以流式传输响应。
 
 此 API 路由在 `/api/chat` 创建了一个 POST 请求端点。
@@ -140,24 +125,7 @@ model: gateway('anthropic/claude-sonnet-4.5');
 
 要使用不同的提供商，请安装其包并创建一个提供商实例。例如，直接使用 OpenAI：
 
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add @ai-sdk/openai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install @ai-sdk/openai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add @ai-sdk/openai" dark />
-    </Tab>
-
-    <Tab>
-      <Snippet text="bun add @ai-sdk/openai" dark />
-    </Tab>
-
-  </Tabs>
-</div>
+<InstallPackages packages="@ai-sdk/openai" />
 
 ```ts
 import { openai } from '@ai-sdk/openai';
@@ -167,13 +135,13 @@ model: openai('gpt-5.1');
 
 #### 更新全局提供商
 
-你可以更改默认的全局提供商，以便字符串模型引用在你的整个应用中使用你偏好的提供商。了解更多关于[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)的信息。
+你可以更改默认的全局提供商，以便字符串模型引用在你的应用程序中随处使用你偏好的提供商。了解更多关于[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)的信息。
 
-选择最适合你管理应用中提供商方式的方法。
+选择最适合你管理应用程序中提供商方式的方法。
 
 ## 连接 UI
 
-现在你已经有了一个可以查询 LLM 的 API 路由，是时候设置你的前端了。AI SDK 的 [UI](/docs/ai-sdk-ui) 包将聊天界面的复杂性抽象为一个 Hook [`useChat`](/docs/reference/ai-sdk-ui/use-chat)。
+现在你已经有了一个可以查询 LLM 的 API 路由，是时候设置你的前端了。AI SDK 的 [UI](/docs/ai-sdk-ui) 包将聊天界面的复杂性抽象为一个 Hook：[`useChat`](/docs/reference/ai-sdk-ui/use-chat)。
 
 使用以下代码更新你的根页面（`app/(tabs)/index.tsx`），以显示聊天消息列表并提供用户消息输入：
 
@@ -245,20 +213,20 @@ export default function App() {
 
 此页面使用了 `useChat` Hook，默认情况下，它将使用你之前创建的 `POST` API 路由（`/api/chat`）。该 Hook 提供了用于处理用户输入和表单提交的函数和状态。`useChat` Hook 提供了多个实用函数和状态变量：
 
-- `messages` - 当前的聊天消息（一个包含 `id`、`role` 和 `parts` 属性的对象数组）。
-- `sendMessage` - 一个向聊天 API 发送消息的函数。
+- `messages` - 当前的聊天消息（包含 `id`、`role` 和 `parts` 属性的对象数组）。
+- `sendMessage` - 向聊天 API 发送消息的函数。
 
 该组件使用本地状态（`useState`）来管理输入字段的值，并通过调用 `sendMessage` 并传入输入文本，然后清除输入字段来处理表单提交。
 
-LLM 的响应通过消息的 `parts` 数组访问。每条消息包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理令牌等，你将在后面看到。`parts` 数组保留了模型输出的顺序，允许你按生成顺序显示或处理每个组件。
+LLM 的响应通过消息的 `parts` 数组访问。每条消息都包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理令牌等，你将在后面看到。`parts` 数组保留了模型输出的顺序，允许你按生成顺序显示或处理每个组件。
 
 <Note>
-  你使用 expo/fetch 函数而不是原生 node fetch 来启用聊天响应的流式传输。这需要 Expo 52 或更高版本。
+  你使用 expo/fetch 函数而不是原生的 node fetch 来启用聊天响应的流式传输。这需要 Expo 52 或更高版本。
 </Note>
 
 ### 创建 API URL 生成器
 
-因为你使用 expo/fetch 进行流式响应而不是原生 fetch 函数，所以需要一个 API URL 生成器来确保根据客户端环境（例如 Web 或移动端）使用正确的基础 URL 和格式。在你的项目根目录创建一个名为 `utils.ts` 的新文件，并添加以下代码：
+因为你使用 expo/fetch 进行流式响应而不是原生的 fetch 函数，所以需要一个 API URL 生成器来确保根据客户端环境（例如 Web 或移动端）使用正确的基础 URL 和格式。在项目根目录创建一个名为 `utils.ts` 的新文件，并添加以下代码：
 
 ```ts filename="utils.ts"
 import Constants from 'expo-constants';
@@ -282,19 +250,19 @@ export const generateAPIUrl = (relativePath: string) => {
 };
 ```
 
-此实用函数处理开发和生产环境中的 URL 生成，确保你的 API 调用在不同设备和配置下都能正常工作。
+此实用函数处理开发和生产环境的 URL 生成，确保你的 API 调用在不同设备和配置下都能正常工作。
 
 <Note>
   在部署到生产环境之前，你必须在生产环境中设置 `EXPO_PUBLIC_API_BASE_URL` 环境变量。此变量应指向你的 API 服务器的基础 URL。
 </Note>
 
-## 运行你的应用
+## 运行你的应用程序
 
-至此，你已经构建了聊天机器人所需的一切！要启动你的应用，请使用以下命令：
+至此，你已经构建了聊天机器人所需的一切！要启动你的应用程序，请使用以下命令：
 
 <Snippet text="pnpm expo" />
 
-前往你的浏览器并打开 http://localhost:8081。你应该会看到一个输入字段。输入一条消息进行测试，并查看 AI 聊天机器人的实时响应！AI SDK 使得使用 Expo 构建 AI 聊天界面变得快速而简单。
+前往你的浏览器并打开 http://localhost:8081。你应该会看到一个输入字段。输入一条消息进行测试，看看 AI 聊天机器人如何实时响应！AI SDK 让你能够快速轻松地使用 Expo 构建 AI 聊天界面。
 
 <Note>
   如果在移动设备上遇到“Property `structuredClone` doesn't exist”错误，请添加[下面描述的 polyfills](#polyfills)。
@@ -302,7 +270,7 @@ export const generateAPIUrl = (relativePath: string) => {
 
 ## 使用工具增强你的聊天机器人
 
-虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这就是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
+虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这就是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
 
 工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一个响应中考虑。
 
@@ -361,13 +329,13 @@ export async function POST(req: Request) {
 
 在此更新后的代码中：
 
-1. 你从 `ai` 包中导入了 `tool` 函数，并从 `zod` 中导入了 `z` 用于模式验证。
+1. 你从 `ai` 包中导入了 `tool` 函数，并从 `zod` 导入了 `z` 用于模式验证。
 2. 你定义了一个包含 `weather` 工具的 `tools` 对象。此工具：
    - 有一个描述，帮助模型理解何时使用它。
-   - 使用 Zod 模式定义了 `inputSchema`，指定执行此工具需要一个 `location` 字符串。模型将尝试从对话上下文中提取此输入。如果无法提取，它将要求用户提供缺失的信息。
+   - 使用 Zod 模式定义了 `inputSchema`，指定执行此工具需要一个 `location` 字符串。模型将尝试从对话上下文中提取此输入。如果无法提取，它将向用户询问缺失的信息。
    - 定义了一个 `execute` 函数，模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
 
-现在，你的聊天机器人可以为用户询问的任何位置“获取”天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后 `execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
+现在，你的聊天机器人可以为用户询问的任何位置“获取”天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后，`execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
 
 <Note>
   你可能需要重新启动开发服务器才能使更改生效。
@@ -375,7 +343,7 @@ export async function POST(req: Request) {
 
 尝试询问类似“纽约的天气怎么样？”这样的问题，看看模型如何使用新工具。
 
-注意到 UI 中的空白响应了吗？这是因为模型没有生成文本响应，而是生成了一个工具调用。你可以通过 `message.parts` 数组中的 `tool-weather` 部分在客户端访问工具调用及其后续的工具结果。
+注意到 UI 中的空白响应了吗？这是因为模型没有生成文本响应，而是生成了一个工具调用。你可以通过 `message.parts` 数组中的 `tool-weather` 部分在客户端访问工具调用和随后的工具结果。
 
 <Note>
   工具部分始终命名为 `tool-{toolName}`，其中 `{toolName}` 是你在定义工具时使用的键。在这种情况下，由于我们将工具定义为 `weather`，因此部分类型是 `tool-weather`。
@@ -383,7 +351,7 @@ export async function POST(req: Request) {
 
 ### 更新 UI
 
-要在你的 UI 中显示天气工具调用，请更新你的 `app/(tabs)/index.tsx` 文件：
+要在 UI 中显示天气工具调用，请更新你的 `app/(tabs)/index.tsx` 文件：
 
 ```tsx filename="app/(tabs)/index.tsx" highlight="31-35"
 import { generateAPIUrl } from '@/utils';
@@ -467,9 +435,9 @@ export default function App() {
 
 ## 启用多步骤工具调用
 
-你可能已经注意到，虽然工具结果在聊天界面中可见，但模型并未使用此信息来回答你的原始查询。这是因为一旦模型生成了工具调用，它在技术上已经完成了生成。
+你可能已经注意到，虽然工具结果在聊天界面中可见，但模型并未使用此信息来回答你的原始查询。这是因为一旦模型生成了工具调用，它在技术上就完成了生成。
 
-为了解决这个问题，你可以使用 `stopWhen` 启用多步骤工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当有工具结果时，生成会在第一步后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身，以触发额外的生成，直到满足你指定的停止条件。在这种情况下，你希望模型继续生成，以便它可以使用天气工具结果来回答你的原始问题。
+为了解决这个问题，你可以使用 `stopWhen` 启用多步骤工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当存在工具结果时，生成在第一步后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身，以触发额外的生成，直到满足你指定的停止条件。在这种情况下，你希望模型继续生成，以便它可以使用天气工具结果来回答你的原始问题。
 
 ### 更新你的 API 路由
 
@@ -526,9 +494,9 @@ export async function POST(req: Request) {
   你可能需要重新启动开发服务器才能使更改生效。
 </Note>
 
-返回 Expo 应用并询问某个位置的天气。你现在应该会看到模型使用天气工具结果来回答你的问题。
+返回 Expo 应用程序并询问某个位置的天气。你现在应该看到模型使用天气工具结果来回答你的问题。
 
-通过设置 `stopWhen: isStepCount(5)`，你允许模型在任意给定生成中使用最多 5 个“步骤”。这实现了更复杂的交互，并允许模型在需要时通过多个步骤收集和处理信息。你可以通过添加另一个将温度从华氏度转换为摄氏度的工具来看到这一点。
+通过设置 `stopWhen: isStepCount(5)`，你允许模型在任何给定的生成中使用最多 5 个“步骤”。这可以实现更复杂的交互，并允许模型在需要时通过多个步骤收集和处理信息。你可以通过添加另一个工具将温度从华氏度转换为摄氏度来看到这一点。
 
 ### 添加更多工具
 
@@ -601,7 +569,7 @@ export async function POST(req: Request) {
 
 ### 为新工具更新 UI
 
-要在你的 UI 中显示温度转换工具调用，请更新你的 `app/(tabs)/index.tsx` 文件以处理新的工具部分：
+要在 UI 中显示温度转换工具调用，请更新你的 `app/(tabs)/index.tsx` 文件以处理新的工具部分：
 
 ```tsx filename="app/(tabs)/index.tsx" highlight="39-45"
 import { generateAPIUrl } from '@/utils';
@@ -680,53 +648,26 @@ export default function App() {
   你可能需要重新启动开发服务器才能使更改生效。
 </Note>
 
-现在，当你询问“纽约的天气是多少摄氏度？”时，你应该会看到一个更完整的交互过程：
+现在，当你询问“纽约的天气是多少摄氏度？”时，你应该会看到一个更完整的交互：
 
 1. 模型将为纽约调用天气工具。
-2. 你将看到工具结果显示。
+2. 你将看到显示的工具结果。
 3. 然后它将调用温度转换工具，将温度从华氏度转换为摄氏度。
 4. 模型将使用该信息提供关于纽约天气的自然语言响应。
 
 这种多步骤方法允许模型收集信息并使用它来提供更准确和上下文相关的响应，使你的聊天机器人更加有用。
 
-这个简单的示例演示了工具如何扩展模型的能力。你可以创建更复杂的工具来与真实的 API、数据库或任何其他外部系统集成，允许模型实时访问和处理真实世界的数据。工具弥合了模型知识截止日期和当前信息之间的差距。
+这个简单的例子演示了工具如何扩展模型的能力。你可以创建更复杂的工具来与真实的 API、数据库或任何其他外部系统集成，允许模型实时访问和处理现实世界的数据。工具弥合了模型知识截止日期和当前信息之间的差距。
 
 ## Polyfills
 
-AI SDK 内部使用的几个函数可能在 Expo 运行时中不可用，具体取决于你的配置和目标平台。
+AI SDK 内部使用的几个函数可能在你的 Expo 运行时中不可用，具体取决于你的配置和目标平台。
 
 首先，安装以下包：
 
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet
-        text="pnpm add @ungap/structured-clone @stardazed/streams-text-encoding"
-        dark
-      />
-    </Tab>
-    <Tab>
-      <Snippet
-        text="npm install @ungap/structured-clone @stardazed/streams-text-encoding"
-        dark
-      />
-    </Tab>
-    <Tab>
-      <Snippet
-        text="yarn add @ungap/structured-clone @stardazed/streams-text-encoding"
-        dark
-      />
-    </Tab>
-    <Tab>
-      <Snippet
-        text="bun add @ungap/structured-clone @stardazed/streams-text-encoding"
-        dark
-      />
-    </Tab>
-  </Tabs>
-</div>
+<InstallPackages packages="@ungap/structured-clone @stardazed/streams-text-encoding" />
 
-然后在你的项目根目录创建一个包含以下 polyfills 的新文件：
+然后在项目根目录创建一个包含以下 polyfills 的新文件：
 
 ```ts filename="polyfills.js"
 import { Platform } from 'react-native';
@@ -760,10 +701,10 @@ export {};
 import '@/polyfills';
 ```
 
-## 下一步去哪里？
+## 下一步是什么？
 
 你已经使用 AI SDK 构建了一个 AI 聊天机器人！从这里开始，你有几条探索路径：
 
 - 要了解更多关于 AI SDK 的信息，请阅读[文档](/docs)。
-- 如果你有兴趣通过指南深入学习，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot) 和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
+- 如果你有兴趣深入研究指南，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot) 和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
 - 要快速启动你的第一个 AI 项目，请探索可用的[模板](https://vercel.com/templates?type=ai)。

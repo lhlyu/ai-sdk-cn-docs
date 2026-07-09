@@ -1,31 +1,17 @@
 ---
-title: AssemblyAI
-description: 了解如何使用 AI SDK 的 AssemblyAI 提供商。
+title: "AssemblyAI"
+description: "了解如何在 AI SDK 中使用 AssemblyAI 提供商。"
 ---
 
 # AssemblyAI 提供商
 
-[AssemblyAI](https://assemblyai.com/) 提供商为 AssemblyAI 转录 API 提供语言模型支持。
+[AssemblyAI](https://assemblyai.com/) 提供商为 AssemblyAI 转录 API 提供转录模型支持。
 
 ## 安装
 
 AssemblyAI 提供商位于 `@ai-sdk/assemblyai` 模块中。你可以通过以下方式安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/assemblyai" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/assemblyai" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/assemblyai" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/assemblyai" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/assemblyai" />
 
 ## 提供商实例
 
@@ -51,7 +37,7 @@ const assemblyai = createAssemblyAI({
 - **apiKey** _string_
 
   通过 `Authorization` 标头发送的 API 密钥。
-  默认值为 `ASSEMBLYAI_API_KEY` 环境变量。
+  默认使用 `ASSEMBLYAI_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -68,11 +54,15 @@ const assemblyai = createAssemblyAI({
 
 你可以使用 `.transcription()` 工厂方法创建调用 [AssemblyAI 转录 API](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file/typescript) 的模型。
 
-第一个参数是模型 ID，例如 `best`。
+第一个参数是模型 ID，例如 `universal-3-5-pro`。
 
 ```ts
-const model = assemblyai.transcription('best');
+const model = assemblyai.transcription('universal-3-5-pro');
 ```
+
+`best` 模型是一个**已弃用**的旧版模型，通过 AssemblyAI 已弃用的 `speech_model` 请求参数发送。它仍然有效，但使用时会发出弃用警告——建议使用 `universal-3-5-pro`。较旧的 `nano` 模型已被 AssemblyAI 移除，不再可用。所有较新的模型都使用 [`speech_models`](https://www.assemblyai.com/docs/pre-recorded-audio/select-the-speech-model) 请求参数发送，提供商将根据模型 ID 自动选择。
+
+`universal-3-pro` 和 `universal-2` 完全受支持并继续工作，但使用它们时会发出信息性警告（非弃用），建议使用 AssemblyAI 最新的旗舰模型 `universal-3-5-pro`。
 
 你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `contentSafety` 选项将启用内容安全过滤。
 
@@ -83,7 +73,7 @@ import { type AssemblyAITranscriptionModelOptions } from '@ai-sdk/assemblyai';
 import { readFile } from 'fs/promises';
 
 const result = await transcribe({
-  model: assemblyai.transcription('best'),
+  model: assemblyai.transcription('universal-3-5-pro'),
   audio: await readFile('audio.mp3'),
   providerOptions: {
     assemblyai: {
@@ -115,10 +105,11 @@ const result = await transcribe({
   是否自动为转录生成高亮。
   可选。
 
-- **boostParam** _枚举_
+- **boostParam** _enum_
 
-  转录的增强参数。
-  允许的值：`'low'`、`'default'`、`'high'`。
+  `wordBoost` 的增强参数。
+  允许值：`'low'`、`'default'`、`'high'`。
+  **已弃用**——仅适用于已弃用的 `wordBoost`；请改用 `keytermsPrompt`。
   可选。
 
 - **contentSafety** _boolean_
@@ -142,6 +133,12 @@ const result = await transcribe({
   是否在转录中包含不流畅部分（如“嗯”、“呃”等）。
   可选。
 
+- **domain** _string_
+
+  启用特定领域的模型以处理专业术语。
+  目前支持 `'medical-v1'`（医疗模式）。
+  可选。
+
 - **entityDetection** _boolean_
 
   是否检测转录中的实体。
@@ -162,6 +159,12 @@ const result = await transcribe({
   是否在转录中包含 IAB 类别。
   可选。
 
+- **keytermsPrompt** _字符串数组_
+
+  用于增强识别的领域特定关键词（每个短语最多 6 个词）。
+  替代较新模型中的 `wordBoost`——受 `universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 支持（启用时也支持 `universal-2`）。
+  可选。
+
 - **languageCode** _string_
 
   音频的语言代码。
@@ -178,9 +181,20 @@ const result = await transcribe({
   是否启用语言检测。
   可选。
 
+- **languageDetectionOptions** _object_
+
+  自动语言检测的选项：`expectedLanguages`（字符串数组）、`fallbackLanguage`（字符串）、`codeSwitching`（布尔值）、`codeSwitchingConfidenceThreshold`（数字，0-1）。
+  可选。
+
 - **multichannel** _boolean_
 
   是否分别处理多个音频通道。
+  可选。
+
+- **prompt** _string_
+
+  用于引导模型的自然语言上下文（最多 1500 个词）。
+  仅受 `universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 支持。
   可选。
 
 - **punctuate** _boolean_
@@ -198,22 +212,46 @@ const result = await transcribe({
   是否在音频文件中编辑 PII。
   可选。
 
-- **redactPiiAudioQuality** _枚举_
+- **redactPiiAudioOptions** _object_
+
+  PII 编辑音频的选项：`returnRedactedNoSpeechAudio`（布尔值）、`overrideAudioRedactionMethod`（`'silence'`）。需要 `redactPiiAudio`。
+  可选。
+
+- **redactPiiAudioQuality** _enum_
 
   编辑后音频文件的质量。
-  允许的值：`'mp3'`、`'wav'`。
+  允许值：`'mp3'`、`'wav'`。
   可选。
 
 - **redactPiiPolicies** _枚举数组_
 
-  PII 编辑策略，指定要编辑的信息类型。
+  PII 编辑的策略，指定要编辑的信息类型。
   支持多种类型，如 `'person_name'`、`'phone_number'` 等。
   可选。
 
-- **redactPiiSub** _枚举_
+- **redactPiiReturnUnredacted** _boolean_
+
+  返回原始未编辑的转录文本以及编辑后的版本。
+  需要 `redactPii`。
+  可选。
+
+- **redactPiiSub** _enum_
 
   编辑 PII 的替换方法。
-  允许的值：`'entity_name'`、`'hash'`。
+  允许值：`'entity_name'`、`'hash'`。
+  可选。
+
+- **redactStaticEntities** _object_
+
+  用户定义标签到要编辑的确切术语的映射，例如 `{ INTERNAL_TOOL: ['Bearclaw'] }`。在标准 PII 编辑之上应用。
+  需要 `redactPii`。
+  可选。
+
+- **removeAudioTags** _enum_
+
+  从富转录中移除内联注释。
+  允许值：`'all'`（所有注释）、`'speaker'`（仅说话者提示）。
+  Universal-3 Pro 模型。
   可选。
 
 - **sentimentAnalysis** _boolean_
@@ -224,6 +262,11 @@ const result = await transcribe({
 - **speakerLabels** _boolean_
 
   是否在转录中标记不同的说话者。
+  可选。
+
+- **speakerOptions** _object_
+
+  说话者分离的选项：`minSpeakersExpected`（数字）、`maxSpeakersExpected`（数字）。
   可选。
 
 - **speakersExpected** _number_
@@ -241,16 +284,22 @@ const result = await transcribe({
   是否生成转录摘要。
   可选。
 
-- **summaryModel** _枚举_
+- **summaryModel** _enum_
 
   用于摘要的模型。
-  允许的值：`'informative'`、`'conversational'`、`'catchy'`。
+  允许值：`'informative'`、`'conversational'`、`'catchy'`。
   可选。
 
-- **summaryType** _枚举_
+- **summaryType** _enum_
 
   要生成的摘要类型。
-  允许的值：`'bullets'`、`'bullets_verbose'`、`'gist'`、`'headline'`、`'paragraph'`。
+  允许值：`'bullets'`、`'bullets_verbose'`、`'gist'`、`'headline'`、`'paragraph'`。
+  可选。
+
+- **temperature** _number_
+
+  控制随机性的采样温度（0-1）。
+  Universal-3 Pro 模型。
   可选。
 
 - **webhookAuthHeaderName** _string_
@@ -271,11 +320,45 @@ const result = await transcribe({
 - **wordBoost** _字符串数组_
 
   要在转录中增强的单词列表。
+  **已弃用**——被 `universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 拒绝（仅适用于 `universal-2`/`best`）；请改用 `keytermsPrompt`。
   可选。
+
+### 说话者分离和音频智能结果
+
+AI SDK 的 `transcribe` 结果公开了 `text`、`segments`、`language` 和 `durationInSeconds`。AssemblyAI 更丰富的结果——说话者分离和音频智能功能——不符合该结构，因此它们出现在两个位置：
+
+- **`providerMetadata.assemblyai`**——你启用的功能的结构化结果：`utterances`（说话者分离的片段，当设置 `speakerLabels` 时）、`entities`、`sentimentAnalysisResults`、`contentSafetyLabels`、`iabCategoriesResult` 和 `autoHighlightsResult`。
+- **`response.body`**——完整的原始 AssemblyAI 转录响应，因此任何未在上面公开的字段（例如 `chapters`、词级别的 `speaker` 标签）仍然可用。
+
+注意：`providerMetadata` 和 `response.body` 中的时间（例如 `utterances[].start`）以**毫秒**为单位，与 AssemblyAI API 一致——而顶层的 `segments` 使用**秒**。
+
+```ts
+import { transcribe } from 'ai';
+import { assemblyai } from '@ai-sdk/assemblyai';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: assemblyai.transcription('universal-3-5-pro'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    assemblyai: {
+      speakerLabels: true,
+      entityDetection: true,
+    },
+  },
+});
+
+const { utterances, entities } = result.providerMetadata?.assemblyai ?? {};
+// utterances: [{ speaker: 'A', text: '…', start, end, … }, …]  (start/end 以毫秒为单位)
+```
+
+以下 AssemblyAI 功能已被 API **弃用**，不会在 `providerMetadata` 中公开（如果启用，其输出仍保留在原始 `response.body` 上）：摘要、自动章节和自定义主题。另请注意，某些功能受语言限制（例如，情感分析以英语为中心）；请参阅 AssemblyAI 的文档以了解每种语言的可用性。
 
 ### 模型能力
 
-| 模型   | 转录                | 时长                | 分段                | 语言                |
-| ------ | ------------------- | ------------------- | ------------------- | ------------------- |
-| `best` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `nano` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| 模型               | 转录       | 时长       | 片段       | 语言       |
+| ------------------- | ---------- | ---------- | ---------- | ---------- |
+| `universal-3-5-pro` | <Check />  | <Check />  | <Check />  | <Check />  |
+| `universal-3-pro`   | <Check />  | <Check />  | <Check />  | <Check />  |
+| `universal-2`       | <Check />  | <Check />  | <Check />  | <Check />  |
+| `best`              | <Check />  | <Check />  | <Check />  | <Check />  |

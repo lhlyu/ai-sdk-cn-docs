@@ -1,11 +1,11 @@
 ---
-title: Cloudflare AI Gateway
-description: 了解如何将 Cloudflare AI Gateway 提供商与 AI SDK 结合使用。
+title: "Cloudflare AI Gateway"
+description: "了解如何使用 AI SDK 的 Cloudflare AI Gateway 提供商。"
 ---
 
 # Cloudflare AI Gateway
 
-Cloudflare AI Gateway 提供商是一个将 Cloudflare 的 AI Gateway 与 Vercel AI SDK 集成的库。它通过统一的接口实现对来自不同提供商的多个 AI 模型的无缝访问，并具备自动故障转移功能，确保高可用性。
+Cloudflare AI Gateway 提供商是一个将 Cloudflare 的 AI Gateway 与 Vercel AI SDK 集成的库。它通过统一接口实现对来自不同提供商的多个 AI 模型的无缝访问，并具备自动故障转移功能以实现高可用性。
 
 ## 特性
 
@@ -17,27 +17,13 @@ Cloudflare AI Gateway 提供商是一个将 Cloudflare 的 AI Gateway 与 Vercel
 
 ## 设置
 
-Cloudflare AI Gateway 提供商位于 `ai-gateway-provider` 模块中。使用以下命令安装：
+Cloudflare AI Gateway 提供商在 `ai-gateway-provider` 模块中可用。使用以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add ai-gateway-provider" />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install ai-gateway-provider" />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add ai-gateway-provider" />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add ai-gateway-provider" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="ai-gateway-provider" />
 
 ## 提供商实例
 
-使用 `createAiGateway` 函数创建一个 `aigateway` 提供商实例。您可以使用 API 密钥或 Cloudflare AI 绑定进行身份验证。
+使用 `createAiGateway` 函数创建一个 `aigateway` 提供商实例。您可以使用 API 密钥或 Cloudflare AI 绑定进行认证。
 
 ### API 密钥认证
 
@@ -47,9 +33,9 @@ import { createAiGateway } from 'ai-gateway-provider';
 const aigateway = createAiGateway({
   accountId: 'your-cloudflare-account-id',
   gateway: 'your-gateway-name',
-  apiKey: 'your-cloudflare-api-key', // 仅当您的网关启用了身份验证时才需要
+  apiKey: 'your-cloudflare-api-key', // 仅当您的网关启用了认证时需要
   options: {
-    skipCache: true, // 可选的请求级设置
+    skipCache: true, // 可选的请求级别设置
   },
 });
 ```
@@ -58,14 +44,14 @@ const aigateway = createAiGateway({
 
 此方法仅在 Cloudflare Workers 内部可用。
 
-在您的 `wrangler.toml` 中配置 AI 绑定：
+在您的 `wrangler.toml` 中配置一个 AI 绑定：
 
 ```bash
 [AI]
 binding = "AI"
 ```
 
-在您的 worker 中，使用绑定创建新实例：
+在您的 Worker 中，使用该绑定创建一个新实例：
 
 ```typescript
 import { createAiGateway } from 'ai-gateway-provider';
@@ -73,7 +59,7 @@ import { createAiGateway } from 'ai-gateway-provider';
 const aigateway = createAiGateway({
   binding: env.AI.gateway('my-gateway'),
   options: {
-    skipCache: true, // 可选的请求级设置
+    skipCache: true, // 可选的请求级别设置
   },
 });
 ```
@@ -114,7 +100,7 @@ const model = aigateway([
 - `eventId`：自定义事件标识符。
 - `requestTimeoutMs`：请求超时时间（毫秒）。
 - `retries`：
-  - `maxAttempts`：重试次数（1-5）。
+  - `maxAttempts`：重试尝试次数（1-5）。
   - `retryDelayMs`：重试之间的延迟。
   - `backoff`：重试策略（`constant`、`linear`、`exponential`）。
 
@@ -210,5 +196,5 @@ console.log(accumulatedText); // 输出："你好世界！"
 
 该提供商会抛出以下自定义错误：
 
-- `AiGatewayUnauthorizedError`：当身份验证启用时，API 密钥无效或缺失。
+- `AiGatewayUnauthorizedError`：当认证启用时，API 密钥无效或缺失。
 - `AiGatewayDoesNotExist`：指定的 Cloudflare AI Gateway 不存在。

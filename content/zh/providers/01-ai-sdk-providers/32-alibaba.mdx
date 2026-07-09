@@ -5,7 +5,7 @@ description: "了解如何将阿里云百炼（Qwen）模型与 AI SDK 结合使
 
 # Alibaba 提供商
 
-[阿里云百炼](https://modelstudio.console.alibabacloud.com/) 提供对 Qwen 模型系列的访问，包括高级推理能力。
+[阿里云百炼](https://modelstudio.console.alibabacloud.com/) 提供了对 Qwen 模型系列的访问，包括高级推理能力。
 
 API 密钥可以从[控制台](https://modelstudio.console.alibabacloud.com/)获取。
 
@@ -13,20 +13,7 @@ API 密钥可以从[控制台](https://modelstudio.console.alibabacloud.com/)获
 
 Alibaba 提供商可通过 `@ai-sdk/alibaba` 模块获得。你可以使用以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/alibaba" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/alibaba" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/alibaba" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add @ai-sdk/alibaba" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/alibaba" />
 
 ## 提供商实例
 
@@ -36,7 +23,7 @@ Alibaba 提供商可通过 `@ai-sdk/alibaba` 模块获得。你可以使用以�
 import { alibaba } from '@ai-sdk/alibaba';
 ```
 
-对于自定义配置，你可以导入 `createAlibaba` 并使用你的设置创建提供商实例：
+对于自定义配置，你可以导入 `createAlibaba` 并使用你的设置创建一个提供商实例：
 
 ```ts
 import { createAlibaba } from '@ai-sdk/alibaba';
@@ -80,7 +67,7 @@ const alibaba = createAlibaba({
 
 - **includeUsage** _boolean_
 
-  在流式传输响应中包含使用信息。启用后，令牌使用量将包含在最终块中。
+  在流式响应中包含使用信息。启用后，令牌使用量将包含在最终块中。
   默认为 `true`。
 
 ## 语言模型
@@ -108,7 +95,7 @@ const model = alibaba.languageModel('qwen-plus');
 Alibaba 语言模型可以在 `streamText` 函数中使用
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
-Alibaba 模型提供以下可选的提供商选项：
+以下可选的提供商选项可用于 Alibaba 模型：
 
 - **enableThinking** _boolean_
 
@@ -143,15 +130,15 @@ const { text, reasoning } = await generateText({
   prompt: '单词 "strawberry" 中有多少个字母 "r"？',
 });
 
-console.log('推理过程:', reasoning);
-console.log('答案:', text);
+console.log('推理过程：', reasoning);
+console.log('答案：', text);
 ```
 
 对于纯思考模型（如 `qwen3-235b-a22b-thinking-2507`），思考模式默认启用。
 
 ### 工具调用
 
-Alibaba 模型支持带并行执行的工具调用：
+Alibaba 模型支持并行执行的工具调用：
 
 ```ts
 import { alibaba } from '@ai-sdk/alibaba';
@@ -180,7 +167,7 @@ const { text } = await generateText({
 
 Alibaba 支持隐式和显式提示词缓存，以减少重复提示词的成本。
 
-**隐式缓存** 自动工作——提供商无需任何配置即可缓存适当的内容。为了获得更多控制，你可以通过使用 `cacheControl` 标记特定消息来使用 **显式缓存**：
+**隐式缓存** 自动工作——提供商无需任何配置即可缓存适当的内容。为了获得更多控制，你可以使用 **显式缓存**，通过为特定消息标记 `cacheControl`：
 
 ### 单条消息缓存控制
 
@@ -193,7 +180,7 @@ const { text, usage } = await generateText({
   messages: [
     {
       role: 'system',
-      content: '你是一个有用的助手。[... 长系统提示词 ...]',
+      content: '你是一个乐于助人的助手。[... 长系统提示词 ...]',
       providerOptions: {
         alibaba: {
           cacheControl: { type: 'ephemeral' },
@@ -291,7 +278,8 @@ const { embeddings } = await embedMany({
 });
 ```
 
-Alibaba 嵌入模型支持可通过 `providerOptions.alibaba` 传递的额外提供商选项：
+Alibaba 嵌入模型支持额外的提供商选项，可以通过
+`providerOptions.alibaba` 传递：
 
 - **textType** _'query' | 'document'_
 
@@ -307,18 +295,19 @@ Alibaba 嵌入模型支持可通过 `providerOptions.alibaba` 传递的额外提
 
   指定输出向量类型。默认为 `dense`。
   AI SDK 嵌入接口返回密集的 `number[]` 向量，因此仅稀疏
-  输出不受支持，会抛出错误。使用 `dense&sparse` 可在 `embedding`/`embeddings` 中接收密集
-  嵌入，并在 `providerMetadata.alibaba.sparseEmbeddings` 中接收稀疏向量。
+  输出不受支持，会抛出错误。使用 `dense&sparse` 可以在
+  `embedding`/`embeddings` 中接收密集嵌入，并在
+  `providerMetadata.alibaba.sparseEmbeddings` 中接收稀疏向量。
 
 ### 嵌入模型能力
 
-| 模型                | 默认维度 | 灵活维度                                      | 每次调用最大值 |
+| 模型                | 默认维度 | 灵活维度                                    | 每次调用最大值 |
 | ------------------- | ------------------ | ---------------------------------------- | ------------------- |
 | `text-embedding-v4` | 1024               | 64, 128, 256, 512, 768, 1024, 1536, 2048 | 10                  |
 | `text-embedding-v3` | 1024               | 512, 768, 1024                           | 10                  |
 
 <Note>
-  上表列出了当前文档记录的 Alibaba 文本嵌入模型。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  上表列出了当前有文档记录的 Alibaba 文本嵌入模型。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
 </Note>
 
 ## 视频模型
@@ -337,7 +326,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.6-t2v'),
-  prompt: '日落时分宁静的山湖，水面泛起轻柔的涟漪。',
+  prompt: '日落时分宁静的山间湖泊，水面微波粼粼。',
   resolution: '1280x720',
   duration: 5,
   providerOptions: {
@@ -349,13 +338,13 @@ const { video } = await generateVideo({
 });
 ```
 
-`wan2.7` 模型额外支持 `aspectRatio` 选项（映射到 API 的 `ratio` 参数）并且始终生成音频。多镜头结构直接在提示词中描述，而不是使用 `shotType` 选项：
+`wan2.7` 模型额外支持 `aspectRatio` 选项（映射到 API 的 `ratio` 参数），并且始终生成音频。多镜头结构直接在提示词中描述，而不是使用 `shotType` 选项：
 
 ```ts
 const { video } = await generateVideo({
   model: alibaba.video('wan2.7-t2v'),
   prompt:
-    '日落时分宁静的山湖。镜头在水面上平移，然后切换到涟漪捕捉光线的特写。',
+    '日落时分宁静的山间湖泊。镜头在水面上平移，然后切换到涟漪捕捉光线的特写。',
   resolution: '1920x1080',
   aspectRatio: '16:9',
   duration: 5,
@@ -374,7 +363,7 @@ const { video } = await generateVideo({
   model: alibaba.video('wan2.6-i2v'),
   prompt: {
     image: 'https://example.com/landscape.jpg',
-    text: '相机在风景上缓慢平移',
+    text: '镜头缓慢地扫过风景',
   },
   duration: 5,
   providerOptions: {
@@ -393,7 +382,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.6-i2v'),
-  prompt: '相机在风景上缓慢平移',
+  prompt: '镜头缓慢地扫过风景',
   frameImages: [
     {
       image: 'https://example.com/landscape.jpg',
@@ -444,7 +433,7 @@ const imageBytes = await readFile('./character.png');
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.7-r2v'),
-  prompt: 'Image 1 走过 Image 2 中显示的场景。',
+  prompt: 'Image 1 走过 Image 2 中所示的场景。',
   resolution: '1920x1080',
   duration: 5,
   inputReferences: [
@@ -460,7 +449,7 @@ const { video } = await generateVideo({
 });
 ```
 
-为了完全控制 `wan2.7` 的媒体数组（例如语音引用或显式媒体类型），请使用 `media` 提供商选项，它会覆盖从 `inputReferences` 和 `frameImages` 的自动映射：
+为了完全控制 `wan2.7` 的媒体数组（例如语音参考或显式媒体类型），请使用 `media` 提供商选项，它会覆盖从 `inputReferences` 和 `frameImages` 的自动映射：
 
 ```ts
 const { video } = await generateVideo({
@@ -512,13 +501,14 @@ const { video } = await generateVideo({
 
 - **referenceUrls** _string[]_
 
-  用于参考转视频模式的参考图像/视频 URL 数组（`wan2.6` 模型）。支持 0-5 张图像和 0-3 个视频，总共最多 5 个。
+  用于参考转视频模式的参考图像/视频 URL 数组（`wan2.6` 模型）。支持 0-5 张图像和 0-3 个视频，总计最多 5 个。
   传递参考图像时，优先使用顶层的 `inputReferences` 选项。
 
 - **media** _Array&lt;\{ type, url, referenceVoice? \}&gt;_
 
   用于参考转视频模式的显式媒体数组（`wan2.7` 模型）。每个项目都有一个 `type`
-  （`'reference_image'`、`'reference_video'` 或 `'first_frame'`）、一个 `url`（公共 URL，或图像的 `data:{mime};base64,{data}` URI）以及可选的 `referenceVoice` 音频 URL。
+  （`'reference_image'`、`'reference_video'` 或 `'first_frame'`）、一个 `url`（公共 URL，或图像的
+  `data:{mime};base64,{data}` URI）以及一个可选的 `referenceVoice` 音频 URL。
   覆盖从 `inputReferences` 和 `frameImages` 的自动映射。
 
 - **ratio** `'16:9'` | `'9:16'` | `'1:1'` | `'4:3'` | `'3:4'`
@@ -560,7 +550,7 @@ const { video } = await generateVideo({
 
 #### 参考转视频
 
-| 模型                    | 音频    | 分辨率  | 时长                           |
+| 模型                    | 音频    | 分辨率  | 时长                      |
 | ----------------------- | -------- | ----------- | ----------------------------- |
 | `wan2.6-r2v-flash`      | 可选 | 720P, 1080P | 2-10s                         |
 | `wan2.6-r2v`            | 是      | 720P, 1080P | 2-10s                         |

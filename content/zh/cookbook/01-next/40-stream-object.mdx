@@ -1,12 +1,12 @@
 ---
-title: 流式传输对象
-description: 学习如何使用 AI SDK 和 Next.js 流式传输对象
-tags: ['next', '流式传输', '结构化数据']
+title: "流式对象"
+description: "学习如何使用 AI SDK 和 Next.js 流式传输对象"
+tags: ['next', 'streaming', 'structured data']
 ---
 
-# 流式传输对象
+# 流式对象
 
-对象生成有时需要很长时间才能完成，尤其是在生成大型模式时。在这种情况下，将对象生成过程实时流式传输到客户端非常有用。这允许客户端在生成对象时显示它，而不是让用户等待它完成后再显示结果。
+对象生成有时需要很长时间才能完成，尤其是在生成大型模式时。在这种情况下，将对象生成过程实时流式传输到客户端非常有用。这允许客户端在生成过程中显示生成的对象，而不是让用户等待完成后再显示结果。
 
 <Browser>
   <ObjectGeneration
@@ -37,11 +37,11 @@ tags: ['next', '流式传输', '结构化数据']
 
 ## 对象模式
 
-`streamText` 函数与 `Output` 一起使用，允许你指定不同的输出策略。使用 `Output.object`，它将精确生成你在 schema 选项中指定的结构化对象。
+`streamText` 函数与 `Output` 允许你指定不同的输出策略。使用 `Output.object`，它将精确生成你在 schema 选项中指定的结构化对象。
 
 ### 模式
 
-最好在一个单独的文件中设置模式，该文件在客户端和服务器上都导入。
+将模式设置在单独的文件中，并在客户端和服务器端导入该文件会很有帮助。
 
 ```ts filename='app/api/use-object/schema.ts'
 import { z } from 'zod';
@@ -61,12 +61,12 @@ export const notificationSchema = z.object({
 
 客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) 来流式传输对象生成过程。
 
-结果是部分的，并在接收时显示。请注意 JSX 中处理 `undefined` 值的代码。
+结果是部分结果，并在接收时显示。请注意 JSX 中处理 `undefined` 值的代码。
 
 ```tsx filename='app/page.tsx'
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { notificationSchema } from './api/use-object/schema';
 
 export default function Page() {
@@ -77,7 +77,7 @@ export default function Page() {
 
   return (
     <div>
-      <button onClick={() => submit('Messages during finals week.')}>
+      <button onClick={() => submit('期末考试周期间的消息。')}>
         生成通知
       </button>
 
@@ -92,7 +92,7 @@ export default function Page() {
 }
 ```
 
-### 服务器
+### 服务器端
 
 在服务器端，我们使用带有 `Output.object` 的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 来流式传输对象生成过程。
 
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     model: 'openai/gpt-4.1',
     output: Output.object({ schema: notificationSchema }),
     prompt:
-      `Generate 3 notifications for a messages app in this context:` + context,
+      `在此上下文中为消息应用生成 3 条通知：` + context,
   });
 
   return createTextStreamResponse({
@@ -120,12 +120,12 @@ export async function POST(req: Request) {
 
 ## 加载状态和停止流
 
-你可以使用 `loading` 状态在对象生成时显示加载指示器。你还可以使用 `stop` 函数停止对象生成过程。
+你可以使用 `loading` 状态在对象生成期间显示加载指示器。你还可以使用 `stop` 函数停止对象生成过程。
 
 ```tsx filename='app/page.tsx' highlight="7,16,21,24"
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { notificationSchema } from './api/use-object/schema';
 
 export default function Page() {
@@ -137,7 +137,7 @@ export default function Page() {
   return (
     <div>
       <button
-        onClick={() => submit('Messages during finals week.')}
+        onClick={() => submit('期末考试周期间的消息。')}
         disabled={isLoading}
       >
         生成通知
@@ -165,7 +165,7 @@ export default function Page() {
 
 ## 数组模式
 
-`Output.array` 模式允许你一次一个元素地流式传输对象数组。这在生成项目列表时特别有用。
+`Output.array` 模式允许你一次流式传输一个元素的数组。这在生成项目列表时特别有用。
 
 ### 模式
 
@@ -188,7 +188,7 @@ export const notificationSchema = z.object({
 ```tsx filename='app/page.tsx'
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { notificationSchema } from '../api/use-object/schema';
 import z from 'zod';
 
@@ -201,7 +201,7 @@ export default function Page() {
   return (
     <div>
       <button
-        onClick={() => submit('Messages during finals week.')}
+        onClick={() => submit('期末考试周期间的消息。')}
         disabled={isLoading}
       >
         生成通知
@@ -227,7 +227,7 @@ export default function Page() {
 }
 ```
 
-### 服务器
+### 服务器端
 
 在服务器端，指定 `Output.array` 以生成对象数组。
 
@@ -244,7 +244,7 @@ export async function POST(req: Request) {
     model: 'openai/gpt-4.1',
     output: Output.array({ element: notificationSchema }),
     prompt:
-      `Generate 3 notifications for a messages app in this context:` + context,
+      `在此上下文中为消息应用生成 3 条通知：` + context,
   });
 
   return createTextStreamResponse({
@@ -262,7 +262,7 @@ export async function POST(req: Request) {
 ```tsx filename='app/page.tsx'
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { z } from 'zod';
 
 export default function Page() {
@@ -274,7 +274,7 @@ export default function Page() {
   return (
     <div>
       <button
-        onClick={() => submit('Messages during finals week.')}
+        onClick={() => submit('期末考试周期间的消息。')}
         disabled={isLoading}
       >
         生成通知
@@ -295,7 +295,7 @@ export default function Page() {
 }
 ```
 
-### 服务器
+### 服务器端
 
 在服务器端，指定 `Output.json()`。
 
@@ -311,7 +311,7 @@ export async function POST(req: Request) {
     model: 'openai/gpt-4o',
     output: Output.json(),
     prompt:
-      `Generate 3 notifications (in JSON) for a messages app in this context:` +
+      `在此上下文中为消息应用生成 3 条通知（JSON 格式）：` +
       context,
   });
 

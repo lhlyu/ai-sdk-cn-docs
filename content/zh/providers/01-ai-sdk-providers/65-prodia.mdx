@@ -1,31 +1,17 @@
 ---
-title: Prodia
-description: 了解如何将 Prodia 模型与 AI SDK 结合使用。
+title: "Prodia"
+description: "了解如何将 Prodia 模型与 AI SDK 结合使用。"
 ---
 
 # Prodia 提供商
 
-[Prodia](https://prodia.com/) 是一个面向生成式 AI 的快速推理平台，提供基于 FLUX 和 Stable Diffusion 模型的高速图像生成功能。
+[Prodia](https://prodia.com/) 是一个面向生成式 AI 的快速推理平台，提供基于 FLUX 和 Stable Diffusion 模型的高速图像生成能力。
 
-## 安装
+## 环境配置
 
-Prodia 提供商可通过 `@ai-sdk/prodia` 模块获取。你可以使用以下命令安装：
+Prodia 提供商可通过 `@ai-sdk/prodia` 模块获取。你可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/prodia" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/prodia" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/prodia" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/prodia" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/prodia" />
 
 ## 提供商实例
 
@@ -53,7 +39,7 @@ const prodia = createProdia({
 
 - **baseURL** _string_
 
-  为 API 调用使用不同的 URL 前缀。
+  用于 API 调用的不同 URL 前缀。
   默认前缀为 `https://inference.prodia.com/v2`。
 
 - **apiKey** _string_
@@ -63,18 +49,18 @@ const prodia = createProdia({
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  你可以将其用作拦截请求的中间件，
+  你可以将其用作中间件来拦截请求，
   或为测试等场景提供自定义 fetch 实现。
 
 ## 图像模型
 
 你可以使用 `.image()` 工厂方法创建 Prodia 图像模型。
-有关使用 AI SDK 生成图像的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ### 基本用法
 
@@ -95,21 +81,21 @@ console.log(`图像已保存至 ${filename}`);
 
 ### 模型能力
 
-Prodia 为各种图像生成模型提供快速推理。以下是支持的模型类型：
+Prodia 为多种图像生成模型提供快速推理。以下是支持的模型类型：
 
-| 模型                                       | 描述                       |
-| ------------------------------------------ | -------------------------- |
+| 模型                                       | 描述                               |
+| ------------------------------------------ | ---------------------------------- |
 | `inference.flux-fast.schnell.txt2img.v2`   | 用于文生图的快速 FLUX Schnell 模型 |
 | `inference.flux.schnell.txt2img.v2`        | 用于文生图的 FLUX Schnell 模型     |
 
 <Note>
   Prodia 支持更多模型 ID。请查阅 [Prodia
-  文档](https://docs.prodia.com/) 获取完整可用模型列表。
+  文档](https://docs.prodia.com/) 获取完整的可用模型列表。
 </Note>
 
 ### 图像尺寸
 
-你可以使用 `size` 参数以 `WIDTHxHEIGHT` 格式指定图像尺寸：
+你可以使用 `WIDTHxHEIGHT` 格式的 `size` 参数指定图像尺寸：
 
 ```ts
 import { prodia } from '@ai-sdk/prodia';
@@ -146,16 +132,16 @@ const { image } = await generateImage({
 
 支持以下提供商选项：
 
-- **width** _number_ - 输出宽度（像素，256–1920）。设置后将覆盖从 `size` 派生的宽度。
-- **height** _number_ - 输出高度（像素，256–1920）。设置后将覆盖从 `size` 派生的高度。
-- **steps** _number_ - 计算迭代次数（1–4）。更多步骤通常产生更高质量的结果。
+- **width** _number_ - 输出宽度（像素，范围 256–1920）。设置后将覆盖从 `size` 派生的宽度。
+- **height** _number_ - 输出高度（像素，范围 256–1920）。设置后将覆盖从 `size` 派生的高度。
+- **steps** _number_ - 计算迭代次数（1–4）。更多步骤通常能产生更高质量的结果。
 - **stylePreset** _string_ - 为输出图像应用视觉主题。支持的预设：`3d-model`、`analog-film`、`anime`、`cinematic`、`comic-book`、`digital-art`、`enhance`、`fantasy-art`、`isometric`、`line-art`、`low-poly`、`neon-punk`、`origami`、`photographic`、`pixel-art`、`texture`、`craft-clay`。
-- **loras** _string[]_ - 使用最多 3 个 LoRA 模型增强输出。
+- **loras** _string[]_ - 使用最多 3 个 LoRA 模型增强输出效果。
 - **progressive** _boolean_ - 使用 JPEG 输出时，返回渐进式 JPEG。
 
-### 种子
+### 随机种子
 
-你可以使用 `seed` 参数获得可重现的结果：
+你可以使用 `seed` 参数获得可复现的结果：
 
 ```ts
 import { prodia } from '@ai-sdk/prodia';
@@ -173,7 +159,7 @@ const { image } = await generateImage({
 `generateImage` 响应在 `providerMetadata.prodia.images[]` 中包含提供商特定的元数据。每个图像对象可能包含以下属性：
 
 - **jobId** _string_ - 生成任务的唯一标识符。
-- **seed** _number_ - 生成时使用的种子。有助于重现结果。
+- **seed** _number_ - 生成时使用的随机种子。有助于复现结果。
 - **elapsed** _number_ - 生成时间（秒）。
 - **iterationsPerSecond** _number_ - 处理速度指标。
 - **createdAt** _string_ - 任务创建时间戳。
@@ -191,6 +177,6 @@ const { image, providerMetadata } = await generateImage({
 // 访问提供商元数据
 const metadata = providerMetadata?.prodia?.images?.[0];
 console.log('任务 ID:', metadata?.jobId);
-console.log('种子:', metadata?.seed);
+console.log('随机种子:', metadata?.seed);
 console.log('耗时:', metadata?.elapsed);
 ```

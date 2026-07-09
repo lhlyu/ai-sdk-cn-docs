@@ -1,47 +1,33 @@
 ---
-title: Axiom
-description: 使用 Axiom 测量、观察并改进您的 AI SDK 应用程序
+title: "Axiom"
+description: "使用 Axiom 测量、观察并改进您的 AI SDK 应用程序"
 ---
 
 # Axiom 可观测性
 
-**Axiom** 是一个数据平台，具备针对 **AI 工程工作流** 的专门功能，帮助您自信地构建复杂的 AI 系统。
+**Axiom** 是一个数据平台，具有针对 **AI 工程工作流** 的专门功能，帮助您自信地构建复杂的 AI 系统。
 
-Axiom 与 AI SDK 的集成使用模型包装器来自动捕获每次 LLM 调用的详细追踪信息，让您立即了解应用程序的性能、成本和运行情况。
+Axiom 与 AI SDK 的集成使用模型包装器自动捕获每次 LLM 调用的详细追踪，让您即时了解应用程序的性能、成本和运行情况。
 
 ## 设置
 
 ### 1. 配置 Axiom
 
-首先，您需要一个 Axiom 组织、一个用于发送追踪数据的数据集以及一个 API 令牌。
+首先，您需要一个 Axiom 组织、一个用于发送追踪的数据集以及一个 API 令牌。
 
 - [创建一个 Axiom 组织](https://app.axiom.co/register)。
-- [创建一个新数据集](https://app.axiom.co/datasets)（例如，`my-ai-app`）。
+- [创建一个新数据集](https://app.axiom.co/datasets)（例如 `my-ai-app`）。
 - [创建一个 API 令牌](https://app.axiom.co/settings/api-tokens)，并为其授予数据集的摄取权限。
 
 ### 2. 安装 Axiom SDK
 
 在您的项目中安装 Axiom 包：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add axiom" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install axiom" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add axiom" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add axiom" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="axiom" />
 
 ### 3. 设置环境变量
 
-在 `.env` 文件中配置您的环境变量。这将使用标准的 OpenTelemetry 配置将追踪数据直接发送到您的 Axiom 数据集。
+在 `.env` 文件中配置您的环境变量。这使用标准的 OpenTelemetry 配置将追踪直接发送到您的 Axiom 数据集。
 
 ```bash filename=".env"
 # Axiom 配置
@@ -63,34 +49,9 @@ OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 
 要将数据发送到 Axiom，请配置一个追踪器。例如，使用一个专用的检测文件，并在应用程序其余部分之前加载它。以下是 Node.js 环境的示例配置：
 
-1. 安装依赖：
+1. 安装依赖项：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet
-      text="pnpm i dotenv @opentelemetry/exporter-trace-otlp-http @opentelemetry/resources @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/semantic-conventions @opentelemetry/api"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="npm i dotenv @opentelemetry/exporter-trace-otlp-http @opentelemetry/resources @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/semantic-conventions @opentelemetry/api"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="yarn add dotenv @opentelemetry/exporter-trace-otlp-http @opentelemetry/resources @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/semantic-conventions @opentelemetry/api"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="bun add dotenv @opentelemetry/exporter-trace-otlp-http @opentelemetry/resources @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/semantic-conventions @opentelemetry/api"
-      dark
-    />
-  </Tab>
-</Tabs>
+<InstallPackages packages="dotenv @opentelemetry/exporter-trace-otlp-http @opentelemetry/resources @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/semantic-conventions @opentelemetry/api" />
 
 2. 创建检测文件：
 
@@ -152,21 +113,21 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-使用 `tracedGpt4o` 模型进行的任何调用现在都会自动将详细的追踪信息发送到您的 Axiom 数据集。
+使用 `tracedGpt4o` 模型进行的任何调用现在都会自动将详细追踪发送到您的 Axiom 数据集。
 
 ## 在 Axiom 中您将看到的内容
 
 集成后，您的 Axiom 数据集将包含：
 
 - **AI 追踪瀑布图：** 一个专用视图，用于可视化单步和多步 LLM 工作流。
-- **Gen AI 仪表板：** 一个预构建的仪表板，用于监控成本、延迟、令牌使用率和错误率。
+- **生成式 AI 仪表盘：** 一个预构建的仪表盘，用于监控成本、延迟、令牌使用情况和错误率。
 - **详细跨度：** 每次调用的丰富遥测数据，包括完整的提示词和完成内容、令牌计数以及模型信息。
 
 ## 高级用法
 
 Axiom 的 AI SDK 提供更高级的检测功能，以实现更深入的可见性：
 
-- **业务上下文：** 使用 `withSpan` 函数将 LLM 调用分组到特定的业务能力下（例如，`customer_support_agent`）。
+- **业务上下文：** 使用 `withSpan` 函数将 LLM 调用分组到特定的业务能力下（例如 `customer_support_agent`）。
 - **工具追踪：** 使用 `wrapTool` 辅助函数自动追踪 AI 模型调用的工具执行情况。
 
 要了解有关这些功能的更多信息，请参阅 [Axiom AI SDK 检测指南](https://axiom.co/docs/ai-engineering/observe/axiom-ai-sdk-instrumentation)。

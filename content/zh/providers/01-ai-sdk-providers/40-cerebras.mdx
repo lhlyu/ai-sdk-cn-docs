@@ -1,33 +1,19 @@
 ---
-title: Cerebras
-description: 了解如何通过 AI SDK 使用 Cerebras 的模型。
+title: "Cerebras"
+description: "了解如何将 Cerebras 的模型与 AI SDK 结合使用。"
 ---
 
 # Cerebras 提供商
 
-[Cerebras](https://cerebras.ai) 提供商通过 Cerebras API 提供对强大语言模型的访问，包括由晶圆级引擎和 CS-3 系统驱动的高速推理能力。
+[Cerebras](https://cerebras.ai) 提供商通过 Cerebras API 提供对强大语言模型的访问，包括由晶圆级引擎和 CS-3 系统支持的高速推理能力。
 
-API 密钥可以从 [Cerebras 平台](https://cloud.cerebras.ai) 获取。
+API 密钥可从 [Cerebras 平台](https://cloud.cerebras.ai) 获取。
 
-## 安装
+## 设置
 
 Cerebras 提供商可通过 `@ai-sdk/cerebras` 模块获得。您可以使用以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/cerebras" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/cerebras" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/cerebras" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/cerebras" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/cerebras" />
 
 ## 提供商实例
 
@@ -51,7 +37,7 @@ const cerebras = createCerebras({
 
 - **baseURL** _string_
 
-  用于 API 调用的不同 URL 前缀。
+  为 API 调用使用不同的 URL 前缀。
   默认前缀为 `https://api.cerebras.ai/v1`。
 
 - **apiKey** _string_
@@ -101,7 +87,7 @@ const model = cerebras.chat('llama-3.3-70b');
 
 Cerebras 提供多种推理模型，包括 `gpt-oss-120b`、`qwen-3-32b` 和 `zai-glm-4.7`，这些模型在最终响应之前会生成中间思考令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
 
-对于 `gpt-oss-120b`，您可以使用 `reasoningEffort` 提供商选项来控制推理深度：
+对于 `gpt-oss-120b`，您可以使用 `reasoningEffort` 提供商选项控制推理深度：
 
 ```ts
 import { cerebras } from '@ai-sdk/cerebras';
@@ -119,22 +105,22 @@ const result = streamText({
 
 for await (const part of result.stream) {
   if (part.type === 'reasoning') {
-    console.log('推理过程：', part.text);
+    console.log('推理过程:', part.text);
   } else if (part.type === 'text-delta') {
     process.stdout.write(part.textDelta);
   }
 }
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
-Cerebras 语言模型提供以下可选的提供商选项：
+Cerebras 语言模型提供以下可选提供商选项：
 
 - **reasoningEffort** _'low' | 'medium' | 'high'_
 
-  控制 GPT-OSS 模型的推理深度。默认值为 `'medium'`。
+  控制 GPT-OSS 模型的推理深度。默认为 `'medium'`。
 
 - **user** _string_
 
@@ -142,20 +128,20 @@ Cerebras 语言模型提供以下可选的提供商选项：
 
 - **strictJsonSchema** _boolean_
 
-  是否使用严格的 JSON Schema 验证。当为 `true` 时，模型使用约束解码来保证 Schema 合规性。默认值为 `true`。
+  是否使用严格的 JSON Schema 验证。当为 `true` 时，模型使用约束解码来保证 Schema 合规性。默认为 `true`。
 
 ## 模型能力
 
-| 模型                            | 图像输入           | 对象生成           | 工具使用           | 工具流式传输       | 推理               |
-| -------------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
-| `llama3.1-8b`                    | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
-| `llama-3.3-70b`                  | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
-| `gpt-oss-120b`                   | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `qwen-3-32b`                     | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `qwen-3-235b-a22b-instruct-2507` | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
-| `qwen-3-235b-a22b-thinking-2507` | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
-| `zai-glm-4.6`                    | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> |
-| `zai-glm-4.7`                    | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| 模型                               | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 | 推理 |
+| ---------------------------------- | -------- | -------- | -------- | ------------ | ---- |
+| `llama3.1-8b`                      | <Cross /> | <Check /> | <Check /> | <Check />    | <Cross /> |
+| `llama-3.3-70b`                    | <Cross /> | <Check /> | <Check /> | <Check />    | <Cross /> |
+| `gpt-oss-120b`                     | <Cross /> | <Check /> | <Check /> | <Check />    | <Check /> |
+| `qwen-3-32b`                       | <Cross /> | <Check /> | <Check /> | <Check />    | <Check /> |
+| `qwen-3-235b-a22b-instruct-2507`   | <Cross /> | <Check /> | <Check /> | <Check />    | <Cross /> |
+| `qwen-3-235b-a22b-thinking-2507`   | <Cross /> | <Check /> | <Check /> | <Check />    | <Cross /> |
+| `zai-glm-4.6`                      | <Cross /> | <Check /> | <Check /> | <Check />    | <Cross /> |
+| `zai-glm-4.7`                      | <Cross /> | <Check /> | <Check /> | <Check />    | <Check /> |
 
 <Note>
   模型 `qwen-3-32b` 和 `llama-3.3-70b` 计划于 2026 年 2 月 16 日弃用。有关可用模型和迁移指南的更多详细信息，请参阅 [Cerebras 文档](https://inference-docs.cerebras.ai/introduction)。如有需要，您也可以将任何可用的提供商模型 ID 作为字符串传递。

@@ -1,39 +1,25 @@
 ---
-title: LM Studio
-description: 使用 AI SDK 调用 LM Studio 的 OpenAI 兼容 API。
+title: "LM Studio"
+description: "使用 AI SDK 与 LM Studio 的 OpenAI 兼容 API 交互。"
 ---
 
 # LM Studio 提供商
 
 [LM Studio](https://lmstudio.ai/) 是一个用于运行本地模型的用户界面。
 
-它包含一个与 OpenAI API 兼容的服务器，你可以通过 AI SDK 使用它。
-你可以在 LM Studio 界面的[本地服务器标签页](https://lmstudio.ai/docs/basics/server)中启动本地服务器（点击“启动服务器”按钮）。
+它包含一个与 OpenAI 兼容的 API 服务器，可与 AI SDK 配合使用。
+您可以在 LM Studio 界面的[本地服务器标签页](https://lmstudio.ai/docs/basics/server)中启动本地服务器（点击“Start Server”按钮）。
 
 ## 安装
 
 LM Studio 提供商可通过 `@ai-sdk/openai-compatible` 模块获取，因为它与 OpenAI API 兼容。
-你可以通过以下命令安装：
+您可以使用以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/openai-compatible" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/openai-compatible" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/openai-compatible" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/openai-compatible" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/openai-compatible" />
 
 ## 提供商实例
 
-要使用 LM Studio，你可以使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建一个自定义提供商实例：
+要使用 LM Studio，您可以使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -45,23 +31,23 @@ const lmstudio = createOpenAICompatible({
 ```
 
 <Note>
-  LM Studio 默认使用端口 `1234`，但你可以在应用的[本地服务器标签页](https://lmstudio.ai/docs/basics/server)中更改。
+  LM Studio 默认使用端口 `1234`，但您可以在应用的[本地服务器标签页](https://lmstudio.ai/docs/basics/server)中更改。
 </Note>
 
 ## 语言模型
 
-你可以使用提供商实例与 [LM Studio](https://lmstudio.ai/docs/basics/server#endpoints-overview) 中的本地大语言模型进行交互。
+您可以使用提供商实例与 [LM Studio](https://lmstudio.ai/docs/basics/server#endpoints-overview) 中的本地 LLM 进行交互。
 第一个参数是模型 ID，例如 `llama-3.2-1b`。
 
 ```ts
 const model = lmstudio('llama-3.2-1b');
 ```
 
-###### 要使用某个模型，你需要先[下载它](https://lmstudio.ai/docs/basics/download-model)。
+###### 要使用某个模型，您需要[先下载它](https://lmstudio.ai/docs/basics/download-model)。
 
 ### 示例
 
-你可以使用 LM Studio 语言模型通过 `generateText` 函数生成文本：
+您可以使用 LM Studio 语言模型通过 `generateText` 函数生成文本：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -74,7 +60,7 @@ const lmstudio = createOpenAICompatible({
 
 const { text } = await generateText({
   model: lmstudio('llama-3.2-1b'),
-  prompt: '写一份供4人食用的素食千层面食谱。',
+  prompt: '写一份适合4人的素食千层面食谱。',
   maxRetries: 1, // 如果服务器未运行，立即报错
 });
 ```
@@ -83,7 +69,7 @@ LM Studio 语言模型也可以与 `streamText` 一起使用。
 
 ## 嵌入模型
 
-你可以使用 `.embeddingModel()` 工厂方法创建调用 [LM Studio 嵌入 API](https://lmstudio.ai/docs/basics/server#endpoints-overview) 的模型。
+您可以使用 `.embeddingModel()` 工厂方法创建调用 [LM Studio 嵌入 API](https://lmstudio.ai/docs/basics/server#endpoints-overview) 的模型。
 
 ```ts
 const model = lmstudio.embeddingModel('text-embedding-nomic-embed-text-v1.5');
@@ -100,7 +86,7 @@ const lmstudio = createOpenAICompatible({
   baseURL: 'https://localhost:1234/v1',
 });
 
-// 'embedding' 是一个单一的嵌入对象 (number[])
+// 'embedding' 是一个单一的嵌入对象（number[]）
 const { embedding } = await embed({
   model: lmstudio.embeddingModel('text-embedding-nomic-embed-text-v1.5'),
   value: '阳光明媚的海滩日',
@@ -109,10 +95,10 @@ const { embedding } = await embed({
 
 ### 示例 - 嵌入多个值
 
-在加载数据时，例如为检索增强生成（RAG）准备数据存储，通常需要一次性嵌入多个值（批量嵌入）。
+在加载数据时，例如为检索增强生成（RAG）准备数据存储时，通常需要一次性嵌入多个值（批量嵌入）。
 
 AI SDK 为此提供了 [`embedMany`](/docs/reference/ai-sdk-core/embed-many) 函数。
-与 `embed` 类似，你可以将其与嵌入模型一起使用，
+与 `embed` 类似，您可以将其与嵌入模型一起使用，
 例如 `lmstudio.embeddingModel('text-embedding-nomic-embed-text-v1.5')` 或 `lmstudio.embeddingModel('text-embedding-bge-small-en-v1.5')`。
 
 ```tsx
@@ -124,7 +110,7 @@ const lmstudio = createOpenAICompatible({
   baseURL: 'https://localhost:1234/v1',
 });
 
-// 'embeddings' 是一个嵌入对象数组 (number[][])。
+// 'embeddings' 是一个嵌入对象数组（number[][]）。
 // 其排序顺序与输入值相同。
 const { embeddings } = await embedMany({
   model: lmstudio.embeddingModel('text-embedding-nomic-embed-text-v1.5'),

@@ -1,36 +1,22 @@
 ---
-title: NVIDIA NIM
-description: 使用 AI SDK 调用 NVIDIA NIM 的 OpenAI 兼容 API。
+title: "NVIDIA NIM"
+description: "使用 AI SDK 调用 NVIDIA NIM 的 OpenAI 兼容 API。"
 ---
 
 # NVIDIA NIM 提供商
 
-[NVIDIA NIM](https://www.nvidia.com/en-us/ai/) 提供用于部署基础模型的优化推理微服务。它提供与 OpenAI 兼容的 API，可与 AI SDK 配合使用。
+[NVIDIA NIM](https://www.nvidia.com/en-us/ai/) 提供优化的推理微服务，用于部署基础模型。它提供与 OpenAI 兼容的 API，可与 AI SDK 配合使用。
 
-## 安装
+## 环境搭建
 
 NVIDIA NIM 提供商可通过 `@ai-sdk/openai-compatible` 模块获取，因为它与 OpenAI API 兼容。
-你可以使用以下命令安装：
+您可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/openai-compatible" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/openai-compatible" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/openai-compatible" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/openai-compatible" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/openai-compatible" />
 
 ## 提供商实例
 
-要使用 NVIDIA NIM，你可以通过 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
+要使用 NVIDIA NIM，您可以使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -45,12 +31,12 @@ const nim = createOpenAICompatible({
 ```
 
 <Note>
-  你可以通过注册 [NVIDIA Build](https://build.nvidia.com/explore/discover) 获取 API 密钥和免费积分。新用户可获得 1,000 个推理积分用于入门。
+  您可以通过在 [NVIDIA Build](https://build.nvidia.com/explore/discover) 注册来获取 API 密钥和免费积分。新用户可获得 1,000 个推理积分用于入门。
 </Note>
 
 ## 语言模型
 
-你可以使用提供商实例与 NIM 模型进行交互。例如，使用 [DeepSeek-R1](https://build.nvidia.com/deepseek-ai/deepseek-r1)，一个强大的开源语言模型：
+您可以使用提供商实例与 NIM 模型进行交互。例如，要使用 [DeepSeek-R1](https://build.nvidia.com/deepseek-ai/deepseek-r1)（一个强大的开源语言模型）：
 
 ```ts
 const model = nim.chatModel('deepseek-ai/deepseek-r1');
@@ -58,7 +44,7 @@ const model = nim.chatModel('deepseek-ai/deepseek-r1');
 
 ### 示例 - 生成文本
 
-你可以使用 NIM 语言模型通过 `generateText` 函数生成文本：
+您可以使用 NIM 语言模型通过 `generateText` 函数生成文本：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -74,12 +60,12 @@ const nim = createOpenAICompatible({
 
 const { text, usage, finishReason } = await generateText({
   model: nim.chatModel('deepseek-ai/deepseek-r1'),
-  prompt: '告诉我旧金山传教风格卷饼的历史。',
+  prompt: '请讲述旧金山传教风格卷饼的历史。',
 });
 
 console.log(text);
-console.log('Token 用量:', usage);
-console.log('结束原因:', finishReason);
+console.log('Token 用量：', usage);
+console.log('结束原因：', finishReason);
 ```
 
 ### 示例 - 流式传输文本
@@ -100,7 +86,7 @@ const nim = createOpenAICompatible({
 
 const result = streamText({
   model: nim.chatModel('deepseek-ai/deepseek-r1'),
-  prompt: '告诉我北方白犀牛的历史。',
+  prompt: '请讲述北方白犀牛的历史。',
 });
 
 for await (const textPart of result.textStream) {
@@ -108,12 +94,12 @@ for await (const textPart of result.textStream) {
 }
 
 console.log();
-console.log('Token 用量:', await result.usage);
-console.log('结束原因:', await result.finishReason);
+console.log('Token 用量：', await result.usage);
+console.log('结束原因：', await result.finishReason);
 ```
 
-NIM 语言模型还支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据。
+NIM 语言模型还支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成。
 
 <Note>
-  模型对工具调用和结构化输出的支持各不相同。例如，[`meta/llama-3.3-70b-instruct`](https://build.nvidia.com/meta/llama-3_3-70b-instruct) 模型支持结构化输出功能。请查看 NVIDIA Build 上每个模型的文档以了解具体的支持功能。
+  模型对工具调用和结构化输出的支持各不相同。例如，[`meta/llama-3.3-70b-instruct`](https://build.nvidia.com/meta/llama-3_3-70b-instruct) 模型支持结构化输出功能。请查看 NVIDIA Build 上每个模型的文档，了解具体支持的功能。
 </Note>

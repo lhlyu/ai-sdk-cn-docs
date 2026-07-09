@@ -1,45 +1,34 @@
 ---
-title: LangChain
-description: 了解如何将 LangChain 与 AI SDK 结合使用。
+title: "LangChain"
+description: "了解如何将 LangChain 与 AI SDK 结合使用。"
 ---
 
 # LangChain
 
-[LangChain](https://docs.langchain.com/) 是一个用于构建由大型语言模型驱动的应用程序的框架。
-它提供了与 AI 模型、提示词、链、向量存储以及其他用于检索增强生成（RAG）的数据源协作的工具和抽象。
+[LangChain](https://docs.langchain.com/) 是一个用于构建由大型语言模型驱动的应用程序的框架。它提供了处理 AI 模型、提示词、链、向量存储以及其他用于检索增强生成（RAG）数据源的工具和抽象。
 
-[LangGraph](https://langchain-ai.github.io/langgraphjs/) 是一个基于 LangChain 构建的库，用于创建有状态的多参与者应用程序。它使您能够将复杂的智能体工作流定义为图，支持循环、持久化和人在回路模式。
+[LangGraph](https://langchain-ai.github.io/langgraphjs/) 是一个基于 LangChain 构建的库，用于创建有状态、多角色的应用程序。它允许您将复杂的智能体工作流定义为图，支持循环、持久化和人机协同模式。
 
-`@ai-sdk/langchain` 适配器提供了 LangChain、LangGraph 和 AI SDK 之间的无缝集成，使您能够将 LangChain 模型和 LangGraph 智能体与 AI SDK UI 组件一起使用。
+`@ai-sdk/langchain` 适配器提供了 LangChain、LangGraph 与 AI SDK 之间的无缝集成，使您能够将 LangChain 模型和 LangGraph 智能体与 AI SDK UI 组件一起使用。
 
 ## 安装
 
-<Tabs items={['pnpm', 'npm', 'yarn']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/langchain @langchain/core" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/langchain @langchain/core" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/langchain @langchain/core" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/langchain @langchain/core" />
 
-<Note>`@langchain/core` 是一个必需的 peer 依赖。</Note>
+<Note>`@langchain/core` 是必需的 peer 依赖项。</Note>
 
 ## 特性
 
 - 使用 `toBaseMessages` 将 AI SDK `UIMessage` 转换为 LangChain `BaseMessage` 格式
 - 使用 `toUIMessageStream` 将 LangChain/LangGraph 流转换为 AI SDK `UIMessageStream`
 - 支持 `streamEvents()` 输出，用于细粒度的事件流式传输和可观测性
-- `LangSmithDeploymentTransport` 用于直接连接到已部署的 LangGraph 图
+- `LangSmithDeploymentTransport`，用于直接连接到已部署的 LangGraph 图
 - 完全支持文本、工具调用、工具结果和多模态内容
-- 使用类型化事件 (`data-{type}`) 的自定义数据流式传输
+- 使用类型化事件 (`data-{type}`) 进行自定义数据流式传输
 
-## 示例：基础聊天
+## 示例：基本聊天
 
-以下是一个将 AI SDK 和 LangChain 与 [Next.js](https://nextjs.org/docs) App Router 结合使用的基础示例。
+以下是一个基本示例，展示了如何将 AI SDK 和 LangChain 与 [Next.js](https://nextjs.org/docs) App Router 结合使用。
 
 ```tsx filename="app/api/chat/route.ts"
 import { toBaseMessages, toUIMessageStream } from '@ai-sdk/langchain';
@@ -192,7 +181,7 @@ export async function POST(req: Request) {
   // 将 AI SDK UIMessages 转换为 LangChain 消息
   const langchainMessages = await toBaseMessages(messages);
 
-  // 使用 LangGraph 的流式格式从图中流式传输
+  // 使用 LangGraph 的流式传输格式从图中流式传输
   const stream = await graph.stream(
     { messages: langchainMessages },
     { streamMode: ['values', 'messages'] },
@@ -226,13 +215,13 @@ export async function POST(req: Request) {
 
   const langchainMessages = await toBaseMessages(messages);
 
-  // 使用 streamEvents() 进行细粒度的事件流式传输
-  // 产生诸如 on_chat_model_stream、on_tool_start、on_tool_end 等事件
+  // 使用 streamEvents() 进行细粒度事件流式传输
+  // 生成诸如 on_chat_model_stream, on_tool_start, on_tool_end 等事件
   const streamEvents = model.streamEvents(langchainMessages, {
     version: 'v2',
   });
 
-  // 适配器会自动检测并处理 streamEvents 格式
+  // 适配器自动检测并处理 streamEvents 格式
   return createUIMessageStreamResponse({
     stream: toUIMessageStream(streamEvents),
   });
@@ -241,12 +230,12 @@ export async function POST(req: Request) {
 
 <Note>
   **何时使用 `streamEvents()` 与 `graph.stream()`：** - **`streamEvents()`**：
-  最适合用于调试、可观测性、按事件类型过滤、使用 `createAgent` 创建的智能体，以及迁移依赖回调的现有 LCEL 应用程序 - **`graph.stream()` 配合 `streamMode`**：最适合 LangGraph 应用程序，当您需要通过 `values`、`messages`、`tools` 或 `custom` 模式获取结构化状态更新时
+  最适合调试、可观测性、按事件类型过滤、使用 `createAgent` 创建的智能体，以及迁移依赖回调的现有 LCEL 应用程序 - **`graph.stream()` 配合 `streamMode`**：最适合需要通过 `values`、`messages`、`tools` 或 `custom` 模式获取结构化状态更新的 LangGraph 应用程序
 </Note>
 
 ## 示例：自定义数据流式传输
 
-LangChain 工具可以使用 `config.writer()` 发出自定义数据事件。适配器将这些事件转换为类型化的 `data-{type}` 部分，这些部分可以在 UI 中渲染或通过 `onData` 回调处理：
+LangChain 工具可以使用 `config.writer()` 发出自定义数据事件。适配器将这些事件转换为类型化的 `data-{type}` 部分，这些部分可以在 UI 中渲染，或通过 `onData` 回调处理：
 
 ```tsx filename="app/api/custom-data/route.ts"
 import { createUIMessageStreamResponse, UIMessage } from 'ai';
@@ -329,7 +318,7 @@ import { useChat } from '@ai-sdk/react';
 export default function Chat() {
   const { messages, sendMessage } = useChat({
     onData: dataPart => {
-      // 处理瞬态数据事件（不含 'id'）
+      // 处理瞬态数据事件（不带 'id'）
       console.log('收到:', dataPart.type, dataPart.data);
     },
   });
@@ -342,7 +331,7 @@ export default function Chat() {
             if (part.type === 'text') {
               return <span key={i}>{part.text}</span>;
             }
-            // 渲染持久化的自定义数据部分（含 'id'）
+            // 渲染持久化的自定义数据部分（带 'id'）
             if (part.type === 'data-progress') {
               return (
                 <div key={i}>
@@ -364,8 +353,8 @@ export default function Chat() {
 
 <Note>
 **自定义数据行为：**
-- 包含 `id` 字段的数据是**持久化的**（添加到 `message.parts` 中用于渲染）
-- 不包含 `id` 的数据是**瞬态的**（仅通过 `onData` 回调传递）
+- 带有 `id` 字段的数据是**持久化的**（添加到 `message.parts` 中用于渲染）
+- 不带 `id` 的数据是**瞬态的**（仅通过 `onData` 回调传递）
 - `type` 字段决定事件名称：`{ type: 'progress' }` → `data-progress`
 </Note>
 
@@ -426,9 +415,9 @@ export default function LangSmithChat() {
 
 `LangSmithDeploymentTransport` 构造函数接受以下选项：
 
-- `url`: LangSmith 部署 URL 或本地服务器 URL（必需）
-- `apiKey`: 用于身份验证的 API 密钥（本地开发可选）
-- `graphId`: 要连接的图的 ID（默认为 `'agent'`）
+- `url`：LangSmith 部署 URL 或本地服务器 URL（必需）
+- `apiKey`：用于身份验证的 API 密钥（本地开发可选）
+- `graphId`：要连接的图的 ID（默认为 `'agent'`）
 
 ## API 参考
 
@@ -444,7 +433,7 @@ const langchainMessages = await toBaseMessages(uiMessages);
 
 **参数：**
 
-- `messages`: `UIMessage[]` - AI SDK UI 消息数组
+- `messages`：`UIMessage[]` - AI SDK UI 消息数组
 
 **返回：** `Promise<BaseMessage[]>`
 
@@ -460,7 +449,7 @@ const langchainMessages = convertModelMessages(modelMessages);
 
 **参数：**
 
-- `modelMessages`: `ModelMessage[]` - 模型消息数组
+- `modelMessages`：`ModelMessage[]` - 模型消息数组
 
 **返回：** `BaseMessage[]`
 
@@ -496,7 +485,7 @@ return createUIMessageStreamResponse({
 
 **参数：**
 
-- `stream`: `AsyncIterable<AIMessageChunk> | ReadableStream` - LangChain 模型流、LangGraph 流或 `streamEvents()` 输出
+- `stream`：`AsyncIterable<AIMessageChunk> | ReadableStream` - LangChain 模型流、LangGraph 流或 `streamEvents()` 输出
 
 **返回：** `ReadableStream<UIMessageChunk>`
 
@@ -525,10 +514,10 @@ const { messages, sendMessage } = useChat({
 
 **构造函数参数：**
 
-- `options`: `LangSmithDeploymentTransportOptions`
-  - `url`: `string` - LangSmith 部署 URL 或本地服务器 URL（必需）
-  - `apiKey?`: `string` - 用于身份验证的 API 密钥（可选）
-  - `graphId?`: `string` - 要连接的图的 ID（默认为 `'agent'`）
+- `options`：`LangSmithDeploymentTransportOptions`
+  - `url`：`string` - LangSmith 部署 URL 或本地服务器 URL（必需）
+  - `apiKey?`：`string` - 用于身份验证的 API 密钥（可选）
+  - `graphId?`：`string` - 要连接的图的 ID（默认为 `'agent'`）
 
 **实现：** `ChatTransport`
 

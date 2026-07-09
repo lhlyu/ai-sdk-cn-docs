@@ -1,21 +1,19 @@
 ---
-title: 对象生成
-description: 了解如何使用 useObject Hook。
+title: "对象生成"
+description: "了解如何使用 useObject Hook。"
 ---
 
 # 对象生成
 
-<Note>
-  `useObject` 是一项实验性功能，仅在 React、Svelte 和 Vue 中可用。
-</Note>
+<Note>`useObject` 仅在 React、Svelte 和 Vue 中可用。</Note>
 
 [`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 允许你创建表示正在流式传输的结构化 JSON 对象的界面。
 
-在本指南中，你将学习如何在应用程序中使用 `useObject` Hook，以动态生成结构化数据的 UI。
+在本指南中，你将学习如何在应用程序中使用 `useObject` Hook 来动态生成结构化数据的 UI。
 
 ## 示例
 
-该示例展示了一个小型通知演示应用，该应用实时生成虚假通知。
+该示例展示了一个小型通知演示应用，可实时生成模拟通知。
 
 ### 模式
 
@@ -29,7 +27,7 @@ export const notificationSchema = z.object({
   notifications: z.array(
     z.object({
       name: z.string().describe('虚构人物的姓名。'),
-      message: z.string().describe('消息。不要使用表情符号或链接。'),
+      message: z.string().describe('消息。请勿使用表情符号或链接。'),
     }),
   ),
 });
@@ -39,13 +37,13 @@ export const notificationSchema = z.object({
 
 客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) 来流式传输对象生成过程。
 
-结果是部分结果，并在收到时立即显示。
+结果是部分结果，并在接收时显示。
 请注意 JSX 中处理 `undefined` 值的代码。
 
 ```tsx filename='app/page.tsx'
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { notificationSchema } from './api/notifications/schema';
 
 export default function Page() {
@@ -105,7 +103,7 @@ export async function POST(req: Request) {
 
 ### 示例：文本分类
 
-此示例展示了如何构建一个简单的文本分类器，将陈述分类为真或假。
+此示例演示如何构建一个简单的文本分类器，将陈述分类为真或假。
 
 #### 客户端
 
@@ -114,7 +112,7 @@ export async function POST(req: Request) {
 ```tsx filename='app/classify/page.tsx'
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { z } from 'zod';
 
 export default function ClassifyPage() {
@@ -172,7 +170,7 @@ export async function POST(req: Request) {
 ```tsx filename='app/page.tsx' highlight="6,13-20,24"
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 
 export default function Page() {
   const { isLoading, object, submit } = useObject({
@@ -204,12 +202,12 @@ export default function Page() {
 
 ### 停止处理程序
 
-`stop` 函数可用于停止对象生成过程。如果用户想要取消请求，或者服务器响应时间过长，这会很有用。
+`stop` 函数可用于停止对象生成过程。如果用户想要取消请求或服务器响应时间过长，这可能会很有用。
 
 ```tsx filename='app/page.tsx' highlight="6,14-16"
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 
 export default function Page() {
   const { isLoading, stop, object, submit } = useObject({
@@ -242,17 +240,16 @@ export default function Page() {
 
 ### 错误状态
 
-类似地，`error` 状态反映了在 fetch 请求期间抛出的错误对象。
-它可以用来显示错误消息，或禁用提交按钮：
+类似地，`error` 状态反映了在 fetch 请求期间抛出的错误对象。它可以用于显示错误消息，或禁用提交按钮：
 
 <Note>
-  我们建议向用户显示通用错误消息，例如“出了点问题。”这是一种避免从服务器泄露信息的好做法。
+  我们建议向用户显示通用错误消息，例如“出了点问题。”这是一种避免泄露服务器信息的好做法。
 </Note>
 
 ```tsx file="app/page.tsx" highlight="6,13"
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 
 export default function Page() {
   const { error, object, submit } = useObject({
@@ -283,15 +280,15 @@ export default function Page() {
 
 `useObject` 提供了可选的事件回调，你可以使用它们来处理生命周期事件。
 
-- `onFinish`：在对象生成完成时调用。
-- `onError`：在 fetch 请求期间发生错误时调用。
+- `onFinish`：当对象生成完成时调用。
+- `onError`：当 fetch 请求期间发生错误时调用。
 
 这些回调可用于触发额外的操作，例如日志记录、分析或自定义 UI 更新。
 
 ```tsx filename='app/page.tsx' highlight="10-20"
 'use client';
 
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { useObject } from '@ai-sdk/react';
 import { notificationSchema } from './api/notifications/schema';
 
 export default function Page() {

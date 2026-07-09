@@ -1,6 +1,6 @@
 ---
-title: Svelte
-description: 学习如何使用 AI SDK 和 Svelte 构建你的第一个智能体。
+title: "Svelte"
+description: "学习如何使用 AI SDK 和 Svelte 构建你的第一个智能体。"
 ---
 
 # Svelte 快速入门
@@ -9,16 +9,16 @@ AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动
 
 在本快速入门教程中，你将构建一个带有流式聊天用户界面的简单智能体。在此过程中，你将学习在自己的项目中使用 SDK 所需的关键概念和技术。
 
-如果你不熟悉[提示词工程](/docs/advanced/prompt-engineering)和[HTTP 流式传输](/docs/foundations/streaming)的概念，可以选择先阅读这些文档。
+如果你不熟悉[提示词工程](/docs/advanced/prompt-engineering)和 [HTTP 流式传输](/docs/foundations/streaming)的概念，可以选择先阅读这些文档。
 
 ## 前提条件
 
-要遵循本快速入门，你需要：
+要遵循本快速入门指南，你需要：
 
 - 在本地开发机器上安装 Node.js 22+ 和 pnpm。
 - 一个 [Vercel AI Gateway](https://vercel.com/ai-gateway) API 密钥。
 
-如果你还没有获取 Vercel AI Gateway API 密钥，可以通过在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
+如果你尚未获得 Vercel AI Gateway API 密钥，可以通过在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
 
 ## 设置你的应用程序
 
@@ -35,28 +35,13 @@ AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动
 安装 `ai` 和 `@ai-sdk/svelte`，即 AI 包和 AI SDK 的 Svelte 绑定。AI SDK 的 [Vercel AI Gateway 提供商](/providers/ai-sdk-providers/ai-gateway) 随 `ai` 包一起提供。你还需要安装 `zod`，这是一个用于定义工具输入的模式验证库。
 
 <Note>
-  本指南使用 Vercel AI Gateway 提供商，这样你就可以使用一个 API 密钥访问来自不同提供商的数百个模型，但你可以通过安装其包来切换到任何提供商或模型。查看可用的 [AI SDK 提供商](/providers/ai-sdk-providers) 以获取更多信息。
+  本指南使用 Vercel AI Gateway 提供商，以便你可以使用一个 API 密钥访问来自不同提供商的数百个模型，但你可以通过安装其包来切换到任何提供商或模型。查看可用的 [AI SDK 提供商](/providers/ai-sdk-providers) 以获取更多信息。
 </Note>
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add -D ai @ai-sdk/svelte zod" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install -D ai @ai-sdk/svelte zod" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add -D ai @ai-sdk/svelte zod" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="bun add -d ai @ai-sdk/svelte zod" dark />
-    </Tab>
-  </Tabs>
-</div>
+<InstallPackages packages="ai @ai-sdk/svelte zod" dev />
 
 ### 配置你的 AI Gateway API 密钥
 
-在你的项目根目录创建一个 `.env.local` 文件，并添加你的 AI Gateway API 密钥。此密钥用于验证你的应用程序与 Vercel AI Gateway 的连接。
+在项目根目录创建一个 `.env.local` 文件，并添加你的 AI Gateway API 密钥。此密钥用于验证你的应用程序与 Vercel AI Gateway 的连接。
 
 <Snippet text="touch .env.local" />
 
@@ -107,14 +92,14 @@ export async function POST({ request }) {
 ```
 
 <Note>
-  如果你看到 `AI_GATEWAY_API_KEY` 或你的 `POST` 函数出现类型错误，请运行开发服务器。
+  如果你在 `AI_GATEWAY_API_KEY` 或 `POST` 函数中看到类型错误，请运行开发服务器。
 </Note>
 
 让我们看看这段代码中发生了什么：
 
 1. 使用 `ai` 包中的 `createGateway` 函数创建一个网关提供商实例。
 2. 定义一个 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和聊天机器人之间的对话历史，为聊天机器人提供进行下一次生成所需的上下文。`messages` 是 `UIMessage` 类型，专为在应用程序 UI 中使用而设计——它们包含完整的消息历史以及相关元数据，如时间戳。
-3. 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数。此函数接受一个配置对象，其中包含 `model` 提供商（在步骤 1 中定义）和 `messages`（在步骤 2 中定义）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。`messages` 键期望一个 `ModelMessage[]` 数组。此类型与 `UIMessage` 不同，因为它不包含元数据，例如时间戳或发送者信息。为了在这些类型之间进行转换，我们使用 `convertToModelMessages` 函数，它会剥离 UI 特定的元数据，并将 `UIMessage[]` 数组转换为模型期望的 `ModelMessage[]` 格式。
+3. 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数。此函数接受一个配置对象，其中包含 `model` 提供商（在步骤 1 中定义）和 `messages`（在步骤 2 中定义）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。`messages` 键期望一个 `ModelMessage[]` 数组。此类型与 `UIMessage` 不同，因为它不包含元数据，例如时间戳或发送者信息。为了在这些类型之间进行转换，我们使用 `convertToModelMessages` 函数，该函数会剥离 UI 特定的元数据，并将 `UIMessage[]` 数组转换为模型期望的 `ModelMessage[]` 格式。
 4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建一个流式响应对象。
 5. 将结果返回给客户端以流式传输响应。
 
@@ -144,24 +129,7 @@ model: gateway('anthropic/claude-sonnet-4.5');
 
 要使用不同的提供商，请安装其包并创建一个提供商实例。例如，直接使用 OpenAI：
 
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add @ai-sdk/openai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install @ai-sdk/openai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add @ai-sdk/openai" dark />
-    </Tab>
-
-    <Tab>
-      <Snippet text="bun add @ai-sdk/openai" dark />
-    </Tab>
-
-  </Tabs>
-</div>
+<InstallPackages packages="@ai-sdk/openai" />
 
 ```ts
 import { openai } from '@ai-sdk/openai';
@@ -171,14 +139,13 @@ model: openai('gpt-5.1');
 
 #### 更新全局提供商
 
-你可以更改默认的全局提供商，以便字符串模型引用在你的应用程序中随处使用你偏好的提供商。了解更多关于[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)的信息。
+你可以更改默认的全局提供商，以便字符串模型引用在你的应用程序中任何地方都使用你偏好的提供商。了解更多关于[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)的信息。
 
-选择最符合你跨应用程序管理提供商方式的方法。
+选择最适合你管理应用程序中提供商方式的方法。
 
 ## 连接 UI
 
-现在你已经有了一个可以查询 LLM 的 API 路由，是时候设置你的前端了。AI SDK 的 [UI](/docs/ai-sdk-ui) 包将聊天界面的复杂性抽象为一个类 `Chat`。
-其属性和 API 与 React 的 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 基本相同。
+现在你已经有了一个可以查询 LLM 的 API 路由，是时候设置你的前端了。AI SDK 的 [UI](/docs/ai-sdk-ui) 包将聊天界面的复杂性抽象到一个类 `Chat` 中。其属性和 API 与 React 的 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 基本相同。
 
 使用以下代码更新你的根页面（`src/routes/+page.svelte`），以显示聊天消息列表并提供用户消息输入：
 
@@ -218,30 +185,30 @@ model: openai('gpt-5.1');
 </main>
 ```
 
-此页面使用了 `Chat` 类，默认情况下，它将使用你之前创建的 `POST` 路由处理程序。该类提供了处理用户输入和表单提交的函数和状态。`Chat` 类提供了多个实用函数和状态变量：
+此页面使用了 `Chat` 类，默认情况下，它将使用你之前创建的 `POST` 路由处理程序。该类提供了用于处理用户输入和表单提交的函数和状态。`Chat` 类提供了多个实用函数和状态变量：
 
-- `messages` - 当前的聊天消息（一个对象数组，包含 `id`、`role` 和 `parts` 属性）。
-- `sendMessage` - 向聊天 API 发送消息的函数。
+- `messages` - 当前的聊天消息（一个包含 `id`、`role` 和 `parts` 属性的对象数组）。
+- `sendMessage` - 用于向聊天 API 发送消息的函数。
 
-该组件使用本地状态来管理输入字段值，并通过调用 `sendMessage` 并传入输入文本，然后清空输入字段来处理表单提交。
+该组件使用本地状态来管理输入字段的值，并通过调用 `sendMessage` 并传入输入文本，然后清空输入字段来处理表单提交。
 
-LLM 的响应通过消息的 `parts` 数组访问。每条消息包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理令牌等，你稍后会看到。`parts` 数组保留了模型输出的顺序，允许你按生成顺序显示或处理每个组件。
+LLM 的响应通过消息的 `parts` 数组访问。每条消息都包含一个有序的 `parts` 数组，代表模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理令牌等，你稍后会看到。`parts` 数组保留了模型输出的顺序，允许你按照生成的顺序显示或处理每个组件。
 
 ## 运行你的应用程序
 
-至此，你已经构建了聊天机器人所需的一切！要启动你的应用程序，请使用以下命令：
+至此，你已经构建了聊天机器人所需的一切！要启动你的应用程序，请使用命令：
 
 <Snippet text="pnpm run dev" />
 
-前往你的浏览器并打开 http://localhost:5173。你应该会看到一个输入字段。输入一条消息进行测试，看看 AI 聊天机器人如何实时响应！AI SDK 使得使用 Svelte 构建 AI 聊天界面变得快速而简单。
+前往你的浏览器并打开 http://localhost:5173。你应该会看到一个输入字段。输入一条消息进行测试，并实时查看 AI 聊天机器人的响应！AI SDK 使得使用 Svelte 快速轻松地构建 AI 聊天界面成为可能。
 
 ## 使用工具增强你的聊天机器人
 
-虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这就是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
+虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这就是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
 
 工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一个响应中考虑。
 
-例如，如果用户询问当前天气，没有工具，模型只能根据其训练数据提供一般信息。但是有了天气工具，它可以获取并提供最新的、特定位置的天气信息。
+例如，如果用户询问当前天气，没有工具，模型只能根据其训练数据提供一般信息。但是有了天气工具，它可以获取并提供最新的、特定于位置的天气信息。
 
 让我们通过添加一个简单的天气工具来增强你的聊天机器人。
 
@@ -297,15 +264,15 @@ export async function POST({ request }) {
 }
 ```
 
-在这个更新后的代码中：
+在此更新后的代码中：
 
 1. 你从 `ai` 包中导入了 `tool` 函数，并从 `zod` 导入了 `z` 用于模式验证。
-2. 你定义了一个包含 `weather` 工具的 `tools` 对象。这个工具：
+2. 你定义了一个包含 `weather` 工具的 `tools` 对象。此工具：
    - 有一个描述，帮助模型理解何时使用它。
-   - 使用 Zod 模式定义了 `inputSchema`，指定它需要一个 `location` 字符串来执行此工具。模型将尝试从对话上下文中提取此输入。如果无法提取，它将要求用户提供缺失的信息。
-   - 定义了一个 `execute` 函数，模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
+   - 使用 Zod 模式定义 `inputSchema`，指定执行此工具需要一个 `location` 字符串。模型将尝试从对话上下文中提取此输入。如果无法提取，它将询问用户缺失的信息。
+   - 定义一个 `execute` 函数，模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
 
-现在，你的聊天机器人可以为用户询问的任何位置“获取”天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后，`execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
+现在，你的聊天机器人可以“获取”用户询问的任何位置的天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后 `execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
 
 尝试询问类似“纽约的天气怎么样？”的问题，看看模型如何使用新工具。
 
@@ -317,7 +284,7 @@ export async function POST({ request }) {
 
 ### 更新 UI
 
-为了在 UI 中显示工具调用，更新你的 `src/routes/+page.svelte` 文件：
+要在你的 UI 中显示工具调用，请更新你的 `src/routes/+page.svelte` 文件：
 
 ```svelte filename="src/routes/+page.svelte"
 <script lang="ts">
@@ -363,7 +330,7 @@ export async function POST({ request }) {
 
 ## 启用多步骤工具调用
 
-你可能已经注意到，虽然工具现在在聊天界面中可见，但模型并没有使用此信息来回答你的原始查询。这是因为一旦模型生成了工具调用，它在技术上就完成了生成。
+你可能已经注意到，虽然工具现在在聊天界面中可见，但模型并没有使用此信息来回答你的原始查询。这是因为一旦模型生成了工具调用，它在技术上就完成了其生成。
 
 为了解决这个问题，你可以使用 `stopWhen` 启用多步骤工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当有工具结果时，生成会在第一步后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身，以触发额外的生成，直到满足你指定的停止条件。在这种情况下，你希望模型继续生成，以便它可以使用天气工具结果来回答你的原始问题。
 
@@ -420,13 +387,13 @@ export async function POST({ request }) {
 }
 ```
 
-回到浏览器，询问某个位置的天气。你现在应该看到模型使用天气工具结果来回答你的问题。
+返回浏览器并询问某个位置的天气。你现在应该会看到模型使用天气工具结果来回答你的问题。
 
-通过设置 `stopWhen: isStepCount(5)`，你允许模型在任何给定的生成中使用最多 5 个“步骤”。这可以实现更复杂的交互，并允许模型在需要时通过多个步骤收集和处理信息。你可以通过添加另一个工具将温度从华氏度转换为摄氏度来看到这一点。
+通过设置 `stopWhen: isStepCount(5)`，你允许模型在任何给定的生成中使用最多 5 个“步骤”。这实现了更复杂的交互，并允许模型在需要时通过多个步骤收集和处理信息。你可以通过添加另一个工具将温度从华氏度转换为摄氏度来查看其实际效果。
 
 ### 添加另一个工具
 
-更新你的 `src/routes/api/chat/+server.ts` 文件，添加一个新工具，将温度从华氏度转换为摄氏度：
+更新你的 `src/routes/api/chat/+server.ts` 文件以添加一个新工具，将温度从华氏度转换为摄氏度：
 
 ```tsx filename="src/routes/api/chat/+server.ts" highlight="40-53"
 import {
@@ -493,7 +460,7 @@ export async function POST({ request }) {
 
 ### 更新你的前端
 
-通过修改工具部分处理来更新你的 UI，以处理新的温度转换工具：
+通过修改工具部分处理，更新你的 UI 以处理新的温度转换工具：
 
 ```svelte filename="src/routes/+page.svelte" highlight="23-24"
 <script lang="ts">
@@ -537,7 +504,7 @@ export async function POST({ request }) {
 
 现在，当你询问“纽约的天气是多少摄氏度？”时，你应该会看到一个更完整的交互：
 
-1. 模型将调用纽约的天气工具。
+1. 模型将为纽约调用天气工具。
 2. 你将看到显示的工具输出。
 3. 然后它将调用温度转换工具，将温度从华氏度转换为摄氏度。
 4. 模型将使用该信息提供关于纽约天气的自然语言响应。
@@ -548,12 +515,12 @@ export async function POST({ request }) {
 
 ## `@ai-sdk/svelte` 与 `@ai-sdk/react` 有何不同？
 
-表面上的区别是 Svelte 使用类来管理状态，而 React 使用 Hook，因此 React 中的 `useChat` 在 Svelte 中是 `Chat`。除此之外，还有几点需要注意：
+表面上的区别是 Svelte 使用类来管理状态，而 React 使用 Hook，因此 React 中的 `useChat` 在 Svelte 中是 `Chat`。除此之外，还有几件事需要记住：
 
 ### 1. 类的参数默认不是响应式的
 
 与 React 中 Hook 在其包含组件失效时重新运行不同，Svelte 组件 `script` 块中的代码仅在组件创建时运行一次。
-这意味着，如果你希望类的参数是响应式的，你需要确保向类传递一个*引用*，而不是一个值：
+这意味着，如果你希望类的参数是响应式的，你需要确保向类传递一个 _引用_，而不是一个值：
 
 ```svelte
 <script>
@@ -561,7 +528,7 @@ export async function POST({ request }) {
 
   let { id } = $props();
 
-  // 不起作用；类实例将创建一次，`id` 将通过值复制，并且当 $props.id 更改时不会更新
+  // 不起作用；类实例将创建一次，`id` 将按值复制，并且在 $props.id 更改时不会更新
   let chat = new Chat({ id });
 
   // 起作用；通过引用传递 `id`，因此 `Chat` 始终拥有最新的值
@@ -577,7 +544,7 @@ export async function POST({ request }) {
 
 ### 2. 你不能解构类属性
 
-在普通的 JavaScript 中，解构类属性会按值复制它们，并使它们与其类实例“断开连接”：
+在普通的 JavaScript 中，解构类属性会按值复制它们，并使它们与类实例“断开连接”：
 
 ```js
 const classInstance = new Whatever();
@@ -607,7 +574,7 @@ console.log(foo); // 'bar'
 ### 3. 实例同步需要上下文
 
 在 React 中，具有相同 `id` 的 Hook 实例是同步的——因此，如果两个 `useChat` 实例具有相同的 `id`，它们将具有相同的 `messages`、`status` 等。
-对于大多数用例，你可能不需要这种行为——但如果你需要，你可以在根布局文件中使用 `createAIContext` 创建一个上下文：
+对于大多数用例，你可能不需要此行为——但如果你需要，你可以在根布局文件中使用 `createAIContext` 创建一个上下文：
 
 ```svelte
 <script>
@@ -616,7 +583,7 @@ console.log(foo); // 'bar'
   let { children } = $props();
 
   createAIContext();
-  // 在此之后创建的所有 Hook，或作为此组件子组件的组件中的 Hook
+  // 在此之后创建的所有 Hook 或作为此组件子组件的组件中的 Hook
   // 将具有同步状态
 </script>
 
@@ -628,6 +595,6 @@ console.log(foo); // 'bar'
 你已经使用 AI SDK 构建了一个 AI 聊天机器人！从这里开始，你有几条探索路径：
 
 - 要了解更多关于 AI SDK 的信息，请阅读[文档](/docs)。
-- 如果你有兴趣深入研究指南，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot) 和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
+- 如果你有兴趣通过指南深入学习，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot) 和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
 - 要快速启动你的第一个 AI 项目，请探索可用的[模板](https://vercel.com/templates?type=ai)。
 - 要了解更多关于 Svelte 的信息，请查看[官方文档](https://svelte.dev/docs/svelte)。

@@ -1,17 +1,17 @@
 ---
-title: Hindsight
-description: 了解如何将 Hindsight 持久记忆与 AI SDK 结合使用。
+title: "Hindsight"
+description: "了解如何将 Hindsight 持久记忆与 AI SDK 结合使用。"
 ---
 
 # Hindsight
 
-[Hindsight](https://hindsight.vectorize.io) 是一个面向 AI 智能体的持久记忆服务。[`@vectorize-io/hindsight-ai-sdk`](https://www.npmjs.com/package/@vectorize-io/hindsight-ai-sdk) 包提供了五个兼容 AI SDK 的工具，让你的智能体能够在多次对话中拥有长期记忆。
+[Hindsight](https://hindsight.vectorize.io) 是一个面向 AI 智能体的持久记忆服务。[`@vectorize-io/hindsight-ai-sdk`](https://www.npmjs.com/package/@vectorize-io/hindsight-ai-sdk) 包提供了五个与 AI SDK 兼容的工具，让你的智能体能够在对话中拥有长期记忆。
 
 功能包括：
 
 - 五个记忆工具：`retain`、`recall`、`reflect`、`getMentalModel` 和 `getDocument`
-- 可与 `generateText`、`streamText` 和 `ToolLoopAgent` 配合使用
-- 基础设施选项（预算、标签、异步模式）在工具创建时配置——语义选择留给模型
+- 与 `generateText`、`streamText` 和 `ToolLoopAgent` 兼容
+- 在工具创建时配置基础设施选项（预算、标签、异步模式）——语义选择留给模型
 - 通过 `bankId` 实现多用户记忆隔离
 - 完整的 TypeScript 支持
 
@@ -33,40 +33,15 @@ API 将在 `http://localhost:8888` 可用，UI 在 `http://localhost:9999` 可�
 
 ### 云服务
 
-注册并从 [Hindsight 仪表板](https://ui.hindsight.vectorize.io/signup) 获取你的 API URL。
+从 [Hindsight 仪表盘](https://ui.hindsight.vectorize.io/signup) 注册并获取你的 API URL。
 
 ## 安装
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet
-      text="pnpm add @vectorize-io/hindsight-ai-sdk @vectorize-io/hindsight-client"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="npm install @vectorize-io/hindsight-ai-sdk @vectorize-io/hindsight-client"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="yarn add @vectorize-io/hindsight-ai-sdk @vectorize-io/hindsight-client"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="bun add @vectorize-io/hindsight-ai-sdk @vectorize-io/hindsight-client"
-      dark
-    />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@vectorize-io/hindsight-ai-sdk @vectorize-io/hindsight-client" />
 
 ## 创建工具
 
-初始化一个 `HindsightClient` 实例，并将其与 `bankId`（标识记忆存储，通常为用户 ID）一起传递给 `createHindsightTools`：
+初始化一个 `HindsightClient`，并将其与一个标识记忆存储的 `bankId`（通常是用户 ID）一起传递给 `createHindsightTools`：
 
 ```ts
 import { HindsightClient } from '@vectorize-io/hindsight-client';
@@ -125,7 +100,7 @@ const result = await agent.generate({
 
 ## 多用户记忆
 
-在多用户应用中，在你的请求处理器内部创建工具，以便每个请求都能为已认证用户使用正确的 `bankId`：
+在多用户应用中，在你的请求处理器内部创建工具，以便每个请求使用已认证用户的正确 `bankId`：
 
 ```ts
 // app/api/chat/route.ts
@@ -166,11 +141,11 @@ export async function POST(req: Request) {
 }
 ```
 
-`HindsightClient` 实例是共享的（在模块级别创建一次），而 `createHindsightTools` 则根据当前用户的 ID 在每个请求中调用。
+`HindsightClient` 实例是共享的（在模块级别创建一次），而 `createHindsightTools` 在每个请求中使用当前用户的 ID 调用。
 
 ## 配置
 
-基础设施选项在工具创建时配置，让应用程序控制成本、标签和性能，同时将语义选择（记住什么、搜索什么）留给模型。
+基础设施选项在工具创建时配置，让应用控制成本、标签和性能，同时将语义选择（记住什么、搜索什么）留给模型。
 
 ```ts
 const tools = createHindsightTools({
@@ -195,41 +170,41 @@ const tools = createHindsightTools({
 
 ### `retain` 选项
 
-| 参数          | 类型                       | 默认值   | 描述                       |
-| ------------- | -------------------------- | -------- | -------------------------- |
-| `async`       | `boolean`                  | `false`  | 即发即弃的摄取模式         |
-| `tags`        | `string[]`                 | —        | 应用于所有保留记忆的标签   |
-| `metadata`    | `Record<string, string>`   | —        | 应用于所有保留记忆的元数据 |
-| `description` | `string`                   | 内置     | 覆盖默认工具描述           |
+| 参数          | 类型                     | 默认值    | 描述                     |
+| ------------- | ------------------------ | --------- | ------------------------ |
+| `async`       | `boolean`                | `false`   | 即发即弃的摄取模式       |
+| `tags`        | `string[]`               | —         | 应用于所有保留记忆的标签 |
+| `metadata`    | `Record<string, string>` | —         | 应用于所有保留记忆的元数据 |
+| `description` | `string`                 | 内置      | 覆盖默认工具描述         |
 
 ### `recall` 选项
 
-| 参数               | 类型                                           | 默认值       | 描述                           |
-| ------------------ | ---------------------------------------------- | ------------ | ------------------------------ |
-| `budget`           | `'low' \| 'mid' \| 'high'`                     | `'mid'`      | 检索深度与延迟的权衡           |
-| `types`            | `('world' \| 'experience' \| 'observation')[]` | 全部         | 将结果限制为指定的事实类型     |
-| `maxTokens`        | `number`                                       | API 默认值   | 返回的最大总 token 数          |
-| `includeEntities`  | `boolean`                                      | `false`      | 在结果中包含实体观察           |
-| `includeChunks`    | `boolean`                                      | `false`      | 在结果中包含原始源块           |
-| `description`      | `string`                                       | 内置         | 覆盖默认工具描述               |
+| 参数               | 类型                                           | 默认值       | 描述                         |
+| ------------------ | ---------------------------------------------- | ------------ | ---------------------------- |
+| `budget`           | `'low' \| 'mid' \| 'high'`                     | `'mid'`      | 检索深度与延迟的权衡         |
+| `types`            | `('world' \| 'experience' \| 'observation')[]` | 所有类型     | 将结果限制为指定的事实类型   |
+| `maxTokens`        | `number`                                       | API 默认值   | 返回的最大总 token 数        |
+| `includeEntities`  | `boolean`                                      | `false`      | 在结果中包含实体观察         |
+| `includeChunks`    | `boolean`                                      | `false`      | 在结果中包含原始源块         |
+| `description`      | `string`                                       | 内置         | 覆盖默认工具描述             |
 
 ### `reflect` 选项
 
-| 参数          | 类型                         | 默认值       | 描述                           |
-| ------------- | ---------------------------- | ------------ | ------------------------------ |
-| `budget`      | `'low' \| 'mid' \| 'high'`   | `'mid'`      | 综合深度与延迟的权衡           |
-| `maxTokens`   | `number`                     | API 默认值   | 最大响应 token 数              |
-| `description` | `string`                     | 内置         | 覆盖默认工具描述               |
+| 参数          | 类型                       | 默认值       | 描述                         |
+| ------------- | -------------------------- | ------------ | ---------------------------- |
+| `budget`      | `'low' \| 'mid' \| 'high'` | `'mid'`      | 综合深度与延迟的权衡         |
+| `maxTokens`   | `number`                   | API 默认值   | 最大响应 token 数            |
+| `description` | `string`                   | 内置         | 覆盖默认工具描述             |
 
 ## 记忆工具
 
-| 工具             | 描述                           |
-| ---------------- | ------------------------------ |
-| `retain`         | 在记忆库中存储信息             |
-| `recall`         | 使用查询搜索记忆               |
-| `reflect`        | 从存储的记忆中综合生成见解     |
-| `getMentalModel` | 检索结构化的知识模型           |
-| `getDocument`    | 通过标识符检索存储的文档       |
+| 工具             | 描述                               |
+| ---------------- | ---------------------------------- |
+| `retain`         | 将信息存储在记忆库中               |
+| `recall`         | 使用查询搜索记忆                   |
+| `reflect`        | 从存储的记忆中综合洞察             |
+| `getMentalModel` | 检索结构化的知识模型               |
+| `getDocument`    | 通过标识符检索存储的文档           |
 
 ## 更多信息
 

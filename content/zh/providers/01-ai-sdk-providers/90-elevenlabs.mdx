@@ -1,31 +1,17 @@
 ---
-title: ElevenLabs
-description: 了解如何使用 AI SDK 的 ElevenLabs 提供商。
+title: "ElevenLabs"
+description: "了解如何在 AI SDK 中使用 ElevenLabs 提供商。"
 ---
 
 # ElevenLabs 提供商
 
-[ElevenLabs](https://elevenlabs.io/) 提供商包含对 ElevenLabs 转录和语音生成 API 的语言模型支持。
+[ElevenLabs](https://elevenlabs.io/) 提供商为 ElevenLabs 转录和语音生成 API 提供语言模型支持。
 
 ## 安装
 
-ElevenLabs 提供商位于 `@ai-sdk/elevenlabs` 模块中。你可以通过以下方式安装：
+ElevenLabs 提供商位于 `@ai-sdk/elevenlabs` 模块中。你可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/elevenlabs" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/elevenlabs" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/elevenlabs" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/elevenlabs" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/elevenlabs" />
 
 ## 提供商实例
 
@@ -50,19 +36,19 @@ const elevenLabs = createElevenLabs({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。
+  通过 `Authorization` 头部发送的 API 密钥。
   默认为 `ELEVENLABS_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义头部。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  默认为全局 `fetch` 函数。
-  你可以将其用作中间件来拦截请求，
-  或为测试等场景提供自定义 fetch 实现。
+  默认为全局的 `fetch` 函数。
+  你可以将其用作拦截请求的中间件，
+  或为测试等场景提供自定义的 fetch 实现。
 
 ## 语音模型
 
@@ -113,20 +99,20 @@ const result = await generateSpeech({
 ```
 
 - **languageCode** _string 或 null_  
-  可选。用于强制模型使用某种语言的语言代码（ISO 639-1）。目前，只有 Turbo v2.5 和 Flash v2.5 支持语言强制。对于其他模型，提供语言代码将导致错误。
+  可选。语言代码（ISO 639-1），用于强制模型使用特定语言。目前，只有 Turbo v2.5 和 Flash v2.5 支持语言强制。对于其他模型，提供语言代码将导致错误。
 
 - **voiceSettings** _object 或 null_  
   可选。覆盖给定语音的存储设置的语音设置。这些设置仅应用于当前请求。
   - **stability** _double 或 null_  
     可选。决定语音的稳定性以及每次生成之间的随机性。较低的值会引入更广泛的情感范围；较高的值会导致更单调的语音。
   - **useSpeakerBoost** _boolean 或 null_  
-    可选。提高与原始说话者的相似度。会增加计算负载和延迟。
+    可选。增强与原始说话者的相似度。会增加计算负载和延迟。
   - **similarityBoost** _double 或 null_  
     可选。控制 AI 应遵循原始语音的紧密程度。
   - **style** _double 或 null_  
     可选。放大原始说话者的风格。如果设置为高于 0，可能会增加延迟。
 
-- **pronunciationDictionaryLocators** _对象数组或 null_  
+- **pronunciationDictionaryLocators** _对象数组 或 null_  
   可选。要应用于文本的发音词典定位器列表，按顺序应用。每个请求最多 3 个定位器。  
   每个定位器对象：
   - **pronunciationDictionaryId** _string_（必需）  
@@ -138,24 +124,24 @@ const result = await generateSpeech({
   可选。如果指定，系统将尝试确定性采样。必须在 0 到 4294967295 之间。不保证确定性。
 
 - **previousText** _string 或 null_  
-  可选。当前请求文本之前的文本。在连接生成时可以改善连续性或影响当前生成的连续性。
+  可选。当前请求文本之前的文本。可以在拼接生成结果时改善连续性，或影响当前生成的连续性。
 
 - **nextText** _string 或 null_  
-  可选。当前请求文本之后的文本。在连接生成时可以改善连续性或影响当前生成的连续性。
+  可选。当前请求文本之后的文本。可以在拼接生成结果时改善连续性，或影响当前生成的连续性。
 
-- **previousRequestIds** _字符串数组或 null_  
-  可选。在此之前的样本的请求 ID 列表。在拆分大型任务时改善连续性。最多 3 个 ID。如果同时发送了 `previousText` 和 `previousRequestIds`，则忽略 `previousText`。
+- **previousRequestIds** _字符串数组 或 null_  
+  可选。在此样本之前生成的样本的请求 ID 列表。在拆分大型任务时改善连续性。最多 3 个 ID。如果同时发送了 `previousText` 和 `previousRequestIds`，则忽略 `previousText`。
 
-- **nextRequestIds** _字符串数组或 null_  
-  可选。在此之后的样本的请求 ID 列表。在重新生成样本时有助于保持连续性。最多 3 个 ID。如果同时发送了 `nextText` 和 `nextRequestIds`，则忽略 `nextText`。
+- **nextRequestIds** _字符串数组 或 null_  
+  可选。在此样本之后生成的样本的请求 ID 列表。在重新生成样本时有助于保持连续性。最多 3 个 ID。如果同时发送了 `nextText` 和 `nextRequestIds`，则忽略 `nextText`。
 
-- **applyTextNormalization** _枚举_  
+- **applyTextNormalization** _enum_  
   可选。控制文本规范化。  
   允许的值：`'auto'`（默认）、`'on'`、`'off'`。
   - `'auto'`：系统决定是否应用规范化（例如，拼写数字）。
   - `'on'`：始终应用规范化。
   - `'off'`：从不应用规范化。  
-    对于 `eleven_turbo_v2_5` 和 `eleven_flash_v2_5`，仅企业计划可启用。
+    对于 `eleven_turbo_v2_5` 和 `eleven_flash_v2_5`，仅企业版计划可以启用。
 
 - **applyLanguageTextNormalization** _boolean_  
   可选。默认为 `false`。控制语言文本规范化，有助于在某些支持的语言（目前仅日语）中实现正确发音。可能会显著增加延迟。
@@ -165,16 +151,16 @@ const result = await generateSpeech({
 
 ### 模型能力
 
-| 模型                    | 指令               |
-| ------------------------ | ------------------- |
-| `eleven_v3`              | <Check size={18} /> |
-| `eleven_multilingual_v2` | <Check size={18} /> |
-| `eleven_flash_v2_5`      | <Check size={18} /> |
-| `eleven_flash_v2`        | <Check size={18} /> |
-| `eleven_turbo_v2_5`      | <Check size={18} /> |
-| `eleven_turbo_v2`        | <Check size={18} /> |
-| `eleven_monolingual_v1`  | <Check size={18} /> |
-| `eleven_multilingual_v1` | <Check size={18} /> |
+| 模型                       | 指令       |
+| -------------------------- | ---------- |
+| `eleven_v3`                | <Check />  |
+| `eleven_multilingual_v2`   | <Check />  |
+| `eleven_flash_v2_5`        | <Check />  |
+| `eleven_flash_v2`          | <Check />  |
+| `eleven_turbo_v2_5`        | <Check />  |
+| `eleven_turbo_v2`          | <Check />  |
+| `eleven_monolingual_v1`    | <Check />  |
+| `eleven_multilingual_v1`   | <Check />  |
 
 ## 转录模型
 
@@ -221,12 +207,12 @@ const result = await transcribe({
 
 - **numSpeakers** _integer_
 
-  上传文件中说话者的最大数量。
+  上传文件中说话的最大人数。
   有助于预测谁在何时说话。
-  可预测的最大说话者数量为 32。
-  默认为 `null`，此时说话者数量设置为模型支持的最大值。
+  可预测的最大说话人数为 32。
+  默认为 `null`，此时说话人数设置为模型支持的最大值。
 
-- **timestampsGranularity** _枚举_
+- **timestampsGranularity** _enum_
 
   转录中时间戳的粒度。
   默认为 `'word'`。
@@ -237,17 +223,17 @@ const result = await transcribe({
   是否在上传文件中注释当前正在说话的说话者。
   默认为 `true`。
 
-- **fileFormat** _枚举_
+- **fileFormat** _enum_
 
   输入音频的格式。
   默认为 `'other'`。
   允许的值：`'pcm_s16le_16'`、`'other'`。
-  对于 `'pcm_s16le_16'`，输入音频必须是 16 位 PCM，采样率为 16kHz，单声道（单声道），小端字节序。
+  对于 `'pcm_s16le_16'`，输入音频必须是 16 位 PCM，采样率为 16kHz，单声道（mono），小端字节序。
   延迟将低于传递编码波形。
 
 ### 模型能力
 
-| 模型                    | 转录               | 时长               | 分段               | 语言               |
-| ------------------------ | ------------------- | ------------------- | ------------------- | ------------------- |
-| `scribe_v1`              | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `scribe_v1_experimental` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| 模型                        | 转录       | 时长       | 分段       | 语言       |
+| --------------------------- | ---------- | ---------- | ---------- | ---------- |
+| `scribe_v1`                 | <Check />  | <Check />  | <Check />  | <Check />  |
+| `scribe_v1_experimental`    | <Check />  | <Check />  | <Check />  | <Check />  |

@@ -1,31 +1,17 @@
 ---
-title: LangWatch
-description: 使用 LangWatch 跟踪、监控、防护和评估您的 AI SDK 应用。
+title: "LangWatch"
+description: "使用 LangWatch 跟踪、监控、防护和评估您的 AI SDK 应用程序。"
 ---
 
 # LangWatch 可观测性
 
-[LangWatch](https://langwatch.ai/) ([GitHub](https://github.com/langwatch/langwatch)) 是一个 LLM Ops 平台，用于监控、实验、测量和改进 LLM 流水线，采用公平代码分发模型。
+[LangWatch](https://langwatch.ai/) ([GitHub](https://github.com/langwatch/langwatch)) 是一个 LLM Ops 平台，用于监控、实验、测量和改进 LLM 管道，采用公平代码分发模型。
 
 ## 设置
 
 从 [LangWatch 仪表盘](https://app.langwatch.com/) 获取您的 `LANGWATCH_API_KEY`。
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add langwatch" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install langwatch" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add langwatch" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add langwatch" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="langwatch" />
 
 确保设置了 `LANGWATCH_API_KEY`：
 
@@ -55,17 +41,17 @@ const langwatch = new LangWatch({
 
 ## 基本概念
 
-- 触发 LLM 流水线的每条消息作为一个整体被捕获为 [Trace](https://docs.langwatch.ai/concepts#traces)。
-- 一个 [Trace](https://docs.langwatch.ai/concepts#traces) 包含多个 [Span](https://docs.langwatch.ai/concepts#spans)，这些是流水线中的步骤。
-  - Span 可以是 LLM 调用、用于 RAG 检索的数据库查询，或简单的函数转换。
+- 触发整个 LLM 管道的每条消息都会通过 [Trace](https://docs.langwatch.ai/concepts#traces) 捕获。
+- 一个 [Trace](https://docs.langwatch.ai/concepts#traces) 包含多个 [Span](https://docs.langwatch.ai/concepts#spans)，这些是管道内的步骤。
+  - 一个 span 可以是 LLM 调用、用于 RAG 检索的数据库查询，或简单的函数转换。
   - 不同类型的 [Span](https://docs.langwatch.ai/concepts#spans) 捕获不同的参数。
-  - [Span](https://docs.langwatch.ai/concepts#spans) 可以嵌套以捕获流水线结构。
+  - [Span](https://docs.langwatch.ai/concepts#spans) 可以嵌套以捕获管道结构。
 - [Trace](https://docs.langwatch.ai/concepts#traces) 可以通过在其元数据中设置相同的 [`thread_id`](https://docs.langwatch.ai/concepts#threads) 在 LangWatch 仪表盘上分组，使单个消息成为对话的一部分。
   - 还建议提供 [`user_id`](https://docs.langwatch.ai/concepts#user-id) 元数据以跟踪用户分析。
 
 ## 配置
 
-AI SDK 支持通过 Next.js OpenTelemetry 集成进行追踪。通过使用 `LangWatchExporter`，您可以自动将这些追踪收集到 LangWatch。
+AI SDK 支持通过 Next.js OpenTelemetry 集成进行跟踪。通过使用 `LangWatchExporter`，您可以自动将这些跟踪收集到 LangWatch。
 
 首先，您需要安装必要的依赖项：
 
@@ -73,7 +59,7 @@ AI SDK 支持通过 Next.js OpenTelemetry 集成进行追踪。通过使用 `Lan
 npm install @vercel/otel langwatch @opentelemetry/api-logs @opentelemetry/instrumentation @opentelemetry/sdk-logs @ai-sdk/otel
 ```
 
-然后，为您的应用程序设置 OpenTelemetry，根据您是在 Next.js 还是 Node.js 上使用 AI SDK，选择以下选项卡之一：
+然后，为您的应用程序设置 OpenTelemetry，根据您使用的是 AI SDK 与 Next.js 还是 Node.js，选择以下选项卡之一：
 
 <Tabs items={['Next.js', 'Node.js']}>
 <Tab title="Next.js">
@@ -109,9 +95,9 @@ export function register() {
 }
 ```
 
-（更多关于 Next.js OpenTelemetry 配置的信息，请参阅[官方指南](https://nextjs.org/docs/app/building-your-application/optimizing/open-telemetry#manual-opentelemetry-configuration)）
+（有关 Next.js OpenTelemetry 配置的更多信息，请参阅[官方指南](https://nextjs.org/docs/app/building-your-application/optimizing/open-telemetry#manual-opentelemetry-configuration)）
 
-最后，在您想要追踪的 AI SDK 调用上启用 `telemetry` 跟踪：
+最后，在您想要跟踪的 AI SDK 调用上启用 `telemetry` 跟踪：
 
 ```typescript
 import { generateText } from 'ai';
@@ -133,11 +119,11 @@ const result = await generateText({
 
 </Tab>
 <Tab title="Node.js">
-对于 Node.js，首先按照官方 OpenTelemetry 指南操作：
+对于 Node.js，首先按照官方 OpenTelemetry 指南进行操作：
 
 - [OpenTelemetry Node.js 入门](https://opentelemetry.io/docs/languages/js/getting-started/nodejs/)
 
-设置好 OpenTelemetry 后，您可以使用 `LangWatchExporter` 自动将追踪发送到 LangWatch：
+设置好 OpenTelemetry 后，您可以使用 `LangWatchExporter` 自动将跟踪发送到 LangWatch：
 
 ```typescript
 import { LangWatchExporter } from 'langwatch';
@@ -159,11 +145,11 @@ const sdk = new NodeSDK({
 
 ### 示例项目
 
-您可以在[我们的 GitHub](https://github.com/langwatch/langwatch/blob/main/typescript-sdk/example/lib/chat/vercel-ai.tsx) 上找到一个包含更复杂流水线以及 AI SDK 和 LangWatch 集成的完整示例项目。
+您可以在 [我们的 GitHub](https://github.com/langwatch/langwatch/blob/main/typescript-sdk/example/lib/chat/vercel-ai.tsx) 上找到一个包含更复杂管道以及 AI SDK 和 LangWatch 集成的完整示例项目。
 
 ### 手动集成
 
-以下文档适用于手动集成，如果您未使用 AI SDK OpenTelemetry 集成，可以手动启动一个 Trace 来捕获您的消息：
+以下文档适用于手动集成，如果您未使用 AI SDK OpenTelemetry 集成，可以手动启动一个 trace 来捕获您的消息：
 
 ```typescript
 import { LangWatch } from 'langwatch';
@@ -175,7 +161,7 @@ const trace = langwatch.getTrace({
 });
 ```
 
-然后，您可以在 Trace 内部启动一个 LLM Span，并传入即将发送给 LLM 的输入。
+然后，您可以在 trace 内启动一个 LLM span，并传入即将发送给 LLM 的输入。
 
 ```typescript
 const span = trace.startLLMSpan({
@@ -188,7 +174,7 @@ const span = trace.startLLMSpan({
 });
 ```
 
-这将捕获 LLM 输入并记录调用开始的时间。一旦 LLM 调用完成，结束 Span 以记录完成时间戳，并捕获输出和 Token 指标，这些将用于成本计算，例如：
+这将捕获 LLM 输入并记录调用开始的时间。一旦 LLM 调用完成，结束 span 以记录完成时间戳，并捕获输出和 token 指标，这些将用于成本计算，例如：
 
 ```typescript
 span.end({

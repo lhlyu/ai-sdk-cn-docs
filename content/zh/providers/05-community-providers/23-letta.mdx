@@ -1,53 +1,40 @@
 ---
-title: Letta
-description: 了解如何在 AI SDK 中使用 Letta 提供商。
+title: "Letta"
+description: "了解如何将 Letta 提供商与 AI SDK 结合使用。"
 ---
 
 # Letta 提供商
 
-[Letta AI SDK 提供商](https://github.com/letta-ai/vercel-ai-sdk-provider) 允许你在 AI SDK 中使用 Letta 智能体。
+[Letta AI SDK 提供商](https://github.com/letta-ai/vercel-ai-sdk-provider) 允许你将 Letta 智能体与 AI SDK 结合使用。
 
 功能包括：
 
-- 持久化和长期记忆
-- 访问智能体级别和模型级别的推理消息，并附带来源归属
+- 持久且长期记忆
+- 访问智能体级别和模型级别的推理消息，并带有来源归属
 - 支持自定义智能体配置的工具和 MCP（模型上下文协议）
 - 基于工具的文件访问，实现智能体管理的文件系统操作
-- 内置工具，可在 Letta 和 AI SDK 消息格式之间进行转换
+- 内置工具，用于在 Letta 和 AI SDK 消息格式之间进行转换
 - [所有 Letta 发送消息 API 功能](https://docs.letta.com/api-reference/agents/messages/create-stream)，例如[长时间运行的智能体执行](https://docs.letta.com/guides/agents/long-running)
 
 ## 支持的模型
 
 请参阅 [Letta 文档](https://docs.letta.com/connecting-model-providers/supported-models) 获取支持的模型完整列表。对于列表中未包含的模型，你可以尝试配置 Letta 使用 [OpenAI 代理](https://docs.letta.com/guides/server/providers/openai-proxy)。
 
-## 安装
+## 设置
 
 你可以通过以下方式安装 Letta 提供商：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @letta-ai/vercel-ai-sdk-provider" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @letta-ai/vercel-ai-sdk-provider" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @letta-ai/vercel-ai-sdk-provider" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add @letta-ai/vercel-ai-sdk-provider" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@letta-ai/vercel-ai-sdk-provider" />
 
 ## 提供商实例
 
 你可以从 `@letta-ai/vercel-ai-sdk-provider` 导入提供商实例 `lettaCloud` 或 `lettaLocal`：
 
 ```ts
-// 云用户
+// 适用于云用户
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
 
-// 自托管用户
+// 适用于自托管用户
 import { lettaLocal } from '@letta-ai/vercel-ai-sdk-provider';
 
 // 创建自定义 Letta 提供商
@@ -121,9 +108,9 @@ const result = streamText({
 - `id` (`string`，必填)：你的 Letta 智能体 ID
 - `maxSteps` (`number`)：智能体执行的最大步骤数
 - `includePings` (`boolean`)：是否在流中包含 ping 消息
-- `streamTokens` (`boolean`)：启用逐 token 流式传输
+- `streamTokens` (`boolean`)：启用逐令牌流式传输
 - `background` (`boolean`)：为长时间运行的操作启用后台执行
-- 其他参数请参阅 [Letta API 文档](https://docs.letta.com/api-reference/agents/messages/create-stream)
+- [Letta API 文档](https://docs.letta.com/api-reference/agents/messages/create-stream) 中提供的其他参数
 
 #### 超时配置
 
@@ -139,7 +126,7 @@ const result = streamText({
   providerOptions: {
     letta: {
       agent: { id: 'your-agent-id' },
-      timeoutInSeconds: 300, // 最多等待 5 分钟
+      timeoutInSeconds: 300, // 最多等待5分钟
     },
   },
   prompt: '处理这个复杂任务...',
@@ -148,7 +135,7 @@ const result = streamText({
 
 ## 自定义工具和 MCP
 
-Letta 智能体通过提供商执行的工具支持自定义工具和 MCP（模型上下文协议）服务器。一旦[在你的 Letta 智能体上配置](https://docs.letta.com/guides/agents/custom-tools)，你可以使用 `letta.tool()` 将它们包含在请求中，Letta 会处理工具执行。
+Letta 智能体通过提供商执行的工具支持自定义工具和 MCP（模型上下文协议）服务器。一旦[在你的 Letta 智能体上配置了](https://docs.letta.com/guides/agents/custom-tools)，你可以使用 `letta.tool()` 将它们包含在请求中，Letta 会处理工具执行。
 
 ```typescript
 import { streamText } from 'ai';
@@ -183,7 +170,7 @@ const result = streamText({
 
 ## 使用其他 Letta 客户端函数
 
-`vercel-ai-sdk-provider` 扩展了 [@letta-ai/letta-client](https://www.npmjs.com/package/@letta-ai/letta-client)，你可以通过使用 `lettaCloud.client` 或 `lettaLocal.client` 或你自定义生成的 `letta.client` 直接访问操作。
+`vercel-ai-sdk-provider` 扩展了 [@letta-ai/letta-client](https://www.npmjs.com/package/@letta-ai/letta-client)，你可以通过使用 `lettaCloud.client`、`lettaLocal.client` 或你自定义生成的 `letta.client` 直接访问操作。
 
 ```ts
 // 使用 Letta Cloud

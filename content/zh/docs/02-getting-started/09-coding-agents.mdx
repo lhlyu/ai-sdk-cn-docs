@@ -1,6 +1,6 @@
 ---
-title: 编码智能体
-description: 了解如何设置 AI SDK 以用于编码智能体，包括安装技能、访问捆绑文档以及使用 DevTools。
+title: "编码智能体"
+description: "了解如何为编码智能体设置 AI SDK，包括安装技能、访问捆绑文档以及使用 DevTools。"
 ---
 
 # 编码智能体入门
@@ -17,38 +17,23 @@ description: 了解如何设置 AI SDK 以用于编码智能体，包括安装�
 npx skills add vercel/ai
 ```
 
-这会将技能安装到智能体的特定技能目录中（例如 `.claude/skills`、`.codex/skills`）。如果你选择了多个智能体，CLI 会创建符号链接，以便每个智能体都能发现该技能。使用 `-a` 可直接指定智能体——例如，`-a amp` 会安装到通用的 `.agents/skills` 目录。使用 `-y` 可进行非交互式安装。
+这会将技能安装到智能体特定的技能目录中（例如 `.claude/skills`、`.codex/skills`）。如果你选择了多个智能体，CLI 会创建符号链接，以便每个智能体都能发现该技能。使用 `-a` 直接指定智能体——例如，`-a amp` 会安装到通用的 `.agents/skills` 目录。使用 `-y` 进行非交互式安装。
 
 安装后，任何支持 [Agent Skills](https://agentskills.io) 格式的智能体在处理 AI SDK 任务时都会自动发现并加载该技能。
 
 <Note>
-  Agent Skills 采用**渐进式披露**：启动时，你的智能体仅加载技能的名称和描述。只有在任务需要时，完整指令才会被拉入上下文，从而保持智能体的快速和专注。
+  Agent Skills 采用**渐进式披露**：智能体在启动时仅加载技能的名称和描述。只有当任务需要时，完整的指令才会被拉入上下文，从而保持智能体的快速和专注。
 </Note>
 
 ## `node_modules` 中的文档和源代码
 
-安装 `ai` 包后，你已经在本地 `node_modules` 中拥有了完整的 AI SDK 文档和源代码。你的编码智能体可以直接读取这些内容——无需互联网访问。
+一旦你安装了 `ai` 包，完整的 AI SDK 文档和源代码就已经本地存在于 `node_modules` 中。你的编码智能体可以直接读取这些内容——无需互联网访问。
 
-如果尚未安装 `ai` 包，请执行以下操作：
+如果尚未安装，请安装 `ai` 包：
 
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add ai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install ai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add ai" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="bun add ai" dark />
-    </Tab>
-  </Tabs>
-</div>
+<InstallPackages packages="ai" />
 
-安装后，你的智能体可以引用捆绑的源代码和文档，路径如下：
+安装后，你的智能体可以引用如下路径中的捆绑源代码和文档：
 
 ```
 node_modules/ai/src/              # 按模块组织的完整源代码
@@ -59,34 +44,19 @@ node_modules/ai/docs/             # 包含示例的官方文档
 
 ## 安装 DevTools
 
-AI SDK DevTools 让你在开发过程中全面了解 AI SDK 调用。它捕获 LLM 请求、响应、工具调用、令牌使用和多步骤交互，并在本地 Web UI 中显示。
+AI SDK DevTools 让你在开发过程中全面了解 AI SDK 调用。它捕获 LLM 请求、响应、工具调用、Token 使用情况以及多步交互，并在本地 Web UI 中显示。
 
 <Note type="warning">
-  AI SDK DevTools 是实验性功能，仅用于本地开发。请勿在生产环境中使用。
+  AI SDK DevTools 是实验性的，仅用于本地开发。请勿在生产环境中使用。
 </Note>
 
 安装 DevTools 包：
 
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add @ai-sdk/devtools" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install @ai-sdk/devtools" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add @ai-sdk/devtools" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="bun add @ai-sdk/devtools" dark />
-    </Tab>
-  </Tabs>
-</div>
+<InstallPackages packages="@ai-sdk/devtools" />
 
 ### 注册集成
 
-全局注册 `DevToolsTelemetry`，以捕获所有 AI SDK 调用：
+全局注册 `DevToolsTelemetry`，以便捕获所有 AI SDK 调用：
 
 ```ts
 import { registerTelemetry } from 'ai';
@@ -95,7 +65,7 @@ import { DevToolsTelemetry } from '@ai-sdk/devtools';
 registerTelemetry(DevToolsTelemetry());
 ```
 
-集成注册后，所有 AI SDK 调用将自动启用[遥测](/docs/ai-sdk-core/telemetry)：
+一旦集成注册完成，[遥测](/docs/ai-sdk-core/telemetry) 将自动为所有 AI SDK 调用启用：
 
 ```ts
 import { generateText } from 'ai';
@@ -122,10 +92,10 @@ DevTools 会捕获并显示每次调用的以下信息：
 
 - **输入参数和提示词** — 发送给 LLM 的完整输入
 - **输出内容和工具调用** — 生成的文本和工具调用
-- **令牌使用和时序** — 每个步骤的资源消耗和延迟
+- **Token 使用情况和时序** — 每个步骤的资源消耗和延迟
 - **原始提供商数据** — 完整的请求和响应负载
 
-对于多步骤智能体交互，DevTools 将所有内容分组为**运行**（完整交互）和**步骤**（其中的每个 LLM 调用），从而轻松追踪智能体的操作及其原因。
+对于多步智能体交互，DevTools 将所有内容分组为**运行**（一次完整交互）和**步骤**（其中的每次 LLM 调用），从而轻松追踪智能体的具体操作及其原因。
 
 你还可以在开发过程中直接在代码中记录工具结果：
 
@@ -135,7 +105,7 @@ import { z } from 'zod';
 
 const result = streamText({
   model,
-  prompt: "纽约的摄氏温度是多少？",
+  prompt: "纽约的天气是多少摄氏度？",
   tools: {
     weather: tool({
       description: '获取某个地点（华氏度）的天气',
@@ -157,7 +127,7 @@ const result = streamText({
 });
 ```
 
-`onStepEnd` 回调在每个 LLM 步骤后触发，并将任何工具结果打印到终端——适用于无需打开 DevTools UI 的快速调试。
+`onStepEnd` 回调在每次 LLM 步骤后触发，并将任何工具结果打印到终端——无需打开 DevTools UI 即可快速调试。
 
 <Note>
   DevTools 将所有 AI 交互存储在本地 `.devtools/generations.json` 文件中。它会自动将 `.devtools` 添加到你的 `.gitignore` 中，以防止提交敏感的交互数据。
@@ -166,6 +136,6 @@ const result = streamText({
 ## 下一步
 
 - 了解 [Agent Skills](https://agentskills.io/specification) 以掌握完整的技能格式。
-- 阅读 [DevTools 参考](/docs/ai-sdk-core/devtools) 以获取捕获数据和配置选项的完整列表。
-- 探索[工具与工具调用](/docs/ai-sdk-core/tools-and-tool-calling) 以构建能够执行实际操作的智能体。
-- 查看[为智能体添加技能](/cookbook/guides/agent-skills) 食谱指南，获取逐步集成教程。
+- 阅读 [DevTools 参考](/docs/ai-sdk-core/devtools) 以获取捕获的数据和配置选项的完整列表。
+- 探索 [工具与工具调用](/docs/ai-sdk-core/tools-and-tool-calling) 以构建能够执行实际操作的智能体。
+- 查看 [为智能体添加技能](/cookbook/guides/agent-skills) 烹饪书指南，获取逐步集成教程。

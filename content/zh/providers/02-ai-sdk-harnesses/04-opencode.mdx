@@ -1,6 +1,6 @@
 ---
-title: OpenCode
-description: 了解如何使用 OpenCode 测试平台适配器。
+title: "OpenCode"
+description: "了解如何使用 OpenCode 测试平台适配器。"
 ---
 
 # OpenCode 测试平台
@@ -8,37 +8,12 @@ description: 了解如何使用 OpenCode 测试平台适配器。
 OpenCode 测试平台适配器通过 `@opencode-ai/sdk` 将 `HarnessAgent` 连接到 OpenCode。该适配器在沙箱内运行一个桥接，在该沙箱中启动一个 OpenCode 服务器，并通过沙箱暴露的 WebSocket 将 OpenCode 会话事件流式传输回主机。
 
 <Note>
-  测试平台包是**实验性**的。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  测试平台包目前是**实验性**的。随着这个早期 API 的进一步完善，不同版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet
-      text="pnpm add @ai-sdk/harness @ai-sdk/harness-opencode @ai-sdk/sandbox-vercel"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="npm install @ai-sdk/harness @ai-sdk/harness-opencode @ai-sdk/sandbox-vercel"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="yarn add @ai-sdk/harness @ai-sdk/harness-opencode @ai-sdk/sandbox-vercel"
-      dark
-    />
-  </Tab>
-  <Tab>
-    <Snippet
-      text="bun add @ai-sdk/harness @ai-sdk/harness-opencode @ai-sdk/sandbox-vercel"
-      dark
-    />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-opencode @ai-sdk/sandbox-vercel" />
 
 当第一个会话启动时，适配器会在沙箱内引导 OpenCode 桥接依赖项。桥接包依赖于 `@opencode-ai/sdk` 和 `opencode-ai`。
 
@@ -71,7 +46,7 @@ let exitCode = 0;
 try {
   const result = await agent.stream({
     session,
-    prompt: '检查测试失败并修复生产代码。',
+    prompt: '检查测试失败原因并修复生产代码。',
   });
 
   for await (const part of result.stream) {
@@ -88,11 +63,11 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及用于 OpenCode 的 [身份验证](#身份验证) 下列出的变量之一。
+要使用此智能体，请确保环境变量包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#authentication) 下列出的用于 OpenCode 的变量之一。
 
 ## 适配器设置
 
-使用 `createOpenCode()` 配置运行时：
+使用 `createOpenCode()` 来配置运行时：
 
 ```ts
 const harness = createOpenCode({
@@ -101,18 +76,18 @@ const harness = createOpenCode({
 });
 ```
 
-设置：
+设置项：
 
-- `auth`：Anthropic、OpenAI、兼容 OpenAI 或 AI Gateway 的身份验证设置。
+- `auth`：Anthropic、OpenAI、兼容 OpenAI 或 AI 网关的身份验证设置。
 - `model`：OpenCode 模型 ID。诸如 `anthropic/claude-sonnet-4-6` 之类的提供商前缀值会直接传递给 OpenCode。
-- `provider`：与无前缀的 `model` 一起使用的提供商 ID。
+- `provider`：与不带前缀的 `model` 一起使用的提供商 ID。
 - `reasoningVariant`：受支持模型的 OpenCode 推理/思考变体，例如 `low`、`medium` 或 `high`。
 - `port`：桥接端口覆盖。
 - `startupTimeoutMs`：等待桥接启动的最长时间。
 
 ## 身份验证
 
-默认情况下，身份验证从主机环境解析并转发到沙箱桥接。适配器会检查 AI Gateway、Anthropic 和 OpenAI 凭据。
+默认情况下，身份验证信息从主机环境解析并转发到沙箱桥接。适配器会检查 AI 网关、Anthropic 和 OpenAI 凭证。
 
 支持的环境变量：
 
@@ -154,7 +129,7 @@ const sandbox = createVercelSandbox({
 
 ## 内置工具
 
-适配器通过 `agent.tools` 暴露这些常见的 OpenCode 内置工具：
+适配器通过 `agent.tools` 暴露以下常见的 OpenCode 内置工具：
 
 - `read`
 - `write`
@@ -170,9 +145,9 @@ const sandbox = createVercelSandbox({
 
 当其他 OpenCode 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，OpenCode 支持内置工具审批请求。主机执行的 AI SDK 工具审批也有效。
+当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，OpenCode 支持内置工具审批请求。主机执行的 AI SDK 工具审批也同样有效。
 
-## 相关
+## 相关链接
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [测试平台工具](/docs/ai-sdk-harnesses/tools)

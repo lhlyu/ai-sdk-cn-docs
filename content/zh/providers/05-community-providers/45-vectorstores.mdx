@@ -1,40 +1,27 @@
 ---
-title: vectorstores
-description: 了解如何将向量数据库与 AI SDK 结合使用。
+title: "vectorstores"
+description: "了解如何将向量数据库与 AI SDK 结合使用。"
 ---
 
 # vectorstores 提供商
 
 [vectorstores 提供商](https://www.vectorstores.org/integration/vercel/) 将 [vectorstores](https://www.vectorstores.org/) 与 AI SDK 集成，支持在向量数据库中检索和存储数据的 AI 工作流。
 
-## 安装
+## 设置
 
-vectorstores 提供商位于 `@vectorstores/vercel` 模块中。您可以通过以下方式安装：
+vectorstores 提供商位于 `@vectorstores/vercel` 模块中。您可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @vectorstores/vercel @vectorstores/core" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @vectorstores/vercel @vectorstores/core" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @vectorstores/vercel @vectorstores/core" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add @vectorstores/vercel @vectorstores/core" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@vectorstores/vercel @vectorstores/core" />
 
 ## 文档索引
 
-在使用 vectorstores 提供商之前，您需要为文档定义索引。索引将文档嵌入存储在向量数据库中，从而实现对内容的语义搜索。
+在使用 vectorstores 提供商之前，您需要为文档定义一个索引。索引将文档嵌入存储在向量数据库中，从而实现对内容的语义搜索。
 
-创建索引的一种简单方法是使用 `@vectorstores/core` 包中的 `VectorStoreIndex.fromDocuments` 函数。该函数会自动将文档分割成更小的块，进行嵌入，然后存储到向量数据库中。
+创建索引的一种简单方法是使用 `@vectorstores/core` 包中的 `VectorStoreIndex.fromDocuments` 函数。该函数会自动将文档分割成较小的块，进行嵌入，并将其存储在向量数据库中。
 
 为了能够嵌入文档，您需要一个嵌入模型。您可以使用 `vercelEmbedding` 函数（参见[工具函数](#工具函数)）来使用任何 AI SDK 嵌入模型。
 
-创建索引后，您可以使用检索器根据与给定查询的相似度找到最相关的文档。
+一旦有了索引，您就可以使用检索器根据与给定查询的相似性找到最相关的文档。
 
 ## 工具函数
 
@@ -42,7 +29,7 @@ vectorstores 提供商提供了两个主要的工具函数，用于将 AI SDK �
 
 ### vercelEmbedding
 
-`vercelEmbedding` 函数将任何 AI SDK 嵌入模型适配为 vectorstores 可用的格式。这使您能够在 vectorstores 生态系统中使用 OpenAI 或 Cohere 等嵌入提供商。
+`vercelEmbedding` 函数将任何 AI SDK 嵌入模型适配为 vectorstores 可用的形式。这使您能够在 vectorstores 生态系统中使用 OpenAI 或 Cohere 等嵌入提供商。
 
 以下是如何使用 `vercelEmbedding` 函数创建索引的示例：
 
@@ -51,7 +38,7 @@ import { openai } from '@ai-sdk/openai';
 import { vercelEmbedding } from '@vectorstores/vercel';
 import { VectorStoreIndex } from '@vectorstores/core';
 
-const documents = [new Document({ text: '这是一份大型文档。' })];
+const documents = [new Document({ text: '这是一个大型文档。' })];
 
 const index = await VectorStoreIndex.fromDocuments(documents, {
   embedFunc: vercelEmbedding(openai.embedding('text-embedding-3-small')),
@@ -60,7 +47,7 @@ const index = await VectorStoreIndex.fromDocuments(documents, {
 
 ### vercelTool
 
-`vercelTool` 函数将 vectorstores 检索器封装为 AI SDK 工具，使智能体能够自主访问向量数据库中的数据。
+`vercelTool` 函数将 vectorstores 检索器包装为 AI SDK 工具，使智能体能够自主访问向量数据库中的数据。
 
 ```ts
 import { generateText } from 'ai';
@@ -75,7 +62,7 @@ const { text } = await generateText({
       description: '搜索知识库以获取定价信息',
     }),
   },
-  prompt: '墨西哥卷饼的价格是多少？',
+  prompt: '一个卷饼的价格是多少？',
 });
 ```
 
@@ -83,7 +70,7 @@ const { text } = await generateText({
 
 | 选项               | 类型            | 必需 | 描述                                                         |
 | ------------------ | --------------- | ---- | ------------------------------------------------------------ |
-| `retriever`        | BaseRetriever   | 是   | 要封装的 vectorstores 检索器实例                             |
+| `retriever`        | BaseRetriever   | 是   | 要包装的 vectorstores 检索器实例                             |
 | `description`      | string          | 是   | 帮助 LLM 理解何时以及如何使用该工具的指导文本                |
 | `noResultsMessage` | string          | 否   | 当没有匹配文档时的自定义回退消息（默认值："在文档中未找到结果。"） |
 
@@ -91,7 +78,7 @@ const { text } = await generateText({
 
 ### 智能体 RAG
 
-对向量数据库中的知识存储进行提问。LLM 自主决定是否使用工具查询向量数据库，检索相关内容，并将结果整合到回复中。
+对向量数据库中存储的知识进行提问。LLM 自主决定是否使用工具查询向量数据库，检索相关内容，并将结果整合到响应中。
 
 [查看示例 →](https://github.com/marcusschiesser/vectorstores/blob/main/examples/vercel/agentic-rag.ts)
 

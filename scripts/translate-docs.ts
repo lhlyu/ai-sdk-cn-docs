@@ -141,7 +141,9 @@ if (skippedByLimit > 0) {
 }
 
 if (failed > 0) {
-  persistProgress(`translation finished with ${failed} failed document(s) skipped`);
+  persistProgress(
+    `translation finished with ${failed} failed document(s) skipped`,
+  );
   for (const failedItem of failedItems) {
     console.error(failedItem);
   }
@@ -206,7 +208,7 @@ async function translateMdx(
             "必须保持 MDX 结构可编译。",
             "保留 frontmatter 字段名，只翻译 title 和 description 的自然语言值。",
             "frontmatter 的 title 和 description 必须输出为合法 YAML 字符串；如果值包含或保留反引号、@、冒号、引号等特殊字符，必须用双引号包裹并正确转义。",
-            "不要翻译代码块、行内代码、import/export、JSX 组件名、组件属性名、URL、包名、API 名、类型名、变量名。",
+            "不要翻译代码块、行内代码、import/export、JSX 组件名、组件属性名、URL、包名、API 名、类型名、变量名、专有名词。",
             "Markdown 链接 URL 必须保持不变，链接文字可自然翻译。",
             "不要添加解释、不要包裹 Markdown 代码围栏、只输出翻译后的完整 MDX 文件内容。",
           ].join("\n"),
@@ -257,7 +259,9 @@ function validateTranslatedMdx(content: string, path: string): void {
 
   const fenceMatches = content.match(/```/g) ?? [];
   if (fenceMatches.length % 2 !== 0) {
-    throw new Error(`${path}: translated MDX has unbalanced markdown code fences`);
+    throw new Error(
+      `${path}: translated MDX has unbalanced markdown code fences`,
+    );
   }
 }
 
@@ -289,7 +293,9 @@ async function writeJson(path: string, value: unknown): Promise<void> {
   await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function readTranslationState(): Promise<Record<string, TranslationRecord>> {
+async function readTranslationState(): Promise<
+  Record<string, TranslationRecord>
+> {
   const state = await readJsonWithFallback<Record<string, TranslationRecord>>(
     translationStatePath,
     {},

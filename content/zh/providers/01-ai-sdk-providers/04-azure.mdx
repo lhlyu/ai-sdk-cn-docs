@@ -1,31 +1,17 @@
 ---
-title: Azure OpenAI
-description: 了解如何使用 AI SDK 的 Azure OpenAI 提供商。
+title: "Azure OpenAI"
+description: "了解如何使用 AI SDK 的 Azure OpenAI 提供商。"
 ---
 
 # Azure OpenAI 提供商
 
-[Azure OpenAI](https://azure.microsoft.com/zh-cn/products/ai-services/openai-service) 提供商为 Azure OpenAI 聊天 API 提供语言模型支持。
+[Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) 提供商包含对 Azure OpenAI 聊天 API 的语言模型支持。
 
-## 安装
+## 设置
 
-Azure OpenAI 提供商位于 `@ai-sdk/azure` 模块中。你可以通过以下方式安装：
+Azure OpenAI 提供商位于 `@ai-sdk/azure` 模块中。你可以通过以下命令安装它：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/azure" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/azure" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/azure" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/azure" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/azure" />
 
 ## 提供商实例
 
@@ -46,8 +32,8 @@ const azure = createAzure({
 });
 ```
 
-对于 Microsoft Entra ID 认证，你可以提供一个令牌提供者。
-如果你想使用其凭据辅助程序，请单独安装 `@azure/identity`：
+对于 Microsoft Entra ID 身份验证，你可以提供一个令牌提供程序。
+如果你想使用其凭据助手，请单独安装 `@azure/identity`：
 
 ```ts
 import { createAzure } from '@ai-sdk/azure';
@@ -83,22 +69,24 @@ const azure = createAzure({
 
 - **tokenProvider** _() => Promise&lt;string&gt;_
 
-  Microsoft Entra ID 令牌提供者，返回一个通过 `Authorization` 标头发送的访问令牌。
+  Microsoft Entra ID 令牌提供程序，返回一个访问令牌，通过 `Authorization` 标头发送。
   提供时，将使用此令牌而不是 `apiKey`。
 
 - **apiVersion** _string_
 
-  设置自定义 [API 版本](https://learn.microsoft.com/zh-cn/azure/ai-services/openai/api-version-deprecation)。
+  设置自定义 [API 版本](https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation)。
   默认为 `v1`。
 
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
 
-  可以设置此选项或 `resourceName`。
+  可以使用此选项或 `resourceName`。
   当提供 baseURL 时，resourceName 将被忽略。
 
-  使用 baseURL 时，解析后的 URL 为 `{baseURL}/v1{path}`。
+  使用 Azure OpenAI baseURL 时，解析后的 URL 为 `{baseURL}/v1{path}`。
+  使用非 Azure 自定义网关 baseURL 时，解析后的 URL 为 `{baseURL}{path}`；
+  在此模式下，SDK 不会附加 `/v1` 或 `api-version` 查询参数。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -106,19 +94,19 @@ const azure = createAzure({
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/zh-CN/docs/Web/API/fetch) 实现。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
   你可以将其用作拦截请求的中间件，
-  或为测试等场景提供自定义 fetch 实现。
+  或为测试等提供自定义 fetch 实现。
 
 - **useDeploymentBasedUrls** _boolean_
 
-  对 API 调用使用基于部署的 URL。设置为 `true` 以使用旧版部署格式：
+  为 API 调用使用基于部署的 URL。设置为 `true` 以使用旧版部署格式：
   `{baseURL}/deployments/{deploymentId}{path}?api-version={apiVersion}` 而不是
   `{baseURL}/v1{path}?api-version={apiVersion}`。
   默认为 `false`。
 
-  此选项对于需要旧版端点格式的某些 Azure OpenAI 模型或部署的兼容性很有用。
+  此选项对于与某些需要旧版端点格式的 Azure OpenAI 模型或部署的兼容性很有用。
 
 ## 语言模型
 
@@ -132,8 +120,8 @@ const model = azure('your-deployment-name');
 
 ### 推理模型
 
-Azure 在生成的文本中使用 `<think>` 标签暴露 `DeepSeek-R1` 的思考过程。
-你可以使用 `extractReasoningMiddleware` 来提取此推理过程，并将其作为结果的 `reasoning` 属性暴露：
+Azure 在生成的文本中使用 `<think>` 标签公开 `DeepSeek-R1` 的思考过程。
+你可以使用 `extractReasoningMiddleware` 提取此推理并将其作为结果上的 `reasoning` 属性公开：
 
 ```ts
 import { azure } from '@ai-sdk/azure';
@@ -171,13 +159,13 @@ OpenAI 语言模型也可以在 `streamText` 函数中使用，
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 <Note>
-  Azure OpenAI 发送的数据块比 OpenAI 更大。这可能导致感觉
+  Azure OpenAI 发送的块比 OpenAI 大。这可能导致感知
   响应速度较慢。请参阅 [故障排除：Azure OpenAI 流式传输缓慢](/docs/troubleshooting/common-issues/azure-stream-slow)
 </Note>
 
 ### 提供商选项
 
-在 Azure 上使用 OpenAI 语言模型时，你可以使用 `providerOptions.openai` 配置提供商特定的选项。更多可用配置选项的信息，请参见 [OpenAI 提供商页面](/providers/ai-sdk-providers/openai#language-models)。
+在 Azure 上使用 OpenAI 语言模型时，你可以使用 `providerOptions.openai` 配置提供商特定选项。有关可用配置选项的更多信息，请参见 [OpenAI 提供商页面](/providers/ai-sdk-providers/openai#language-models)。
 
 ```ts highlight="12-14,24-26"
 import { azure, type OpenAILanguageModelResponsesOptions } from '@ai-sdk/azure';
@@ -247,32 +235,23 @@ const result = await generateText({
 });
 ```
 
-OpenAI 聊天模型提供以下可选的提供商选项：
+OpenAI 聊天模型有以下可选的提供商选项：
 
 - **logitBias** _Record&lt;number, number&gt;_
 
   修改指定令牌出现在补全中的可能性。
 
-  接受一个 JSON 对象，该对象将令牌（由 GPT 分词器中的令牌 ID 指定）
-  映射到 -100 到 100 之间的相关偏置值。你可以
-  使用此分词器工具将文本转换为令牌 ID。从数学上讲，
-  偏置值在采样前被添加到模型生成的 logits 中。
-  具体效果因模型而异，但 -1 到 1 之间的值应
-  降低或增加选择的可能性；像 -100 或 100 这样的值
-  应导致禁止或独占选择相关令牌。
+  接受一个 JSON 对象，该对象将令牌（由 GPT 分词器中的令牌 ID 指定）映射到 -100 到 100 之间的关联偏差值。你可以使用此分词器工具将文本转换为令牌 ID。从数学上讲，偏差在采样之前被添加到模型生成的 logits 中。确切效果因模型而异，但 -1 到 1 之间的值应降低或增加选择的可能性；像 -100 或 100 这样的值应导致禁止或独占选择相关令牌。
 
   例如，你可以传递 `{"50256": -100}` 来阻止生成该令牌。
 
 - **logprobs** _boolean | number_
 
-  返回令牌的对数概率。包含 logprobs 会增加
-  响应大小并可能减慢响应时间。但是，它
-  有助于更好地理解模型的行为。
+  返回令牌的对数概率。包含 logprobs 会增加响应大小并可能减慢响应时间。但是，它有助于更好地理解模型的行为。
 
   设置为 true 将返回已生成令牌的对数概率。
 
-  设置为数字将返回已生成的前 n 个
-  令牌的对数概率。
+  设置为数字将返回已生成的前 n 个令牌的对数概率。
 
 - **parallelToolCalls** _boolean_
 
@@ -280,8 +259,7 @@ OpenAI 聊天模型提供以下可选的提供商选项：
 
 - **user** _string_
 
-  代表最终用户的唯一标识符，可以帮助 OpenAI
-  监控和检测滥用。了解更多。
+  代表最终用户的唯一标识符，可以帮助 OpenAI 监控和检测滥用。了解更多。
 
 ### DeepSeek 聊天模型
 
@@ -291,7 +269,7 @@ OpenAI 聊天模型提供以下可选的提供商选项：
 const model = azure.deepseek('your-deepseek-deployment-name');
 ```
 
-对支持 DeepSeek 聊天推理字段（例如 `deepseek-v4-pro` 和 `deepseek-v4-flash`）的 Azure DeepSeek 模型使用此工厂方法。该工厂将顶层的 `reasoning` 映射到 DeepSeek 的 `reasoning_effort` 请求设置，并将流式传输的 `reasoning_content` 解析为 AI SDK 推理部分。
+对支持 DeepSeek 聊天推理字段的 Azure DeepSeek 模型（例如 `deepseek-v4-pro` 和 `deepseek-v4-flash`）使用此工厂。该工厂将顶级 `reasoning` 映射到 DeepSeek `reasoning_effort` 请求设置，并将流式传输的 `reasoning_content` 解析为 AI SDK 推理部分。
 
 ```ts
 import { azure, type AzureDeepSeekLanguageModelOptions } from '@ai-sdk/azure';
@@ -304,21 +282,18 @@ const result = generateText({
 });
 ```
 
-### 响应模型
+### Responses 模型
 
-Azure OpenAI 默认使用 `azure(deploymentName)` 工厂方法作为响应 API。
+Azure OpenAI 默认使用 `azure(deploymentName)` 工厂方法使用 responses API。
 
 ```ts
 const model = azure('your-deployment-name');
 ```
 
-可以使用 OpenAI 提供商选项进行进一步配置。
-你可以使用 `OpenAILanguageModelResponsesOptions` 类型验证提供商选项。
+可以使用 OpenAI 提供商选项进行进一步配置。你可以使用 `OpenAILanguageModelResponsesOptions` 类型验证提供商选项。
 
 <Note>
-  在 Responses API 中，在 `providerOptions` 中使用 `azure` 作为提供商名称
-  而不是 `openai`。`openai` 键仍然支持作为 `providerOptions`
-  输入。
+  在 Responses API 中，在 `providerOptions` 中使用 `azure` 作为提供商名称，而不是 `openai`。`openai` 键仍然支持作为 `providerOptions` 输入。
 </Note>
 
 ```ts
@@ -355,21 +330,21 @@ const result = await generateText({
 
 - **instructions** _string_
   模型的指令。
-  当使用 `previousResponseId` 选项继续对话时，它们可用于更改系统或开发者消息。
+  它们可用于在使用 `previousResponseId` 选项继续对话时更改系统或开发者消息。
   默认为 `undefined`。
 
 - **user** _string_
   代表最终用户的唯一标识符，可以帮助 OpenAI 监控和检测滥用。默认为 `undefined`。
 
 - **reasoningEffort** _'low' | 'medium' | 'high'_
-  推理模型的推理努力程度。默认为 `medium`。如果你使用 `providerOptions` 设置 `reasoningEffort` 选项，此模型设置将被忽略。
+  推理模型的推理努力程度。默认为 `medium`。如果你使用 `providerOptions` 设置 `reasoningEffort` 选项，则此模型设置将被忽略。
 
 - **strictJsonSchema** _boolean_
   是否使用严格的 JSON Schema 验证。默认为 `false`。
 
 Azure OpenAI 提供商还返回提供商特定的元数据：
 
-对于响应模型（`azure(deploymentName)`），你可以使用 `AzureResponsesProviderMetadata` 类型化此元数据：
+对于 Responses 模型（`azure(deploymentName)`），你可以使用 `AzureResponsesProviderMetadata` 类型化此元数据：
 
 ```ts
 import { azure, type AzureResponsesProviderMetadata } from '@ai-sdk/azure';
@@ -399,7 +374,7 @@ console.log(responseId);
   API 返回的服务层级信息。
 
 <Note>
-  providerMetadata 仅在默认的 responses API 中返回，并且
+  providerMetadata 仅在使用默认的 responses API 时返回，并且
   在使用 'azure.chat' 或 'azure.completion' 时不支持。
 </Note>
 
@@ -429,10 +404,10 @@ const result = await generateText({
   toolChoice: { type: 'tool', toolName: 'web_search' },
 });
 
-// 直接从 `results` 获取 URL 来源
+// 直接来自 `results` 的 URL 来源
 const sources = result.sources;
 
-// 或者从工具结果中访问来源
+// 或者从工具结果访问来源
 for (const toolResult of result.toolResults) {
   if (toolResult.toolName === 'web_search') {
     console.log('查询:', toolResult.output.action.query);
@@ -448,13 +423,12 @@ for (const toolResult of result.toolResults) {
 - **searchContextSize** _'low' | 'medium' | 'high'_ - 控制用于搜索的上下文量。较高的值提供更全面的结果，但可能具有更高的延迟和成本。
 - **userLocation** - 可选的用户位置信息，用于提供地理相关的结果。包括 `type`（始终为 `'approximate'`）、`country`、`city`、`region` 和 `timezone`。
 - **filters** - 可选的过滤器配置，用于限制搜索结果。
-  - **allowedDomains** _string[]_ - 允许搜索的域名数组。提供的域名的子域名会自动包含在内。
+  - **allowedDomains** _string[]_ - 允许搜索的域名数组。提供的域名的子域会自动包含在内。
 
-有关配置选项的详细信息，请参阅 [Azure OpenAI 网络搜索工具文档](https://learn.microsoft.com/zh-cn/azure/foundry/openai/how-to/web-search)。
+有关配置选项的详细信息，请参阅 [Azure OpenAI 网络搜索工具文档](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/web-search)。
 
 <Note>
-  在 Microsoft Foundry 环境中，不支持实时互联网访问。如果传递了
-  `externalWebAccess` 参数，它将被忽略。
+  在 Microsoft Foundry 环境中，不支持实时互联网访问。如果传递了 `externalWebAccess` 参数，它将被忽略。
 </Note>
 
 #### 文件搜索工具
@@ -487,7 +461,7 @@ const result = await generateText({
 </Note>
 
 <Note>
-  'file_search' 工具仅在默认的 responses API 中支持，并且
+  'file_search' 工具仅支持默认的 responses API，并且
   在使用 'azure.chat' 或 'azure.completion' 时不支持。
 </Note>
 
@@ -527,24 +501,21 @@ for (const toolResult of result.staticToolResults) {
 </Note>
 
 <Note>
-  'image_generation' 工具仅在默认的 responses API 中支持，
+  'image_generation' 工具仅支持默认的 responses API，
   并且在使用 'azure.chat' 或 'azure.completion' 时不支持。
 </Note>
 
 <Note>
-  要使用 image_generation，你必须首先创建一个图像生成模型。你
-  必须在标头 `x-ms-oai-image-generation-deployment` 中添加部署规范。请注意，Responses API
-  模型和图像生成模型必须在同一资源中。
+  要使用 image_generation，你必须首先创建一个图像生成模型。你必须在标头 `x-ms-oai-image-generation-deployment` 中添加部署规范。请注意，Responses API 模型和图像生成模型必须在同一资源中。
 </Note>
 
 <Note>
-  当你设置 `store: false` 时，先前生成的图像将无法被
-  模型访问。我们建议使用图像生成工具时不要设置 `store: false`。
+  当你设置 `store: false` 时，之前生成的图像将无法被模型访问。我们建议使用图像生成工具而不设置 `store: false`。
 </Note>
 
 #### 代码解释器工具
 
-Azure OpenAI 提供商通过 `azure.tools.codeInterpreter` 工具支持代码解释器。这允许模型编写和执行 Python 代码。
+Azure OpenAI 提供商通过 `azure.tools.codeInterpreter` 工具支持代码解释器工具。这允许模型编写和执行 Python 代码。
 
 ```ts
 import { azure } from '@ai-sdk/azure';
@@ -564,21 +535,21 @@ const result = await generateText({
 });
 ```
 
-代码解释器工具可以配置为：
+代码解释器工具可以配置以下内容：
 
-- **container**：可以是容器 ID 字符串，也可以是包含 `fileIds` 的对象，用于指定应提供给代码解释器的上传文件。
+- **container**：可以是容器 ID 字符串，也可以是包含 `fileIds` 的对象，用于指定应可供代码解释器使用的上传文件。
 
 <Note>
   使用 Azure OpenAI 的代码解释器功能时，工具必须命名为 `code_interpreter`。此名称是 Azure OpenAI API 规范所要求的，无法自定义。
 </Note>
 
 <Note>
-  'code_interpreter' 工具仅在默认的 responses API 中支持，
+  'code_interpreter' 工具仅支持默认的 responses API，
   并且在使用 'azure.chat' 或 'azure.completion' 时不支持。
 </Note>
 
 <Note>
-  当处理由代码解释器生成的文件时，可以从 [文本部分中的注释](#typed-providermetadata-in-text-parts) 和 [源文档部分中的 `providerMetadata`](#typed-providermetadata-in-source-document-parts) 获取参考信息。
+  处理由代码解释器生成的文件时，可以从[文本部分中的注释](#typed-providermetadata-in-text-parts)和[源文档部分中的 `providerMetadata`](#typed-providermetadata-in-source-document-parts) 获取参考信息。
 </Note>
 
 #### PDF 支持
@@ -614,15 +585,15 @@ PDF 文件应使用 `data` 字段传递，
 并且 `mediaType` 应设置为 `'application/pdf'`。
 
 <Note>
-  读取 PDF 文件仅在默认的 responses API 中支持，并且
+  读取 PDF 文件仅支持默认的 responses API，并且
   在使用 'azure.chat' 或 'azure.completion' 时不支持。
 </Note>
 
 #### 文本部分中的类型化 providerMetadata
 
-使用 Azure OpenAI Responses API 时，SDK 会通过 `providerMetadata` 将 Azure OpenAI 特定的元数据附加到输出部分。
+使用 Azure OpenAI Responses API 时，SDK 通过 `providerMetadata` 将 Azure OpenAI 特定的元数据附加到输出部分。
 
-此元数据可以在客户端用于诸如渲染引用或下载由代码解释器生成的文件等任务。
+此元数据可在客户端用于诸如渲染引用或下载由代码解释器生成的文件等任务。
 为了启用此元数据的类型安全处理，AI SDK 导出了专用的 TypeScript 类型。
 
 对于文本部分，当 `part.type === 'text'` 时，`providerMetadata` 以 `AzureResponsesTextProviderMetadata` 的形式提供。
@@ -652,11 +623,11 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: azure('gpt-4.1-mini'),
   prompt:
-    '创建一个程序，生成五个介于 1 到 100 之间、保留两位小数的随机数，并向我展示执行结果。同时将结果保存到一个文件中。',
+    '创建一个程序，生成五个介于 1 到 100 之间、保留两位小数的随机数，并向我显示执行结果。同时将结果保存到文件中。',
   tools: {
     code_interpreter: azure.tools.codeInterpreter(),
     web_search_preview: azure.tools.webSearchPreview({}),
-    file_search: azure.tools.fileSearch({ vectorStoreIds: ['vs_1234'] }), // 需要配置向量存储
+    file_search: azure.tools.fileSearch({ vectorStoreIds: ['vs_1234'] }), // 需要配置的向量存储
   },
 });
 
@@ -672,15 +643,15 @@ for (const part of result.content) {
     for (const annotation of annotations) {
       switch (annotation.type) {
         case 'url_citation':
-          // url_citation 由 web_search 返回，提供：
+          // url_citation 来自 web_search，提供：
           // 属性：type, url, title, start_index 和 end_index
           break;
         case 'file_citation':
-          // file_citation 由 file_search 返回，提供：
+          // file_citation 来自 file_search，提供：
           // 属性：type, file_id, filename 和 index
           break;
         case 'container_file_citation':
-          // container_file_citation 由 code_interpreter 返回，提供：
+          // container_file_citation 来自 code_interpreter，提供：
           // 属性：type, container_id, file_id, filename, start_index 和 end_index
           break;
         case 'file_path':
@@ -700,7 +671,7 @@ for (const part of result.content) {
 ```
 
 <Note>
-  当实现由代码解释器生成的文件的下载时，`providerMetadata` 中可用的 `container_id` 和 `file_id` 可用于检索文件内容。有关详细信息，请参阅 [检索容器文件内容](https://platform.openai.com/docs/api-reference/container-files/retrieveContainerFileContent) API。
+  在实现由代码解释器生成的文件的下载时，`providerMetadata` 中可用的 `container_id` 和 `file_id` 可用于检索文件内容。有关详细信息，请参阅 [检索容器文件内容](https://platform.openai.com/docs/api-reference/container-files/retrieveContainerFileContent) API。
 </Note>
 
 #### 推理部分中的类型化 providerMetadata
@@ -770,11 +741,11 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: azure('gpt-4.1-mini'),
   prompt:
-    '创建一个程序，生成五个介于 1 到 100 之间、保留两位小数的随机数，并向我展示执行结果。同时将结果保存到一个文件中。',
+    '创建一个程序，生成五个介于 1 到 100 之间、保留两位小数的随机数，并向我显示执行结果。同时将结果保存到文件中。',
   tools: {
     code_interpreter: azure.tools.codeInterpreter(),
     web_search_preview: azure.tools.webSearchPreview({}),
-    file_search: azure.tools.fileSearch({ vectorStoreIds: ['vs_1234'] }), // 需要配置向量存储
+    file_search: azure.tools.fileSearch({ vectorStoreIds: ['vs_1234'] }), // 需要配置的向量存储
   },
 });
 
@@ -788,12 +759,12 @@ for (const part of result.content) {
       const annotation = providerMetadata.azure;
       switch (annotation.type) {
         case 'file_citation':
-          // file_citation 由 file_search 返回，提供：
+          // file_citation 来自 file_search，提供：
           // 属性：type, fileId 和 index
           // 文件名可以通过 part.filename 访问。
           break;
         case 'container_file_citation':
-          // container_file_citation 由 code_interpreter 返回，提供：
+          // container_file_citation 来自 code_interpreter，提供：
           // 属性：type, containerId 和 fileId
           // 文件名可以通过 part.filename 访问。
           break;
@@ -814,7 +785,7 @@ for (const part of result.content) {
 ```
 
 <Note>
-  文本部分中的注释遵循 OpenAI Responses API 规范，因此使用蛇形命名法属性（例如 `file_id`、`container_id`）。相比之下，源文档部分的 `providerMetadata` 由 SDK 规范化为驼峰命名法（例如 `fileId`、`containerId`）。依赖于原始文本内容的字段，例如 `start_index` 和 `end_index`，将被省略，像 `filename` 这样直接在源对象上可用的字段也会被省略。
+  文本部分中的注释遵循 OpenAI Responses API 规范，因此使用蛇形命名法属性（例如 `file_id`、`container_id`）。相比之下，源文档部分的 `providerMetadata` 由 SDK 规范化为驼峰命名法（例如 `fileId`、`containerId`）。依赖于原始文本内容的字段（例如 `start_index` 和 `end_index`）以及直接在源对象上可用的字段（如 `filename`）将被省略。
 </Note>
 
 ### 补全模型
@@ -842,48 +813,39 @@ const result = await generateText({
   prompt: '写一首关于编程的俳句。',
   providerOptions: {
     openai: {
-      echo: true, // 可选，在补全之外回显提示词
+      echo: true, // 可选，在补全之外回显提示
       logitBias: {
         // 特定令牌的可选可能性
         '50256': -100,
       },
-      suffix: '一些文本', // 可选，在插入文本的补全之后出现的后缀
+      suffix: 'some text', // 可选，在插入文本的补全之后出现的后缀
       user: 'test-user', // 可选的唯一用户标识符
     } satisfies OpenAILanguageModelCompletionOptions,
   },
 });
 ```
 
-Azure OpenAI 补全模型提供以下可选的提供商选项：
+Azure OpenAI 补全模型有以下可选的提供商选项：
 
 - **echo**: _boolean_
 
-  在补全之外回显提示词。
+  在补全之外回显提示。
 
 - **logitBias** _Record&lt;number, number&gt;_
 
   修改指定令牌出现在补全中的可能性。
 
-  接受一个 JSON 对象，该对象将令牌（由 GPT 分词器中的令牌 ID 指定）
-  映射到 -100 到 100 之间的相关偏置值。你可以
-  使用此分词器工具将文本转换为令牌 ID。从数学上讲，
-  偏置值在采样前被添加到模型生成的 logits 中。
-  具体效果因模型而异，但 -1 到 1 之间的值应
-  降低或增加选择的可能性；像 -100 或 100 这样的值
-  应导致禁止或独占选择相关令牌。
+  接受一个 JSON 对象，该对象将令牌（由 GPT 分词器中的令牌 ID 指定）映射到 -100 到 100 之间的关联偏差值。你可以使用此分词器工具将文本转换为令牌 ID。从数学上讲，偏差在采样之前被添加到模型生成的 logits 中。确切效果因模型而异，但 -1 到 1 之间的值应降低或增加选择的可能性；像 -100 或 100 这样的值应导致禁止或独占选择相关令牌。
 
   例如，你可以传递 `{"50256": -100}` 来阻止生成 &lt;|endoftext|&gt; 令牌。
 
 - **logprobs** _boolean | number_
 
-  返回令牌的对数概率。包含 logprobs 会增加
-  响应大小并可能减慢响应时间。但是，它
-  有助于更好地理解模型的行为。
+  返回令牌的对数概率。包含 logprobs 会增加响应大小并可能减慢响应时间。但是，它有助于更好地理解模型的行为。
 
   设置为 true 将返回已生成令牌的对数概率。
 
-  设置为数字将返回已生成的前 n 个
-  令牌的对数概率。
+  设置为数字将返回已生成的前 n 个令牌的对数概率。
 
 - **suffix** _string_
 
@@ -891,8 +853,7 @@ Azure OpenAI 补全模型提供以下可选的提供商选项：
 
 - **user** _string_
 
-  代表最终用户的唯一标识符，可以帮助 OpenAI
-  监控和检测滥用。了解更多。
+  代表最终用户的唯一标识符，可以帮助 OpenAI 监控和检测滥用。了解更多。
 
 ## 嵌入模型
 
@@ -902,7 +863,7 @@ Azure OpenAI 补全模型提供以下可选的提供商选项：
 const model = azure.embedding('your-embedding-deployment');
 ```
 
-Azure OpenAI 嵌入模型支持多个附加设置。
+Azure OpenAI 嵌入模型支持几个额外的设置。
 你可以将它们作为选项参数传递：
 
 ```ts
@@ -921,7 +882,7 @@ const { embedding } = await embed({
 });
 ```
 
-Azure OpenAI 嵌入模型提供以下可选的提供商选项：
+Azure OpenAI 嵌入模型有以下可选的提供商选项：
 
 - **dimensions**: _number_
 
@@ -930,8 +891,7 @@ Azure OpenAI 嵌入模型提供以下可选的提供商选项：
 
 - **user** _string_
 
-  代表最终用户的唯一标识符，可以帮助 OpenAI
-  监控和检测滥用。了解更多。
+  代表最终用户的唯一标识符，可以帮助 OpenAI 监控和检测滥用。了解更多。
 
 ## 图像模型
 
@@ -941,7 +901,7 @@ Azure OpenAI 嵌入模型提供以下可选的提供商选项：
 const model = azure.image('your-dalle-deployment-name');
 ```
 
-Azure OpenAI 图像模型支持多个附加设置。你可以在生成图像时将它们作为 `providerOptions.openai` 传递：
+Azure OpenAI 图像模型支持几个额外的设置。你可以在生成图像时将它们作为 `providerOptions.openai` 传递：
 
 ```ts
 import { azure } from '@ai-sdk/azure';
@@ -1006,4 +966,131 @@ const model = azure.transcription('whisper-1');
 ```
 
 <Note>
-  如果遇到转录模型的
+  如果遇到转录模型的 "DeploymentNotFound" 错误，
+  请尝试启用基于部署的 URL：
+
+```ts
+const azure = createAzure({
+  useDeploymentBasedUrls: true,
+  apiVersion: '2025-04-01-preview',
+});
+```
+
+这使用了某些 Azure OpenAI 部署可能需要的旧版端点格式。
+使用 useDeploymentBasedUrls 时，默认的 api-version 无效。你必须将其设置为 `2025-04-01-preview` 或更早的值。
+
+</Note>
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，以 ISO-639-1 格式（例如 `en`）提供输入语言将提高准确性和延迟。
+
+```ts highlight="6"
+import { transcribe } from 'ai';
+import { azure, type OpenAITranscriptionModelOptions } from '@ai-sdk/azure';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: azure.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    openai: {
+      language: 'en',
+    } satisfies OpenAITranscriptionModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **timestampGranularities** _string[]_
+  转录中时间戳的粒度。
+  默认为 `['segment']`。
+  可能的值是 `['word']`、`['segment']` 和 `['word', 'segment']`。
+  注意：段时间戳没有额外的延迟，但生成单词时间戳会增加额外的延迟。
+
+- **language** _string_
+  输入音频的语言。以 ISO-639-1 格式（例如 'en'）提供输入语言将提高准确性和延迟。
+  可选。
+
+- **prompt** _string_
+  可选文本，用于指导模型的风格或继续之前的音频段。提示应与音频语言匹配。
+  可选。
+
+- **temperature** _number_
+  采样温度，介于 0 和 1 之间。较高的值（如 0.8）会使输出更随机，而较低的值（如 0.2）会使其更集中和确定。如果设置为 0，模型将使用对数概率自动提高温度，直到达到某些阈值。
+  默认为 0。
+  可选。
+
+- **include** _string[]_
+  要包含在转录响应中的附加信息。
+
+### 模型能力
+
+| 模型                    | 转录 | 持续时间 | 段 | 语言 |
+| ------------------------ | --------- | --------- | --------- | --------- |
+| `whisper-1`              | <Check /> | <Check /> | <Check /> | <Check /> |
+| `gpt-4o-mini-transcribe` | <Check /> | <Cross /> | <Cross /> | <Cross /> |
+| `gpt-4o-transcribe`      | <Check /> | <Cross /> | <Cross /> | <Cross /> |
+
+## 语音模型
+
+你可以使用 `.speech()` 工厂方法创建调用 Azure OpenAI 语音 API 的模型。
+
+第一个参数是文本转语音模型的部署名称（例如 `tts-1`）。
+
+```ts
+const model = azure.speech('your-tts-deployment-name');
+```
+
+### 示例
+
+```ts
+import { azure } from '@ai-sdk/azure';
+import { generateSpeech } from 'ai';
+
+const result = await generateSpeech({
+  model: azure.speech('your-tts-deployment-name'),
+  text: '你好，世界！',
+  voice: 'alloy', // OpenAI 语音 ID
+});
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项：
+
+```ts
+import { azure, type OpenAISpeechModelOptions } from '@ai-sdk/azure';
+import { generateSpeech } from 'ai';
+
+const result = await generateSpeech({
+  model: azure.speech('your-tts-deployment-name'),
+  text: '你好，世界！',
+  voice: 'alloy',
+  providerOptions: {
+    openai: {
+      speed: 1.2,
+    } satisfies OpenAISpeechModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **instructions** _string_
+  通过附加指令控制生成音频的语音，例如“用缓慢而稳定的语调说话”。
+  不适用于 `tts-1` 或 `tts-1-hd`。
+  可选。
+
+- **speed** _number_
+  生成音频的速度。
+  选择 0.25 到 4.0 之间的值。
+  默认为 1.0。
+  可选。
+
+### 模型能力
+
+Azure OpenAI 通过部署支持 TTS 模型。能力取决于你的部署使用的模型版本：
+
+| 模型版本     | 指令 |
+| ----------------- | ------------ |
+| `tts-1`           | <Cross />    |
+| `tts-1-hd`        | <Cross />    |
+| `gpt-4o-mini-tts` | <Check />    |

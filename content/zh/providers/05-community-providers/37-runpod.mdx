@@ -1,30 +1,17 @@
 ---
-title: Runpod
-description: Runpod AI SDK 提供商
+title: "Runpod"
+description: "Runpod AI SDK 提供商"
 ---
 
 # Runpod
 
-官方 [Runpod](https://runpod.io) 提供商支持公共和私有端点的语言模型与图像生成。
+官方 [Runpod](https://runpod.io) 提供商支持公共和私有端点的语言模型与图像生成功能。
 
 ## 安装
 
-Runpod 提供商位于 `@runpod/ai-sdk-provider` 模块中。你可以通过以下方式安装：
+Runpod 提供商位于 `@runpod/ai-sdk-provider` 模块中。你可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @runpod/ai-sdk-provider" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @runpod/ai-sdk-provider" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @runpod/ai-sdk-provider" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add @runpod/ai-sdk-provider" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@runpod/ai-sdk-provider" />
 
 ## 提供商实例
 
@@ -34,13 +21,13 @@ Runpod 提供商位于 `@runpod/ai-sdk-provider` 模块中。你可以通过以�
 import { runpod } from '@runpod/ai-sdk-provider';
 ```
 
-如果你需要自定义设置，可以导入 `createRunpod` 并使用你的配置创建提供商实例：
+如果需要自定义设置，可以导入 `createRunpod` 并根据你的配置创建提供商实例：
 
 ```ts
 import { createRunpod } from '@runpod/ai-sdk-provider';
 
 const runpod = createRunpod({
-  apiKey: 'your-api-key', // 可选，默认为 RUNPOD_API_KEY 环境变量
+  apiKey: 'your-api-key', // 可选，默认使用 RUNPOD_API_KEY 环境变量
   baseURL: 'custom-url', // 可选，用于自定义端点
   headers: {
     /* 自定义请求头 */
@@ -59,8 +46,8 @@ const runpod = createRunpod({
 - **apiKey** _string_
 
   通过 `Authorization` 请求头发送的 API 密钥。
-  默认为 `RUNPOD_API_KEY` 环境变量。
-  你可以从 [Runpod 控制台](https://console.runpod.io/user/settings) 的 "API Keys" 部分获取 API 密钥。
+  默认使用 `RUNPOD_API_KEY` 环境变量。
+  你可以在 [Runpod 控制台](https://console.runpod.io/user/settings) 的 "API Keys" 下获取 API 密钥。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -90,7 +77,7 @@ const { text } = await generateText({
 
 - `text` - 生成的文本字符串
 - `finishReason` - 生成停止的原因（'stop'、'length' 等）
-- `usage` - Token 使用信息（提示词、补全、总 Token 数）
+- `usage` - Token 使用信息（提示词、补全、总 token 数）
 
 ### 流式传输
 
@@ -112,10 +99,10 @@ for await (const delta of textStream) {
 
 ### 模型能力
 
-| 模型 ID                | 描述                                       | 流式传输            | 对象生成            | 工具调用            | 推理说明               |
-| --------------------- | ------------------------------------------ | ------------------- | ------------------- | ------------------- | ---------------------- |
-| `qwen/qwen3-32b-awq`  | 32B 参数多语言模型，具备强大推理能力         | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | 标准推理事件           |
-| `openai/gpt-oss-120b` | 120B 参数开源 GPT 模型                      | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | 标准推理事件           |
+| 模型 ID                | 描述                                                         | 流式传输 | 对象生成 | 工具使用 | 推理说明           |
+| ---------------------- | ------------------------------------------------------------ | -------- | -------- | -------- | ------------------ |
+| `qwen/qwen3-32b-awq`   | 32B 参数多语言模型，具备强大的推理能力                       | <Check /> | <Cross /> | <Check /> | 标准推理事件       |
+| `openai/gpt-oss-120b`  | 120B 参数开源 GPT 模型                                       | <Check /> | <Cross /> | <Check /> | 标准推理事件       |
 
 **注意：** 所有可用模型的最新列表可在 [Runpod 公共端点参考](https://docs.runpod.io/hub/public-endpoint-reference) 中找到。
 
@@ -156,12 +143,12 @@ const { text, toolCalls } = await generateText({
 
 **额外返回结果：**
 
-- `toolCalls` - 模型进行的工具调用数组
+- `toolCalls` - 模型调用的工具数组
 - `toolResults` - 已执行工具的结果
 
 ### 结构化输出
 
-此提供商中的两个模型不支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 来强制结构化输出。
+该提供商中的两个模型不支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 强制结构化输出。
 
 你仍然可以通过指示模型返回 JSON 并自行验证来返回结构化数据。
 
@@ -229,18 +216,18 @@ writeFileSync('landscape.jpg', image.uint8Array);
 
 ### 模型能力
 
-| 模型 ID                                | 描述                      | 支持的宽高比                              |
-| -------------------------------------- | ------------------------- | ---------------------------------------- |
-| `bytedance/seedream-3.0`               | 高级文本到图像模型        | 1:1, 4:3, 3:4                           |
-| `bytedance/seedream-4.0`               | 文本到图像（v4）          | 1:1（支持 1024, 2048, 4096）            |
-| `bytedance/seedream-4.0-edit`          | 图像编辑（v4，多图像）    | 1:1（支持 1024, 1536, 2048, 4096）      |
-| `black-forest-labs/flux-1-schnell`     | 快速图像生成（4 步）      | 1:1, 4:3, 3:4                           |
-| `black-forest-labs/flux-1-dev`         | 高质量图像生成            | 1:1, 4:3, 3:4                           |
-| `black-forest-labs/flux-1-kontext-dev` | 上下文感知图像生成        | 1:1, 4:3, 3:4                           |
-| `qwen/qwen-image`                      | 文本到图像生成            | 1:1, 4:3, 3:4                           |
-| `qwen/qwen-image-edit`                 | 图像编辑（提示词引导）    | 1:1, 4:3, 3:4                           |
+| 模型 ID                                | 描述                        | 支持的宽高比                                |
+| -------------------------------------- | --------------------------- | ------------------------------------------- |
+| `bytedance/seedream-3.0`               | 高级文本到图像模型          | 1:1, 4:3, 3:4                               |
+| `bytedance/seedream-4.0`               | 文本到图像（v4）            | 1:1（支持 1024, 2048, 4096）                |
+| `bytedance/seedream-4.0-edit`          | 图像编辑（v4，多图像）      | 1:1（支持 1024, 1536, 2048, 4096）          |
+| `black-forest-labs/flux-1-schnell`     | 快速图像生成（4 步）        | 1:1, 4:3, 3:4                               |
+| `black-forest-labs/flux-1-dev`         | 高质量图像生成              | 1:1, 4:3, 3:4                               |
+| `black-forest-labs/flux-1-kontext-dev` | 上下文感知图像生成          | 1:1, 4:3, 3:4                               |
+| `qwen/qwen-image`                      | 文本到图像生成              | 1:1, 4:3, 3:4                               |
+| `qwen/qwen-image-edit`                 | 图像编辑（提示词引导）      | 1:1, 4:3, 3:4                               |
 
-**注意**：提供商对图像参数进行严格验证。不支持的宽高比（如 `16:9`、`9:16`、`3:2`、`2:3`）将抛出 `InvalidArgumentError`，并附带关于支持替代方案的明确信息。
+**注意**：提供商对图像参数进行严格验证。不支持的宽高比（如 `16:9`、`9:16`、`3:2`、`2:3`）将抛出 `InvalidArgumentError`，并附带清晰的替代方案说明。
 
 所有可用图像模型的最新列表可在 [Runpod 公共端点参考](https://docs.runpod.io/hub/public-endpoint-reference) 中找到。
 
@@ -298,7 +285,7 @@ const { image } = await generateImage({
   model: runpod.imageModel('black-forest-labs/flux-1-dev'),
   prompt: 'A majestic dragon breathing fire in a medieval castle',
   size: '1328x1328',
-  seed: 42, // 用于可重现结果
+  seed: 42, // 用于可重复结果
   providerOptions: {
     runpod: {
       negative_prompt: 'blurry, low quality, distorted, ugly, bad anatomy',
@@ -306,14 +293,14 @@ const { image } = await generateImage({
       num_inference_steps: 50, // 更高质量（默认：28）
       guidance: 3.5, // 更强的提示词遵循度（默认：2）
       output_format: 'png', // 高质量格式
-      // 长时间生成的轮询设置
+      // 长生成任务的轮询设置
       maxPollAttempts: 30,
       pollIntervalMillis: 4000,
     },
   },
 });
 
-// 使用最少步骤的快速生成
+// 最小步骤快速生成
 const { image } = await generateImage({
   model: runpod.imageModel('black-forest-labs/flux-1-schnell'),
   prompt: 'A simple red apple',
@@ -332,13 +319,13 @@ const { image } = await generateImage({
 
 Runpod 图像模型通过 `providerOptions.runpod` 对象支持灵活的提供商选项：
 
-| 选项                    | 类型      | 默认值  | 描述                                              |
-| ----------------------- | --------- | ------- | ------------------------------------------------- |
-| `negative_prompt`       | `string`  | `""`    | 描述你不希望在图像中出现的内容                      |
-| `enable_safety_checker` | `boolean` | `true`  | 启用内容安全过滤                                  |
-| `image`                 | `string`  | -       | 输入图像：URL 或 base64 数据 URI（Flux Kontext 模型必需） |
-| `num_inference_steps`   | `number`  | 自动    | 去噪步数（Flux：schnell 为 4，其他为 28）         |
-| `guidance`              | `number`  | 自动    | 提示词遵循度的引导比例（Flux：schnell 为 7，其他为 2） |
-| `output_format`         | `string`  | `"png"` | 输出图像格式（"png" 或 "jpg"）                    |
-| `maxPollAttempts`       | `number`  | `60`    | 异步生成的最大轮询尝试次数                        |
-| `pollIntervalMillis`    | `number`  | `5000`  | 轮询间隔（毫秒，5 秒）                            |
+| 选项                    | 类型      | 默认值   | 描述                                                         |
+| ----------------------- | --------- | -------- | ------------------------------------------------------------ |
+| `negative_prompt`       | `string`  | `""`     | 描述图像中不想要的内容的文本                                 |
+| `enable_safety_checker` | `boolean` | `true`   | 启用内容安全过滤                                             |
+| `image`                 | `string`  | -        | 输入图像：URL 或 base64 数据 URI（Flux Kontext 模型必需）    |
+| `num_inference_steps`   | `number`  | 自动     | 去噪步数（Flux：schnell 为 4，其他为 28）                   |
+| `guidance`              | `number`  | 自动     | 提示词遵循度的引导比例（Flux：schnell 为 7，其他为 2）      |
+| `output_format`         | `string`  | `"png"`  | 输出图像格式（"png" 或 "jpg"）                              |
+| `maxPollAttempts`       | `number`  | `60`     | 异步生成的最大轮询尝试次数                                   |
+| `pollIntervalMillis`    | `number`  | `5000`   | 轮询间隔（毫秒，5 秒）                                      |

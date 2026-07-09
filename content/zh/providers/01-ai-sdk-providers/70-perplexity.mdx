@@ -1,43 +1,29 @@
 ---
-title: Perplexity
-description: 了解如何将 Perplexity 的 Sonar API 与 AI SDK 结合使用。
+title: "Perplexity"
+description: "了解如何将 Perplexity 的 Sonar API 与 AI SDK 结合使用。"
 ---
 
 # Perplexity 提供商
 
-[Perplexity](https://sonar.perplexity.ai) 提供商提供对 Sonar API 的访问——这是一种将实时网络搜索与自然语言处理独特结合的语言模型。每个响应都基于当前网络数据，并包含详细的引用，使其成为研究、事实核查和获取最新信息的理想选择。
+[Perplexity](https://sonar.perplexity.ai) 提供商提供对 Sonar API 的访问——这是一种独特地将实时网络搜索与自然语言处理相结合的语言模型。每个响应都基于当前网络数据，并包含详细的引用，使其成为研究、事实核查和获取最新信息的理想选择。
 
 API 密钥可以从 [Perplexity 平台](https://docs.perplexity.ai) 获取。
 
 ## 设置
 
-Perplexity 提供商可通过 `@ai-sdk/perplexity` 模块获得。你可以使用以下命令安装：
+Perplexity 提供商可通过 `@ai-sdk/perplexity` 模块获得。您可以使用以下命令安装它：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/perplexity" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/perplexity" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/perplexity" dark />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add @ai-sdk/perplexity" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/perplexity" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/perplexity` 导入默认的提供商实例 `perplexity`：
+您可以从 `@ai-sdk/perplexity` 导入默认的提供商实例 `perplexity`：
 
 ```ts
 import { perplexity } from '@ai-sdk/perplexity';
 ```
 
-对于自定义配置，你可以导入 `createPerplexity` 并使用你的设置创建提供商实例：
+对于自定义配置，您可以导入 `createPerplexity` 并使用您的设置创建提供商实例：
 
 ```ts
 import { createPerplexity } from '@ai-sdk/perplexity';
@@ -47,7 +33,7 @@ const perplexity = createPerplexity({
 });
 ```
 
-你可以使用以下可选设置来自定义 Perplexity 提供商实例：
+您可以使用以下可选设置来自定义 Perplexity 提供商实例：
 
 - **baseURL** _string_
 
@@ -56,7 +42,7 @@ const perplexity = createPerplexity({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认值为
+  通过 `Authorization` 标头发送的 API 密钥。它默认为
   `PERPLEXITY_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
@@ -69,7 +55,7 @@ const perplexity = createPerplexity({
 
 ## 语言模型
 
-你可以使用提供商实例创建 Perplexity 模型：
+您可以使用提供商实例创建 Perplexity 模型：
 
 ```ts
 import { perplexity } from '@ai-sdk/perplexity';
@@ -103,6 +89,12 @@ Perplexity 提供商通过 `providerMetadata` 在响应中包含额外的元数�
 通过 `providerOptions` 提供额外的配置选项。
 
 ```ts
+import {
+  perplexity,
+  type PerplexityLanguageModelOptions,
+} from '@ai-sdk/perplexity';
+import { generateText } from 'ai';
+
 const result = await generateText({
   model: perplexity('sonar-pro'),
   prompt: '量子计算的最新进展是什么？',
@@ -110,7 +102,7 @@ const result = await generateText({
     perplexity: {
       return_images: true, // 启用图像响应（仅限 Perplexity Tier-2 用户）
       search_recency_filter: 'week', // 按时间过滤搜索结果
-    },
+    } satisfies PerplexityLanguageModelOptions,
   },
 });
 
@@ -129,15 +121,15 @@ console.log(result.providerMetadata);
 
 #### 提供商选项
 
-以下提供商特定选项可用：
+以下提供商特定的选项可用：
 
 - **return_images** _boolean_
 
-  启用图像响应。当设置为 `true` 时，响应可能包含相关图像。此功能仅适用于 Perplexity Tier-2 及以上用户。
+  启用图像响应。设置为 `true` 时，响应可能包含相关图像。此功能仅适用于 Perplexity Tier-2 及更高级别的用户。
 
 - **search_recency_filter** _string_
 
-  按时间过滤搜索结果。可能的值：`'hour'`、`'day'`、`'week'`、`'month'`。如果未指定，默认为所有时间。
+  按时间过滤搜索结果。可能的值：`'hour'`、`'day'`、`'week'`、`'month'`、`'year'`。如果未指定，默认为所有时间。
 
 <Note>
   任何其他 [Perplexity API
@@ -150,12 +142,12 @@ console.log(result.providerMetadata);
 响应元数据包括：
 
 - `usage`：包含 `citationTokens` 和 `numSearchQueries` 指标的对象
-- `images`：当启用 `return_images` 时（仅限 Tier-2 用户），图像对象数组。每个图像包含 `imageUrl`、`originUrl`、`height` 和 `width`。
+- `images`：当 `return_images` 启用时（仅限 Tier-2 用户），图像对象的数组。每个图像包含 `imageUrl`、`originUrl`、`height` 和 `width`。
 
 ### PDF 支持
 
 Perplexity 提供商支持读取 PDF 文件。
-你可以使用 `file` 类型将 PDF 文件作为消息内容的一部分传递：
+您可以使用 `file` 类型将 PDF 文件作为消息内容的一部分传递：
 
 ```ts
 const result = await generateText({
@@ -180,7 +172,7 @@ const result = await generateText({
 });
 ```
 
-你也可以传递 PDF 的 URL：
+您也可以传递 PDF 的 URL：
 
 ```ts
 {
@@ -201,13 +193,13 @@ const result = await generateText({
 
 ## 模型能力
 
-| 模型                    | 图像输入            | 对象生成            | 工具使用            | 工具流式传输        |
-| ----------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
-| `sonar-deep-research`   | <Cross size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
-| `sonar-reasoning-pro`   | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
-| `sonar-reasoning`       | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
-| `sonar-pro`             | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
-| `sonar`                 | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| 模型                   | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| --------------------- | ----------- | ----------------- | ---------- | -------------- |
+| `sonar-deep-research` | <Cross />   | <Check />         | <Cross />  | <Cross />      |
+| `sonar-reasoning-pro` | <Check />   | <Check />         | <Cross />  | <Cross />      |
+| `sonar-reasoning`     | <Check />   | <Check />         | <Cross />  | <Cross />      |
+| `sonar-pro`           | <Check />   | <Check />         | <Cross />  | <Cross />      |
+| `sonar`               | <Check />   | <Check />         | <Cross />  | <Cross />      |
 
 <Note>
   请参阅 [Perplexity 文档](https://docs.perplexity.ai) 以获取详细的 API

@@ -1,32 +1,19 @@
 ---
-title: Moonshot AI
-description: 了解如何使用 AI SDK 调用 Moonshot AI 模型。
+title: "Moonshot AI"
+description: "了解如何通过 AI SDK 使用 Moonshot AI 模型。"
 ---
 
 # Moonshot AI 提供商
 
 [Moonshot AI](https://www.moonshot.ai) 提供商通过 Moonshot API 提供对强大语言模型的访问，包括具有推理能力的 Kimi 系列模型。
 
-API 密钥可从 [Moonshot 平台](https://platform.moonshot.ai) 获取。
+API 密钥可以从 [Moonshot 平台](https://platform.moonshot.ai) 获取。
 
-## 安装
+## 设置
 
 Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。你可以使用以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/moonshotai" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/moonshotai" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/moonshotai" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add @ai-sdk/moonshotai" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="@ai-sdk/moonshotai" />
 
 ## 提供商实例
 
@@ -36,7 +23,7 @@ Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。你可以使�
 import { moonshotai } from '@ai-sdk/moonshotai';
 ```
 
-如需自定义配置，你可以导入 `createMoonshotAI` 并使用你的设置创建提供商实例：
+对于自定义配置，你可以导入 `createMoonshotAI` 并使用你的设置创建一个提供商实例：
 
 ```ts
 import { createMoonshotAI } from '@ai-sdk/moonshotai';
@@ -50,12 +37,12 @@ const moonshotai = createMoonshotAI({
 
 - **baseURL** _string_
 
-  用于 API 调用的不同 URL 前缀。
-  默认前缀为 `https://api.moonshot.ai/v1`
+  为 API 调用使用不同的 URL 前缀。
+  默认前缀是 `https://api.moonshot.ai/v1`
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认值为
+  通过 `Authorization` 标头发送的 API 密钥。它默认为
   `MOONSHOT_API_KEY` 环境变量
 
 - **headers** _Record&lt;string,string&gt;_
@@ -76,7 +63,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: moonshotai('kimi-k2.5'),
-  prompt: '写一份供4人食用的素食千层面食谱。',
+  prompt: '写一份适合4人份的素食千层面食谱。',
 });
 ```
 
@@ -88,20 +75,20 @@ const model = moonshotai.chatModel('kimi-k2.5');
 const model = moonshotai.languageModel('kimi-k2.5');
 ```
 
-Moonshot AI 语言模型可用于 `streamText` 函数
+Moonshot AI 语言模型可以在 `streamText` 函数中使用
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 #### 结构化输出
 
 对于模型 ID 以 `kimi-` 开头的 Moonshot 模型，原生结构化输出已启用。
 
-对于其他 Moonshot 模型，对象生成将回退到 JSON 模式，而不是使用模式约束解码。
+对于其他 Moonshot 模型，对象生成会回退到 JSON 模式，而不是受模式约束的解码。
 
 为了获得最佳可靠性，强烈建议在提示词中包含你的模式要求，同时通过 `Output` 传递模式。
 
 ### 推理模型
 
-Moonshot AI 提供思考模型，例如 `kimi-k2-thinking`，这些模型在生成最终响应之前会生成中间推理令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
+Moonshot AI 提供思考模型，例如 `kimi-k2-thinking`，这些模型在最终响应之前会生成中间推理令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
 
 ```ts
 import {
@@ -125,11 +112,11 @@ console.log(reasoningText);
 console.log(text);
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
-Moonshot AI 语言模型提供以下可选提供商选项：
+以下可选的提供商选项可用于 Moonshot AI 语言模型：
 
 - **thinking** _object_
 
@@ -140,7 +127,7 @@ Moonshot AI 语言模型提供以下可选提供商选项：
 
   - **budgetTokens** _number_
 
-    思考的最大令牌数（最小值为 1024）
+    思考的最大令牌数（最小 1024）
 
 - **reasoningHistory** _'disabled' | 'interleaved' | 'preserved'_
 
@@ -151,19 +138,19 @@ Moonshot AI 语言模型提供以下可选提供商选项：
 
 ## 模型能力
 
-| 模型                       | 图像输入             | 对象生成             | 工具使用             | 工具流式传输         |
-| ------------------------ | ------------------- | ------------------- | ------------------- | ------------------- |
-| `moonshot-v1-8k`         | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `moonshot-v1-32k`        | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `moonshot-v1-128k`       | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `kimi-k2`                | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `kimi-k2.5`              | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `kimi-k2-thinking`       | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `kimi-k2-thinking-turbo` | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `kimi-k2-turbo`          | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| 模型                       | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| -------------------------- | -------- | -------- | -------- | ------------ |
+| `moonshot-v1-8k`           | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `moonshot-v1-32k`          | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `moonshot-v1-128k`         | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `kimi-k2`                  | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `kimi-k2.5`                | <Check /> | <Check /> | <Check /> | <Check />    |
+| `kimi-k2-thinking`         | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `kimi-k2-thinking-turbo`   | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `kimi-k2-turbo`            | <Cross /> | <Check /> | <Check /> | <Check />    |
 
 <Note>
-  请参阅 [Moonshot AI 文档](https://platform.moonshot.ai/docs/intro) 以获取
-  可用模型的完整列表。如有需要，你也可以将任何可用的提供商
+  请参阅 [Moonshot AI 文档](https://platform.moonshot.ai/docs/intro) 获取
+  可用模型的完整列表。如果需要，你也可以将任何可用的提供商
   模型 ID 作为字符串传递。
 </Note>

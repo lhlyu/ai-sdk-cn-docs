@@ -1,6 +1,6 @@
 ---
-title: 多模态智能体
-description: 学习如何使用 AI SDK 构建能够处理图像和 PDF 的多模态智能体。
+title: "多模态智能体"
+description: "了解如何使用 AI SDK 构建能够处理图像和 PDF 的多模态智能体。"
 tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 ---
 
@@ -8,14 +8,14 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 
 在本指南中，你将构建一个能够理解图像和 PDF 的多模态智能体。
 
-多模态指的是智能体能够以多种格式理解和生成回复。在本指南中，我们将重点介绍图像和 PDF——这是现代语言模型能够原生处理的两种常见文档类型。
+多模态指的是智能体能够以多种格式理解和生成响应。在本指南中，我们将重点介绍图像和 PDF——这是现代语言模型能够原生处理的两种常见文档类型。
 
 <Note>
-  如需查看完整提供商列表及其多模态能力，请访问
+  如需查看完整的提供商列表及其多模态能力，请访问
   [提供商文档](/providers/ai-sdk-providers)。
 </Note>
 
-我们将使用 OpenAI 的 GPT-4o 构建此智能体，但相同的代码也能无缝适配其他提供商——你只需更改一行代码即可切换。
+我们将使用 OpenAI 的 GPT-4o 构建此智能体，但相同的代码可以无缝地与其他提供商配合使用——你只需更改一行代码即可在它们之间切换。
 
 ## 前提条件
 
@@ -24,16 +24,15 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 - 在本地开发机器上安装 Node.js 22+ 和 pnpm。
 - 一个 Vercel AI Gateway API 密钥。
 
-如果你尚未获取 Vercel AI Gateway API 密钥，可以通过 [注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway) Vercel 网站来获取。
+如果你尚未获取 Vercel AI Gateway API 密钥，可以通过在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
 
-## 创建应用
+## 创建你的应用
 
-首先创建一个新的 Next.js 应用。此命令将创建一个名为 `multi-modal-agent` 的新目录，并在其中设置一个基本的 Next.js 应用。
+首先创建一个新的 Next.js 应用程序。此命令将创建一个名为 `multi-modal-agent` 的新目录，并在其中设置一个基本的 Next.js 应用程序。
 
 <div className="mb-4">
   <Note>
-    当提示是否使用 App Router 时，请务必选择“是”。如果你正在寻找 Next.js Pages Router 快速入门指南，可以点击
-    [此处](/docs/getting-started/nextjs-pages-router) 查看。
+    当提示使用 App Router 时，请务必选择“是”。如果你正在寻找 Next.js Pages Router 快速入门指南，可以[在此处](/docs/getting-started/nextjs-pages-router)找到。
   </Note>
 </div>
 
@@ -48,30 +47,13 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 分别安装 `ai` 和 `@ai-sdk/react`，即 AI SDK 包和 AI SDK 的 React 包。
 
 <Note>
-  AI SDK 被设计为与任何大型语言模型交互的统一接口。这意味着你只需一行代码即可更改模型和提供商！在 [提供商](/providers) 部分了解更多关于 [可用提供商](/providers) 和 [构建自定义提供商](/providers/community-providers/custom-providers) 的信息。
+  AI SDK 被设计为与任何大型语言模型交互的统一接口。这意味着你只需一行代码即可更改模型和提供商！在[提供商](/providers)部分中了解更多关于[可用提供商](/providers)和[构建自定义提供商](/providers/community-providers/custom-providers)的信息。
 </Note>
-<div className="my-4">
-  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-    <Tab>
-      <Snippet text="pnpm add ai @ai-sdk/react" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="npm install ai @ai-sdk/react" dark />
-    </Tab>
-    <Tab>
-      <Snippet text="yarn add ai @ai-sdk/react" dark />
-    </Tab>
+<InstallPackages packages="ai @ai-sdk/react" />
 
-    <Tab>
-      <Snippet text="bun add ai @ai-sdk/react" dark />
-    </Tab>
+### 配置你的 Vercel AI Gateway API 密钥
 
-  </Tabs>
-</div>
-
-### 配置 Vercel AI Gateway API 密钥
-
-在项目根目录创建一个 `.env.local` 文件，并添加你的 Vercel AI Gateway API 密钥。此密钥用于验证你的应用与 Vercel AI Gateway 的连接。
+在项目根目录中创建一个 `.env.local` 文件，并添加你的 Vercel AI Gateway API 密钥。此密钥用于验证你的应用程序与 Vercel AI Gateway。
 
 <Snippet text="touch .env.local" />
 
@@ -81,23 +63,23 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 AI_GATEWAY_API_KEY=your_api_key_here
 ```
 
-将 `your_api_key_here` 替换为你的实际 Vercel AI Gateway API 密钥。
+将 `your_api_key_here` 替换为你实际的 Vercel AI Gateway API 密钥。
 
 <Note className="mb-4">
-  AI SDK 的 Vercel AI Gateway 提供商是默认的全局提供商，因此你可以在模型配置中使用简单的字符串来访问模型。如果你更愿意直接使用特定提供商（如 OpenAI），请参阅 [提供商管理](/docs/ai-sdk-core/provider-management) 文档。
+  AI SDK 的 Vercel AI Gateway Provider 是默认的全局提供商，因此你可以在模型配置中使用简单的字符串来访问模型。如果你更愿意直接使用特定的提供商（如 OpenAI），请参阅[提供商管理](/docs/ai-sdk-core/provider-management)文档。
 </Note>
 
 ## 实现计划
 
 要构建一个多模态智能体，你需要：
 
-- 创建一个路由处理器来处理传入的聊天消息并生成回复。
-- 搭建 UI 以显示聊天消息、提供用户输入，并处理新消息的提交。
-- 添加上传图像和 PDF 的功能，并将其附加到聊天消息中。
+- 创建一个路由处理程序来处理传入的聊天消息并生成响应。
+- 连接 UI 以显示聊天消息、提供用户输入，并处理提交新消息。
+- 添加上传图像和 PDF 的功能，并将其与聊天消息一起附加。
 
-## 创建路由处理器
+## 创建路由处理程序
 
-创建一个路由处理器 `app/api/chat/route.ts`，并添加以下代码：
+创建一个路由处理程序 `app/api/chat/route.ts`，并添加以下代码：
 
 ```tsx filename="app/api/chat/route.ts"
 import {
@@ -127,17 +109,17 @@ export async function POST(req: Request) {
 
 让我们看看这段代码中发生了什么：
 
-1. 定义一个异步的 `POST` 请求处理器，并从请求体中提取 `messages`。`messages` 变量包含你和智能体之间的对话历史，为智能体提供生成下一步回复所需的上下文。
-2. 使用 `convertToModelMessages` 将 UI 消息转换为模型消息，该函数将 UI 聚焦的消息格式转换为语言模型期望的格式。
-3. 调用 [`streamText`](/docs/reference/ai-sdk-core/stream-text)，该函数从 `ai` 包中导入。此函数接受一个配置对象，其中包含 `model` 提供商和 `messages`（已在步骤 2 中转换）。你可以传递额外的 [设置](/docs/ai-sdk-core/settings) 来进一步自定义模型的行为。
-4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回，以创建一个流式响应对象。
+1. 定义一个异步的 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和智能体之间的对话历史，为智能体提供生成下一步响应所需的上下文。
+2. 使用 `convertToModelMessages` 将 UI 消息转换为模型消息，该函数将面向 UI 的消息格式转换为语言模型期望的格式。
+3. 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数。此函数接受一个配置对象，其中包含 `model` 提供商和 `messages`（在步骤 2 中转换）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。
+4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建一个流式传输的响应对象。
 5. 最后，将结果返回给客户端以流式传输响应。
 
-此路由处理器在 `/api/chat` 创建了一个 POST 请求端点。
+此路由处理程序在 `/api/chat` 处创建了一个 POST 请求端点。
 
-## 搭建 UI
+## 连接 UI
 
-现在你已经有了一个可以查询大型语言模型（LLM）的路由处理器，是时候设置前端了。[AI SDK UI](/docs/ai-sdk-ui) 将聊天界面的复杂性抽象为一个 Hook，即 [`useChat`](/docs/reference/ai-sdk-ui/use-chat)。
+现在你已经有了一个可以查询大型语言模型（LLM）的路由处理程序，是时候设置你的前端了。[AI SDK UI](/docs/ai-sdk-ui) 将聊天界面的复杂性抽象为一个 Hook，即 [`useChat`](/docs/reference/ai-sdk-ui/use-chat)。
 
 使用以下代码更新你的根页面（`app/page.tsx`），以显示聊天消息列表并提供用户消息输入：
 
@@ -161,7 +143,7 @@ export default function Chat() {
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
       {messages.map(m => (
         <div key={m.id} className="whitespace-pre-wrap">
-          {m.role === 'user' ? 'User: ' : 'AI: '}
+          {m.role === 'user' ? '用户: ' : 'AI: '}
           {m.parts.map((part, index) => {
             if (part.type === 'text') {
               return <span key={`${m.id}-text-${index}`}>{part.text}</span>;
@@ -185,7 +167,7 @@ export default function Chat() {
         <input
           className="w-full p-2"
           value={input}
-          placeholder="Say something..."
+          placeholder="说点什么..."
           onChange={e => setInput(e.target.value)}
         />
       </form>
@@ -200,14 +182,14 @@ export default function Chat() {
 
 此页面使用了 `useChat` Hook，并通过 `DefaultChatTransport` 配置了 API 端点。`useChat` Hook 提供了多个实用函数和状态变量：
 
-- `messages` - 当前的聊天消息（一个对象数组，包含 `id`、`role` 和 `parts` 属性）。
+- `messages` - 当前的聊天消息（一个对象数组，每个对象包含 `id`、`role` 和 `parts` 属性）。
 - `sendMessage` - 用于向 AI 发送新消息的函数。
 - 每条消息包含一个 `parts` 数组，可以包含文本、图像、PDF 和其他内容类型。
-- 文件在发送前会被转换为数据 URL，以保持跨环境的兼容性。
+- 文件在发送前会被转换为 data URL，以保持跨不同环境的兼容性。
 
 ## 添加文件上传
 
-为了使你的智能体具备多模态能力，让我们添加上传图像和 PDF 并将其发送给模型的功能。在 v5 中，文件作为消息 `parts` 数组的一部分发送。文件在发送到服务器之前，会使用 FileReader API 转换为数据 URL。
+为了使你的智能体具备多模态能力，让我们添加上传图像和 PDF 并将其发送给模型的功能。在 v5 中，文件作为消息的 `parts` 数组的一部分发送。文件在发送到服务器之前，会使用 FileReader API 转换为 data URL。
 
 使用以下代码更新你的根页面（`app/page.tsx`）：
 
@@ -258,7 +240,7 @@ export default function Chat() {
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
       {messages.map(m => (
         <div key={m.id} className="whitespace-pre-wrap">
-          {m.role === 'user' ? 'User: ' : 'AI: '}
+          {m.role === 'user' ? '用户: ' : 'AI: '}
           {m.parts.map((part, index) => {
             if (part.type === 'text') {
               return <span key={`${m.id}-text-${index}`}>{part.text}</span>;
@@ -270,7 +252,7 @@ export default function Chat() {
                   src={part.url}
                   width={500}
                   height={500}
-                  alt={`attachment-${index}`}
+                  alt={`附件-${index}`}
                 />
               );
             }
@@ -328,7 +310,7 @@ export default function Chat() {
         <input
           className="w-full p-2"
           value={input}
-          placeholder="Say something..."
+          placeholder="说点什么..."
           onChange={e => setInput(e.target.value)}
         />
       </form>
@@ -339,26 +321,26 @@ export default function Chat() {
 
 在这段代码中，你：
 
-1. 添加了一个辅助函数 `convertFilesToDataURLs`，用于将文件上传转换为数据 URL。
-1. 创建了状态来保存输入文本、文件，以及一个指向文件输入字段的 ref。
-1. 使用 `DefaultChatTransport` 配置了 `useChat`，以指定 API 端点。
-1. 使用 `parts` 数组结构显示消息，并适当地渲染文本、图像和 PDF。
-1. 更新了 `onSubmit` 函数，使用 `sendMessage` 函数发送消息，包括文本和文件部分。
-1. 在表单中添加了一个文件输入字段，包括一个 `onChange` 处理器来处理文件状态的更新。
+1. 添加了一个辅助函数 `convertFilesToDataURLs`，用于将文件上传转换为 data URL。
+2. 创建了状态来保存输入文本、文件以及文件输入字段的 ref。
+3. 使用 `DefaultChatTransport` 配置了 `useChat` 以指定 API 端点。
+4. 使用 `parts` 数组结构显示消息，并适当地渲染文本、图像和 PDF。
+5. 更新了 `onSubmit` 函数，以使用 `sendMessage` 函数发送消息，包括文本和文件部分。
+6. 在表单中添加了一个文件输入字段，并包含一个 `onChange` 处理程序来处理文件状态的更新。
 
-## 运行应用
+## 运行你的应用程序
 
-至此，你已经构建了多模态智能体所需的一切！要启动应用，请使用以下命令：
+至此，你已经构建了多模态智能体所需的一切！要启动你的应用程序，请使用以下命令：
 
 <Snippet text="pnpm run dev" />
 
-打开浏览器并访问 http://localhost:3000。你应该会看到一个输入字段和一个上传文件的按钮。
+前往你的浏览器并打开 http://localhost:3000。你应该会看到一个输入字段和一个上传文件的按钮。
 
-尝试上传图像或 PDF，并向模型提问相关内容。观察模型的回复如何流式传输回给你！
+尝试上传一张图像或 PDF，并向模型提问相关问题。观察模型的响应如何流式传输回给你！
 
 ## 使用其他提供商
 
-借助 AI SDK 的统一提供商接口，你可以轻松切换到其他支持多模态能力的提供商：
+借助 AI SDK 的统一提供商接口，你可以轻松切换到其他支持多模态功能的提供商：
 
 ```tsx filename="app/api/chat/route.ts"
 // 使用 Anthropic
@@ -374,12 +356,12 @@ const result = streamText({
 });
 ```
 
-安装提供商包（`@ai-sdk/anthropic` 或 `@ai-sdk/google`），并在 `.env.local` 中更新你的 API 密钥。其余代码保持不变。
+安装提供商包（`@ai-sdk/anthropic` 或 `@ai-sdk/google`），并在 `.env.local` 中更新你的 API 密钥。代码的其余部分保持不变。
 
 <Note>
-  不同提供商可能有不同的文件大小限制和性能特征。请查看 [提供商文档](/providers/ai-sdk-providers) 了解具体细节。
+  不同的提供商可能有不同的文件大小限制和性能特征。请查看[提供商文档](/providers/ai-sdk-providers)了解具体细节。
 </Note>
 
 ## 下一步是什么？
 
-你已经使用 AI SDK 构建了一个多模态 AI 智能体！通过探索 [工具调用](/docs/ai-sdk-core/tools-and-tool-calling)，进一步实验和扩展此应用的功能。
+你已经使用 AI SDK 构建了一个多模态 AI 智能体！通过探索[工具调用](/docs/ai-sdk-core/tools-and-tool-calling)，进一步实验和扩展此应用程序的功能。

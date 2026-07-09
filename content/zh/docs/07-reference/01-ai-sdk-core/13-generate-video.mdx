@@ -1,12 +1,12 @@
 ---
-title: experimental_generateVideo
-description: experimental_generateVideo 的 API 参考文档。
+title: "experimental_generateVideo"
+description: "experimental_generateVideo 的 API 参考文档。"
 ---
 
 # `experimental_generateVideo()`
 
 <Note>
-  视频生成是一个实验性功能。API 在未来的版本中可能会发生变化。
+  视频生成是一项实验性功能。API 在未来的版本中可能会发生变化。
 </Note>
 
 使用视频模型根据给定的提示词生成视频。
@@ -19,7 +19,7 @@ __PROVIDER_IMPORT__;
 
 const { videos } = await generateVideo({
   model: __VIDEO_MODEL__,
-  prompt: '一只猫在跑步机上行走',
+  prompt: 'A cat walking on a treadmill',
   aspectRatio: '16:9',
 });
 
@@ -59,7 +59,7 @@ console.log(videos);
               name: 'image',
               type: 'DataContent',
               description:
-                '用于图像到视频生成的输入图像。可以是 URL 字符串、base64 编码的字符串、`Uint8Array`、`ArrayBuffer` 或 `Buffer`。',
+                '用于图像到视频生成的输入图像。可以是 URL 字符串、base64 编码字符串、`Uint8Array`、`ArrayBuffer` 或 `Buffer`。',
             },
             {
               name: 'text',
@@ -81,14 +81,14 @@ console.log(videos);
       type: 'string',
       isOptional: true,
       description:
-        '要生成的视频的宽高比。格式：`{width}:{height}`。',
+        '生成视频的宽高比。格式：`{width}:{height}`。',
     },
     {
       name: 'resolution',
       type: 'string',
       isOptional: true,
       description:
-        '要生成的视频的分辨率。格式：`{width}x{height}`。',
+        '生成视频的分辨率。格式：`{width}x{height}`。',
     },
     {
       name: 'duration',
@@ -112,13 +112,14 @@ console.log(videos);
       name: 'frameImages',
       type: 'Array<{ image: DataContent; frameType: "first_frame" | "last_frame" }>',
       isOptional: true,
-      description: '用于首尾帧生成的带角色标签的图像输入。',
+      description: '用于首尾帧生成的角色标记图像输入。',
     },
     {
       name: 'inputReferences',
-      type: 'Array<DataContent>',
+      type: 'Array<DataContent | { data: DataContent; mediaType?: string }>',
       isOptional: true,
-      description: '用于参考图到视频生成的参考图像输入。',
+      description:
+        '用于参考到视频生成的参考图像或视频输入。对于基于 URL 的视频引用，请使用带有显式 mediaType 的对象形式。提供商根据媒体类型路由每个引用，并在引用类型不受支持时发出警告。',
     },
     {
       name: 'generateAudio',
@@ -150,7 +151,7 @@ console.log(videos);
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
-      description: '可选的终止信号，用于取消调用。',
+      description: '用于取消调用的可选中止信号。',
     },
     {
       name: 'headers',
@@ -163,7 +164,7 @@ console.log(videos);
       type: '(options: { url: URL; abortSignal?: AbortSignal }) => Promise<{ data: Uint8Array; mediaType: string | undefined }>',
       isOptional: true,
       description:
-        '用于从 URL 获取视频的自定义下载函数。使用 `ai` 中的 `createDownload()` 创建带有自定义大小限制的下载函数，例如 `createDownload({ maxBytes: 50 * 1024 * 1024 })`。默认值：内置下载，限制为 2 GiB。',
+        '用于从 URL 获取视频的自定义下载函数。使用 `ai` 中的 `createDownload()` 创建具有自定义大小限制的下载函数，例如 `createDownload({ maxBytes: 50 * 1024 * 1024 })`。默认值：内置下载，限制为 2 GiB。',
     },
   ]}
 />
@@ -183,12 +184,12 @@ console.log(videos);
             {
               name: 'base64',
               type: 'string',
-              description: '视频的 base64 编码字符串。',
+              description: 'base64 编码的视频字符串。',
             },
             {
               name: 'uint8Array',
               type: 'Uint8Array',
-              description: '视频的 Uint8Array 表示。',
+              description: 'Uint8Array 格式的视频。',
             },
             {
               name: 'mediaType',
@@ -211,12 +212,12 @@ console.log(videos);
             {
               name: 'base64',
               type: 'string',
-              description: '视频的 base64 编码字符串。',
+              description: 'base64 编码的视频字符串。',
             },
             {
               name: 'uint8Array',
               type: 'Uint8Array',
-              description: '视频的 Uint8Array 表示。',
+              description: 'Uint8Array 格式的视频。',
             },
             {
               name: 'mediaType',
@@ -239,7 +240,7 @@ console.log(videos);
       type: 'VideoModelProviderMetadata',
       isOptional: true,
       description:
-        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。元数据中通常存在一个 `videos` 键，它是一个与顶层 `videos` 键长度相同的数组。具体细节取决于提供商。',
+        '来自提供商的元数据（可选）。外层键是提供商名称。内层值是元数据。元数据中通常存在一个 `videos` 键，它是一个与顶层 `videos` 键长度相同的数组。具体细节取决于提供商。',
     },
     {
       name: 'responses',
@@ -272,7 +273,7 @@ console.log(videos);
               type: 'VideoModelProviderMetadata',
               isOptional: true,
               description:
-                '此单独 API 调用的提供商特定元数据。当进行多次调用时，用于访问每次调用的元数据。',
+                '此单独 API 调用的提供商特定元数据。当进行多次调用时，可用于访问每次调用的元数据。',
             },
           ],
         },

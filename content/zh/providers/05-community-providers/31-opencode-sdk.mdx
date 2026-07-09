@@ -1,6 +1,6 @@
 ---
-title: OpenCode
-description: 了解如何使用 OpenCode 提供商，通过统一接口访问多个 AI 模型。
+title: "OpenCode"
+description: "了解如何使用 OpenCode 提供商通过统一接口访问多个 AI 模型。"
 ---
 
 # OpenCode 提供商
@@ -9,10 +9,10 @@ description: 了解如何使用 OpenCode 提供商，通过统一接口访问多
 
 ## 版本兼容性
 
-| 提供商版本 | AI SDK 版本 | NPM 标签    | 状态     |
-| ---------- | ----------- | ----------- | -------- |
-| 1.x        | v6          | `latest`    | 稳定     |
-| 0.x        | v5          | `ai-sdk-v5` | 维护中   |
+| 提供商版本 | AI SDK 版本 | NPM 标签      | 状态     |
+| ---------- | ----------- | ------------- | -------- |
+| 1.x        | v6          | `latest`      | 稳定     |
+| 0.x        | v5          | `ai-sdk-v5`   | 维护中   |
 
 ```bash
 # AI SDK v6（默认）
@@ -22,32 +22,19 @@ npm install ai-sdk-provider-opencode-sdk ai
 npm install ai-sdk-provider-opencode-sdk@ai-sdk-v5 ai@^5.0.0
 ```
 
-## 安装
+## 设置
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add ai-sdk-provider-opencode-sdk" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install ai-sdk-provider-opencode-sdk" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add ai-sdk-provider-opencode-sdk" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="bun add ai-sdk-provider-opencode-sdk" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="ai-sdk-provider-opencode-sdk" />
 
 ## 提供商实例
 
-你可以从 `ai-sdk-provider-opencode-sdk` 导入默认的提供商实例 `opencode`：
+您可以从 `ai-sdk-provider-opencode-sdk` 导入默认提供商实例 `opencode`：
 
 ```ts
 import { opencode } from 'ai-sdk-provider-opencode-sdk';
 ```
 
-如果需要自定义设置，可以导入 `createOpencode` 并使用你的配置创建提供商实例：
+如果您需要自定义设置，可以导入 `createOpencode` 并使用您的设置创建提供商实例：
 
 ```ts
 import { createOpencode } from 'ai-sdk-provider-opencode-sdk';
@@ -66,7 +53,7 @@ const opencode = createOpencode({
 - **hostname** _string_ - 服务器主机名（默认：`127.0.0.1`）。
 - **port** _number_ - 服务器端口（默认：`4096`）。
 - **autoStartServer** _boolean_ - 自动启动 OpenCode 服务器（默认：`true`）。
-- **serverTimeout** _number_ - 服务器启动超时时间，单位毫秒（默认：`10000`）。
+- **serverTimeout** _number_ - 服务器启动超时时间（毫秒，默认：`10000`）。
 - **defaultSettings** _object_ - 应用于所有模型调用的默认设置。
 
 ## 语言模型
@@ -98,7 +85,7 @@ opencode(OpencodeModels['gemini-2.5-flash']); // google/gemini-2.5-flash
 opencode(OpencodeModels['gemini-2.0-flash']); // google/gemini-2.0-flash
 ```
 
-你也可以使用完整的模型标识符：
+您也可以使用完整的模型标识符：
 
 ```ts
 opencode('openai/gpt-5.1-codex');
@@ -130,19 +117,19 @@ const model = opencode('anthropic/claude-opus-4-5-20251101', {
 
 ### 模型能力
 
-| 提供商   | 图像输入             | 对象生成             | 工具使用             | 工具流式传输         |
-| -------- | -------------------- | -------------------- | -------------------- | -------------------- |
-| Anthropic | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
-| OpenAI   | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
-| Google   | <Check size={18} /> | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> |
+| 提供商    | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| --------- | -------- | -------- | -------- | ------------ |
+| Anthropic | <Check /> | <Check /> | <Cross /> | <Cross />    |
+| OpenAI    | <Check /> | <Check /> | <Cross /> | <Cross />    |
+| Google    | <Check /> | <Check /> | <Cross /> | <Cross />    |
 
 <Note>
-  工具使用和工具流式传输显示 ❌，因为此提供商不支持 AI SDK 自定义工具（通过 Zod 模式传递给 `generateText`/`streamText`）。自定义工具定义会被明确忽略。OpenCode 在服务端执行工具，可通过流式传输事件观察到。图像输入仅支持数据 URL 和 base64。对象生成使用基于提示词的 JSON 模式。
+  工具使用和工具流式传输显示 ❌，因为此提供商不支持 AI SDK 自定义工具（传递给 `generateText`/`streamText` 的 Zod 模式）。自定义工具定义会被显式忽略。OpenCode 在服务器端执行工具，可通过流式传输事件观察。图像输入仅支持 data URL 和 base64。对象生成使用基于提示词的 JSON 模式。
 </Note>
 
 ## 服务器管理
 
-OpenCode 作为托管服务器运行。使用完毕后，请确保释放提供商：
+OpenCode 作为托管服务器运行。请确保在使用完毕后释放提供商：
 
 ```ts
 import { opencode } from 'ai-sdk-provider-opencode-sdk';
@@ -150,7 +137,7 @@ import { opencode } from 'ai-sdk-provider-opencode-sdk';
 // 使用完毕后
 await opencode.dispose();
 
-// 或者如果需要直接访问客户端管理器：
+// 或者如果您需要直接访问客户端管理器：
 // await opencode.getClientManager().dispose();
 ```
 
@@ -160,6 +147,6 @@ await opencode.dispose();
 
 - Node.js 22 或更高版本
 - 已安装 OpenCode CLI（`npm install -g opencode`）
-- 在 OpenCode 中配置了提供商凭证（Anthropic、OpenAI 或 Google API 密钥）
+- 在 OpenCode 中配置了提供商凭据（Anthropic、OpenAI 或 Google API 密钥）
 
 更多详情，请参阅[提供商文档](https://github.com/ben-vargas/ai-sdk-provider-opencode-sdk)。

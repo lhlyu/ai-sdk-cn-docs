@@ -1,31 +1,17 @@
 ---
-title: Cloudflare Workers AI
-description: 了解如何使用 AI SDK 的 Cloudflare Workers AI 提供商。
+title: "Cloudflare Workers AI"
+description: "了解如何使用 AI SDK 的 Cloudflare Workers AI 提供商。"
 ---
 
 # Cloudflare Workers AI
 
-[workers-ai-provider](https://github.com/cloudflare/ai/tree/main/packages/workers-ai-provider) 是一个社区提供商，允许你在 AI SDK 中使用 Cloudflare 的 [Workers AI](https://ai.cloudflare.com/) 模型。
+[workers-ai-provider](https://github.com/cloudflare/ai/tree/main/packages/workers-ai-provider) 是一个社区提供商，允许你使用 AI SDK 调用 Cloudflare 的 [Workers AI](https://ai.cloudflare.com/) 模型。
 
-## 设置
+## 安装
 
-Cloudflare Workers AI 提供商位于 `workers-ai-provider` 模块中。你可以通过以下方式安装：
+Cloudflare Workers AI 提供商位于 `workers-ai-provider` 模块中。你可以通过以下命令安装：
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add workers-ai-provider" />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install workers-ai-provider" />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add workers-ai-provider" />
-  </Tab>
-
-  <Tab>
-    <Snippet text="bun add workers-ai-provider" dark />
-  </Tab>
-</Tabs>
+<InstallPackages packages="workers-ai-provider" />
 
 然后，在你的 Cloudflare Workers 项目 `wrangler.toml` 文件中设置 AI 绑定：
 
@@ -46,7 +32,7 @@ const workersai = createWorkersAI({ binding: env.AI });
 
 ## 语言模型
 
-要创建模型实例，请调用提供商实例，并将要使用的模型指定为第一个参数。你还可以在第二个参数中传入其他设置：
+要创建模型实例，请调用提供商实例并将要使用的模型指定为第一个参数。你还可以在第二个参数中传递其他设置：
 
 ```typescript highlight="4-7"
 import { createWorkersAI } from 'workers-ai-provider';
@@ -62,7 +48,7 @@ const model = workersai('@cf/meta/llama-3.1-8b-instruct', {
 
 - **safePrompt** _布尔值_
 
-  是否在所有对话前注入安全提示。默认为 `false`。
+  是否在所有对话前注入安全提示。默认为 `false`
 
 ### 示例
 
@@ -112,7 +98,8 @@ export default {
     return createTextStreamResponse({
       stream: toTextStream({ stream: result.stream }),
       headers: {
-        // 添加这些头部以确保响应被分块并流式传输
+        // 添加这些头部以确保
+        // 响应被分块并流式传输
         'Content-Type': 'text/x-unknown',
         'content-encoding': 'identity',
         'transfer-encoding': 'chunked',
@@ -124,7 +111,7 @@ export default {
 
 #### 结构化输出
 
-一些 Cloudflare Workers AI 语言模型还支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据：
+某些 Cloudflare Workers AI 语言模型还支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据：
 
 ```typescript
 import { createWorkersAI } from 'workers-ai-provider';
@@ -140,7 +127,7 @@ export default {
     const workersai = createWorkersAI({ binding: env.AI });
     const result = await generateText({
       model: workersai('@cf/meta/llama-3.1-8b-instruct'),
-      prompt: '生成一份千层面食谱',
+      prompt: '生成一个千层面食谱',
       output: Output.object({
         schema: z.object({
           recipe: z.object({
