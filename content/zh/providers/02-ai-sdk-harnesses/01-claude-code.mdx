@@ -1,14 +1,14 @@
 ---
 title: "Claude Code"
-description: "了解如何使用 Claude Code 测试工具适配器。"
+description: "了解如何使用 Claude Code 适配器。"
 ---
 
-# Claude Code 测试工具
+# Claude Code 适配器
 
-Claude Code 测试工具适配器通过 `@anthropic-ai/claude-agent-sdk` 将 `HarnessAgent` 连接到 Claude Code。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Claude Code 事件流式传输回主机。
+Claude Code 适配器通过 `@anthropic-ai/claude-agent-sdk` 将 `HarnessAgent` 连接到 Claude Code。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Claude Code 事件流式传输回主机。
 
 <Note>
-  Harness 包目前处于**实验阶段**。随着这个早期 API 的进一步完善，不同版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验性**阶段。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -63,26 +63,29 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#身份验证) 下列出的用于 Claude Code 的变量之一。
+要使用此智能体，请确保环境变量包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#身份验证) 部分列出的用于 Claude Code 的变量之一。
 
 ## 适配器设置
 
-使用 `createClaudeCode()` 来配置运行时：
+使用 `createClaudeCode()` 配置运行时：
 
 ```ts
 const harness = createClaudeCode({
   model: 'claude-sonnet-4-6',
   maxTurns: 10,
-  thinking: 'adaptive',
+  thinking: {
+    type: 'adaptive',
+    display: 'summarized',
+  },
 });
 ```
 
 设置项：
 
-- `auth`：直接设置 Anthropic 或 AI Gateway 的身份验证信息。
+- `auth`：直接的身份验证设置，用于 Anthropic 或 AI Gateway。
 - `model`：传递给底层 Claude Code 运行时的 Anthropic 模型 ID。
 - `maxTurns`：让步前的最大内部轮次。
-- `thinking`：`off`、`on` 或 `adaptive`。
+- `thinking`：扩展思考配置。`type` 可以是 `enabled`、`disabled` 或 `adaptive`。对于启用或自适应思考，`display` 可以是 `summarized` 或 `omitted`。默认为 `{ type: 'adaptive', display: 'summarized' }`。
 - `port`：桥接器端口覆盖。
 - `startupTimeoutMs`：等待桥接器启动的最大时间。
 
@@ -99,7 +102,7 @@ const harness = createClaudeCode({
 - `ANTHROPIC_AUTH_TOKEN`
 - `ANTHROPIC_BASE_URL`
 
-您也可以传递显式的身份验证设置：
+你也可以传递显式的身份验证设置：
 
 ```ts
 const harness = createClaudeCode({
