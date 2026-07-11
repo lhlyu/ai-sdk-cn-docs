@@ -1,0 +1,253 @@
+---
+title: "Cartesia"
+description: "了解如何在 AI SDK 中使用 Cartesia 提供商。"
+---
+
+# Cartesia 提供商
+
+[Cartesia](https://cartesia.ai/) 提供商支持 Sonic 语音生成、Ink-Whisper 批量转录以及 Ink 2 实时转录。
+
+## 安装
+
+Cartesia 提供商位于 `@ai-sdk/cartesia` 模块中。你可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/cartesia" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/cartesia" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/cartesia" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/cartesia" dark />
+  </Tab>
+</Tabs>
+
+## 提供商实例
+
+你可以从 `@ai-sdk/cartesia` 导入默认的提供商实例 `cartesia`：
+
+```ts
+import { cartesia } from '@ai-sdk/cartesia';
+```
+
+如果你需要自定义配置，可以从 `@ai-sdk/cartesia` 导入 `createCartesia`，并使用你的设置创建提供商实例：
+
+```ts
+import { createCartesia } from '@ai-sdk/cartesia';
+
+const cartesia = createCartesia({
+  // 自定义设置，例如
+  fetch: customFetch,
+});
+```
+
+你可以使用以下可选设置来自定义 Cartesia 提供商实例：
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认为 `CARTESIA_API_KEY` 环境变量。
+
+- **version** _string_
+
+  要使用的 Cartesia API 版本（通过 `Cartesia-Version` 标头发送）。
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头。
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
+  你可以将其用作拦截请求的中间件，
+  或提供自定义 fetch 实现（例如用于测试）。
+
+## 语音模型
+
+你可以使用 `.speech()` 工厂方法创建调用 [Cartesia 文本转语音 API](https://docs.cartesia.ai/api-reference/tts/bytes) 的模型。
+
+第一个参数是模型 ID，例如 `sonic-3.5`。
+
+```ts
+const model = cartesia.speech('sonic-3.5');
+```
+
+你可以将模型与 `generateSpeech` 函数一起使用。Cartesia 需要一个 `voice` ID：
+
+```ts
+import { generateSpeech } from 'ai';
+import { cartesia } from '@ai-sdk/cartesia';
+
+const result = await generateSpeech({
+  model: cartesia.speech('sonic-3.5'),
+  text: 'Hello, world!',
+  voice: '694f9389-aac1-45b6-b726-9d9369183238',
+});
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项：
+
+```ts highlight="7-12"
+import { generateSpeech } from 'ai';
+import { cartesia, type CartesiaSpeechModelOptions } from '@ai-sdk/cartesia';
+
+const result = await generateSpeech({
+  model: cartesia.speech('sonic-3.5'),
+  text: 'Hello, world!',
+  voice: '694f9389-aac1-45b6-b726-9d9369183238',
+  providerOptions: {
+    cartesia: {
+      container: 'wav',
+      encoding: 'pcm_s16le',
+      sampleRate: 24000,
+    } satisfies CartesiaSpeechModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **container** _string_
+
+  输出音频的容器格式。
+  支持的值：`'raw'`、`'wav'`、`'mp3'`。
+  可选。
+
+- **encoding** _string_
+
+  音频输出的编码类型。
+  支持的值：`'pcm_f32le'`、`'pcm_s16le'`、`'pcm_mulaw'`、`'pcm_alaw'`。
+  可选。
+
+- **sampleRate** _number_
+
+  输出音频的采样率，单位为 Hz（例如 `8000`、`16000`、`22050`、`24000`、`44100`、`48000`）。
+  可选。
+
+- **bitRate** _number_
+
+  `mp3` 输出的比特率，单位为比特每秒（例如 `32000`、`64000`、`128000`、`192000`）。
+  可选。
+
+- **speed** _number_
+
+  控制生成语音的速度，范围在 `0.6` 到 `1.5` 之间。
+  可选。
+
+- **language** _string_
+
+  生成语音的语言（ISO 639-1 代码）。
+  可选。
+
+### 模型能力
+
+| 模型             |
+| ---------------- |
+| `sonic-3.5`      |
+| `sonic-3`        |
+| `sonic-2`        |
+| `sonic-turbo`    |
+| `sonic-latest`   |
+
+## 实时转录模型
+
+<Note type="warning">实时是一个实验性功能。</Note>
+
+你可以使用 `.experimental_realtime()` 工厂方法为 Cartesia 的实时 [Ink 2](https://docs.cartesia.ai/build-with-cartesia/stt/latest) API 创建模型：
+
+```ts
+import { cartesia } from '@ai-sdk/cartesia';
+
+const model = cartesia.experimental_realtime('ink-2');
+```
+
+实时会话在浏览器中运行，需要一个在你的服务器上使用 `cartesia.experimental_realtime.getToken()` 创建的短期访问令牌：
+
+```ts
+const token = await cartesia.experimental_realtime.getToken({
+  model: 'ink-2',
+  sessionConfig: {
+    inputAudioFormat: { type: 'audio/pcm', rate: 24000 },
+    inputAudioTranscription: { language: 'en' },
+    turnDetection: { type: 'server-vad' },
+  },
+});
+```
+
+Ink 2 生成输入转录事件并支持英语音频。默认启用语音活动检测。要改用手动结束，请在会话配置中将 `turnDetection` 设置为 `null`，并在当前输入完成时调用 `commitAudio()`。
+
+有关完整的浏览器会话设置，请参阅 [实时](/docs/ai-sdk-core/realtime)。
+
+### 模型能力
+
+| 模型     | 流式转录            | 语音活动检测        |
+| -------- | ------------------- | ------------------- |
+| `ink-2`  | <Check size={18} /> | <Check size={18} /> |
+
+## 批量转录模型
+
+你可以使用 `.transcription()` 工厂方法创建调用 [Cartesia 转录 API](https://docs.cartesia.ai/api-reference/stt/transcribe) 的模型。
+
+第一个参数是模型 ID，例如 `ink-whisper`。
+
+```ts
+const model = cartesia.transcription('ink-whisper');
+```
+
+你可以将模型与 `transcribe` 函数一起使用：
+
+```ts
+import { transcribe } from 'ai';
+import { cartesia } from '@ai-sdk/cartesia';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: cartesia.transcription('ink-whisper'),
+  audio: await readFile('audio.mp3'),
+});
+```
+
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项：
+
+```ts highlight="6"
+import { transcribe } from 'ai';
+import {
+  cartesia,
+  type CartesiaTranscriptionModelOptions,
+} from '@ai-sdk/cartesia';
+import { readFile } from 'fs/promises';
+
+const result = await transcribe({
+  model: cartesia.transcription('ink-whisper'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    cartesia: {
+      language: 'en',
+    } satisfies CartesiaTranscriptionModelOptions,
+  },
+});
+```
+
+以下提供商选项可用：
+
+- **language** _string_
+
+  音频的语言（ISO 639-1 代码）。如果未指定，默认为英语。
+  可选。
+
+- **timestampGranularities** _字符串数组_
+
+  要填充的时间戳粒度。目前仅支持 `'word'`。
+  可选。
+
+### 模型能力
+
+| 模型           | 转录                | 时长                | 分段                | 语言                |
+| -------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `ink-whisper`  | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |

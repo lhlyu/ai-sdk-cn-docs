@@ -5,11 +5,13 @@ description: "了解如何使用 AI SDK 的 Open Responses 提供商。"
 
 # Open Responses 提供商
 
-[Open Responses](https://www.openresponses.org/) 提供商为兼容 Open Responses 的 API 提供语言模型支持。
+[Open Responses](https://www.openresponses.org/) 提供商将 AI SDK Core 连接到实现了兼容 Open Responses 的 `POST` 端点的语言模型服务器。Open Responses 是一个基于 OpenAI Responses API 的开放规范。
 
-## 安装
+对于实现了此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果您直接调用 OpenAI 并且需要 OpenAI 特定的提供商选项或内置工具，请改用 [`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
 
-Open Responses 提供商位于 `@ai-sdk/open-responses` 模块中。你可以通过以下命令安装：
+## 设置
+
+Open Responses 提供商位于 `@ai-sdk/open-responses` 模块中。您可以通过以下命令安装它：
 
 <InstallPackages packages="@ai-sdk/open-responses" />
 
@@ -21,7 +23,7 @@ Open Responses 提供商位于 `@ai-sdk/open-responses` 模块中。你可以通
 import { createOpenResponses } from '@ai-sdk/open-responses';
 
 const openResponses = createOpenResponses({
-  name: 'aProvider',
+  name: 'lmstudio',
   url: 'http://localhost:1234/v1/responses',
 });
 ```
@@ -30,17 +32,17 @@ const openResponses = createOpenResponses({
 
 - **name** _string_
 
-  提供商名称。用作提供商选项和元数据的键。
+  提供商名称。用于模型的提供商标识符，并作为提供商选项的键。
 
 - **url** _string_
 
-  Open Responses API POST 端点的 URL。
+  Open Responses API `POST` 端点的完整 URL。请传入端点 URL，例如 `http://localhost:1234/v1/responses`，而不仅仅是其基础 URL。
 
-你可以使用以下可选设置来自定义 Open Responses 提供商实例：
+您可以使用以下可选设置来自定义 Open Responses 提供商实例：
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。
+  API 密钥，作为 Bearer 令牌在 `Authorization` 标头中发送。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -48,39 +50,166 @@ const openResponses = createOpenResponses({
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  默认为全局 `fetch` 函数。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。
+
+### 端点示例
+
+对于不需要身份验证的本地 LM Studio 服务器：
+
+```ts
+import { createOpenResponses } from '@ai-sdk/open-responses';
+
+const lmstudio = createOpenResponses({
+  name: 'lmstudio',
+  url: 'http://localhost:1234/v1/responses',
+});
+```
+
+对于 OpenAI Responses API：
+
+```ts
+import { createOpenResponses } from '@ai-sdk/open-responses';
+
+const openAIResponses = createOpenResponses({
+  name: 'openai',
+  url: 'https://api.openai.com/v1/responses',
+  apiKey: process.env.OPENAI_API_KEY,
+});
+```
+
+您可以通过更改 `name`、`url`、身份验证和模型 ID，使用相同的设置连接到其他兼容服务。
 
 ## 语言模型
 
-Open Responses 提供商实例是一个函数，你可以调用它来创建语言模型：
+Open Responses 提供商实例是一个函数，您可以调用它来创建语言模型：
 
 ```ts
-const model = openResponses('mistralai/ministral-3-14b-reasoning');
+const model = openResponses('your-model-id');
 ```
 
-你可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，
-并且它们支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成
-（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
+模型 ID 将原样传递给端点。
 
-### 示例
+您可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，并且它们支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
+
+### 生成文本
 
 ```ts
 import { createOpenResponses } from '@ai-sdk/open-responses';
 import { generateText } from 'ai';
 
 const openResponses = createOpenResponses({
-  name: 'aProvider',
+  name: 'lmstudio',
   url: 'http://localhost:1234/v1/responses',
 });
 
 const { text } = await generateText({
-  model: openResponses('mistralai/ministral-3-14b-reasoning'),
-  prompt: '发明一个新的节日并描述其传统。',
+  model: openResponses('your-model-id'),
+  prompt: '发明一个新节日并描述其传统。',
 });
+
+console.log(text);
 ```
 
-## 注意事项
+### 流式传输文本
 
-- 停止序列、`topK` 和 `seed` 不受支持，会被忽略并发出警告。
-- 用户消息中的 `file` 部分支持使用图像媒体类型的图像输入。
+```ts
+import { createOpenResponses } from '@ai-sdk/open-responses';
+import { streamText } from 'ai';
+
+const openResponses = createOpenResponses({
+  name: 'lmstudio',
+  url: 'http://localhost:1234/v1/responses',
+});
+
+const result = streamText({
+  model: openResponses('your-model-id'),
+  prompt: '发明一个新节日并描述其传统。',
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+## 推理与提供商选项
+
+使用顶层的 [`reasoning`](/docs/ai-sdk-core/reasoning) 设置来控制推理努力程度。提供商将支持的值映射到 Open Responses 的 `reasoning.effort` 字段。
+
+该提供商还通过 `providerOptions` 支持 `reasoningSummary`。提供商选项的键必须与传递给 `createOpenResponses` 的 `name` 匹配：
+
+```ts
+import {
+  createOpenResponses,
+  type OpenResponsesLanguageModelOptions,
+} from '@ai-sdk/open-responses';
+import { generateText } from 'ai';
+
+const lmstudio = createOpenResponses({
+  name: 'lmstudio',
+  url: 'http://localhost:1234/v1/responses',
+});
+
+const { text, reasoningText } = await generateText({
+  model: lmstudio('your-reasoning-model-id'),
+  reasoning: 'high',
+  providerOptions: {
+    lmstudio: {
+      reasoningSummary: 'detailed',
+    } satisfies OpenResponsesLanguageModelOptions,
+  },
+  prompt: '解释为什么天空看起来是蓝色的。',
+});
+
+console.log(reasoningText);
+console.log(text);
+```
+
+`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`。推理支持和接受的值取决于端点和模型。
+
+## 文件输入
+
+该提供商支持用户消息中的图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（例如 PDF）则作为 `input_file` 部分发送。
+
+您可以将文件作为内联数据提供：
+
+```ts
+import { createOpenResponses } from '@ai-sdk/open-responses';
+import { readFileSync } from 'node:fs';
+import { generateText } from 'ai';
+
+const openResponses = createOpenResponses({
+  name: 'lmstudio',
+  url: 'http://localhost:1234/v1/responses',
+});
+
+const { text } = await generateText({
+  model: openResponses('your-file-capable-model-id'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: '总结此文档。',
+        },
+        {
+          type: 'file',
+          data: readFileSync('./document.pdf'),
+          mediaType: 'application/pdf',
+          filename: 'document.pdf',
+        },
+      ],
+    },
+  ],
+});
+
+console.log(text);
+```
+
+您也可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。此提供商不支持提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据。
+
+## 限制
+
+- 不支持停止序列、`topK` 和 `seed`，这些设置会被忽略并发出警告。
+- 该提供商仅支持语言模型。它不提供嵌入或图像生成模型。
+- 支持 AI SDK 函数工具。提供商特定的内置工具和选项需要专门的提供商实现。
