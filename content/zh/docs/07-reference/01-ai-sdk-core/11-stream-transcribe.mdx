@@ -47,7 +47,7 @@ console.log(await result.text);
       name: 'model',
       type: 'TranscriptionModelV4',
       description:
-        '要使用的转录模型。该模型必须支持流式传输（`doStream`）。字符串模型 ID 通过全局提供商（默认为 AI Gateway）解析，但目前尚不支持流式转录。',
+        "要使用的转录模型。该模型必须支持流式传输 (`doStream`)。字符串模型 ID 通过全局提供商（默认为 AI Gateway）解析，该提供商支持支持流式传输的模型的流式转录（例如 `openai/gpt-realtime-whisper`、`xai/grok-stt`）：`experimental_streamTranscribe({ model: 'openai/gpt-realtime-whisper', ... })`。",
     },
     {
       name: 'audio',
@@ -59,7 +59,7 @@ console.log(await result.text);
       name: 'inputAudioFormat',
       type: '{ type: string; rate?: number }',
       description:
-        '原始音频块的输入音频格式，例如 `{ type: "audio/pcm", rate: 24000 }`。支持的格式因提供商而异（例如 `audio/pcm`、`audio/pcmu`、`audio/pcma`）。',
+        '原始音频块的输入音频格式，例如 `{ type: "audio/pcm", rate: 24000 }`。支持的类型因提供商而异（例如 `audio/pcm`、`audio/pcmu`、`audio/pcma`）。',
     },
     {
       name: 'providerOptions',
@@ -71,21 +71,21 @@ console.log(await result.text);
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
-      description: '可选的取消信号，用于取消调用。',
+      description: '可选的终止信号，用于取消调用。',
     },
     {
       name: 'headers',
       type: 'Record<string, string>',
       isOptional: true,
       description:
-        '额外的 HTTP/WebSocket 头信息（如果提供商支持）。',
+        '额外的 HTTP/WebSocket 标头（如果提供商支持）。',
     },
     {
       name: 'includeRawChunks',
       type: 'boolean',
       isOptional: true,
       description:
-        '当为 true 时，提供商会在流中包含原始提供商块，作为 `raw` 部分。',
+        '当为 true 时，提供商将原始提供商块作为 `raw` 部分包含在流中。',
     },
   ]}
 />
@@ -103,35 +103,35 @@ console.log(await result.text);
     {
       name: 'text',
       type: 'Promise<string>',
-      description: '音频输入的完整转录文本。',
+      description: '来自音频输入的完整转录文本。',
     },
     {
       name: 'segments',
       type: 'Promise<Array<{ text: string; startSecond: number; endSecond: number }>>',
       description:
-        '包含时间信息的最终转录片段（如果可用）。',
+        '带有时间信息的最终转录片段（如果可用）。',
     },
     {
       name: 'language',
       type: 'Promise<string | undefined>',
       description:
-        '转录文本的语言（ISO-639-1 格式，如果可用）。',
+        '转录文本的语言，格式为 ISO-639-1（如果可用）。',
     },
     {
       name: 'durationInSeconds',
       type: 'Promise<number | undefined>',
-      description: '转录文本的时长（秒，如果可用）。',
+      description: '转录文本的时长（秒）（如果可用）。',
     },
     {
       name: 'warnings',
       type: 'Promise<Warning[]>',
       description:
-        '调用的警告信息，例如不支持的设置。当提供商发出流开始信号时解析。',
+        '调用的警告，例如不支持的设置。当提供商发出流开始信号时解析。',
     },
     {
       name: 'responses',
       type: 'Promise<Array<TranscriptionModelResponseMetadata>>',
-      description: '响应元数据（时间戳、模型 ID、头信息）。',
+      description: '响应元数据（时间戳、模型 ID、标头）。',
     },
     {
       name: 'providerMetadata',
@@ -142,5 +142,9 @@ console.log(await result.text);
 />
 
 <Note>
-  结果 Promise 会在流被消费时逐步确定。如果你提前停止消费 `fullStream`（例如通过 `break` 退出循环），底层提供商连接将被关闭，未完成的 Promise 结果将被拒绝。
+  结果 Promise 会在流被消费时逐步解决。如果你提前停止消费 `fullStream`（例如通过 `break` 退出循环），底层提供商连接将被关闭，待处理的 Promise 将拒绝。
 </Note>
+
+## 线路格式（实验性）
+
+通过 WebSocket 的流式转录使用 `@ai-sdk/provider-utils` 中定义的实验性转录流信封进行序列化（`experimental_parseTranscriptionStreamClientFrame`、`experimental_serializeTranscriptionStreamPart`、`experimental_parseTranscriptionStreamPart`）：客户端发送一个 `transcription-stream.start` TEXT 帧，音频作为 BINARY 帧，以及一个 `transcription-stream.audio-done` TEXT 帧；每个服务器 TEXT 帧是一个 JSON 序列化的转录流部分。AI Gateway 实现了此信封的服务器端。
