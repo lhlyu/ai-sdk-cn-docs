@@ -5,7 +5,7 @@ description: "了解如何在 AI SDK 中使用 Cartesia 提供商。"
 
 # Cartesia 提供商
 
-[Cartesia](https://cartesia.ai/) 提供商支持 Sonic 语音生成、Ink-Whisper 批量转录以及 Ink 2 实时转录。
+[Cartesia](https://cartesia.ai/) 提供商支持 Sonic 语音生成、Ink-Whisper 批量转录以及 Ink 2 实时和流式转录。
 
 ## 安装
 
@@ -35,7 +35,7 @@ Cartesia 提供商位于 `@ai-sdk/cartesia` 模块中。你可以通过以下方
 import { cartesia } from '@ai-sdk/cartesia';
 ```
 
-如果你需要自定义配置，可以从 `@ai-sdk/cartesia` 导入 `createCartesia`，并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/cartesia` 导入 `createCartesia` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createCartesia } from '@ai-sdk/cartesia';
@@ -65,8 +65,13 @@ const cartesia = createCartesia({
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
-  你可以将其用作拦截请求的中间件，
-  或提供自定义 fetch 实现（例如用于测试）。
+  你可以将其用作中间件来拦截请求，
+  或为测试等场景提供自定义 fetch 实现。
+
+- **webSocket** _WebSocketConstructor_
+
+  用于 Ink 2 流式转录的自定义 WebSocket 实现。
+  默认为全局 `WebSocket` 构造函数。
 
 ## 语音模型
 
@@ -147,13 +152,13 @@ const result = await generateSpeech({
 
 ### 模型能力
 
-| 模型             |
-| ---------------- |
-| `sonic-3.5`      |
-| `sonic-3`        |
-| `sonic-2`        |
-| `sonic-turbo`    |
-| `sonic-latest`   |
+| 模型            |
+| -------------- |
+| `sonic-3.5`    |
+| `sonic-3`      |
+| `sonic-2`      |
+| `sonic-turbo`  |
+| `sonic-latest` |
 
 ## 实时转录模型
 
@@ -167,7 +172,7 @@ import { cartesia } from '@ai-sdk/cartesia';
 const model = cartesia.experimental_realtime('ink-2');
 ```
 
-实时会话在浏览器中运行，需要一个在你的服务器上使用 `cartesia.experimental_realtime.getToken()` 创建的短期访问令牌：
+实时会话在浏览器中运行，并且需要在你服务器上使用 `cartesia.experimental_realtime.getToken()` 创建的短期访问令牌：
 
 ```ts
 const token = await cartesia.experimental_realtime.getToken({
@@ -180,15 +185,59 @@ const token = await cartesia.experimental_realtime.getToken({
 });
 ```
 
-Ink 2 生成输入转录事件并支持英语音频。默认启用语音活动检测。要改用手动结束，请在会话配置中将 `turnDetection` 设置为 `null`，并在当前输入完成时调用 `commitAudio()`。
+Ink 2 产生输入转录事件并支持英语音频。默认启用语音活动检测。要改用手动结束，请在会话配置中将 `turnDetection` 设置为 `null`，并在当前输入完成时调用 `commitAudio()`。
 
-有关完整的浏览器会话设置，请参阅 [实时](/docs/ai-sdk-core/realtime)。
+有关完整的浏览器会话设置，请参阅[实时](/docs/ai-sdk-core/realtime)。
 
 ### 模型能力
 
 | 模型     | 流式转录            | 语音活动检测        |
-| -------- | ------------------- | ------------------- |
-| `ink-2`  | <Check size={18} /> | <Check size={18} /> |
+| ------- | ------------------- | ------------------- |
+| `ink-2` | <Check size={18} /> | <Check size={18} /> |
+
+## 流式转录模型
+
+<Note type="warning">流式转录是一个实验性功能。</Note>
+
+Ink 2 也可通过转录流式 API 使用。使用 `.transcription()` 创建模型，并将其传递给 `experimental_streamTranscribe`：
+
+```ts
+import { cartesia } from '@ai-sdk/cartesia';
+import { experimental_streamTranscribe as streamTranscribe } from 'ai';
+
+const result = streamTranscribe({
+  model: cartesia.transcription('ink-2'),
+  audio, // 包含原始音频块的 ReadableStream<Uint8Array | string>
+  inputAudioFormat: { type: 'audio/pcm', rate: 24000 },
+  providerOptions: {
+    cartesia: {
+      language: 'en',
+    },
+  },
+});
+
+for await (const part of result.fullStream) {
+  if (part.type === 'transcript-partial') {
+    console.log('partial:', part.text);
+  }
+
+  if (part.type === 'transcript-final') {
+    console.log('final:', part.text);
+  }
+}
+```
+
+提供商在打开 WebSocket 之前会创建一个短期、STT 作用域的 Cartesia 访问令牌，因此 API 密钥不会包含在 WebSocket URL 中。以大约播放速率发送音频块；Cartesia 的实时端点适用于实时音频，而非批量文件上传。
+
+Ink 2 支持英语音频，并默认使用 Cartesia 的原生语音活动检测。要仅在输入音频流结束时结束，请传递 `providerOptions.cartesia.streaming.turnDetection: false`。
+
+有关流式转录的更多信息，请参阅[转录](/docs/ai-sdk-core/transcription)。
+
+### 模型能力
+
+| 模型     | 流式转录            | 语音活动检测        |
+| ------- | ------------------- | ------------------- |
+| `ink-2` | <Check size={18} /> | <Check size={18} /> |
 
 ## 批量转录模型
 
@@ -248,6 +297,6 @@ const result = await transcribe({
 
 ### 模型能力
 
-| 模型           | 转录                | 时长                | 分段                | 语言                |
-| -------------- | ------------------- | ------------------- | ------------------- | ------------------- |
-| `ink-whisper`  | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| 模型           | 转录               | 时长               | 分段               | 语言               |
+| ------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `ink-whisper` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |

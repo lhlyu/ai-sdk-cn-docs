@@ -47,7 +47,7 @@ console.log(await result.text);
       name: 'model',
       type: 'TranscriptionModelV4',
       description:
-        "要使用的转录模型。该模型必须支持流式传输 (`doStream`)。字符串模型 ID 通过全局提供商（默认为 AI Gateway）解析，该提供商支持支持流式传输的模型的流式转录（例如 `openai/gpt-realtime-whisper`、`xai/grok-stt`）：`experimental_streamTranscribe({ model: 'openai/gpt-realtime-whisper', ... })`。",
+        "要使用的转录模型。该模型必须支持流式传输 (`doStream`)。字符串模型 ID 通过全局 provider（默认是 AI Gateway）解析，该 provider 支持受支持模型的流式转录（例如 `openai/gpt-realtime-whisper`、`xai/grok-stt`）：`experimental_streamTranscribe({ model: 'openai/gpt-realtime-whisper', ... })`。",
     },
     {
       name: 'audio',
@@ -59,13 +59,13 @@ console.log(await result.text);
       name: 'inputAudioFormat',
       type: '{ type: string; rate?: number }',
       description:
-        '原始音频块的输入音频格式，例如 `{ type: "audio/pcm", rate: 24000 }`。支持的类型因提供商而异（例如 `audio/pcm`、`audio/pcmu`、`audio/pcma`）。',
+        '原始音频块的输入音频格式，例如 `{ type: "audio/pcm", rate: 24000 }`。支持的类型取决于具体 provider（例如 `audio/pcm`、`audio/pcmu`、`audio/pcma`）。',
     },
     {
       name: 'providerOptions',
       type: 'Record<string, JSONObject>',
       isOptional: true,
-      description: '额外的提供商特定选项。',
+      description: '额外的 provider 特定选项。',
     },
     {
       name: 'abortSignal',
@@ -78,14 +78,14 @@ console.log(await result.text);
       type: 'Record<string, string>',
       isOptional: true,
       description:
-        '额外的 HTTP/WebSocket 标头（如果提供商支持）。',
+        '额外的 HTTP/WebSocket 头部，如果 provider 支持的话。',
     },
     {
       name: 'includeRawChunks',
       type: 'boolean',
       isOptional: true,
       description:
-        '当为 true 时，提供商将原始提供商块作为 `raw` 部分包含在流中。',
+        '当为 true 时，provider 会在流中包含原始 provider 块作为 `raw` 部分。',
     },
   ]}
 />
@@ -98,7 +98,7 @@ console.log(await result.text);
       name: 'fullStream',
       type: 'AsyncIterableStream<TranscriptionStreamPart>',
       description:
-        '转录部分的流：`transcript-delta`、`transcript-partial`、`transcript-final`、`raw` 和 `error`。',
+        '一个单消费者实时流，包含转录部分：`transcript-delta`、`transcript-partial`、`transcript-final`、`raw` 和 `error`。在需要同时获取流部分和最终结果时，在访问任何结果 promise 之前访问它一次。先访问结果 promise 会在内部消费流，并使 `fullStream` 不可用。',
     },
     {
       name: 'text',
@@ -109,7 +109,7 @@ console.log(await result.text);
       name: 'segments',
       type: 'Promise<Array<{ text: string; startSecond: number; endSecond: number }>>',
       description:
-        '带有时间信息的最终转录片段（如果可用）。',
+        '包含时间信息的最终转录片段（如果可用）。',
     },
     {
       name: 'language',
@@ -120,31 +120,31 @@ console.log(await result.text);
     {
       name: 'durationInSeconds',
       type: 'Promise<number | undefined>',
-      description: '转录文本的时长（秒）（如果可用）。',
+      description: '转录文本的时长（秒），如果可用。',
     },
     {
       name: 'warnings',
       type: 'Promise<Warning[]>',
       description:
-        '调用的警告，例如不支持的设置。当提供商发出流开始信号时解析。',
+        '调用的警告，例如不支持的设置。当 provider 发出流开始信号时解析。',
     },
     {
       name: 'responses',
       type: 'Promise<Array<TranscriptionModelResponseMetadata>>',
-      description: '响应元数据（时间戳、模型 ID、标头）。',
+      description: '响应元数据（时间戳、模型 ID、头部）。',
     },
     {
       name: 'providerMetadata',
       type: 'Promise<Record<string, JSONObject>>',
-      description: '额外的提供商特定元数据。',
+      description: '额外的 provider 特定元数据。',
     },
   ]}
 />
 
 <Note>
-  结果 Promise 会在流被消费时逐步解决。如果你提前停止消费 `fullStream`（例如通过 `break` 退出循环），底层提供商连接将被关闭，待处理的 Promise 将拒绝。
+  结果 promise 在流被消费时逐步确定。如果你提前停止消费 `fullStream`（例如通过 `break` 退出循环），底层 provider 连接将被关闭，未决的结果 promise 将被拒绝。
 </Note>
 
 ## 线路格式（实验性）
 
-通过 WebSocket 的流式转录使用 `@ai-sdk/provider-utils` 中定义的实验性转录流信封进行序列化（`experimental_parseTranscriptionStreamClientFrame`、`experimental_serializeTranscriptionStreamPart`、`experimental_parseTranscriptionStreamPart`）：客户端发送一个 `transcription-stream.start` TEXT 帧，音频作为 BINARY 帧，以及一个 `transcription-stream.audio-done` TEXT 帧；每个服务器 TEXT 帧是一个 JSON 序列化的转录流部分。AI Gateway 实现了此信封的服务器端。
+通过 WebSocket 的流式转录使用 `@ai-sdk/provider-utils` 中定义的实验性转录流信封进行序列化（`experimental_parseTranscriptionStreamClientFrame`、`experimental_serializeTranscriptionStreamPart`、`experimental_parseTranscriptionStreamPart`）：客户端发送一个 `transcription-stream.start` TEXT 帧，音频作为 BINARY 帧发送，以及一个 `transcription-stream.audio-done` TEXT 帧；每个服务器 TEXT 帧是一个 JSON 序列化的转录流部分。AI Gateway 实现了此信封的服务器端。

@@ -1,13 +1,13 @@
 ---
 title: "ByteDance"
-description: "了解如何将 ByteDance Seedance 视频模型与 AI SDK 结合使用。"
+description: "了解如何将 ByteDance Seedance 视频和 Seedream 图像模型与 AI SDK 结合使用。"
 ---
 
 # ByteDance 提供商
 
-[ByteDance](https://www.bytedance.com/) 提供商通过 [BytePlus ModelArk](https://docs.byteplus.com/en/docs/ModelArk/Video_Generation_API) 平台支持 Seedance 系列视频生成模型。Seedance 提供高质量的文本转视频和图像转视频生成能力，包括音视频同步、首尾帧控制以及多参考图像生成。
+[ByteDance](https://www.bytedance.com/) 提供商通过 [BytePlus ModelArk](https://docs.byteplus.com/en/docs/ModelArk/) 平台支持 Seedance 系列视频生成模型和 Seedream 系列图像生成模型。Seedance 提供高质量的文本到视频和图像到视频生成能力，包括音视频同步、首尾帧控制以及多参考图像生成（参见[视频生成 API](https://docs.byteplus.com/en/docs/ModelArk/Video_Generation_API)）。Seedream 提供文本到图像和图像到图像生成，包括多图像融合和批量图像生成（参见[图像生成 API](https://docs.byteplus.com/en/docs/ModelArk/1824690)）。
 
-## 安装
+## 设置
 
 ByteDance 提供商可通过 `@ai-sdk/bytedance` 模块获取。你可以通过以下命令安装：
 
@@ -21,7 +21,7 @@ ByteDance 提供商可通过 `@ai-sdk/bytedance` 模块获取。你可以通过�
 import { byteDance } from '@ai-sdk/bytedance';
 ```
 
-如果你需要自定义设置，可以导入 `createByteDance` 并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以导入 `createByteDance` 并使用你的配置创建提供商实例：
 
 ```ts
 import { createByteDance } from '@ai-sdk/bytedance';
@@ -46,11 +46,11 @@ const byteDance = createByteDance({
 
   通过 `Authorization` 请求头发送的 API 密钥。
   默认为 `ARK_API_KEY` 环境变量。
-  你可以从 BytePlus 控制台 [获取 API 密钥](https://console.byteplus.com/ark/apiKey)。
+  你可以从 BytePlus 控制台[获取 API 密钥](https://console.byteplus.com/ark/apiKey)。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -58,14 +58,137 @@ const byteDance = createByteDance({
   你可以将其用作拦截请求的中间件，
   或为测试等场景提供自定义 fetch 实现。
 
+## 图像模型
+
+你可以使用 `.image()` 工厂方法创建 ByteDance Seedream 图像模型。
+有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+
+### 文本到图像
+
+从文本提示词生成图像：
+
+```ts
+import { byteDance, type ByteDanceImageModelOptions } from '@ai-sdk/bytedance';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: byteDance.image('seedream-5-0-260128'),
+  prompt: '黄昏时分，森林池塘中的一只蝾螈，周围环绕着萤火虫',
+  size: '2048x2048',
+  providerOptions: {
+    bytedance: {
+      watermark: false,
+    } satisfies ByteDanceImageModelOptions,
+  },
+});
+```
+
+<Note>
+  ByteDance 通过其 ModelArk 模型 ID（例如 `seedream-5-0-260128`）或特定于账户的端点 ID（例如 `ep-...`）来标识 Seedream 模型。`size` 参数接受像素尺寸（`{宽度}x{高度}`）；诸如 `2K` 之类的分辨率级别可以通过 `providerOptions.bytedance.size` 传递。
+</Note>
+
+### 图像编辑
+
+通过 `prompt.images` 传递输入图像来转换现有图像（图像到图像）：
+
+```ts
+import { readFileSync } from 'node:fs';
+import { byteDance, type ByteDanceImageModelOptions } from '@ai-sdk/bytedance';
+import { generateImage } from 'ai';
+
+const inputImage = readFileSync('./input-image.png');
+
+const { image } = await generateImage({
+  model: byteDance.image('seedream-5-0-260128'),
+  prompt: {
+    text: '将蝾螈改为雪鼬',
+    images: [inputImage],
+  },
+  providerOptions: {
+    bytedance: {
+      watermark: false,
+    } satisfies ByteDanceImageModelOptions,
+  },
+});
+```
+
+你还可以传递多张图像，将多个参考图像的风格和元素融合到单个输出中（多图像融合）。图像可以作为二进制数据、base64 字符串或 URL 提供：
+
+```ts
+import { byteDance, type ByteDanceImageModelOptions } from '@ai-sdk/bytedance';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: byteDance.image('seedream-5-0-260128'),
+  prompt: {
+    text: '将图像 1 中的服装替换为图像 2 中的服装',
+    images: ['https://example.com/model.png', 'https://example.com/outfit.png'],
+  },
+  providerOptions: {
+    bytedance: {
+      watermark: false,
+    } satisfies ByteDanceImageModelOptions,
+  },
+});
+```
+
+<Note>
+  Seedream 不支持基于遮罩的图像修复。请在提示词中描述编辑内容，可选地在输入图像上绘制标记（交互式编辑，由 `dola-seedream-5-0-pro-260628` 支持）。
+</Note>
+
+### 图像模型选项
+
+以下选项可通过 `providerOptions.bytedance` 使用。你可以使用 `ByteDanceImageModelOptions` 进行类型标注。
+
+- **watermark** _boolean_
+
+  是否在输出图像的右下角添加“AI 生成”水印。
+
+- **outputFormat** _'png' | 'jpeg'_
+
+  生成图像文件的格式。由 `seedream-5-0` 和 `dola-seedream-5-0-pro` 支持；`seedream-4-5` / `seedream-4-0` 始终返回 `jpeg`。
+
+- **size** _string_
+
+  分辨率级别（例如 `1K`、`2K`、`3K`、`4K`），作为通过顶层 `size` 参数传递像素尺寸的替代方案。设置后，将覆盖顶层 `size`。可用级别因模型而异。
+
+- **sequentialImageGeneration** _'auto' | 'disabled'_
+
+  设置为 `'auto'` 以生成一批相关图像（例如故事板或品牌视觉素材）。默认为 `'disabled'`（单张图像）。
+
+- **maxImages** _number_
+
+  当 `sequentialImageGeneration` 为 `'auto'` 时，生成的最大图像数量。输入参考图像数量加上生成图像数量不得超过模型限制。
+
+- **optimizePromptMode** _'standard' | 'fast'_
+
+  提示词优化模式。`seedream-4-0` 同时支持 `standard` 和 `fast`；其他模型仅支持 `standard`。
+
+<Note>
+  其他 ModelArk 字段也可以通过 `providerOptions.bytedance` 传递，并由 ModelArk 进行验证。
+</Note>
+
+### 图像模型能力
+
+| 模型             | 模型 ID                                                 | 能力                                                                                                                          |
+| ----------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Seedream 5.0 Pro  | `dola-seedream-5-0-pro-260628`                           | 文本到图像、单/多图像到图像、交互式编辑（标记）。尺寸：1K、2K。格式：png、jpeg。最多 10 个参考。                               |
+| Seedream 5.0 Lite | `seedream-5-0-260128` (别名 `seedream-5-0-lite-260128`) | 文本到图像、单/多图像到图像、批量生成。尺寸：2K、3K、4K。格式：png、jpeg。最多 14 个参考。                                    |
+| Seedream 4.5      | `seedream-4-5-251128`                                    | 文本到图像、单/多图像到图像、批量生成。尺寸：2K、4K。格式：jpeg。最多 14 个参考。                                             |
+| Seedream 4.0      | `seedream-4-0-250828`                                    | 文本到图像、单/多图像到图像、批量生成、快速提示词模式。尺寸：1K、2K、4K。格式：jpeg。最多 14 个参考。                         |
+
+<Note>
+  如有需要，你也可以传递任何模型或端点 ID 字符串，例如用于此处尚未列出的未来模型。目前，AI SDK 集成不支持流式图像输出。
+</Note>
+
 ## 视频模型
 
 你可以使用 `.video()` 工厂方法创建 ByteDance 视频模型。
-有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
+有关使用 AI SDK 进行视频生成的更多信息，请参见 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
 
-### 文本转视频
+### 文本到视频
 
-根据文本提示词生成视频：
+从文本提示词生成视频：
 
 ```ts
 import { byteDance, type ByteDanceVideoModelOptions } from '@ai-sdk/bytedance';
@@ -74,7 +197,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 const { video } = await generateVideo({
   model: byteDance.video('seedance-1-0-pro-250528'),
   prompt:
-    '写实风格：在晴朗的蓝天下，大片白色雏菊田延伸开来。镜头逐渐拉近并定格在一朵雏菊的特写上。',
+    '写实风格：在晴朗的蓝天下，大片白色雏菊田延伸开来。镜头逐渐拉近，聚焦于一朵雏菊的特写。',
   aspectRatio: '16:9',
   duration: 5,
   providerOptions: {
@@ -87,9 +210,9 @@ const { video } = await generateVideo({
 console.log(video.url);
 ```
 
-### 图像转视频
+### 图像到视频
 
-根据首帧图像生成视频，可附带文本提示词：
+从首帧图像和可选的文本提示词生成视频：
 
 ```ts
 import { byteDance, type ByteDanceVideoModelOptions } from '@ai-sdk/bytedance';
@@ -110,7 +233,7 @@ const { video } = await generateVideo({
 });
 ```
 
-### 带音频的图像转视频
+### 带音频的图像到视频
 
 Seedance 1.5 Pro 支持在生成视频的同时生成同步音频：
 
@@ -122,7 +245,7 @@ const { video } = await generateVideo({
   model: byteDance.video('seedance-1-5-pro-251215'),
   prompt: {
     image: 'https://example.com/pianist.png',
-    text: '一个年轻人坐在钢琴前，平静地弹奏。轻柔的钢琴声与他的动作同步响起。',
+    text: '一个年轻人坐在钢琴前，平静地弹奏。轻柔的钢琴声与他的动作同步。',
   },
   duration: 5,
   providerOptions: {
@@ -146,7 +269,7 @@ const { video } = await generateVideo({
   model: byteDance.video('seedance-1-5-pro-251215'),
   prompt: {
     image: 'https://example.com/first-frame.jpg',
-    text: '基于这张照片创建360度环绕镜头',
+    text: '基于这张照片创建 360 度环绕镜头',
   },
   duration: 5,
   providerOptions: {
@@ -159,9 +282,9 @@ const { video } = await generateVideo({
 });
 ```
 
-### 多参考图像转视频
+### 多参考图像到视频
 
-使用 Seedance 1.0 Lite I2V 模型，你可以提供多个参考图像（1-4张），模型会忠实再现物体的形状、颜色和纹理：
+使用 Seedance 1.0 Lite I2V 模型，你可以提供多个参考图像（1-4 张），模型将忠实地再现物体的形状、颜色和纹理：
 
 ```ts
 import { byteDance, type ByteDanceVideoModelOptions } from '@ai-sdk/bytedance';
@@ -170,7 +293,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 const { video } = await generateVideo({
   model: byteDance.video('seedance-1-0-lite-i2v-250428'),
   prompt:
-    '一个戴着眼镜、穿着蓝色T恤的男孩（来自[Image 1]）和一只柯基犬（来自[Image 2]），坐在草坪上（来自[Image 3]），3D卡通风格',
+    '一个戴着眼镜、穿着蓝色 T 恤的男孩（来自[图像 1]）和一只柯基犬（来自[图像 2]），坐在草坪上（来自[图像 3]），3D 卡通风格',
   aspectRatio: '16:9',
   duration: 5,
   providerOptions: {
@@ -211,7 +334,7 @@ const { video } = await generateVideo({
 
 ### 参考音频
 
-Seedance 2.0 支持参考音频，用作生成视频的背景音乐或音效：
+Seedance 2.0 支持参考音频，用作生成视频的背景音乐或声音：
 
 ```ts
 import { byteDance, type ByteDanceVideoModelOptions } from '@ai-sdk/bytedance';
@@ -219,7 +342,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: byteDance.video('dreamina-seedance-2-0-260128'),
-  prompt: '日出时宁静的山景，伴有轻柔的镜头运动',
+  prompt: '日出时宁静的山景，镜头缓慢移动',
   aspectRatio: '16:9',
   duration: 4,
   providerOptions: {
@@ -234,17 +357,17 @@ const { video } = await generateVideo({
 
 ### 视频模型选项
 
-以下选项可通过 `providerOptions.bytedance` 使用。你可以使用 `ByteDanceVideoModelOptions` 类型进行类型标注。
+以下选项可通过 `providerOptions.bytedance` 使用。你可以使用 `ByteDanceVideoModelOptions` 进行类型标注。
 
 #### 生成选项
 
 - **watermark** _boolean_
 
-  是否为生成的视频添加水印。
+  是否在生成的视频中添加水印。
 
 - **generateAudio** _boolean_
 
-  是否为视频生成同步音频。Seedance 1.5 Pro 和 Seedance 2.0 支持。
+  是否为视频生成同步音频。由 Seedance 1.5 Pro 和 Seedance 2.0 支持。
 
 - **cameraFixed** _boolean_
 
@@ -252,7 +375,7 @@ const { video } = await generateVideo({
 
 - **returnLastFrame** _boolean_
 
-  是否返回生成视频的最后一帧。用于连接连续视频。
+  是否返回生成视频的最后一帧。用于串联连续视频。
 
 - **serviceTier** _'default' | 'flex'_
 
@@ -260,60 +383,60 @@ const { video } = await generateVideo({
 
 - **draft** _boolean_
 
-  启用草稿样本模式，用于低成本预览生成。仅 Seedance 1.5 Pro 支持。生成 480p 预览视频，以便在提交全质量生成之前进行快速迭代。
+  启用草稿样本模式以进行低成本预览生成。仅由 Seedance 1.5 Pro 支持。生成 480p 预览视频，用于快速迭代，然后再提交全质量生成。
 
 #### 图像输入选项
 
 - **lastFrameImage** _string_
 
-  用于首尾帧视频生成的最后一帧图像 URL。模型在首帧（通过 `image` 提示词提供）和此尾帧之间生成平滑过渡。Seedance 1.5 Pro、1.0 Pro 和 1.0 Lite I2V 支持。
+  用于首尾帧视频生成的最后一帧图像的 URL。模型在首帧（通过 `image` 提示词提供）和此尾帧之间生成平滑过渡。由 Seedance 1.5 Pro、1.0 Pro 和 1.0 Lite I2V 支持。
 
 - **referenceImages** _string[]_
 
-  用于多参考图像转视频生成的参考图像 URL 数组。
-  模型从每张图像中提取关键特征并在视频中再现。
-  在提示词中使用 `[Image 1]`、`[Image 2]` 等来引用特定图像。
+  用于多参考图像到视频生成的参考图像 URL 数组。
+  模型从每张图像中提取关键特征，并在视频中再现它们。
+  在提示词中使用 `[图像 1]`、`[图像 2]` 等来引用特定图像。
 
 #### 媒体参考选项
 
 - **referenceVideos** _string[]_
 
-  用于参考引导视频生成的参考视频 URL 数组（最多 3 个视频，每个最长 15 秒）。模型使用参考视频来指导风格、运动或构图。Seedance 2.0 支持。
+  用于参考引导视频生成的参考视频 URL 数组（最多 3 个视频，每个最长 15 秒）。模型使用参考视频来指导风格、运动或构图。由 Seedance 2.0 支持。
 
 - **referenceAudio** _string[]_
 
-  用于音频引导视频生成的参考音频 URL 数组（最多 3 个，每个最长 15 秒）。模型使用参考音频作为背景音乐或同步音效。支持 data URI（例如 `data:audio/wav;base64,...`）。Seedance 2.0 支持。
+  用于音频引导视频生成的参考音频 URL 数组（最多 3 个，每个最长 15 秒）。模型使用参考音频作为背景音乐或同步声音。支持数据 URI（例如 `data:audio/wav;base64,...`）。由 Seedance 2.0 支持。
 
 #### 轮询选项
 
 - **pollIntervalMs** _number_
 
-  控制视频处理期间检查 API 以获取已完成视频的频率。默认为 3000ms。
+  控制处理过程中检查 API 以获取已完成视频的频率。默认为 3000ms。
 
 - **pollTimeoutMs** _number_
 
-  等待视频生成完成的最大时间，超时后停止。默认为 300000ms（5 分钟）。
+  等待视频生成完成的最长时间，超时后停止。默认为 300000ms（5 分钟）。
 
 <Note>
-  视频生成是一个异步过程，可能需要几分钟时间。建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保可靠运行。
+  视频生成是一个异步过程，可能需要几分钟。建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保可靠运行。
 </Note>
 
 ### 视频模型能力
 
-| 模型                   | 模型 ID                              | 能力                                                                                                                                     |
-| ----------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Seedance 2.0            | `dreamina-seedance-2-0-260128`      | T2V, I2V, 参考视频（最多 3 个）, 参考音频（最多 3 个）, 音视频同步。时长：4-15s。分辨率：480p, 720p。                      |
-| Seedance 2.0 Fast       | `dreamina-seedance-2-0-fast-260128` | T2V, I2V, 参考视频（最多 3 个）, 参考音频（最多 3 个）, 音视频同步。针对速度优化。时长：4-15s。分辨率：480p, 720p。 |
-| Seedance 1.5 Pro        | `seedance-1-5-pro-251215`           | T2V, I2V（首帧）, I2V（首尾帧）, 音视频同步, 草稿模式。时长：4-12s。分辨率：480p, 720p, 1080p。                    |
-| Seedance 1.0 Pro        | `seedance-1-0-pro-250528`           | T2V, I2V（首帧）, I2V（首尾帧）。时长：2-12s。分辨率：480p, 720p, 1080p。                                                  |
-| Seedance 1.0 Pro Fast   | `seedance-1-0-pro-fast-251015`      | T2V, I2V（首帧）。针对速度和成本优化。时长：2-12s。                                                                           |
-| Seedance 1.0 Lite (T2V) | `seedance-1-0-lite-t2v-250428`      | 仅文本转视频。时长：2-12s。分辨率：480p, 720p, 1080p。                                                                              |
-| Seedance 1.0 Lite (I2V) | `seedance-1-0-lite-i2v-250428`      | I2V（首帧）, I2V（首尾帧）, 多参考图像（1-4张）。时长：2-12s。分辨率：480p, 720p。                                |
+| 模型                   | 模型 ID                            | 能力                                                                                                                                     |
+| ----------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Seedance 2.0            | `dreamina-seedance-2-0-260128`      | T2V、I2V、参考视频（最多 3 个）、参考音频（最多 3 个）、音视频同步。时长：4-15 秒。分辨率：480p、720p。                                  |
+| Seedance 2.0 Fast       | `dreamina-seedance-2-0-fast-260128` | T2V、I2V、参考视频（最多 3 个）、参考音频（最多 3 个）、音视频同步。针对速度优化。时长：4-15 秒。分辨率：480p、720p。                    |
+| Seedance 1.5 Pro        | `seedance-1-5-pro-251215`           | T2V、I2V（首帧）、I2V（首+尾帧）、音视频同步、草稿模式。时长：4-12 秒。分辨率：480p、720p、1080p。                                       |
+| Seedance 1.0 Pro        | `seedance-1-0-pro-250528`           | T2V、I2V（首帧）、I2V（首+尾帧）。时长：2-12 秒。分辨率：480p、720p、1080p。                                                             |
+| Seedance 1.0 Pro Fast   | `seedance-1-0-pro-fast-251015`      | T2V、I2V（首帧）。针对速度和成本优化。时长：2-12 秒。                                                                                    |
+| Seedance 1.0 Lite (T2V) | `seedance-1-0-lite-t2v-250428`      | 仅文本到视频。时长：2-12 秒。分辨率：480p、720p、1080p。                                                                                 |
+| Seedance 1.0 Lite (I2V) | `seedance-1-0-lite-i2v-250428`      | I2V（首帧）、I2V（首+尾帧）、多参考图像（1-4 张）。时长：2-12 秒。分辨率：480p、720p。                                                   |
 
-支持的宽高比：`16:9`, `4:3`, `1:1`, `3:4`, `9:16`, `21:9`, `adaptive`（仅图像转视频）。
+支持的宽高比：`16:9`、`4:3`、`1:1`、`3:4`、`9:16`、`21:9`、`adaptive`（仅限图像到视频）。
 
 所有模型输出 24 fps 的 MP4 视频。
 
 <Note>
-  如有需要，你也可以传递任何模型 ID 字符串，例如此处尚未列出的未来模型。
+  如有需要，你也可以传递任何模型 ID 字符串，例如用于此处尚未列出的未来模型。
 </Note>

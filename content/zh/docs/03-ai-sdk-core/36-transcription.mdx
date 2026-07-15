@@ -1,11 +1,11 @@
 ---
 title: "语音转写"
-description: "了解如何使用 AI SDK 进行音频转写。"
+description: "了解如何使用 AI SDK 转写音频。"
 ---
 
 # 语音转写
 
-AI SDK 提供了 [`transcribe`](/docs/reference/ai-sdk-core/transcribe) 函数，用于使用转写模型对音频进行转写。
+AI SDK 提供了 [`transcribe`](/docs/reference/ai-sdk-core/transcribe) 函数，用于使用转写模型转写音频。
 
 ```ts
 import { transcribe } from 'ai';
@@ -26,14 +26,14 @@ const transcript = await transcribe({
 const text = transcript.text; // 转写文本，例如 "Hello, world!"
 const segments = transcript.segments; // 包含开始和结束时间的片段数组（如果可用）
 const language = transcript.language; // 转写的语言，例如 "en"（如果可用）
-const durationInSeconds = transcript.durationInSeconds; // 转写的时长（秒）（如果可用）
+const durationInSeconds = transcript.durationInSeconds; // 转写的时长（秒），如果可用
 ```
 
 ## 流式转写
 
 <Note type="warning">流式转写是一项实验性功能。</Note>
 
-当您有实时原始音频，并希望在完整音频流完成之前获取转写更新时，请使用 `experimental_streamTranscribe`。该函数使用支持流式传输的转写模型；提供商选项用于配置提供商特定的行为，但流式操作由函数本身选择。
+当您有实时原始音频，并需要在完整音频流完成之前获取转写更新时，请使用 `experimental_streamTranscribe`。该函数使用支持流式的转写模型；提供商选项用于配置提供商特定的行为，但流式操作由函数本身选择。
 
 ```ts
 import { openai } from '@ai-sdk/openai';
@@ -70,22 +70,24 @@ for await (const part of result.fullStream) {
 console.log(await result.text);
 ```
 
+`fullStream` 是一个单消费者实时流，只能访问一次。当您同时需要流部分和最终结果时，请先访问 `fullStream`，并在消费它时或之后等待结果 promise。先访问结果 promise 会在内部消费流，因此 `fullStream` 将不再可用。这避免了为实时音频保留无限制的重放缓冲区。
+
 要访问最终的转写元数据：
 
 ```ts
 const text = await result.text; // 最终转写文本
-const segments = await result.segments; // 包含时间信息的最终片段（如果可用）
+const segments = await result.segments; // 包含时序的最终片段（如果可用）
 const language = await result.language; // 转写的语言（如果可用）
-const durationInSeconds = await result.durationInSeconds; // 时长（秒）（如果可用）
+const durationInSeconds = await result.durationInSeconds; // 时长（秒），如果可用
 ```
 
 `audio` 流必须包含原始音频块。`Uint8Array` 块是原始字节；`string` 块是 base64 编码的原始字节。始终设置 `inputAudioFormat` 以匹配您发送的块。
 
 <Note>
-  字符串模型 ID 通过全局提供商（默认为 AI Gateway）解析。AI Gateway 支持对支持的模型（例如 `openai/gpt-realtime-whisper`、`xai/grok-stt`）进行流式转写，因此字符串 ID 可以正常工作：`experimental_streamTranscribe({ model: 'openai/gpt-realtime-whisper', ... })`。您也可以直接传递提供商模型实例（例如 `openai.transcription('gpt-realtime-whisper')`）以直接针对提供商进行流式传输。
+  字符串模型 ID 通过全局提供商（默认为 AI Gateway）解析。AI Gateway 支持受支持模型的流式转写（例如 `openai/gpt-realtime-whisper`、`xai/grok-stt`），因此字符串 ID 可以工作：`experimental_streamTranscribe({ model: 'openai/gpt-realtime-whisper', ... })`。您也可以传递提供商模型实例（例如 `openai.transcription('gpt-realtime-whisper')`）以直接针对提供商进行流式传输。
 </Note>
 
-OpenAI 流式转写使用 `openai.transcription('gpt-realtime-whisper')`。xAI 对请求/响应和流式转写使用相同的 `xai.transcription()` 模型；`experimental_streamTranscribe` 在底层使用 xAI 的 WebSocket STT 传输。
+OpenAI 流式转写使用 `openai.transcription('gpt-realtime-whisper')`。Cartesia 使用 `cartesia.transcription('ink-2')` 进行仅流式的 Ink 2 转写。xAI 使用相同的 `xai.transcription()` 模型进行请求/响应和流式转写；`experimental_streamTranscribe` 会选择提供商的 WebSocket STT 传输。
 
 ```ts
 import { xai } from '@ai-sdk/xai';
@@ -108,7 +110,7 @@ const result = streamTranscribe({
 });
 ```
 
-某些提供商需要 WebSocket 标头才能进行直接流式 STT。在这些运行时中，创建提供商时请传递特定于提供商的 `webSocket` 实现。
+某些提供商需要 WebSocket 头信息才能进行直接流式 STT。在这些运行时中，请在创建提供商时传递特定于提供商的 `webSocket` 实现。
 
 ## 设置
 
@@ -134,7 +136,7 @@ const transcript = await transcribe({
 
 ### 下载大小限制
 
-当 `audio` 是 URL 时，SDK 会下载文件，默认大小限制为 **2 GiB**。您可以使用 `createDownload` 自定义此限制：
+当 `audio` 是 URL 时，SDK 会以默认的 **2 GiB** 大小限制下载文件。您可以使用 `createDownload` 自定义此限制：
 
 ```ts highlight="1,8"
 import { transcribe, createDownload } from 'ai';
@@ -147,7 +149,7 @@ const transcript = await transcribe({
 });
 ```
 
-您还可以提供完全自定义的下载函数：
+您也可以提供完全自定义的下载函数：
 
 ```ts highlight="6-12"
 import { transcribe } from 'ai';
@@ -166,7 +168,7 @@ const transcript = await transcribe({
 });
 ```
 
-如果下载超过大小限制，则会抛出 `DownloadError`：
+如果下载超过大小限制，会抛出 `DownloadError`：
 
 ```ts
 import { transcribe, DownloadError } from 'ai';
@@ -201,9 +203,9 @@ const transcript = await transcribe({
 });
 ```
 
-### 自定义标头
+### 自定义头信息
 
-`transcribe` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，您可以使用它向转写请求添加自定义标头。
+`transcribe` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，您可以使用它向转写请求添加自定义头信息。
 
 ```ts highlight="8"
 import { openai } from '@ai-sdk/openai';
@@ -236,7 +238,7 @@ const warnings = transcript.warnings;
 
 ### 错误处理
 
-当 `transcribe` 无法生成有效的转写文本时，它会抛出一个 [`AI_NoTranscriptGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-transcript-generated-error)。
+当 `transcribe` 无法生成有效的转写时，它会抛出一个 [`AI_NoTranscriptGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-transcript-generated-error)。
 
 此错误可能由以下任一原因引起：
 
@@ -245,7 +247,7 @@ const warnings = transcript.warnings;
 
 该错误保留了以下信息以帮助您记录问题：
 
-- `responses`：关于转写模型响应的元数据，包括时间戳、模型和标头。
+- `responses`：关于转写模型响应的元数据，包括时间戳、模型和头信息。
 - `cause`：错误的原因。您可以使用它进行更详细的错误处理。
 
 ```ts
@@ -269,35 +271,36 @@ try {
 
 ## 转写模型
 
-| 提供商                                                                         | 模型                       |
-| ------------------------------------------------------------------------------ | -------------------------- |
-| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)              | `whisper-1`                |
-| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)              | `gpt-4o-transcribe`        |
-| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)              | `gpt-4o-mini-transcribe`   |
-| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models)      | `scribe_v1`                |
-| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models)      | `scribe_v1_experimental`   |
-| [Groq](/providers/ai-sdk-providers/groq#transcription-models)                  | `whisper-large-v3-turbo`   |
-| [Groq](/providers/ai-sdk-providers/groq#transcription-models)                  | `whisper-large-v3`         |
-| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)         | `whisper-1`                |
-| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)         | `gpt-4o-transcribe`        |
-| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)         | `gpt-4o-mini-transcribe`   |
-| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)               | `machine`                  |
-| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)               | `low_cost`                 |
-| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)               | `fusion`                   |
-| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)          | `base` (+ 变体)            |
-| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)          | `enhanced` (+ 变体)        |
-| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)          | `nova` (+ 变体)            |
-| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)          | `nova-2` (+ 变体)          |
-| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)          | `nova-3` (+ 变体)          |
-| [Gladia](/providers/ai-sdk-providers/gladia#transcription-models)              | `default`                  |
-| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models)      | `universal-3-5-pro`        |
-| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models)      | `universal-3-pro`          |
-| [Fal](/providers/ai-sdk-providers/fal#transcription-models)                    | `whisper`                  |
-| [Fal](/providers/ai-sdk-providers/fal#transcription-models)                    | `wizper`                   |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models)| `chirp_2`                  |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models)| `chirp_3`                  |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models)| `telephony`                |
-| [xAI](/providers/ai-sdk-providers/xai#transcription-models)                    | `default`                  |
-| [Cartesia](/providers/ai-sdk-providers/cartesia#transcription-models)          | `ink-whisper`              |
+| 提供商                                                                          | 模型                     |
+| ------------------------------------------------------------------------------- | ------------------------ |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)               | `whisper-1`              |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)               | `gpt-4o-transcribe`      |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)               | `gpt-4o-mini-transcribe` |
+| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models)       | `scribe_v1`              |
+| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models)       | `scribe_v1_experimental` |
+| [Groq](/providers/ai-sdk-providers/groq#transcription-models)                   | `whisper-large-v3-turbo` |
+| [Groq](/providers/ai-sdk-providers/groq#transcription-models)                   | `whisper-large-v3`       |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)          | `whisper-1`              |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)          | `gpt-4o-transcribe`      |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)          | `gpt-4o-mini-transcribe` |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)                | `machine`                |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)                | `low_cost`               |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)                | `fusion`                 |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `base` (+ 变体)          |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `enhanced` (+ 变体)      |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `nova` (+ 变体)          |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `nova-2` (+ 变体)        |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)           | `nova-3` (+ 变体)        |
+| [Gladia](/providers/ai-sdk-providers/gladia#transcription-models)               | `default`                |
+| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models)       | `universal-3-5-pro`      |
+| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models)       | `universal-3-pro`        |
+| [Fal](/providers/ai-sdk-providers/fal#transcription-models)                     | `whisper`                |
+| [Fal](/providers/ai-sdk-providers/fal#transcription-models)                     | `wizper`                 |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models) | `chirp_2`                |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models) | `chirp_3`                |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#transcription-models) | `telephony`              |
+| [xAI](/providers/ai-sdk-providers/xai#transcription-models)                     | `default`                |
+| [Cartesia](/providers/ai-sdk-providers/cartesia#transcription-models)           | `ink-whisper`            |
+| [Cartesia](/providers/ai-sdk-providers/cartesia#streaming-transcription-models) | `ink-2`                  |
 
 以上只是 AI SDK 提供商支持的转写模型的一小部分。更多信息，请参阅相应提供商的文档。
