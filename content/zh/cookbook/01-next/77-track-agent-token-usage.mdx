@@ -1,22 +1,21 @@
 ---
-title: 跟踪智能体 Token 用量
-description: 了解如何使用 ToolLoopAgent 跟踪活动上下文窗口。
+title: "追踪智能体 Token 用量"
+description: "了解如何使用 ToolLoopAgent 追踪活动上下文窗口。"
 tags: ['next']
 ---
 
-# 跟踪智能体 Token 用量
+# 追踪智能体 Token 用量
 
 <Note>
-  关于构建智能体的更多信息，请参阅 [ToolLoopAgent
-  文档](/docs/reference/ai-sdk-core/tool-loop-agent)。
+  关于构建智能体的更多信息，请查看 [ToolLoopAgent 文档](/docs/reference/ai-sdk-core/tool-loop-agent)。
 </Note>
 
-在智能体应用中跟踪 Token 消耗有助于监控成本并实施上下文管理策略。
-本指南将展示如何跨步骤跟踪用量，并在智能体的整个生命周期中使其可用。
+在智能体应用中追踪 Token 消耗有助于监控成本并实施上下文管理策略。
+本教程展示如何跨步骤追踪用量，并使其在智能体的整个生命周期中可用。
 
 ## 从基础智能体开始
 
-首先，使用工具设置一个基础的 `ToolLoopAgent`。使用 `InferAgentUIMessage` 定义 `AgentUIMessage` 类型，以便在前端获得类型安全的消息，包括类型化的工具调用和结果。
+首先，使用工具设置一个基础的 `ToolLoopAgent`。使用 `InferAgentUIMessage` 定义 `AgentUIMessage` 类型，以在前端获得类型安全的消息，包括类型化的工具调用和结果。
 
 ```typescript filename='ai/agent.ts'
 import { type InferAgentUIMessage, ToolLoopAgent, tool } from 'ai';
@@ -36,7 +35,7 @@ export const agent = new ToolLoopAgent({
 export type AgentUIMessage = InferAgentUIMessage<typeof agent>;
 ```
 
-创建一个路由处理程序，用于流式传输智能体的响应。使用 `AgentUIMessage` 对来自客户端的消息进行类型化。
+创建一个流式传输智能体响应的路由处理器。使用 `AgentUIMessage` 对来自客户端的消息进行类型化。
 
 ```tsx filename='app/api/chat/route.ts'
 import {
@@ -96,11 +95,11 @@ export default function Chat() {
 }
 ```
 
-## 通过消息元数据访问步骤间的用量
+## 通过消息元数据访问步骤间用量
 
-要跟踪 Token 用量，请使用 `messageMetadata` 回调将其附加到每条消息。首先，定义一个元数据类型，并将其作为第二个泛型参数传递给 `InferAgentUIMessage`。
+要追踪 Token 用量，使用 `messageMetadata` 回调将其附加到每条消息。首先，定义元数据类型，并将其作为第二个泛型参数传递给 `InferAgentUIMessage`。
 
-```typescript filename='ai/agent.ts' highlight="1,15-16"
+```typescript filename='ai/agent.ts' highlight="2-3,20-21"
 import {
   type InferAgentUIMessage,
   type LanguageModelUsage,
@@ -124,7 +123,7 @@ type AgentMetadata = { usage: LanguageModelUsage };
 export type AgentUIMessage = InferAgentUIMessage<typeof agent, AgentMetadata>;
 ```
 
-现在，将 `messageMetadata` 回调添加到路由处理程序。将 `AgentUIMessage` 作为消息泛型传递给 `toUIMessageStream`，以对回调进行类型化。当一个步骤完成时，`finish-step` 部分包含用量数据，你可以将其包含在消息元数据中。
+现在将 `messageMetadata` 回调添加到路由处理器。将 `AgentUIMessage` 作为消息泛型传递给 `toUIMessageStream` 以对回调进行类型化。当一个步骤完成时，`finish-step` 部分包含用量数据，你可以将其包含在消息元数据中。
 
 ```tsx filename='app/api/chat/route.ts' highlight="16-25"
 import {
@@ -155,7 +154,7 @@ export async function POST(req: Request) {
 }
 ```
 
-现在，你可以在客户端访问元数据。`AgentUIMessage` 类型已包含元数据形状，使你能够类型安全地访问 `m.metadata.usage`。
+现在你可以在客户端访问元数据。`AgentUIMessage` 类型已包含元数据结构，使你能够类型安全地访问 `m.metadata.usage`。
 
 ```typescript filename='app/page.tsx' highlight="17-19"
 'use client';
@@ -191,13 +190,13 @@ export default function Chat() {
 }
 ```
 
-## 通过调用选项将用量传回智能体
+## 使用调用选项将用量传回智能体
 
-现在，你已在 UI 中显示了用量数据。但如果你想对这些数据采取行动呢？例如，你可能希望在接近 Token 限制时实现上下文压缩。
+现在你已经在 UI 中显示了用量数据。但如果你想对这些数据采取行动呢？例如，你可能希望在接近 Token 限制时实现上下文压缩。
 
-要操作消息或应用上下文管理策略，你可以使用 `prepareStep` 回调。然而，`prepareStep` 只能访问当前运行中的步骤。在新请求的第一步中，`steps` 为空，导致你无法了解对话在之前的请求中累积了多少 Token。
+要操作消息或应用上下文管理策略，你会使用 `prepareStep` 回调。然而，`prepareStep` 只能访问当前运行中的步骤。在新请求的第一步，`steps` 为空，导致你无法了解对话在之前请求中累积了多少 Token。
 
-为了解决这个问题，将之前消息的用量传回智能体。使用 `callOptionsSchema` 定义数据形状，并使用 `prepareCall` 使其在 `context` 上可用，这样 `prepareStep` 就可以访问它。
+为了解决这个问题，将之前消息的用量传回智能体。使用 `callOptionsSchema` 定义数据结构，并使用 `prepareCall` 使其在 `context` 上可用，这样 `prepareStep` 就可以访问它。
 
 ```typescript filename='ai/agent.ts' highlight="11-13,21-26"
 import {
@@ -232,7 +231,7 @@ type AgentMetadata = { usage: LanguageModelUsage };
 export type AgentUIMessage = InferAgentUIMessage<typeof agent, AgentMetadata>;
 ```
 
-从之前的消息中提取最后一个输入 Token 计数，并将其传递给智能体。
+从之前消息中提取最后一个输入 Token 计数，并将其传递给智能体。
 
 ```tsx filename='app/api/chat/route.ts' highlight="12-14,18-20"
 import {
@@ -272,7 +271,7 @@ export async function POST(req: Request) {
 
 ## 在 prepareStep 和工具中访问用量
 
-通过将用量放在 `context` 上，你可以在 `prepareStep` 中访问它，以做出关于上下文管理的决策，或者将其传递给工具。
+有了 `context` 上的用量，你可以在 `prepareStep` 中访问它来做出关于上下文管理的决策，或者将其传递给工具。
 
 ```typescript filename='ai/agent.ts' highlight="9-11,31-40"
 import {
@@ -312,7 +311,7 @@ export const agent = new ToolLoopAgent({
       (context as TContext)?.lastInputTokens ??
       0;
     console.log('上一步输入 Token：', lastStepUsage);
-    // 你可以使用此信息来实现上下文压缩策略
+    // 你可以使用此信息实现上下文压缩策略
     return {
       context: {
         ...context,
@@ -329,6 +328,6 @@ export type AgentUIMessage = InferAgentUIMessage<typeof agent, AgentMetadata>;
 `prepareStep` 回调在每个步骤之前运行，使你能够访问：
 
 - `steps`：所有之前的步骤及其用量数据
-- `context`：由 `prepareCall` 设置的上下文（来自上一个请求的用量）
+- `context`：由 `prepareCall` 设置的上下文（来自之前请求的用量）
 
-这使你能够跟踪整个对话生命周期中的 Token 消耗，并在接近 Token 限制时实施上下文压缩等策略。
+这使你能够追踪整个对话生命周期中的 Token 消耗，并在接近 Token 限制时实现上下文压缩等策略。

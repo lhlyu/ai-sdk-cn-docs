@@ -1,17 +1,17 @@
 ---
-title: 终端界面
-description: 在交互式终端界面中运行 AI SDK 智能体。
+title: "Terminal UI"
+description: "在交互式终端界面中运行 AI SDK 智能体。"
 ---
 
-# 终端界面
+# Terminal UI
 
-`@ai-sdk/tui` 包允许你在交互式终端界面中运行 `ToolLoopAgent`。它适用于本地开发、演示和内部工具，在这些场景中，终端体验已足够，你无需构建自定义界面。
+`@ai-sdk/tui` 包允许你在交互式终端界面中运行本地 `ToolLoopAgent`，或通过 `ChatTransport` 连接到远程智能体。它适用于本地开发、演示和内部工具，在这些场景中，终端体验已足够，且你无需构建自定义 UI。
 
-终端界面处理提示词输入、流式传输的助手响应、Markdown 渲染、工具卡片、推理部分、滚动以及工具审批提示。
+终端 UI 处理提示词输入、流式传输的助手响应、Markdown 渲染、工具卡片、推理部分、滚动以及工具审批提示。
 
 ## 安装
 
-将 `@ai-sdk/tui` 与 `ai` 以及你使用的提供商包一起安装：
+将 `@ai-sdk/tui` 与 `ai` 及你使用的提供商包一同安装：
 
 <Snippet text={`pnpm add @ai-sdk/tui ai @ai-sdk/openai`} prompt={false} />
 
@@ -49,11 +49,29 @@ await runAgentTUI({
 });
 ```
 
-`runAgentTUI` 会一直运行，直到用户按下 `Esc` 或 `Ctrl+C` 退出。
+`runAgentTUI` 会持续运行，直到用户按 `Esc` 或 `Ctrl+C` 退出。
 
-## 沙箱
+## 连接到远程智能体
 
-当你的智能体工具需要执行环境时，可以通过 `sandbox` 选项传递一个沙箱会话：
+传递 `ChatTransport` 而非 `agent`，以将终端 UI 连接到远程 AI SDK UI 消息端点：
+
+```ts
+import { runAgentTUI } from '@ai-sdk/tui';
+import { DefaultChatTransport } from 'ai';
+
+await runAgentTUI({
+  title: '远程智能体',
+  transport: new DefaultChatTransport({
+    api: 'https://example.com/api/chat',
+  }),
+});
+```
+
+传输层控制端点、身份验证、请求体以及其他远程通信行为。终端 UI 会将其内部聊天 ID 和消息历史记录对传输层契约保持私有。
+
+## 沙盒
+
+当你的智能体工具需要执行环境时，可通过 `sandbox` 选项传递沙盒会话：
 
 ```ts
 import { createJustBashSandbox } from '@ai-sdk/sandbox-just-bash';
@@ -63,13 +81,13 @@ const sandboxSession = await createJustBashSandbox({
 }).createSession();
 
 await runAgentTUI({
-  title: '沙箱智能体',
+  title: '沙盒智能体',
   agent,
   sandbox: sandboxSession.restricted(),
 });
 ```
 
-终端界面会将沙箱作为 `experimental_sandbox` 转发给每次智能体调用。工具描述函数和工具 `execute` 函数可以从其选项中读取沙箱，并将命令或文件操作委托给它。如果模型需要了解工作目录、公共主机名或暴露端口等详细信息，请将沙箱描述添加到你的智能体指令中。
+终端 UI 会将沙盒作为 `experimental_sandbox` 转发给每次智能体调用。工具描述函数和工具 `execute` 函数可以从其选项中读取沙盒，并将命令或文件操作委托给它。如果模型需要了解工作目录、公共主机名或暴露端口等详细信息，请将沙盒描述添加到智能体指令中。
 
 ## 显示选项
 
@@ -86,16 +104,16 @@ await runAgentTUI({
 });
 ```
 
-设置：
+设置项：
 
-- `tools`：控制工具调用的渲染。使用 `"full"` 显示工具输入和输出，`"collapsed"` 仅显示工具卡片，`"auto-collapsed"` 在另一个可见部分出现前显示最新的展开工具，或 `"hidden"` 隐藏工具调用。默认为 `"auto-collapsed"`。
-- `reasoning`：控制推理的渲染。使用 `"full"` 显示推理，`"collapsed"` 仅显示推理卡片，`"auto-collapsed"` 在另一个可见部分出现前显示最新的展开推理，或 `"hidden"` 隐藏推理。默认为 `"auto-collapsed"`。
+- `tools`：控制工具调用的渲染。使用 `"full"` 显示工具输入和输出，`"collapsed"` 仅显示工具卡片，`"auto-collapsed"` 在最新工具展开后直到另一个可见部分出现时折叠，或 `"hidden"` 隐藏工具调用。默认为 `"auto-collapsed"`。
+- `reasoning`：控制推理的渲染。使用 `"full"` 显示推理，`"collapsed"` 仅显示推理卡片，`"auto-collapsed"` 在最新推理展开后直到另一个可见部分出现时折叠，或 `"hidden"` 隐藏推理。默认为 `"auto-collapsed"`。
 - `responseStatistics`：使用 `"outputTokensPerSecond"` 显示输出令牌吞吐量，或 `"outputTokenCount"` 显示输出令牌数量。默认为 `"outputTokensPerSecond"`。
-- `contextSize`：当提供时，终端界面会将总令牌使用量显示为模型上下文窗口的百分比。
+- `contextSize`：当提供时，终端 UI 会将总令牌使用量显示为模型上下文窗口的百分比。
 
 ## 工具审批
 
-`runAgentTUI` 支持 `ToolLoopAgent` 工具审批流程。当智能体发出手动审批请求时，终端界面会提示用户在智能体继续之前批准或拒绝该工具调用。
+`runAgentTUI` 支持 `ToolLoopAgent` 的工具审批流程。当智能体发出手动审批请求时，终端 UI 会提示用户在智能体继续之前批准或拒绝该工具调用。
 
 ```ts
 const agent = new ToolLoopAgent({
@@ -114,7 +132,7 @@ await runAgentTUI({ title: '天气智能体', agent });
 
 ## 兼容性
 
-`runAgentTUI` 专为可以直接从终端用户输入运行的智能体设计。智能体不能需要每次调用的选项，也不能使用结构化输出，因为终端界面无法从自由格式的提示词中推断这些值。
+使用 `agent` 选项时，智能体必须能够直接从终端用户输入运行。它不能需要每次调用的选项，也不能使用结构化输出，因为终端 UI 无法从自由格式的提示词中推断这些值。对于需要自定义请求处理的远程智能体，请使用 `transport`。
 
 对于需要固定提示词、调用选项、结构化输出、自定义结果检查或自定义流处理的示例或应用，请直接使用 `agent.generate()` 或 `agent.stream()`。
 
@@ -129,6 +147,6 @@ await runAgentTUI({ title: '天气智能体', agent });
 
 ## 下一步
 
-- [构建智能体](/docs/agents/building-agents) 用于创建 `ToolLoopAgent` 实例
-- [工具审批](/docs/agents/tool-approvals) 用于配置工具调用的人工审查
-- [runAgentTUI API 参考](/docs/reference/ai-sdk-tui/run-agent-tui) 用于详细的参数文档
+- [构建智能体](/docs/agents/building-agents) 了解如何创建 `ToolLoopAgent` 实例
+- [工具审批](/docs/agents/tool-approvals) 了解如何配置工具调用的人工审核
+- [runAgentTUI API 参考](/docs/reference/ai-sdk-tui/run-agent-tui) 获取详细的参数文档

@@ -1,13 +1,13 @@
 ---
-title: 设置
-description: 了解如何配置 AI SDK。
+title: "设置"
+description: "了解如何配置 AI SDK。"
 ---
 
 # 设置
 
 大型语言模型（LLM）通常提供设置来增强其输出。
 
-所有 AI SDK 函数除了支持模型、[提示词](./prompts)以及特定于提供商的设置外，还支持以下通用设置：
+所有 AI SDK 函数除了模型、[提示词](/docs/foundations/prompts)和特定于提供商的设置外，还支持以下通用设置：
 
 ```ts highlight="3-6"
 const result = await generateText({
@@ -16,17 +16,17 @@ const result = await generateText({
   temperature: 0.3,
   maxRetries: 5,
   timeout: 10000,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
 });
 ```
 
 <Note>
-  某些提供商不支持所有通用设置。如果你在不支持该设置的提供商中使用它，将会生成警告。你可以检查结果对象中的 `warnings` 属性，以查看是否生成了任何警告。
+  某些提供商不支持所有通用设置。如果你对不支持的提供商使用了某个设置，将会生成警告。你可以检查结果对象中的 `warnings` 属性，查看是否生成了任何警告。
 </Note>
 
 ## 语言模型调用选项
 
-语言模型调用选项（`LanguageModelCallOptions`）是影响语言模型如何生成其响应的设置——令牌限制、采样行为、惩罚、停止序列、种子和推理。它们会被转发到底层模型。
+语言模型调用选项（`LanguageModelCallOptions`）是影响语言模型如何生成其响应的设置——包括令牌限制、采样行为、惩罚、停止序列、种子和推理。它们会被转发到底层模型。
 
 ### `maxOutputTokens`
 
@@ -37,21 +37,21 @@ const result = await generateText({
 温度设置。
 
 该值会传递给提供商。取值范围取决于提供商和模型。
-对于大多数提供商，`0` 表示几乎确定性的结果，更高的值表示更多的随机性。
+对于大多数提供商，`0` 表示几乎确定性的结果，而更高的值表示更多的随机性。
 
-建议设置 `temperature` 或 `topP`，但不要同时设置两者。
+建议设置 `temperature` 或 `topP` 中的一个，但不要同时设置两者。
 
 <Note>在 AI SDK 5.0 中，温度不再默认设置为 `0`。</Note>
 
 ### `topP`
 
-核采样。
+核采样（Nucleus sampling）。
 
 该值会传递给提供商。取值范围取决于提供商和模型。
 对于大多数提供商，核采样是一个介于 0 和 1 之间的数字。
 例如，0.1 意味着只考虑概率质量最高的前 10% 的令牌。
 
-建议设置 `temperature` 或 `topP`，但不要同时设置两者。
+建议设置 `temperature` 或 `topP` 中的一个，但不要同时设置两者。
 
 ### `topK`
 
@@ -62,14 +62,14 @@ const result = await generateText({
 
 ### `presencePenalty`
 
-存在惩罚影响模型重复提示词中已有信息的可能性。
+存在惩罚会影响模型重复提示词中已有信息的可能性。
 
 该值会传递给提供商。取值范围取决于提供商和模型。
 对于大多数提供商，`0` 表示没有惩罚。
 
 ### `frequencyPenalty`
 
-频率惩罚影响模型重复使用相同单词或短语的可能性。
+频率惩罚会影响模型重复使用相同单词或短语的可能性。
 
 该值会传递给提供商。取值范围取决于提供商和模型。
 对于大多数提供商，`0` 表示没有惩罚。
@@ -91,16 +91,16 @@ const result = await generateText({
 控制模型在生成响应之前执行多少推理。
 
 | 值                    | 行为                                                             |
-| -------------------- | ---------------------------------------------------------------- |
-| `'provider-default'` | 使用提供商的默认推理行为（省略时的默认值）                         |
-| `'none'`             | 禁用推理                                                         |
-| `'minimal'`          | 最低限度的推理                                                   |
-| `'low'`              | 快速、简洁的推理                                                 |
-| `'medium'`           | 平衡的推理                                                       |
-| `'high'`             | 彻底的推理                                                       |
-| `'xhigh'`            | 最大推理                                                         |
+| -------------------- | -------------------------------------------------------------------- |
+| `'provider-default'` | 使用提供商的默认推理行为（省略时的默认值） |
+| `'none'`             | 禁用推理                                                    |
+| `'minimal'`          | 最低限度的推理                                               |
+| `'low'`              | 快速、简洁的推理                                              |
+| `'medium'`           | 平衡的推理                                                   |
+| `'high'`             | 彻底的推理                                                   |
+| `'xhigh'`            | 最大推理                                                    |
 
-如果你还在 `providerOptions` 中设置了与推理相关的选项（例如 `openai.reasoningEffort` 或 `anthropic.thinking`），则提供商特定的选项优先，顶层的 `reasoning` 参数将被忽略。
+如果你还在 `providerOptions` 中设置了与推理相关的选项（例如 `openai.reasoningEffort` 或 `anthropic.thinking`），则提供商特定选项优先，顶层的 `reasoning` 参数将被忽略。
 
 有关每个提供商的映射以及从 `providerOptions` 迁移的详细信息，请参阅[推理指南](/docs/ai-sdk-core/reasoning)。
 
@@ -110,7 +110,7 @@ const result = await generateText({
 
 ### `maxRetries`
 
-最大重试次数。设置为 0 以禁用重试。默认值：`2`。
+最大重试次数。设置为 0 可禁用重试。默认值：`2`。
 
 ### `abortSignal`
 
@@ -124,7 +124,7 @@ const result = await generateText({
 ```ts
 const result = await generateText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   abortSignal: AbortSignal.timeout(5000), // 5 秒
 });
 ```
@@ -139,16 +139,16 @@ const result = await generateText({
 
 - `totalMs`：整个调用（包括所有步骤）的总超时时间。
 - `stepMs`：每个单独步骤（LLM 调用）的超时时间。这对于多步骤生成非常有用，你可以独立限制每个步骤的时间。
-- `chunkMs`：流块之间的超时时间（仅限流式传输）。如果在此时间内没有收到新块，调用将中止。这对于检测停滞的流非常有用。
-- `toolMs`：所有工具执行的默认超时时间。如果某个工具耗时过长，它将中止并返回工具错误，以便模型可以响应或重试。
-- `tools`：使用 `{toolName}Ms` 键（例如 `weatherMs`、`slowApiMs`）的每个工具超时覆盖。优先于 `toolMs`。工具名称会进行类型检查以支持自动补全。
+- `chunkMs`：流块之间的超时时间（仅限流式传输）。如果在此时间内未收到新块，调用将中止。这对于检测停滞的流非常有用。
+- `toolMs`：所有工具执行的默认超时时间。如果某个工具执行时间过长，它将中止并返回工具错误，以便模型可以响应或重试。
+- `tools`：使用 `{toolName}Ms` 键（例如 `weatherMs`、`slowApiMs`）的每个工具超时覆盖。优先级高于 `toolMs`。工具名称会进行类型检查以支持自动补全。
 
 #### 示例：5 秒超时（数字格式）
 
 ```ts
 const result = await generateText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   timeout: 5000, // 5 秒
 });
 ```
@@ -158,7 +158,7 @@ const result = await generateText({
 ```ts
 const result = await generateText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   timeout: { totalMs: 5000 }, // 5 秒
 });
 ```
@@ -168,7 +168,7 @@ const result = await generateText({
 ```ts
 const result = await generateText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   timeout: { stepMs: 10000 }, // 每步 10 秒
 });
 ```
@@ -178,7 +178,7 @@ const result = await generateText({
 ```ts
 const result = await generateText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   timeout: {
     totalMs: 60000, // 总共 60 秒
     stepMs: 10000, // 每步 10 秒
@@ -191,7 +191,7 @@ const result = await generateText({
 ```ts
 const result = streamText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   timeout: { chunkMs: 5000 }, // 如果 5 秒内未收到块则中止
 });
 ```
@@ -203,9 +203,9 @@ const result = await generateText({
   model: __MODEL__,
   tools: { weather: weatherTool, slowApi: slowApiTool },
   timeout: {
-    toolMs: 5000, // 所有工具的默认 5 秒
+    toolMs: 5000, // 所有工具默认 5 秒
   },
-  prompt: '旧金山的天气如何？',
+  prompt: 'What is the weather in San Francisco?',
 });
 ```
 
@@ -216,13 +216,13 @@ const result = await generateText({
   model: __MODEL__,
   tools: { weather: weatherTool, slowApi: slowApiTool },
   timeout: {
-    toolMs: 5000, // 所有工具的默认值
+    toolMs: 5000, // 所有工具默认
     tools: {
       weatherMs: 3000, // 天气工具 3 秒
       slowApiMs: 10000, // 慢速 API 工具 10 秒
     },
   },
-  prompt: '旧金山的天气如何？',
+  prompt: 'What is the weather in San Francisco?',
 });
 ```
 
@@ -240,7 +240,7 @@ __PROVIDER_IMPORT__;
 
 const result = await generateText({
   model: __MODEL__,
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
   headers: {
     'Prompt-Id': 'my-prompt-id',
   },
@@ -248,6 +248,6 @@ const result = await generateText({
 ```
 
 <Note>
-  `headers` 设置是针对特定请求的标头。你也可以在提供商配置中设置
+  `headers` 设置用于请求特定的标头。你也可以在提供商配置中设置
   `headers`。这些标头将随提供商发出的每个请求一起发送。
 </Note>

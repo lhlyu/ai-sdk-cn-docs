@@ -1,28 +1,31 @@
 ---
-title: 流式传输自定义数据
-description: 学习如何将自定义数据从服务器流式传输到客户端。
+title: "流式传输自定义数据"
+description: "学习如何从服务器向客户端流式传输自定义数据。"
 ---
 
 # 流式传输自定义数据
 
-在模型响应之外发送额外数据通常非常有用。例如，你可能需要发送状态信息、存储后的消息 ID，或语言模型引用的内容引用。
+在模型响应之外发送额外数据通常非常有用。
+例如，你可能想要发送状态信息、存储后的消息 ID，
+或语言模型引用的内容参考。
 
-AI SDK 提供了多个辅助工具，让你能够将额外数据流式传输到客户端，并将其附加到 `UIMessage` 的 parts 数组中：
+AI SDK 提供了多个辅助工具，让你能够将额外数据流式传输到客户端，
+并将其附加到 `UIMessage` 的 parts 数组中：
 
 - `createUIMessageStream`：创建一个数据流
 - `createUIMessageStreamResponse`：创建一个流式传输数据的响应对象
-- `pipeUIMessageStreamToResponse`：将数据流传输到服务器响应对象
+- `pipeUIMessageStreamToResponse`：将数据流管道化到服务器响应对象
 
-这些数据作为响应流的一部分，通过服务器发送事件（Server-Sent Events）进行流式传输。
+数据作为响应流的一部分，使用服务器发送事件（Server-Sent Events）进行流式传输。
 
 ## 设置类型安全的数据流式传输
 
-首先，定义你的自定义消息类型，并包含数据部分 schema 以确保类型安全：
+首先，定义你的自定义消息类型，并附带数据部分模式以实现类型安全：
 
 ```tsx filename="ai/types.ts"
 import { UIMessage } from 'ai';
 
-// 定义自定义消息类型，包含数据部分 schema
+// 定义你的自定义消息类型，附带数据部分模式
 export type MyUIMessage = UIMessage<
   never, // 元数据类型
   {
@@ -35,7 +38,7 @@ export type MyUIMessage = UIMessage<
       message: string;
       level: 'info' | 'warning' | 'error';
     };
-  } // 数据类型
+  } // 数据部分类型
 >;
 ```
 
@@ -60,14 +63,14 @@ export async function POST(req: Request) {
 
   const stream = createUIMessageStream<MyUIMessage>({
     execute: ({ writer }) => {
-      // 1. 发送初始状态（临时 - 不会添加到消息历史中）
+      // 1. 发送初始状态（瞬态 - 不会添加到消息历史中）
       writer.write({
         type: 'data-notification',
         data: { message: '正在处理你的请求...', level: 'info' },
         transient: true, // 此部分不会添加到消息历史中
       });
 
-      // 2. 发送来源（适用于 RAG 场景）
+      // 2. 发送来源（对 RAG 用例很有用）
       writer.write({
         type: 'source',
         value: {
@@ -83,25 +86,25 @@ export async function POST(req: Request) {
       writer.write({
         type: 'data-weather',
         id: 'weather-1',
-        data: { city: '旧金山', status: 'loading' },
+        data: { city: 'San Francisco', status: 'loading' },
       });
 
       const result = streamText({
         model: __MODEL__,
         messages: await convertToModelMessages(messages),
         onEnd() {
-          // 4. 更新同一数据部分（协调）
+          // 4. 更新相同的数据部分（协调）
           writer.write({
             type: 'data-weather',
             id: 'weather-1', // 相同 ID = 更新现有部分
             data: {
-              city: '旧金山',
-              weather: '晴朗',
+              city: 'San Francisco',
+              weather: 'sunny',
               status: 'success',
             },
           });
 
-          // 5. 发送完成通知（临时）
+          // 5. 发送完成通知（瞬态）
           writer.write({
             type: 'data-notification',
             data: { message: '请求已完成', level: 'info' },
@@ -119,10 +122,11 @@ export async function POST(req: Request) {
 ```
 
 <Note>
-  你也可以从自定义后端（例如 Python / FastAPI）发送流数据，使用 [UI 消息流协议](/docs/ai-sdk-ui/stream-protocol#ui-message-stream-protocol)。
+  你也可以从自定义后端（例如 Python / FastAPI）发送流数据，
+  使用 [UI 消息流协议](/docs/ai-sdk-ui/stream-protocol#data-stream-protocol)。
 </Note>
 
-## 可流式数据类型
+## 可流式传输数据的类型
 
 ### 数据部分（持久化）
 
@@ -132,13 +136,13 @@ export async function POST(req: Request) {
 writer.write({
   type: 'data-weather',
   id: 'weather-1', // 可选：启用协调
-  data: { city: '旧金山', status: 'loading' },
+  data: { city: 'San Francisco', status: 'loading' },
 });
 ```
 
 ### 来源
 
-来源对于 RAG 实现非常有用，可以展示引用了哪些文档或 URL：
+来源对于 RAG 实现非常有用，你可以展示引用了哪些文档或 URL：
 
 ```tsx
 writer.write({
@@ -153,9 +157,9 @@ writer.write({
 });
 ```
 
-### 临时数据部分（短暂）
+### 瞬态数据部分（临时）
 
-临时部分会发送到客户端，但不会添加到消息历史中。它们只能通过 `useChat` 的 `onData` 处理器访问：
+瞬态部分会发送到客户端，但不会添加到消息历史中。它们只能通过 `onData` useChat 处理器访问：
 
 ```tsx
 // 服务器端
@@ -184,15 +188,15 @@ const { messages } = useChat({
 - **协作工件** - 实时更新代码、文档或设计
 - **渐进式数据加载** - 显示加载状态，然后转换为最终结果
 - **实时状态更新** - 更新进度条、计数器或状态指示器
-- **交互式组件** - 构建基于用户交互演变的 UI 元素
+- **交互式组件** - 构建基于用户交互而演变的 UI 元素
 
-协调会自动进行——只需在写入流时使用相同的 `id` 即可。
+协调会自动发生——只需在写入流时使用相同的 `id`。
 
 ## 在客户端处理数据
 
 ### 使用 onData 回调
 
-`onData` 回调对于处理流式数据（尤其是临时部分）至关重要：
+`onData` 回调对于处理流式数据至关重要，尤其是瞬态部分：
 
 ```tsx filename="page.tsx"
 import { useChat } from '@ai-sdk/react';
@@ -201,7 +205,7 @@ import type { MyUIMessage } from '@/ai/types';
 const { messages } = useChat<MyUIMessage>({
   api: '/api/chat',
   onData: dataPart => {
-    // 处理所有到达的数据部分（包括临时部分）
+    // 处理所有到达的数据部分（包括瞬态部分）
     console.log('收到数据部分:', dataPart);
 
     // 处理不同类型的数据部分
@@ -209,7 +213,7 @@ const { messages } = useChat<MyUIMessage>({
       console.log('天气更新:', dataPart.data);
     }
 
-    // 处理临时通知（仅在此处可用，不在 message.parts 中）
+    // 处理瞬态通知（仅在此处可用，不在 message.parts 中）
     if (dataPart.type === 'data-notification') {
       showToast(dataPart.data.message, dataPart.data.level);
     }
@@ -217,7 +221,7 @@ const { messages } = useChat<MyUIMessage>({
 });
 ```
 
-**重要提示：** 临时数据部分**仅**通过 `onData` 回调可用。它们不会出现在 `message.parts` 数组中，因为它们不会被添加到消息历史中。
+**重要提示：** 瞬态数据部分**仅**通过 `onData` 回调可用。它们不会出现在 `message.parts` 数组中，因为它们不会被添加到消息历史中。
 
 ### 渲染持久化数据部分
 
@@ -279,7 +283,7 @@ export default function Chat() {
   const { messages, sendMessage } = useChat<MyUIMessage>({
     api: '/api/chat',
     onData: dataPart => {
-      // 处理临时通知
+      // 处理瞬态通知
       if (dataPart.type === 'data-notification') {
         console.log('通知:', dataPart.data.message);
       }
@@ -335,25 +339,25 @@ export default function Chat() {
 }
 ```
 
-## 使用场景
+## 用例
 
 - **RAG 应用** - 流式传输来源和检索到的文档
 - **实时状态** - 显示加载状态和进度更新
 - **协作工具** - 流式传输共享工件的实时更新
 - **分析** - 发送使用数据而不占用消息历史
-- **通知** - 显示临时提醒和状态消息
+- **通知** - 显示临时警报和状态消息
 
-## 消息元数据 vs 数据部分
+## 消息元数据与数据部分
 
-[消息元数据](/docs/ai-sdk-ui/message-metadata)和数据部分都可以让你在消息之外发送额外信息，但它们服务于不同的目的：
+[消息元数据](/docs/ai-sdk-ui/message-metadata)和数据部分都允许你随消息发送额外信息，但它们服务于不同的目的：
 
 ### 消息元数据
 
-消息元数据最适合描述整个消息的**消息级别信息**：
+消息元数据最适合用于描述消息整体的**消息级别信息**：
 
-- 通过 `message.metadata` 附加到消息级别
+- 通过 `message.metadata` 附加在消息级别
 - 使用 `toUIMessageStream` 中的 `messageMetadata` 回调发送
-- 适用于：时间戳、模型信息、令牌使用量、用户上下文
+- 适用于：时间戳、模型信息、Token 使用量、用户上下文
 - 通过自定义元数据类型实现类型安全
 
 ```ts
@@ -376,12 +380,12 @@ return createUIMessageStreamResponse({
 
 ### 数据部分
 
-数据部分最适合流式传输**动态任意数据**：
+数据部分最适合用于流式传输**动态任意数据**：
 
 - 通过 `message.parts` 添加到消息 parts 数组
-- 使用 `createUIMessageStream` 和 `writer.write()` 进行流式传输
+- 使用 `createUIMessageStream` 和 `writer.write()` 流式传输
 - 可以使用相同 ID 进行协调/更新
-- 支持不持久化的临时部分
+- 支持不持久化的瞬态部分
 - 适用于：动态内容、加载状态、交互式组件
 
 ```ts
@@ -389,7 +393,7 @@ return createUIMessageStreamResponse({
 writer.write({
   type: 'data-weather',
   id: 'weather-1',
-  data: { city: '旧金山', status: 'loading' },
+  data: { city: 'San Francisco', status: 'loading' },
 });
 ```
 

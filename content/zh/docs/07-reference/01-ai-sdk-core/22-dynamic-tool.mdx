@@ -1,27 +1,27 @@
 ---
-title: dynamicTool
-description: 用于创建未知类型动态工具的辅助函数
+title: "dynamicTool"
+description: "用于创建类型未知的动态工具的辅助函数"
 ---
 
 # `dynamicTool()`
 
-`dynamicTool` 函数用于创建在编译时输入和输出类型未知的工具。这在以下场景中非常有用：
+`dynamicTool` 函数用于创建编译时输入和输出类型未知的工具。这在以下场景中非常有用：
 
 - 无模式的 MCP（模型上下文协议）工具
-- 运行时加载的用户定义函数
-- 从外部源或数据库加载的工具
-- 基于用户输入动态生成工具
+- 运行时加载的用户自定义函数
+- 从外部来源或数据库加载的工具
+- 基于用户输入动态生成的工具
 
-与常规的 `tool` 函数不同，`dynamicTool` 接受并返回 `unknown` 类型，使您能够处理具有运行时确定模式的工具。
+与常规的 `tool` 函数不同，`dynamicTool` 接受并返回 `unknown` 类型，使您能够处理运行时确定模式的工具。
 
-```ts highlight={"1,4,9,10,11"}
+```ts highlight={"1,4,9,11"}
 import { dynamicTool } from 'ai';
 import { z } from 'zod';
 
 export const customTool = dynamicTool({
   description: '执行自定义用户定义函数',
   inputSchema: z.object({}),
-  // input 类型为 'unknown'
+  // input 的类型为 'unknown'
   execute: async input => {
     const { action, parameters } = input as any;
 
@@ -70,13 +70,13 @@ export const customTool = dynamicTool({
               isOptional: true,
               type: 'boolean | ((input: unknown, options: { toolCallId: string; messages: ModelMessage[]; context: Context }) => boolean | Promise<boolean>)',
               description:
-                '已弃用。对于 `generateText`、`streamText` 和 `ToolLoopAgent`，请改用 `toolApproval` 配置审批。现有的 `needsApproval` 用法仍可作为兼容性回退。使用时，可以是布尔值或接收工具输入和执行元数据的函数。'
+                '已弃用。对于 `generateText`、`streamText` 和 `ToolLoopAgent`，请改用 `toolApproval` 配置审批。现有的 `needsApproval` 用法仍可作为兼容性回退。使用时，可以是布尔值或接收工具输入及执行元数据的函数。'
             },
             {
               name: 'inputSchema',
               type: 'FlexibleSchema<unknown>',
               description:
-                '工具期望的输入模式。虽然类型为 unknown，但仍需要模式进行验证。对于完全动态的输入，可以使用带有 z.unknown() 或 z.any() 的 Zod 模式。'
+                '工具期望的输入模式。虽然类型为 unknown，但仍需要模式进行验证。对于完全动态的输入，您可以使用带有 z.unknown() 或 z.any() 的 Zod 模式。'
             },
             {
               name: 'execute',
@@ -123,7 +123,7 @@ export const customTool = dynamicTool({
               name: 'toModelOutput',
               isOptional: true,
               type: '({toolCallId: string; input: unknown; output: unknown}) => ToolResultOutput | PromiseLike<ToolResultOutput>',
-              description: '可选的转换函数，将工具结果映射为语言模型可用的输出。'
+              description: '可选的转换函数，将工具结果映射为语言模型可使用的输出。'
             },
             {
               name: 'onInputStart',
@@ -169,7 +169,7 @@ export const customTool = dynamicTool({
 
 ### 返回值
 
-一个 `Tool<unknown, unknown>`，类型为 `'dynamic'`，可与 `generateText`、`streamText` 和其他 AI SDK 函数一起使用。
+一个 `Tool<unknown, unknown>`，类型为 `'dynamic'`，可与 `generateText`、`streamText` 及其他 AI SDK 函数一起使用。
 
 ## 类型安全用法
 
@@ -179,9 +179,9 @@ export const customTool = dynamicTool({
 const result = await generateText({
   model: __MODEL__,
   tools: {
-    // 具有已知类型的静态工具
+    // 类型已知的静态工具
     weather: weatherTool,
-    // 具有未知类型的动态工具
+    // 类型未知的动态工具
     custom: dynamicTool({
       /* ... */
     }),

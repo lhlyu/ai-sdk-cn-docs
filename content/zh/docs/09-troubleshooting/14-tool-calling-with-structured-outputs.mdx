@@ -1,6 +1,6 @@
 ---
-title: 结合结构化输出的工具调用
-description: 排查工具调用与结构化输出生成结合时的问题
+title: "结合结构化输出的工具调用"
+description: "排查工具调用与结构化输出生成结合使用时的问题"
 ---
 
 # 结合结构化输出的工具调用
@@ -11,13 +11,13 @@ description: 排查工具调用与结构化输出生成结合时的问题
 
 ## 背景
 
-要使用结构化输出进行工具调用，请使用带有 `output` 选项的 `generateText` 或 `streamText`。
+如需在工具调用中使用结构化输出，请使用 `generateText` 或 `streamText` 并指定 `output` 选项。
 
-**重要**：当在工具调用中使用 `output` 时，结构化输出生成会在执行流程中计为一个额外的步骤。
+**重要提示**：在工具调用中使用 `output` 时，结构化输出生成会作为执行流程中的一个额外步骤。
 
 ## 解决方案
 
-当在工具调用中使用 `output` 时，请调整你的 `stopWhen` 条件，以计入结构化输出生成所需的额外步骤：
+在工具调用中使用 `output` 时，请调整 `stopWhen` 条件，以计入结构化输出生成所需的额外步骤：
 
 ```tsx
 const result = await generateText({
@@ -30,7 +30,7 @@ const result = await generateText({
   }),
   tools: {
     analyze: tool({
-      description: '分析数据',
+      description: 'Analyze data',
       inputSchema: z.object({
         data: z.string(),
       }),
@@ -39,10 +39,10 @@ const result = await generateText({
       }),
     },
   },
-  // 在你预期的步骤数上至少加 1，以计入结构化输出
+  // 在预期步骤数基础上至少加 1，以计入结构化输出
   stopWhen: isStepCount(3), // 现在计入：工具调用 + 工具结果 + 结构化输出
-  prompt: '分析数据并提供摘要',
+  prompt: 'Analyze the data and provide a summary',
 });
 ```
 
-有关在 `generateText` 和 `streamText` 中使用结构化输出的更多信息，请参阅[生成结构化数据](/docs/ai-sdk-core/generating-structured-data#structured-outputs-with-generatetext-and-streamtext)。
+有关在 `generateText` 和 `streamText` 中使用结构化输出的更多信息，请参阅[生成结构化数据](/docs/ai-sdk-core/generating-structured-data#generating-structured-outputs)。

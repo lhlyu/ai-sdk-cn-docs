@@ -5,11 +5,11 @@ description: "了解如何使用 AI SDK 的 Anthropic 提供商。"
 
 # Anthropic 提供商
 
-[Anthropic](https://www.anthropic.com/) 提供商包含对 [Anthropic Messages API](https://docs.anthropic.com/claude/reference/messages_post) 的语言模型支持。
+[Anthropic](https://www.anthropic.com/) 提供商为 [Anthropic Messages API](https://docs.anthropic.com/claude/reference/messages_post) 提供语言模型支持。
 
-## 设置
+## 安装
 
-Anthropic 提供商在 `@ai-sdk/anthropic` 模块中可用。你可以通过以下命令安装：
+Anthropic 提供商位于 `@ai-sdk/anthropic` 模块中。你可以通过以下命令安装：
 
 <InstallPackages packages="@ai-sdk/anthropic" />
 
@@ -36,30 +36,30 @@ const anthropic = createAnthropic({
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
-  默认前缀是 `https://api.anthropic.com/v1`。
+  默认前缀为 `https://api.anthropic.com/v1`。
 
 - **apiKey** _string_
 
-  通过 `x-api-key` 标头发送的 API 密钥。
+  通过 `x-api-key` 头部发送的 API 密钥。
   默认为 `ANTHROPIC_API_KEY` 环境变量。
-  `apiKey` 或 `authToken` 只需提供其一。
+  只需要 `apiKey` 或 `authToken` 中的一个。
 
 - **authToken** _string_
 
-  通过 `Authorization: Bearer` 标头发送的认证令牌。
+  通过 `Authorization: Bearer` 头部发送的身份验证令牌。
   默认为 `ANTHROPIC_AUTH_TOKEN` 环境变量。
-  `apiKey` 或 `authToken` 只需提供其一。
+  只需要 `apiKey` 或 `authToken` 中的一个。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  包含在请求中的自定义头部。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  默认为全局 `fetch` 函数。
+  默认为全局的 `fetch` 函数。
   你可以将其用作拦截请求的中间件，
-  或为测试等场景提供自定义 fetch 实现。
+  或为测试等场景提供自定义的 fetch 实现。
 
 ## 语言模型
 
@@ -89,11 +89,11 @@ const { text } = await generateText({
 });
 ```
 
-Anthropic 语言模型也可以在 `streamText` 函数中使用，
-并支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成
+Anthropic 语言模型也可以用于 `streamText` 函数，
+并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
-Anthropic 模型提供以下可选的提供商选项：
+以下是为 Anthropic 模型提供的可选提供商选项：
 
 - `disableParallelToolUse` _boolean_
 
@@ -140,7 +140,7 @@ Anthropic 模型提供以下可选的提供商选项：
 
 - `metadata` _object_
 
-  可选。要随请求包含的元数据。有关详细信息，请参阅 [Anthropic API 文档](https://platform.claude.com/docs/en/api/messages/create)。
+  可选。包含在请求中的元数据。详情请参见 [Anthropic API 文档](https://platform.claude.com/docs/en/api/messages/create)。
   - `userId` _string_ - 最终用户的外部标识符。应为 UUID、哈希或其他不透明标识符。不得包含 PII。
 
 ### 结构化输出和工具输入流式传输
@@ -167,13 +167,13 @@ const result = streamText({
       },
     }),
   },
-  prompt: '将一篇短篇小说写入 story.txt',
+  prompt: '写一个短篇故事到 story.txt',
 });
 ```
 
 ### Effort
 
-Anthropic 为 `claude-opus-4-5` 引入了 `effort` 选项，该选项影响思考、文本响应和函数调用。Effort 默认为 `high`，你可以将其设置为 `medium` 或 `low` 以节省令牌并降低最终令牌延迟 (TTLT)。`claude-opus-4-7`、`claude-opus-4-8`、`claude-fable-5` 和 `claude-sonnet-5` 额外支持 `xhigh` 以获得最大推理努力。
+Anthropic 为 `claude-opus-4-5` 引入了 `effort` 选项，该选项影响思考、文本响应和函数调用。Effort 默认为 `high`，你可以将其设置为 `medium` 或 `low` 以节省令牌并降低到最后令牌的延迟（TTLT）。`claude-opus-4-7`、`claude-opus-4-8`、`claude-fable-5` 和 `claude-sonnet-5` 还额外支持 `xhigh` 以获得最大推理努力。
 
 ```ts highlight="8-10"
 import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
@@ -216,9 +216,9 @@ const { text } = await generateText({
 
 ### 任务预算
 
-`claude-opus-4-7` 支持 `taskBudget` 选项，该选项告知模型可用于一个智能体轮次的总令牌预算。模型利用此信息来优先处理工作、提前规划，并在预算消耗殆尽时优雅地结束。
+`claude-opus-4-7` 支持 `taskBudget` 选项，该选项告知模型在智能体回合中可用的总令牌预算。模型利用此信息来优先处理工作、提前规划并在预算消耗时优雅地收尾。
 
-任务预算是指示性的——它们不强制执行硬性令牌限制。模型会尝试保持在预算内，但实际使用情况可能会有所不同。
+任务预算仅供参考——它们不强制执行硬性令牌限制。模型会尝试保持在预算内，但实际使用情况可能会有所不同。
 
 ```ts highlight="8-13"
 import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
@@ -238,21 +238,21 @@ const { text } = await generateText({
 });
 ```
 
-对于压缩并重启上下文的长时间运行的智能体，你可以使用 `remaining` 字段将剩余预算向前结转：
+对于压缩并重新启动上下文的长时间运行的智能体，你可以使用 `remaining` 字段将剩余预算向前传递：
 
 ```ts
 taskBudget: {
   type: 'tokens',
   total: 400000,
-  remaining: 215000, // 先前压缩掉的上下文之后剩余的预算
+  remaining: 215000, // 先前压缩掉的上下文后剩余的预算
 }
 ```
 
 `taskBudget` 对象接受：
 
 - `type` _"tokens"_ - 预算类型。目前仅支持 `"tokens"`。
-- `total` _number_ - 智能体轮次的总任务预算。最小 20,000。
-- `remaining` _number_ - 先前压缩掉的上下文之后剩余的预算。必须在 0 和 `total` 之间。如果省略，默认为 `total`。
+- `total` _number_ - 智能体回合的总任务预算。最小值为 20,000。
+- `remaining` _number_ - 先前压缩掉的上下文后剩余的预算。必须在 0 和 `total` 之间。如果省略，默认为 `total`。
 
 ### 数据驻留
 
@@ -277,11 +277,11 @@ const { text } = await generateText({
 
 ### 安全分类器和回退
 
-Claude Fable 5 具有安全措施，会限制其在网络安全、生物学和化学等某些领域的性能，并且每个请求都会运行自动安全检查。
+Claude Fable 5 具有安全防护措施，限制了其在网络安全、生物学和化学等某些领域的性能，并且每个请求都会运行自动安全检查。
 
 当其中一项检查阻止请求时，API 不会回答该请求。相反，它会返回一个分类器阻止：一个带有 `refusal` 停止原因和可选的 `stop_details` 对象的 `200` 响应，该对象描述了触发阻止的类别。AI SDK 将其作为 `content-filter` 完成原因呈现，详细信息可在 `providerMetadata.anthropic.stopDetails` 上获得。
 
-分类器阻止如下所示：
+分类器阻止看起来像这样：
 
 ```json
 {
@@ -299,7 +299,7 @@ Claude Fable 5 具有安全措施，会限制其在网络安全、生物学和�
 
 根据完成原因进行分支，而不是根据 `stop_details` 的存在——API 可能返回一个没有任何详细信息的拒绝。
 
-为避免收到分类器阻止，请传递 `fallbacks` 选项。当主模型的分类器阻止一个轮次时，API 会自动在服务器端使用链中的下一个模型重试该轮次，并返回该模型的答案。所需的 beta 标头会为你添加。
+要避免收到分类器阻止，请传递 `fallbacks` 选项。当主模型的分类器阻止一个回合时，API 会自动在服务器端使用链中的下一个模型重试该回合，并返回该模型的答案。所需的 beta 头部会为你添加。
 
 ```ts highlight="8-10"
 import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
@@ -318,10 +318,10 @@ const { text } = await generateText({
 
 每个回退条目都需要一个 `model`，并且可以额外覆盖该尝试的 `max_tokens`、`thinking`、`output_config` 和 `speed`。
 
-当回退服务于该轮次时，它会在每个模型的使用情况细分（`usage.iterations`）中记录为 `fallback_message` 条目。AI SDK 在 `providerMetadata.anthropic.iterations` 上公开此细分，因此你可以检测是否运行了回退：
+当回退服务于该回合时，它会在每个模型的使用情况细分（`usage.iterations`）中记录为 `fallback_message` 条目。AI SDK 在 `providerMetadata.anthropic.iterations` 上公开此细分，因此你可以检测是否运行了回退：
 
 ```ts
-// 使用如上所示的 `streamText` 调用设置 `result`，传递 `fallbacks`，然后消费流
+// 使用如上所示的 `fallbacks` 调用 `streamText` 设置 `result`，然后消费流
 
 const { iterations } =
   (await result.finalStep).providerMetadata?.anthropic ?? {};
@@ -329,7 +329,7 @@ const servedByFallback = iterations?.some(
   iteration => iteration.type === 'fallback_message',
 );
 
-console.log('由回退服务：', servedByFallback);
+console.log('由回退服务:', servedByFallback);
 ```
 
 ### 推理
@@ -339,7 +339,7 @@ Anthropic 模型支持扩展思考，Claude 在提供最终答案之前会展示
 #### 自适应思考
 
 对于较新的模型（`claude-sonnet-4-6`、`claude-opus-4-6` 及更高版本），请使用自适应思考。
-Claude 会根据提示的复杂程度自动决定使用多少推理。
+Claude 会根据提示的复杂性自动决定使用多少推理。
 
 ```ts highlight="4,8-10"
 import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
@@ -375,7 +375,7 @@ const { text } = await generateText({
 });
 ```
 
-##### 思考显示 (Opus 4.7+)
+##### 思考显示（Opus 4.7+）
 
 从 `claude-opus-4-7` 开始，思考内容默认从响应中省略——思考块存在于流中，但其文本为空。要接收推理输出，请设置 `display: 'summarized'`：
 
@@ -395,13 +395,15 @@ console.log(text);
 ```
 
 <Note>
-  如果你使用 `claude-opus-4-7` 向用户流式传输推理，默认的 `"omitted"` 显示会导致输出开始前出现长时间暂停。设置 `display: "summarized"` 以在思考期间恢复可见的进度。
+  如果你使用 `claude-opus-4-7` 向用户流式传输推理，默认的
+  `"omitted"` 显示将导致输出开始前出现长时间暂停。设置
+  `display: "summarized"` 以在思考期间恢复可见的进度。
 </Note>
 
 #### 基于预算的思考
 
-对于较早的模型（`claude-opus-4-20250514`、`claude-sonnet-4-20250514`、`claude-sonnet-4-5-20250929`），
-请使用 `type: 'enabled'` 并指定明确的令牌预算：
+对于早期模型（`claude-opus-4-20250514`、`claude-sonnet-4-20250514`、`claude-sonnet-4-5-20250929`），
+请使用带有显式令牌预算的 `type: 'enabled'`：
 
 ```ts highlight="4,8-10"
 import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
@@ -422,11 +424,11 @@ console.log(reasoning); // 推理详情，包括已编辑的推理
 console.log(text); // 文本响应
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 上下文管理
 
-Anthropic 的上下文管理功能允许你在满足某些条件时自动管理对话上下文，方法是清除工具使用或思考内容。这有助于优化令牌使用并更有效地管理长对话。
+Anthropic 的上下文管理功能允许你在满足某些条件时自动管理对话上下文，通过清除工具使用或思考内容来优化令牌使用并更有效地管理长对话。
 
 你可以使用 `contextManagement` 提供商选项配置上下文管理：
 
@@ -465,19 +467,19 @@ console.log(result.providerMetadata?.anthropic?.contextManagement);
 
 ##### 清除工具使用
 
-`clear_tool_uses_20250919` 编辑类型从对话历史记录中移除旧的工具调用/结果对：
+`clear_tool_uses_20250919` 编辑类型从对话历史中移除旧的工具调用/结果对：
 
 - **trigger** - 触发清除的条件（例如，`{ type: 'input_tokens', value: 10000 }` 或 `{ type: 'tool_uses', value: 10 }`）
-- **keep** - 要保留的最近工具使用次数（例如，`{ type: 'tool_uses', value: 5 }`）
-- **clearAtLeast** - 要清除的最小量（例如，`{ type: 'input_tokens', value: 1000 }`）
+- **keep** - 保留多少最近的工具使用（例如，`{ type: 'tool_uses', value: 5 }`）
+- **clearAtLeast** - 最少清除量（例如，`{ type: 'input_tokens', value: 1000 }`）
 - **clearToolInputs** - 是否清除工具输入参数（布尔值）
-- **excludeTools** - 从不清除的工具名称数组
+- **excludeTools** - 永不清除的工具名称数组
 
 ##### 清除思考
 
-`clear_thinking_20251015` 编辑类型从较早的轮次中移除思考/推理块，仅保留最近的：
+`clear_thinking_20251015` 编辑类型从较早的回合中移除思考/推理块，只保留最近的：
 
-- **keep** - 要保留的最近思考轮次数（例如，`{ type: 'thinking_turns', value: 2 }`）或 `'all'` 以保留所有内容
+- **keep** - 保留多少最近的思考回合（例如，`{ type: 'thinking_turns', value: 2 }`）或 `'all'` 以保留所有内容
 
 ```ts
 const result = await generateText({
@@ -534,14 +536,14 @@ const result = streamText({
 **配置：**
 
 - **trigger** - 触发压缩的条件（例如，`{ type: 'input_tokens', value: 50000 }`）
-- **instructions** - 关于模型应如何总结对话的自定义指令。使用此指令将压缩摘要引导至你想要保留的对话的特定方面。
-- **pauseAfterCompaction** - 当为 `true` 时，模型将在生成压缩摘要后暂停，允许你在继续之前检查或处理它。默认为 `false`。
+- **instructions** - 关于模型应如何总结对话的自定义指令。使用此指令将压缩总结引导到你希望保留的对话的特定方面。
+- **pauseAfterCompaction** - 当为 `true` 时，模型将在生成压缩总结后暂停，允许你在继续之前检查或处理它。默认为 `false`。
 
-当发生压缩时，模型会生成早期上下文的摘要。此摘要显示为带有特殊提供商元数据的文本块。
+当发生压缩时，模型会生成较早上下文的摘要。此摘要显示为一个带有特殊提供商元数据的文本块。
 
 ##### 在流中检测压缩
 
-使用 `streamText` 时，你可以通过检查 `text-start` 事件上的 `providerMetadata` 来检测压缩摘要：
+当使用 `streamText` 时，你可以通过检查 `text-start` 事件上的 `providerMetadata` 来检测压缩摘要：
 
 ```ts
 for await (const part of result.stream) {
@@ -562,9 +564,9 @@ for await (const part of result.stream) {
 }
 ```
 
-##### UI 应用程序中的压缩
+##### UI 应用中的压缩
 
-使用 `useChat` 或其他 UI Hook 时，压缩摘要会作为带有 `providerMetadata` 的常规文本部分出现。你可以在 UI 中为它们设置不同的样式：
+当使用 `useChat` 或其他 UI Hook 时，压缩摘要显示为带有 `providerMetadata` 的常规文本部分。你可以在 UI 中为它们设置不同的样式：
 
 ```tsx
 {
@@ -591,7 +593,7 @@ for await (const part of result.stream) {
 }
 ```
 
-#### 已应用编辑元数据
+#### 已应用编辑的元数据
 
 生成后，你可以在提供商元数据中检查哪些编辑已被应用：
 
@@ -601,10 +603,10 @@ const metadata = result.providerMetadata?.anthropic?.contextManagement;
 if (metadata?.appliedEdits) {
   metadata.appliedEdits.forEach(edit => {
     if (edit.type === 'clear_tool_uses_20250919') {
-      console.log(`清除了 ${edit.clearedToolUses} 个工具使用`);
+      console.log(`已清除 ${edit.clearedToolUses} 个工具使用`);
       console.log(`释放了 ${edit.clearedInputTokens} 个令牌`);
     } else if (edit.type === 'clear_thinking_20251015') {
-      console.log(`清除了 ${edit.clearedThinkingTurns} 个思考轮次`);
+      console.log(`已清除 ${edit.clearedThinkingTurns} 个思考回合`);
       console.log(`释放了 ${edit.clearedInputTokens} 个令牌`);
     } else if (edit.type === 'compact_20260112') {
       console.log('已应用压缩');
@@ -613,14 +615,17 @@ if (metadata?.appliedEdits) {
 }
 ```
 
-更多详情，请参阅 [Anthropic 的上下文管理文档](https://docs.anthropic.com/en/docs/build-with-claude/context-management)。
+更多详情，请参见 [Anthropic 的上下文管理文档](https://docs.anthropic.com/en/docs/build-with-claude/context-management)。
 
 ### 缓存控制
 
 在消息和消息部分中，你可以使用 `providerOptions` 属性来设置缓存控制断点。
-你需要在 `providerOptions` 对象中将 `anthropic` 属性设置为 `{ cacheControl: { type: 'ephemeral' } }` 来设置缓存控制断点。
+你需要在 `providerOptions` 对象中将 `anthropic` 属性设置为 `{ cacheControl: { type: 'ephemeral' } }` 以设置缓存控制断点。
 
-缓存读取和缓存写入（创建）的令牌计数会在标准的 `usage` 对象上返回，适用于 `generateText` 和 `streamText`。你可以通过 `result.usage.inputTokenDetails.cacheReadTokens` 和 `result.usage.inputTokenDetails.cacheWriteTokens` 访问它们。
+缓存读取和缓存写入（创建）的令牌计数会在标准
+`usage` 对象上返回，适用于 `generateText` 和 `streamText`。你可以通过
+`result.usage.inputTokenDetails.cacheReadTokens` 和
+`result.usage.inputTokenDetails.cacheWriteTokens` 访问它们。
 
 ```ts highlight="8,18-20,29-32"
 import { anthropic } from '@ai-sdk/anthropic';
@@ -745,17 +750,22 @@ const result = await generateText({
 - Claude Haiku 4.5 为 4096 个令牌
 - Claude Haiku 3.5 和 Claude Haiku 3 为 2048 个令牌
 
-较短的提示词无法被缓存，即使标记了 `cacheControl`。任何缓存少于这个令牌数的请求将在没有缓存的情况下处理。
+较短的提示词无法缓存，即使标记了 `cacheControl`。任何缓存少于该令牌数的请求将在没有缓存的情况下处理。
 
-有关 Anthropic 提示词缓存的更多信息，请参阅 [Anthropic 的缓存控制文档](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)。
+有关 Anthropic 提示词缓存的更多信息，请参见 [Anthropic 的缓存控制文档](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)。
 
 <Note type="warning">
-  由于 `UIMessage` 类型（由 AI SDK UI Hook（如 `useChat`）使用）不支持 `providerOptions` 属性，你可以在将消息传递给 `generateText` 或 `streamText` 等函数之前，先使用 `convertToModelMessages`。有关 `providerOptions` 使用的更多详细信息，请参见[此处](/docs/foundations/prompts#provider-options)。
+  由于 `UIMessage` 类型（由 AI SDK UI Hook（如 `useChat`）使用）不支持
+  `providerOptions` 属性，你可以先使用 `convertToModelMessages`
+  再将消息传递给 `generateText` 或
+  `streamText` 等函数。有关 `providerOptions` 使用的更多详细信息，请参见
+  [此处](/docs/foundations/prompts#provider-options)。
 </Note>
 
 ### Bash 工具
 
-Bash 工具允许运行 bash 命令。默认情况下，该工具通过你传递给 `generateText` 或 `streamText` 的 `experimental_sandbox` 执行命令：
+Bash 工具允许运行 bash 命令。默认情况下，该工具通过
+你传递给 `generateText` 或 `streamText` 的 `experimental_sandbox` 执行命令：
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -767,7 +777,7 @@ const result = await generateText({
     bash: anthropic.tools.bash_20250124(),
   },
   experimental_sandbox: {
-    description: '一个沙盒化的 shell 环境。',
+    description: '一个沙盒 shell 环境。',
     run: async ({ command }) => {
       // 在你的沙盒中运行命令并返回结果。
       return {
@@ -792,7 +802,7 @@ const result = await generateText({
   仅支持某些 Claude 版本。
 </Note>
 
-当你希望直接处理 bash 执行而不是使用请求的实验性沙盒时，你也可以提供自定义的 `execute` 函数。
+当你希望直接处理 bash 执行而不是使用请求实验沙盒时，你也可以提供自定义的 `execute` 函数。
 
 ### 记忆工具
 
@@ -840,12 +850,12 @@ const tools = {
 
 - `command` ('view' | 'create' | 'str_replace' | 'insert' | 'undo_edit')：要运行的命令。注意：`undo_edit` 仅在 Claude 3.5 Sonnet 及更早模型中可用。
 - `path` (string)：文件或目录的绝对路径，例如 `/repo/file.py` 或 `/repo`。
-- `file_text` (string, optional)：`create` 命令必需，包含要创建的文件的内容。
-- `insert_line` (number, optional)：`insert` 命令必需。在其后插入新字符串的行号。
+- `file_text` (string, optional)：`create` 命令必填，包含要创建的文件内容。
+- `insert_line` (number, optional)：`insert` 命令必填。插入新字符串后的行号。
 - `new_str` (string, optional)：`str_replace` 命令的新字符串。
-- `insert_text` (string, optional)：`insert` 命令必需，包含要插入的文本。
-- `old_str` (string, optional)：`str_replace` 命令必需，包含要替换的字符串。
-- `view_range` (number[], optional)：`view` 命令的可选参数，用于指定要显示的行范围。
+- `insert_text` (string, optional)：`insert` 命令必填，包含要插入的文本。
+- `old_str` (string, optional)：`str_replace` 命令必填，包含要替换的字符串。
+- `view_range` (number[], optional)：`view` 命令可选，用于指定要显示的行范围。
 
 ### 计算机工具
 
@@ -889,7 +899,7 @@ const computerTool = anthropic.tools.computer_20251124({
     }
   },
 
-  // 映射到供 LLM 消费的工具结果内容：
+  // 映射到 LLM 消费的工具结果内容：
   toModelOutput({ output }) {
     return typeof output === 'string'
       ? [{ type: 'text', text: output }]
@@ -899,24 +909,25 @@ const computerTool = anthropic.tools.computer_20251124({
 ```
 
 <Note>
-  对于支持缩放操作的 Claude Opus 4.5，请使用 `computer_20251124`。
-  对于 Claude Sonnet 4.5、Haiku 4.5、Opus 4.1、Sonnet 4、Opus 4 和 Sonnet 3.7，请使用 `computer_20250124`。
+  对支持缩放操作的 Claude Opus 4.5 使用 `computer_20251124`。
+  对 Claude Sonnet 4.5、Haiku 4.5、Opus 4.1、Sonnet 4、
+  Opus 4 和 Sonnet 3.7 使用 `computer_20250124`。
 </Note>
 
 参数：
 
 - `action` ('key' | 'type' | 'mouse_move' | 'left_click' | 'left_click_drag' | 'right_click' | 'middle_click' | 'double_click' | 'screenshot' | 'cursor_position' | 'zoom')：要执行的操作。`zoom` 操作仅适用于 `computer_20251124`。
-- `coordinate` (number[], optional)：`mouse_move` 和 `left_click_drag` 操作必需。指定 (x, y) 坐标。
-- `text` (string, optional)：`type` 和 `key` 操作必需。
-- `region` (number[], optional)：`zoom` 操作必需。指定要检查区域的 `[x1, y1, x2, y2]` 坐标。
-- `displayWidthPx` (number)：显示器的像素宽度。
-- `displayHeightPx` (number)：显示器的像素高度。
+- `coordinate` (number[], optional)：`mouse_move` 和 `left_click_drag` 操作必填。指定 (x, y) 坐标。
+- `text` (string, optional)：`type` 和 `key` 操作必填。
+- `region` (number[], optional)：`zoom` 操作必填。指定要检查区域的 `[x1, y1, x2, y2]` 坐标。
+- `displayWidthPx` (number)：显示器的宽度（像素）。
+- `displayHeightPx` (number)：显示器的高度（像素）。
 - `displayNumber` (number, optional)：X11 环境的显示器编号。
 - `enableZoom` (boolean, optional)：启用缩放操作。仅适用于 `computer_20251124`。默认值：`false`。
 
 ### 网络搜索工具
 
-Anthropic 提供了一个提供商定义的网络搜索工具，使 Claude 能够直接访问实时网络内容，使其能够使用超出其知识截止日期的最新信息来回答问题。
+Anthropic 提供了一个提供商定义的网络搜索工具，使 Claude 能够直接访问实时网络内容，使其能够使用超出知识截止日期的最新信息来回答问题。
 
 你可以使用提供商定义的网络搜索工具启用网络搜索：
 
@@ -930,7 +941,7 @@ const webSearchTool = anthropic.tools.webSearch_20250305({
 
 const result = await generateText({
   model: anthropic('claude-opus-4-20250514'),
-  prompt: '人工智能有哪些最新发展？',
+  prompt: 'AI 的最新发展是什么？',
   tools: {
     web_search: webSearchTool,
   },
@@ -938,7 +949,8 @@ const result = await generateText({
 ```
 
 <Note>
-  必须在你的组织的[控制台设置](https://console.anthropic.com/settings/privacy)中启用网络搜索。
+  必须在你的组织的 [控制台
+  设置](https://console.anthropic.com/settings/privacy) 中启用网络搜索。
 </Note>
 
 #### 配置选项
@@ -1029,7 +1041,8 @@ const result = await generateText({
 ```
 
 <Note>
-  当你包含此工具时，AI SDK 会自动发送所需的 `advisor-tool-2026-03-01` beta 标头。
+  当你包含此工具时，AI SDK 会自动发送所需的 `advisor-tool-2026-03-01` beta
+  头部。
 </Note>
 
 #### 配置选项
@@ -1038,7 +1051,7 @@ const result = await generateText({
 
 - **model** _string_
 
-  必需。顾问模型 ID，例如 `claude-opus-4-8`。顾问模型必须至少与执行模型一样强大。
+  必填。顾问模型 ID，例如 `claude-opus-4-8`。顾问模型的能力必须至少与执行模型相当。
 
 - **maxUses** _number_
 
@@ -1046,23 +1059,23 @@ const result = await generateText({
 
 - **caching** _object_
 
-  可选。为顾问在对话中的自身记录启用提示词缓存。使用 `{ type: 'ephemeral', ttl: '5m' | '1h' }`。这对于你预计至少进行三次顾问调用的较长智能体循环最有用。
+  可选。为顾问在对话中的自身记录启用提示词缓存。使用 `{ type: 'ephemeral', ttl: '5m' | '1h' }`。这对于你预计至少进行三次顾问调用的较长智能体循环最为有用。
 
 #### 工作原理
 
-顾问工具由提供商执行，因此你无需提供 `execute` 函数。当执行模型调用 `advisor` 时，Anthropic 会使用顾问模型运行一个独立的服务器端推理。顾问会看到记录并向执行者返回指导，然后执行者在同一请求内继续生成。
+顾问工具由提供商执行，因此你无需提供 `execute` 函数。当执行模型调用 `advisor` 时，Anthropic 会使用顾问模型运行一个单独的服务器端推理。顾问会看到记录并向执行者返回指导，然后执行者在同一请求内继续生成。
 
 顾问工具输入始终为空。Anthropic 会自动从完整记录中构建顾问的视图。
 
-对于多轮对话，请将完整的助手内容（包括顾问工具结果）传递回后续轮次。如果你从后续请求中移除了顾问工具，也要从消息历史记录中移除之前的顾问工具结果；否则 Anthropic API 将返回无效请求错误。
+对于多轮对话，将完整的助手内容（包括顾问工具结果）传递回后续轮次。如果你从后续请求中移除了顾问工具，也要从消息历史中移除之前的顾问工具结果；否则 Anthropic API 将返回无效请求错误。
 
 #### 流式传输
 
-顾问子推理不会流式传输。使用 `streamText` 时，执行者流会在顾问运行时暂停，然后顾问结果作为单个工具结果到达，之后执行者输出恢复。
+顾问子推理不会流式传输。当使用 `streamText` 时，执行者流会在顾问运行时暂停，然后顾问结果作为单个工具结果到达，之后执行者输出恢复。
 
 ### 工具搜索
 
-Anthropic 提供了提供商定义的工具搜索工具，使 Claude 能够通过按需动态发现和加载工具来处理成百上千个工具。Claude 不会将所有工具定义预先加载到上下文窗口中，而是搜索你的工具目录并仅加载它需要的工具。
+Anthropic 提供了提供商定义的工具搜索工具，使 Claude 能够通过按需动态发现和加载工具来处理成百上千个工具。无需将所有工具定义预先加载到上下文窗口中，Claude 会搜索你的工具目录并仅加载所需的工具。
 
 有两种变体：
 
@@ -1092,7 +1105,7 @@ const result = await generateText({
         temperature: 72,
         condition: 'Sunny',
       }),
-      // 在此处延迟工具 - Claude 通过工具搜索工具发现这些
+      // 在此处延迟工具 - Claude 通过工具搜索工具发现这些工具
       providerOptions: {
         anthropic: { deferLoading: true },
       },
@@ -1133,7 +1146,7 @@ const result = await generateText({
   tools: {
     // 自定义搜索工具
     searchTools: tool({
-      description: '按关键字搜索工具',
+      description: '按关键词搜索工具',
       inputSchema: z.object({ query: z.string() }),
       execute: async ({ query }) => {
         // 你的自定义搜索逻辑（嵌入、模糊匹配等）
@@ -1167,7 +1180,7 @@ const result = await generateText({
 });
 ```
 
-这将向 Anthropic 发送 `tool_reference` 块，Anthropic 会将相应的延迟工具模式加载到 Claude 的上下文中。
+这将向 Anthropic 发送 `tool_reference` 块，Anthropic 会加载相应的延迟工具模式到 Claude 的上下文中。
 
 ### MCP 连接器
 
@@ -1181,7 +1194,7 @@ import { generateText } from 'ai';
 
 const result = await generateText({
   model: anthropic('claude-sonnet-4-5'),
-  prompt: `调用 echo 工具，传入 "hello world"。它返回了什么？`,
+  prompt: `调用 echo 工具并传入 "hello world"。它返回什么？`,
   providerOptions: {
     anthropic: {
       mcpServers: [
@@ -1234,7 +1247,7 @@ const result = await generateText({
 网络搜索错误的处理方式取决于你使用的是流式传输还是非流式传输：
 
 **非流式传输（`generateText`）：**
-网络搜索错误会抛出你可以捕获的异常：
+网络搜索错误会抛出异常，你可以捕获：
 
 ```ts
 try {
@@ -1248,7 +1261,7 @@ try {
 } catch (error) {
   if (error.message.includes('Web search failed')) {
     console.log('搜索错误：', error.message);
-    // 适当地处理搜索错误
+    // 适当处理搜索错误
   }
 }
 ```
@@ -1268,14 +1281,14 @@ const result = await streamText({
 for await (const part of result.textStream) {
   if (part.type === 'error') {
     console.log('搜索错误：', part.error);
-    // 适当地处理搜索错误
+    // 适当处理搜索错误
   }
 }
 ```
 
 ## 代码执行
 
-Anthropic 提供了一个提供商定义的代码执行工具，使 Claude 能够直接访问真实的 Python 环境，允许它执行代码来为其响应提供信息。
+Anthropic 提供了一个提供商定义的代码执行工具，使 Claude 能够直接访问真实的 Python 环境，允许其执行代码以辅助生成响应。
 
 你可以使用提供商定义的代码执行工具启用代码执行：
 
@@ -1288,7 +1301,7 @@ const codeExecutionTool = anthropic.tools.codeExecution_20260120();
 const result = await generateText({
   model: anthropic('claude-opus-4-20250514'),
   prompt:
-    '计算 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] 的平均值和标准差',
+    '计算 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] 的均值和标准差',
   tools: {
     code_execution: codeExecutionTool,
   },
@@ -1296,12 +1309,15 @@ const result = await generateText({
 ```
 
 <Note>
-  有三个版本可用：`codeExecution_20260120`（推荐，不需要 beta 标头，支持 Claude Opus 4.6、Sonnet 4.6、Sonnet 4.5 和 Opus 4.5）、`codeExecution_20250825`（支持 Python 和 Bash，具有增强的文件操作功能）和 `codeExecution_20250522`（仅支持 Bash）。
+  有三个版本可用：`codeExecution_20260120`（推荐，不需要
+  beta 头部，支持 Claude Opus 4.6、Sonnet 4.6、Sonnet 4.5 和
+  Opus 4.5）、`codeExecution_20250825`（支持 Python 和 Bash，具有增强的
+  文件操作）和 `codeExecution_20250522`（仅支持 Bash）。
 </Note>
 
 #### 上传文件以执行代码
 
-你可以通过 [Files API](https://docs.anthropic.com/en/docs/build-with-claude/files) 上传文件，并使其在代码执行沙盒中可用。首先上传文件，然后在消息中使用提供商选项中的 `containerUpload: true` 引用它：
+你可以通过 [Files API](https://docs.anthropic.com/en/docs/build-with-claude/files) 上传文件，并使它们在代码执行沙盒中可用。首先上传文件，然后在消息中使用 `containerUpload: true` 在提供商选项中引用它：
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -1384,14 +1400,14 @@ const result = await streamText({
 for await (const part of result.textStream) {
   if (part.type === 'error') {
     console.log('代码执行错误：', part.error);
-    // 适当地处理代码执行错误
+    // 适当处理代码执行错误
   }
 }
 ```
 
 ### 程序化工具调用
 
-[程序化工具调用](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/programmatic-tool-calling) 允许 Claude 编写代码，在代码执行容器内以编程方式调用你的工具，而不是为每个工具调用都需要通过模型进行往返。这减少了多工具工作流的延迟并降低了令牌消耗。
+[程序化工具调用](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/programmatic-tool-calling) 允许 Claude 编写代码，在代码执行容器内以编程方式调用你的工具，而不是通过模型进行每次工具调用的往返。这减少了多工具工作流的延迟并降低了令牌消耗。
 
 要启用程序化工具调用，请在你希望可从代码执行中调用的工具上使用 `allowedCallers` 提供商选项：
 
@@ -1437,16 +1453,18 @@ const result = await generateText({
 在此流程中：
 
 1. Claude 编写 Python 代码，并行多次调用你的 `getWeather` 工具
-2. SDK 自动执行你的工具并将结果返回给代码执行容器
+2. SDK 自动执行你的工具并将结果返回到代码执行容器
 3. Claude 在代码中处理结果并生成最终响应
 
 <Note>
-  程序化工具调用需要 `claude-sonnet-4-6`、`claude-sonnet-4-5`、`claude-opus-4-6` 或 `claude-opus-4-5` 模型，并使用 `code_execution_20260120` 或 `code_execution_20250825` 工具。
+  程序化工具调用需要 `claude-sonnet-4-6`、`claude-sonnet-4-5`、
+  `claude-opus-4-6` 或 `claude-opus-4-5` 模型，并使用
+  `code_execution_20260120` 或 `code_execution_20250825` 工具。
 </Note>
 
 #### 容器持久性
 
-在多个步骤中使用程序化工具调用时，你需要使用 `prepareStep` 在步骤之间保留容器 ID。你可以使用 `forwardAnthropicContainerIdFromLastStep` 辅助函数自动执行此操作。容器 ID 在每个步骤完成后可在 `providerMetadata.anthropic.container.id` 中获得。
+当在多个步骤中使用程序化工具调用时，你需要使用 `prepareStep` 在步骤之间保留容器 ID。你可以使用 `forwardAnthropicContainerIdFromLastStep` 辅助函数自动执行此操作。容器 ID 在每个步骤完成后可在 `providerMetadata.anthropic.container.id` 中获得。
 
 ## 智能体技能
 
@@ -1466,7 +1484,7 @@ Anthropic 提供了几个内置技能：
 1. 启用代码执行工具
 2. 在 `providerOptions` 中指定包含技能的容器
 
-```ts highlight="4,9-17,19-23"
+```ts highlight="6-8,10-23"
 import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 
@@ -1496,7 +1514,7 @@ const result = await generateText({
 
 你也可以通过指定 `type: 'custom'` 来使用自定义技能：
 
-```ts highlight="9-11"
+```ts highlight="11-15"
 const result = await generateText({
   model: anthropic('claude-sonnet-4-5'),
   tools: {
@@ -1520,7 +1538,8 @@ const result = await generateText({
 ```
 
 <Note>
-  技能使用渐进式上下文加载，并在具有代码执行功能的沙盒容器中执行。
+  技能使用渐进式上下文加载，并在具有代码执行功能的沙盒
+  容器中执行。
 </Note>
 
 ### PDF 支持
@@ -1578,12 +1597,14 @@ const result = await generateText({
 });
 ```
 
-模型将能够访问 PDF 文件的内容并回答相关问题。
-PDF 文件应使用 `data` 字段传递，并且 `mediaType` 应设置为 `'application/pdf'`。
+模型将能够访问 PDF 文件的内容并
+回答相关问题。
+PDF 文件应使用 `data` 字段传递，
+并且 `mediaType` 应设置为 `'application/pdf'`。
 
 ### 模型能力
 
-| 模型 | 图像输入 | 对象生成 | 工具使用 | 计算机使用 | 网络搜索 | 工具搜索 | 压缩 |
+| 模型               | 图像输入 | 对象生成 | 工具使用 | 计算机使用 | 网络搜索 | 工具搜索 | 压缩 |
 | ------------------- | ----------- | ----------------- | ---------- | ------------ | ---------- | ----------- | ---------- |
 | `claude-sonnet-5`   | <Check />   | <Check />         | <Check />  | <Check />    | <Check />  | <Check />   | <Check />  |
 | `claude-fable-5`    | <Check />   | <Check />         | <Check />  | <Check />    | <Check />  | <Check />   | <Check />  |
@@ -1599,5 +1620,8 @@ PDF 文件应使用 `data` 字段传递，并且 `mediaType` 应设置为 `'appl
 | `claude-sonnet-4-0` | <Check />   | <Check />         | <Check />  | <Check />    | <Check />  |             |            |
 
 <Note>
-  上表列出了流行的模型。请参阅 [Anthropic 文档](https://docs.anthropic.com/en/docs/about-claude/models) 获取可用模型的完整列表。上表列出了流行的模型。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  上表列出了流行模型。请参阅 [Anthropic
+  文档](https://docs.anthropic.com/en/docs/about-claude/models) 获取完整
+  可用模型列表。上表列出了流行模型。如果需要，你也可以
+  将任何可用的提供商模型 ID 作为字符串传递。
 </Note>
