@@ -7,7 +7,7 @@ description: "了解如何使用 xAI Grok 和 Imagine。"
 
 [xAI Grok](https://x.ai) 提供商为 [xAI API](https://x.ai/api) 提供语言模型支持。
 
-## 设置
+## 安装
 
 xAI Grok 提供商可通过 `@ai-sdk/xai` 模块获得。你可以通过以下方式安装它：
 
@@ -21,7 +21,7 @@ xAI Grok 提供商可通过 `@ai-sdk/xai` 模块获得。你可以通过以下�
 import { xai } from '@ai-sdk/xai';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/xai` 导入 `createXai` 并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/xai` 导入 `createXai` 并使用你的设置创建一个提供商实例：
 
 ```ts
 import { createXai } from '@ai-sdk/xai';
@@ -35,11 +35,11 @@ const xai = createXai({
 
 - **baseURL** _string_
 
-  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。默认前缀为 `https://api.x.ai/v1`。
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。默认前缀是 `https://api.x.ai/v1`。
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认为 `XAI_API_KEY` 环境变量。
+  通过 `Authorization` 标头发送的 API 密钥。它默认为 `XAI_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -47,7 +47,7 @@ const xai = createXai({
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作拦截请求的中间件，或为测试等场景提供自定义 fetch 实现。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作拦截请求的中间件，或者为测试等场景提供自定义 fetch 实现。
 
 ## 语言模型
 
@@ -75,11 +75,11 @@ const { text } = await generateText({
 });
 ```
 
-xAI 语言模型也可用于 `streamText` 函数，并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+xAI 语言模型也可以在 `streamText` 函数中使用，并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据（参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ### 推理努力
 
-对于具备推理能力的模型，你可以通过 `providerOptions.xai.reasoningEffort` 控制模型在响应前投入的思考努力。这适用于 Responses API（默认）和 Chat Completions API（`xai.chat()`）。
+对于具备推理能力的模型，你可以通过 `providerOptions.xai.reasoningEffort` 控制模型在响应前投入多少思考努力。这适用于 Responses API（默认）和 Chat Completions API（`xai.chat()`）。
 
 ```ts
 import { xai } from '@ai-sdk/xai';
@@ -99,7 +99,7 @@ const { text } = await generateText({
 - `'none'` — 完全禁用推理；不使用思考令牌。最适合需要近乎即时响应的简单用例。由 `grok-4.3` 及更新的推理模型支持。
 - `'low'`（默认）— 使用一些推理令牌，但速度仍然很快。适用于一般的智能体使用和工具调用。
 - `'medium'` — 为对延迟不太敏感的应用程序（如复杂数据分析和长上下文推理）提供更多思考。
-- `'high'` — 使用更多推理令牌进行更深层次的思考。适用于非常具有挑战性的问题、复杂数学、多步逻辑和竞赛级任务。
+- `'high'` — 使用更多推理令牌进行更深入的思考。适用于非常具有挑战性的问题、复杂数学、多步逻辑和竞赛级任务。
 
 <Note>
   并非每个 Grok 模型都接受每个值。请参阅 xAI 的[推理文档](https://docs.x.ai/docs/guides/reasoning)了解所选模型支持的值。`'none'` 需要 `grok-4.3` 或更新版本。
@@ -135,7 +135,7 @@ xAI Responses API 是使用 `xai(modelId)` 时的默认 API（自 AI SDK 7 起�
 const model = xai.responses('grok-4.20-non-reasoning');
 ```
 
-Responses API 提供了模型在其推理过程中可以自主执行的服务器端工具：
+Responses API 提供了模型可以在其推理过程中自主执行的服务器端工具：
 
 - **web_search**：实时网页搜索和页面浏览
 - **x_search**：搜索 X（Twitter）帖子、用户和话题
@@ -233,23 +233,23 @@ console.log('Citations:', sources);
 
 - **allowedDomains** _string[]_
 
-  仅在指定域名内搜索（最多 5 个）。不能与 `excludedDomains` 同时使用。
+  仅在指定域名内搜索（最多 5 个）。不能与 `excludedDomains` 一起使用。
 
 - **excludedDomains** _string[]_
 
-  从搜索中排除指定域名（最多 5 个）。不能与 `allowedDomains` 同时使用。
+  从搜索中排除指定域名（最多 5 个）。不能与 `allowedDomains` 一起使用。
 
 - **enableImageSearch** _boolean_
 
-  允许模型在图像对答案有用时，作为单独的网页搜索模式执行图像搜索。模型可以在常规网页搜索和图像搜索之间选择；响应可以在相关时包含 Markdown 图像嵌入。
+  允许模型在图像对答案有用时，以单独的网页搜索模式执行图像搜索。模型可以在常规网页搜索和图像搜索之间选择；响应可以在相关时包含 Markdown 图像嵌入。
 
 - **enableImageUnderstanding** _boolean_
 
-  使模型能够查看和分析搜索过程中找到的图像。会增加令牌使用量。要允许显式搜索图像，请使用 `enableImageSearch`。
+  允许模型查看和分析搜索过程中找到的图像。会增加令牌使用量。要允许显式搜索图像，请使用 `enableImageSearch`。
 
 ### X 搜索工具
 
-X 搜索工具支持搜索 X（Twitter）上的帖子，并可按用户句柄和日期范围进行过滤：
+X 搜索工具支持搜索 X（Twitter）帖子，并可按句柄和日期范围进行过滤：
 
 ```ts
 const { text, sources } = await generateText({
@@ -271,11 +271,11 @@ const { text, sources } = await generateText({
 
 - **allowedXHandles** _string[]_
 
-  仅搜索指定 X 句柄的帖子（最多 10 个）。不能与 `excludedXHandles` 同时使用。
+  仅搜索指定 X 句柄的帖子（最多 10 个）。不能与 `excludedXHandles` 一起使用。
 
 - **excludedXHandles** _string[]_
 
-  排除指定 X 句柄的帖子（最多 10 个）。不能与 `allowedXHandles` 同时使用。
+  排除指定 X 句柄的帖子（最多 10 个）。不能与 `allowedXHandles` 一起使用。
 
 - **fromDate** _string_
 
@@ -287,15 +287,15 @@ const { text, sources } = await generateText({
 
 - **enableImageUnderstanding** _boolean_
 
-  使模型能够查看和分析 X 帖子中的图像。
+  允许模型查看和分析 X 帖子中的图像。
 
 - **enableVideoUnderstanding** _boolean_
 
-  使模型能够查看和分析 X 帖子中的视频。
+  允许模型查看和分析 X 帖子中的视频。
 
 ### 代码执行工具
 
-代码执行工具使模型能够编写和执行 Python 代码进行计算和数据分析：
+代码执行工具允许模型编写和执行 Python 代码以进行计算和数据分析：
 
 ```ts
 const { text } = await generateText({
@@ -310,7 +310,7 @@ const { text } = await generateText({
 
 ### 查看图像工具
 
-查看图像工具使模型能够查看和分析图像：
+查看图像工具允许模型查看和分析图像：
 
 ```ts
 const { text } = await generateText({
@@ -324,7 +324,7 @@ const { text } = await generateText({
 
 ### 查看 X 视频工具
 
-查看 X 视频工具使模型能够查看和分析来自 X（Twitter）帖子的视频：
+查看 X 视频工具允许模型查看和分析来自 X（Twitter）帖子的视频：
 
 ```ts
 const { text } = await generateText({
@@ -338,7 +338,7 @@ const { text } = await generateText({
 
 ### MCP 服务器工具
 
-MCP 服务器工具使模型能够连接到远程 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器并使用其工具：
+MCP 服务器工具允许模型连接到远程 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器并使用其工具：
 
 ```ts
 const { text } = await generateText({
@@ -428,7 +428,7 @@ const result = streamText({
 
 ### 多个工具
 
-你可以组合多个服务器端工具进行全面的研究：
+你可以组合多个服务器端工具以进行全面的研究：
 
 ```ts
 import { xai } from '@ai-sdk/xai';
@@ -526,7 +526,7 @@ const result = await generateText({
 | `grok-3-mini`                   | <Cross /> | <Check /> | <Check /> | <Check />    | <Check /> |
 
 <Note>
-  上表列出了常用模型。请参阅 [xAI 文档](https://docs.x.ai/docs#models) 获取可用模型的完整列表。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  上表列出了常用模型。请参阅 [xAI 文档](https://docs.x.ai/docs#models) 获取完整的可用模型列表。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
 </Note>
 
 ## 语音模型
@@ -576,12 +576,12 @@ const result = await generateSpeech({
   要生成的音频编解码器。支持的值有 `'mp3'`、`'wav'`、`'pcm'`、`'mulaw'` 和 `'alaw'`。默认为 `'mp3'`。
 
 <Note>
-  xAI 没有为文本转语音公开单独的 `instructions` 字段。请在 `text` 中使用语音标签来控制表达性传递。
+  xAI 没有为文本转语音公开单独的 `instructions` 字段。请在 `text` 中使用语音标签来控制表达方式。
 </Note>
 
 ### 提供商选项
 
-你可以使用 `providerOptions.xai` 传递 xAI 特定的控制：
+你可以使用 `providerOptions.xai` 传递 xAI 特定的控制参数：
 
 ```ts
 import { xai, type XaiSpeechModelOptions } from '@ai-sdk/xai';
@@ -608,21 +608,21 @@ const result = await generateSpeech({
 
 - **bitRate** _32000 | 64000 | 96000 | 128000 | 192000_
 
-  MP3 比特率，单位为比特每秒。仅当 `outputFormat` 为 `'mp3'` 时适用。
+  MP3 比特率，单位为 bits per second。仅当 `outputFormat` 为 `'mp3'` 时适用。
 
 - **optimizeStreamingLatency** _0 | 1 | 2_
 
-  延迟优化级别。较高的值会减少首次音频的时间，但会在块边界处牺牲质量。
+  延迟优化级别。较高的值会减少首次音频输出的时间，但会在块边界处牺牲质量。
 
 - **textNormalization** _boolean_
 
-  是否在合成语音之前对书面形式的输入文本进行规范化。
+  是否在合成语音之前对书面形式的输入文本进行归一化。
 
 ### 模型能力
 
-| 模型      | 语言     | 速度     | 输出格式                        |
-| --------- | -------- | -------- | ------------------------------- |
-| `default` | <Check /> | <Check /> | mp3, wav, pcm, mulaw, alaw      |
+| 模型      | 语言     | 速度     | 输出格式                          |
+| --------- | -------- | -------- | --------------------------------- |
+| `default` | <Check /> | <Check /> | mp3, wav, pcm, mulaw, alaw |
 
 ## 转录模型
 
@@ -647,7 +647,7 @@ const result = await transcribe({
 
 ### 提供商选项
 
-你可以使用 `providerOptions.xai` 传递 xAI 特定的控制：
+你可以使用 `providerOptions.xai` 传递 xAI 特定的控制参数：
 
 ```ts
 import { xai, type XaiTranscriptionModelOptions } from '@ai-sdk/xai';
@@ -678,11 +678,11 @@ const result = await transcribe({
 
 - **language** _string_
 
-  用于反向文本规范化的语言代码。
+  用于反向文本归一化的语言代码。
 
 - **format** _boolean_
 
-  启用反向文本规范化。需要 `language`。
+  启用反向文本归一化。需要 `language`。
 
 - **multichannel** _boolean_
 
@@ -698,7 +698,7 @@ const result = await transcribe({
 
 - **keyterm** _string | string[]_
 
-  一个或多个术语，用于使转录偏向于它们。
+  一个或多个术语，用于使转录偏向于这些术语。
 
 - **fillerWords** _boolean_
 
@@ -713,7 +713,7 @@ const result = await transcribe({
 
   - **endpointing** _number_
 
-    在话语结束事件之前的静默持续时间，单位为毫秒。范围：0-5000。
+    在话语结束事件之前的静音持续时间，单位为毫秒。范围：0-5000。
 
   - **smartTurn** _number_
 
@@ -721,7 +721,7 @@ const result = await transcribe({
 
   - **smartTurnTimeout** _number_
 
-    在强制 `speech_final` 之前的最大静默持续时间，单位为毫秒。范围：1-5000。
+    在强制 `speech_final` 之前的最大静音持续时间，单位为毫秒。范围：1-5000。
 
 ### 模型能力
 
@@ -730,12 +730,12 @@ const result = await transcribe({
 | `default` | <Check /> | <Check /> | <Check />  | <Check />  | <Check /> |
 
 <Note>
-  单词时间戳、说话人分离结果和片段仅在请求/响应路径（`transcribe`）上返回。流式转录（`experimental_streamTranscribe`）会发出部分和最终的转录文本以及话语级时间信息，但不会提供逐词时间戳、说话人标签或片段。
+  单词时间戳、说话人分离结果和片段仅在请求/响应路径（`transcribe`）上返回。流式转录（`experimental_streamTranscribe`）会发出部分和最终的转录文本以及话语级别的时间信息，但不会提供每个单词的时间戳、说话人标签或片段。
 </Note>
 
 ## 图像模型
 
-你可以使用 `.image()` 工厂方法创建 xAI 图像模型。有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+你可以使用 `.image()` 工厂方法创建 xAI 图像模型。有关使用 AI SDK 生成图像的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ```ts
 import { xai } from '@ai-sdk/xai';
@@ -852,16 +852,16 @@ const { images } = await generateImage({
 
 ### 图像模型能力
 
-| 模型                       | 分辨率    | 宽高比                                                                                                    | 图像编辑 |
-| -------------------------- | --------- | --------------------------------------------------------------------------------------------------------- | -------- |
+| 模型                       | 分辨率    | 宽高比                                                                                                      | 图像编辑 |
+| -------------------------- | --------- | ----------------------------------------------------------------------------------------------------------- | -------- |
 | `grok-imagine-image-pro`   | `1k`, `2k` | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `2:1`, `1:2`, `19.5:9`, `9:19.5`, `20:9`, `9:20`, `auto` | <Check /> |
 | `grok-imagine-image`       | `1k`      | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `2:1`, `1:2`, `19.5:9`, `9:19.5`, `20:9`, `9:20`, `auto` | <Check /> |
 
 ## 视频模型
 
-你可以使用 `.video()` 工厂方法创建 xAI 视频模型。有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
+你可以使用 `.video()` 工厂方法创建 xAI 视频模型。有关使用 AI SDK 生成视频的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
 
-此提供商支持从文本提示或图像输入进行标准视频生成，以及显式视频编辑、视频扩展和参考到视频（R2V）操作。
+此提供商支持从文本提示或图像输入生成标准视频，以及显式的视频编辑、视频扩展和参考到视频（R2V）操作。
 
 ### 文本到视频
 
@@ -878,6 +878,7 @@ const { video } = await generateVideo({
   duration: 5,
   providerOptions: {
     xai: {
+      user: 'user-123',
       pollTimeoutMs: 600000, // 10 minutes
     } satisfies XaiVideoModelOptions,
   },
@@ -907,7 +908,7 @@ const { video } = await generateVideo({
 });
 ```
 
-你也可以通过顶层的 `frameImages` 选项传递起始帧，使用 `first_frame` 角色。这是提供商无关的，接受文件数据（例如 `Buffer`）或 `{ type: 'url', url }` 对象：
+你也可以通过顶层的 `frameImages` 选项传递起始帧，并使用 `first_frame` 角色。这是提供商无关的，接受文件数据（例如 `Buffer`）或 `{ type: 'url', url }` 对象：
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -933,7 +934,7 @@ const { video } = await generateVideo({
 ```
 
 <Note>
-  xAI 不支持首尾帧插值。`frameImages` 中的 `last_frame` 条目会被忽略并发出警告——请改用 `extend-video` 模式从视频的最后一帧继续。
+  xAI 不支持首尾帧插值。`frameImages` 中的 `last_frame` 条目将被忽略并发出警告——请改用 `extend-video` 模式从视频的最后一帧继续。
 </Note>
 
 ### 视频编辑
@@ -958,12 +959,12 @@ const { video } = await generateVideo({
 ```
 
 <Note>
-  视频编辑接受最长 8.7 秒的输入视频。`duration`、`aspectRatio` 和 `resolution` 参数不支持编辑——输出与输入视频的属性匹配（上限为 720p）。
+  视频编辑接受最长 8.7 秒的输入视频。编辑不支持 `duration`、`aspectRatio` 和 `resolution` 参数——输出与输入视频的属性匹配（上限为 720p）。
 </Note>
 
 ### 链式编辑和并发编辑
 
-xAI 托管的视频 URL 可在 `providerMetadata.xai.videoUrl` 中获得。你可以使用它来链式进行顺序编辑，或使用 `Promise.all` 分支进行并发编辑：
+xAI 托管的视频 URL 可在 `providerMetadata.xai.videoUrl` 中获得。你可以使用它来链式执行顺序编辑，或使用 `Promise.all` 分支到并发编辑：
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1016,7 +1017,7 @@ const [withSunglasses, withScarf] = await Promise.all([
 
 ### 视频扩展
 
-从视频的最后一帧扩展现有视频。`duration` 仅控制扩展的长度，而不是总输出。输出继承源视频的 `aspectRatio` 和 `resolution`。
+从现有视频的最后一帧进行扩展。`duration` 仅控制扩展的长度，而不是总输出。输出继承源视频的 `aspectRatio` 和 `resolution`。
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1058,7 +1059,7 @@ const extended = await generateVideo({
 
 ### 参考到视频（R2V）
 
-提供参考图像来指导视频的风格和内容。与图像到视频不同，参考图像不用作第一帧——模型将其视觉元素合并到生成的视频中。每个参考图像可以是公共 HTTPS URL 或 base64 数据 URI。
+提供参考图像以指导视频的风格和内容。与图像到视频不同，参考图像不用作第一帧——模型将其视觉元素合并到生成的视频中。每个参考图像可以是公共 HTTPS URL 或 base64 数据 URI。
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1133,14 +1134,18 @@ const { video } = await generateVideo({
 
   视频分辨率。使用 SDK 的标准 `resolution` 参数时，`1280x720` 映射到 `720p`，`854x480` 映射到 `480p`。使用此提供商选项直接传递原生格式。
 
+- **user** _string_
+
+  负责请求的最终用户的可选标识符。xAI 使用此值进行滥用监控。它会原样发送用于视频生成（包括参考到视频）和视频编辑请求，并在未配置时省略。它不会为视频扩展请求发送。请使用不透明的稳定标识符，避免发送不必要的个人信息。
+
 - **mode** _'edit-video' | 'extend-video' | 'reference-to-video'_
 
-  选择显式视频操作。每种模式互斥：
+  选择显式的视频操作。每种模式互斥：
   - `'edit-video'` — 编辑现有视频（需要 `videoUrl`）
-  - `'extend-video'` — 从视频的最后一帧扩展视频（需要 `videoUrl`）
+  - `'extend-video'` — 从视频的最后一帧进行扩展（需要 `videoUrl`）
   - `'reference-to-video'` — 从参考图像生成（需要 `referenceImageUrls`）
 
-  省略时，使用标准生成。为了向后兼容，仍会从字段自动检测旧版输入。
+  省略时，使用标准生成。为了向后兼容，旧版输入仍会从字段自动检测。
 
 - **videoUrl** _string_
 
@@ -1148,17 +1153,17 @@ const { video } = await generateVideo({
 
 - **referenceImageUrls** _string[]_
 
-  用于参考到视频（R2V）生成的参考图像 URL 数组（1-7 张图像）或 base64 数据 URI。模型会合并这些图像的视觉元素，而不将它们用作第一帧。在提示中使用 `<IMAGE_1>`、`<IMAGE_2>` 等来引用特定图像。与 `mode: 'reference-to-video'` 一起使用。
+  用于参考到视频（R2V）生成的参考图像 URL（1-7 张图像）或 base64 数据 URI 数组。模型会合并这些图像的视觉元素，而不将它们用作第一帧。在提示中使用 `<IMAGE_1>`、`<IMAGE_2>` 等来引用特定图像。与 `mode: 'reference-to-video'` 一起使用。
 
 <Note>
-  视频生成是一个异步过程，可能需要几分钟。考虑将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保可靠运行。生成的视频 URL 是临时的，应及时下载。
+  视频生成是一个异步过程，可能需要几分钟。请考虑将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保可靠运行。生成的视频 URL 是临时的，应及时下载。
 </Note>
 
 ### 宽高比和分辨率
 
 对于**文本到视频**，你可以同时指定 `aspectRatio` 和 `resolution`。默认宽高比为 `16:9`，默认分辨率为 `480p`。
 
-对于**图像到视频**，输出默认为输入图像的宽高比。如果你指定 `aspectRatio`，它将覆盖此设置并将图像拉伸到所需比例。
+对于**图像到视频**，输出默认为输入图像的宽高比。如果你指定了 `aspectRatio`，它将覆盖此设置并将图像拉伸到所需比例。
 
 对于**视频编辑**，输出与输入视频的宽高比和分辨率匹配。不支持自定义 `duration`、`aspectRatio` 和 `resolution`——输出分辨率上限为 720p（例如，1080p 输入将缩小到 720p）。
 

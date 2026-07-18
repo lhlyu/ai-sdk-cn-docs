@@ -1,13 +1,13 @@
 ---
 title: "OpenAI 兼容提供商"
-description: "使用 AI SDK 与 OpenAI 兼容提供商集成。"
+description: "使用 AI SDK 与 OpenAI 兼容提供商。"
 ---
 
 # OpenAI 兼容提供商
 
-你可以使用 [OpenAI 兼容提供商](https://www.npmjs.com/package/@ai-sdk/openai-compatible) 包来接入实现了 OpenAI API 的语言模型提供商。
+你可以使用 [OpenAI 兼容提供商](https://www.npmjs.com/package/@ai-sdk/openai-compatible) 包来使用实现了 OpenAI API 的语言模型提供商。
 
-下文重点介绍通用设置和提供商实例的创建。你也可以[编写一个基于 OpenAI 兼容包的自定义提供商包](/providers/openai-compatible-providers/custom-providers)。
+下面我们重点介绍通用设置和提供商实例创建。你也可以[编写利用 OpenAI 兼容包的自定义提供商包](/providers/openai-compatible-providers/custom-providers)。
 
 我们为以下 OpenAI 兼容提供商提供了详细文档：
 
@@ -17,17 +17,17 @@ description: "使用 AI SDK 与 OpenAI 兼容提供商集成。"
 - [Clarifai](/providers/openai-compatible-providers/clarifai)
 - [NEAR AI Cloud](/providers/openai-compatible-providers/nearai)
 
-所有这些提供商的通用设置和实例创建方式都是相同的。
+所有这些提供商的通用设置和提供商实例创建都是相同的。
 
-## 安装
+## 设置
 
-OpenAI 兼容提供商可通过 `@ai-sdk/openai-compatible` 模块获取。你可以使用以下命令安装：
+OpenAI 兼容提供商可通过 `@ai-sdk/openai-compatible` 模块获得。你可以通过以下方式安装：
 
 <InstallPackages packages="@ai-sdk/openai-compatible" />
 
 ## 提供商实例
 
-要使用 OpenAI 兼容提供商，你可以通过 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建一个自定义提供商实例：
+要使用 OpenAI 兼容提供商，你可以使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建一个自定义提供商实例：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -48,11 +48,11 @@ const provider = createOpenAICompatible({
 
 - **apiKey** _string_
 
-  用于认证请求的 API 密钥。如果指定，会在请求头中添加 `Authorization` 头，值为 `Bearer <apiKey>`。这会在 `headers` 选项中可能指定的任何头之前添加。
+  用于验证请求的 API 密钥。如果指定，会在请求头中添加 `Authorization` 头，值为 `Bearer <apiKey>`。这将在 `headers` 选项中可能指定的任何头之前添加。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  可选的请求自定义头。这些头会在使用 `apiKey` 选项可能添加的任何头之后添加到请求头中。
+  可选的请求自定义头。这些头将在使用 `apiKey` 选项可能添加的任何头之后添加到请求头中。
 
 - **queryParams** _Record&lt;string,string&gt;_
 
@@ -60,7 +60,7 @@ const provider = createOpenAICompatible({
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作中间件来拦截请求，或为测试等场景提供自定义 fetch 实现。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作拦截请求的中间件，或为测试等场景提供自定义 fetch 实现。
 
 - **includeUsage** _boolean_
 
@@ -72,11 +72,11 @@ const provider = createOpenAICompatible({
 
 - **transformRequestBody** _(args: Record&lt;string, any&gt;) =&gt; Record&lt;string, any&gt;_
 
-  可选函数，用于在将请求体发送到 API 之前进行转换。这对于可能需要与官方 OpenAI API 不同请求格式的代理提供商非常有用。
+  可选函数，用于在将请求体发送到 API 之前进行转换。这对于可能需要与官方 OpenAI API 不同请求格式的代理提供商很有用。
 
 - **metadataExtractor** _MetadataExtractor_
 
-  可选的元数据提取器，用于从 API 响应中捕获提供商特定的元数据。详情请参见[自定义元数据提取](#自定义元数据提取)。
+  可选的元数据提取器，用于从 API 响应中捕获提供商特定的元数据。有关详细信息，请参阅[自定义元数据提取](#自定义元数据提取)。
 
 ## 语言模型
 
@@ -97,8 +97,8 @@ const model = provider('model-id');
 
 - **文本生成** - 生成文本补全
 - **流式传输** - 实时流式传输文本响应
-- **工具调用** - 调用工具/函数并支持流式传输
-- **结构化输出** - 生成带模式验证的 JSON（当启用 `supportsStructuredOutputs` 时）
+- **工具调用** - 支持流式传输的工具/函数调用
+- **结构化输出** - 使用模式验证生成 JSON（当启用 `supportsStructuredOutputs` 时）
 - **推理内容** - 支持返回推理/思考令牌的模型（例如 DeepSeek R1）
 - **系统消息** - 支持系统提示词
 - **多模态输入** - 支持图像和其他内容类型（取决于提供商）
@@ -157,7 +157,7 @@ const model = createOpenAICompatible<
   baseURL: 'https://api.example.com/v1',
 });
 
-// 后续调用如 `model.chatModel` 将自动补全模型 ID
+// 后续对例如 `model.chatModel` 的调用将自动补全模型 ID
 // 来自 `ExampleChatModelIds` 列表，同时仍允许自由格式的字符串。
 
 const { text } = await generateText({
@@ -199,7 +199,10 @@ const model = provider.imageModel('model-id');
 ### 基本图像生成
 
 ```ts
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import {
+  createOpenAICompatible,
+  type OpenAICompatibleImageModelOptions,
+} from '@ai-sdk/openai-compatible';
 import { generateImage } from 'ai';
 
 const provider = createOpenAICompatible({
@@ -210,10 +213,46 @@ const provider = createOpenAICompatible({
 
 const { images } = await generateImage({
   model: provider.imageModel('model-id'),
-  prompt: '日落时分的未来主义城市景观',
+  prompt: '日落时分的未来城市景观',
   size: '1024x1024',
+  providerOptions: {
+    providerName: {
+      quality: 'high',
+      output_format: 'jpeg',
+      output_compression: 80,
+      background: 'opaque',
+    } satisfies OpenAICompatibleImageModelOptions,
+  },
 });
 ```
+
+### 图像模型选项
+
+以下通用提供商选项可用于图像模型：
+
+- **size** _string_
+
+  生成图像的尺寸。使用顶层的 `size` 选项设置标准尺寸，或使用此提供商选项设置提供商特定的值，例如 `auto`。
+
+- **quality** _string_
+
+  生成图像的质量。支持的值取决于提供商和模型。
+
+- **output_format** _string_
+
+  生成图像的文件格式。
+
+- **output_compression** _number_
+
+  对于 JPEG 和 WebP 等格式的压缩级别，范围从 `0` 到 `100`。
+
+- **background** _string_
+
+  生成图像的背景行为。支持的值取决于提供商和模型。
+
+提供商和模型可能支持 `size`、`quality` 或 `background` 的 `auto` 值。
+
+`OpenAICompatibleImageModelOptions` 也接受其他提供商特定的选项。这些选项将原样传递给提供商 API。
 
 ### 图像编辑
 
@@ -237,15 +276,15 @@ const imageBuffer = fs.readFileSync('./input-image.png');
 const { images } = await generateImage({
   model: provider.imageModel('model-id'),
   prompt: {
-    text: '将猫变成狗，但保留原始图像的风格',
+    text: '把猫变成狗，但保留原始图像的风格',
     images: [imageBuffer],
   },
 });
 ```
 
-#### 使用蒙版进行修复
+#### 使用遮罩进行修复
 
-使用蒙版编辑图像的特定部分：
+使用遮罩编辑图像的特定部分：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -264,7 +303,7 @@ const mask = fs.readFileSync('./mask.png');
 const { images } = await generateImage({
   model: provider.imageModel('model-id'),
   prompt: {
-    text: '一个阳光明媚的室内休息区，带有一个包含火烈鸟的游泳池',
+    text: '一个阳光充足的室内休闲区，带有一个包含火烈鸟的游泳池',
     images: [image],
     mask,
   },
@@ -297,7 +336,7 @@ const provider = createOpenAICompatible({
 
 const { embedding } = await embed({
   model: provider.embeddingModel('text-embedding-model'),
-  value: '敏捷的棕色狐狸跳过了懒狗',
+  value: '敏捷的棕色狐狸跳过了懒惰的狗',
 });
 ```
 
@@ -307,7 +346,7 @@ const { embedding } = await embed({
 
 - **dimensions** _number_
 
-  结果输出嵌入应具有的维度数。仅支持允许配置维度的模型。
+  结果输出嵌入应具有的维度数。仅在允许维度配置的模型中支持。
 
 - **user** _string_
 
@@ -316,7 +355,7 @@ const { embedding } = await embed({
 ```ts
 const { embedding } = await embed({
   model: provider.embeddingModel('text-embedding-model'),
-  value: '敏捷的棕色狐狸跳过了懒狗',
+  value: '敏捷的棕色狐狸跳过了懒惰的狗',
   providerOptions: {
     providerName: {
       dimensions: 512,
@@ -362,7 +401,7 @@ const { text } = await generateText({
 
 - **logitBias** _Record&lt;string, number&gt;_
 
-  修改指定令牌出现在补全中的可能性。接受一个 JSON 对象，该对象将令牌（由其令牌 ID 指定）映射到 -100 到 100 之间的关联偏差值。
+  修改指定令牌在补全中出现的可能性。接受一个 JSON 对象，该对象将令牌（由其令牌 ID 指定）映射到 -100 到 100 之间的相关偏差值。
 
 - **suffix** _string_
 
@@ -404,7 +443,7 @@ const { text } = await generateText({
 
 - **strictJsonSchema** _boolean_
 
-  是否使用严格的 JSON 模式验证。当为 true 时，模型使用约束解码来保证模式合规。仅在提供商支持结构化输出且提供了模式时使用。默认为 `true`。
+  是否使用严格的 JSON 模式验证。为 true 时，模型使用约束解码来保证模式合规性。仅在提供商支持结构化输出且提供了模式时使用。默认为 `true`。
 
 ```ts
 const { text } = await generateText({
@@ -421,9 +460,9 @@ const { text } = await generateText({
 
 ## 提供商特定选项
 
-OpenAI 兼容提供商支持将提供商特定选项添加到请求体中。这些选项通过请求体中的 `providerOptions` 字段指定。
+OpenAI 兼容提供商支持向请求体添加提供商特定的选项。这些选项通过请求体中的 `providerOptions` 字段指定。
 
-例如，如果你创建了一个名称为 `providerName` 的提供商实例，你可以像这样向请求体添加一个 `customOption` 字段：
+例如，如果你创建一个名称为 `providerName` 的提供商实例，你可以像这样向请求体添加一个 `customOption` 字段：
 
 ```ts
 const provider = createOpenAICompatible({
@@ -441,27 +480,27 @@ const { text } = await generateText({
 });
 ```
 
-请注意，`providerOptions` 键将采用驼峰式大小写。如果你将提供商名称设置为 `provider-name`，选项仍需要在 `providerOptions.providerName` 上设置。
+请注意，`providerOptions` 键将采用驼峰命名法。如果你将提供商名称设置为 `provider-name`，选项仍需要在 `providerOptions.providerName` 上设置。
 
-发送给提供商的请求体将包含值为 `magic-value` 的 `customOption` 字段。这为你提供了一种简单的方法，无需修改提供商或 AI SDK 代码即可向请求添加提供商特定选项。
+发送给提供商的请求体将包含值为 `magic-value` 的 `customOption` 字段。这为你提供了一种简单的方法，无需修改提供商或 AI SDK 代码即可向请求添加提供商特定的选项。
 
 ## 自定义元数据提取
 
-OpenAI 兼容提供商支持通过元数据提取器从 API 响应中提取提供商特定的元数据。这些提取器允许你捕获提供商返回的标准响应格式之外的附加信息。
+OpenAI 兼容提供商支持通过元数据提取器从 API 响应中提取提供商特定的元数据。这些提取器允许你捕获提供商返回的超出标准响应格式的额外信息。
 
 元数据提取器接收来自提供商的原始、未处理的响应数据，为你提供了完全的灵活性来提取提供商可能包含的任何自定义字段或实验性功能。这在以下情况下特别有用：
 
-- 处理包含非标准响应字段的提供商
-- 试验测试版或预览版功能
+- 使用包含非标准响应字段的提供商
+- 试验测试版或预览功能
 - 捕获提供商特定的指标或调试信息
-- 支持快速发展的提供商 API，无需 SDK 更改
+- 支持快速的提供商 API 演进而无需 SDK 更改
 
 元数据提取器适用于流式和非流式聊天补全，由两个主要组件组成：
 
-1. 从完整响应中提取元数据的函数
-2. 一个流式提取器，可以在流式响应中跨数据块累积元数据
+1. 一个从完整响应中提取元数据的函数
+2. 一个流式提取器，可以在流式响应中跨块累积元数据
 
-以下是一个捕获标准和自定义提供商数据的元数据提取器示例：
+以下是一个捕获标准数据和自定义提供商数据的元数据提取器示例：
 
 ```typescript
 import { MetadataExtractor } from '@ai-sdk/openai-compatible';
@@ -478,7 +517,7 @@ const myMetadataExtractor: MetadataExtractor = {
         customMetrics: {
           processingTime: parsedBody.server_timing?.total_ms,
           modelVersion: parsedBody.model_version,
-          // ... 任何其他提供商特定数据
+          // ... 任何其他提供商特定的数据
         },
       },
     };
@@ -492,7 +531,7 @@ const myMetadataExtractor: MetadataExtractor = {
     };
 
     return {
-      // 处理每个数据块的原始数据
+      // 处理每个块的原始数据
       processChunk: parsedChunk => {
         if (parsedChunk.server_timing) {
           accumulatedData.timing.push(parsedChunk.server_timing);
@@ -535,4 +574,4 @@ const { text, providerMetadata } = await generateText({
 console.log(providerMetadata.myProvider.customMetric);
 ```
 
-这允许你在不同提供商之间保持一致的接口的同时，访问提供商特定的信息。
+这使你能够在不同提供商之间保持一致的接口的同时访问提供商特定的信息。

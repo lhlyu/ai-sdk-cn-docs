@@ -5,11 +5,12 @@ description: "了解如何将 LangChain 与 AI SDK 结合使用。"
 
 # LangChain
 
-[LangChain](https://docs.langchain.com/) 是一个用于构建由大型语言模型驱动的应用程序的框架。它提供了处理 AI 模型、提示词、链、向量存储以及其他用于检索增强生成（RAG）数据源的工具和抽象。
+[LangChain](https://docs.langchain.com/) 是一个用于构建由大型语言模型驱动的应用程序的框架。
+它提供了处理 AI 模型、提示词、链、向量存储以及其他用于检索增强生成（RAG）数据源的工具和抽象。
 
-[LangGraph](https://langchain-ai.github.io/langgraphjs/) 是一个基于 LangChain 构建的库，用于创建有状态、多角色的应用程序。它允许您将复杂的智能体工作流定义为图，支持循环、持久化和人机协同模式。
+[LangGraph](https://langchain-ai.github.io/langgraphjs/) 是一个基于 LangChain 构建的库，用于创建有状态、多角色的应用程序。它允许您将复杂的智能体工作流定义为图，支持循环、持久化和人在回路模式。
 
-`@ai-sdk/langchain` 适配器提供了 LangChain、LangGraph 与 AI SDK 之间的无缝集成，使您能够将 LangChain 模型和 LangGraph 智能体与 AI SDK UI 组件一起使用。
+`@ai-sdk/langchain` 适配器提供了 LangChain、LangGraph 和 AI SDK 之间的无缝集成，使您能够将 LangChain 模型和 LangGraph 智能体与 AI SDK UI 组件一起使用。
 
 ## 安装
 
@@ -21,14 +22,14 @@ description: "了解如何将 LangChain 与 AI SDK 结合使用。"
 
 - 使用 `toBaseMessages` 将 AI SDK `UIMessage` 转换为 LangChain `BaseMessage` 格式
 - 使用 `toUIMessageStream` 将 LangChain/LangGraph 流转换为 AI SDK `UIMessageStream`
-- 支持 `streamEvents()` 输出，用于细粒度的事件流式传输和可观测性
+- 支持 `streamEvents()` 输出，用于细粒度的事件流传输和可观测性
 - `LangSmithDeploymentTransport`，用于直接连接到已部署的 LangGraph 图
 - 完全支持文本、工具调用、工具结果和多模态内容
-- 使用类型化事件 (`data-{type}`) 进行自定义数据流式传输
+- 使用类型化事件 (`data-{type}`) 的自定义数据流传输
 
-## 示例：基本聊天
+## 示例：基础聊天
 
-以下是一个基本示例，展示了如何将 AI SDK 和 LangChain 与 [Next.js](https://nextjs.org/docs) App Router 结合使用。
+以下是一个基础示例，展示了如何将 AI SDK 和 LangChain 与 [Next.js](https://nextjs.org/docs) App Router 结合使用。
 
 ```tsx filename="app/api/chat/route.ts"
 import { toBaseMessages, toUIMessageStream } from '@ai-sdk/langchain';
@@ -125,7 +126,7 @@ const imageGenerationTool = tools.imageGeneration({
 const agent = createAgent({
   model,
   tools: [imageGenerationTool],
-  systemPrompt: '你是一个富有创意的 AI 艺术家助手。',
+  systemPrompt: '你是一个有创意的 AI 艺术家助手。',
 });
 
 export async function POST(req: Request) {
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
 }
 ```
 
-使用 `tools` 流模式来流式传输 LangGraph 工具进度。适配器将 `on_tool_event` 事件转换为初步工具输出（`preliminary: true`），并将最终的 `on_tool_end` 事件转换为最终工具输出。
+使用 `tools` 流模式来流式传输 LangGraph 工具进度。适配器将 `on_tool_event` 事件转换为初步工具输出 (`preliminary: true`)，并将最终的 `on_tool_end` 事件转换为最终工具输出。
 
 ## 示例：LangGraph
 
@@ -215,8 +216,8 @@ export async function POST(req: Request) {
 
   const langchainMessages = await toBaseMessages(messages);
 
-  // 使用 streamEvents() 进行细粒度事件流式传输
-  // 生成诸如 on_chat_model_stream, on_tool_start, on_tool_end 等事件
+  // 使用 streamEvents() 进行细粒度的事件流式传输
+  // 产生诸如 on_chat_model_stream、on_tool_start、on_tool_end 等事件
   const streamEvents = model.streamEvents(langchainMessages, {
     version: 'v2',
   });
@@ -230,12 +231,12 @@ export async function POST(req: Request) {
 
 <Note>
   **何时使用 `streamEvents()` 与 `graph.stream()`：** - **`streamEvents()`**：
-  最适合调试、可观测性、按事件类型过滤、使用 `createAgent` 创建的智能体，以及迁移依赖回调的现有 LCEL 应用程序 - **`graph.stream()` 配合 `streamMode`**：最适合需要通过 `values`、`messages`、`tools` 或 `custom` 模式获取结构化状态更新的 LangGraph 应用程序
+  最适合用于调试、可观测性、按事件类型过滤、使用 `createAgent` 创建的智能体，以及迁移依赖回调的现有 LCEL 应用程序 - **`graph.stream()` 配合 `streamMode`**：最适合需要通过 `values`、`messages`、`tools` 或 `custom` 模式获取结构化状态更新的 LangGraph 应用程序
 </Note>
 
 ## 示例：自定义数据流式传输
 
-LangChain 工具可以使用 `config.writer()` 发出自定义数据事件。适配器将这些事件转换为类型化的 `data-{type}` 部分，这些部分可以在 UI 中渲染，或通过 `onData` 回调处理：
+LangChain 工具可以使用 `config.writer()` 发出自定义数据事件。适配器将这些事件转换为类型化的 `data-{type}` 部分，这些部分可以在 UI 中渲染或通过 `onData` 回调处理：
 
 ```tsx filename="app/api/custom-data/route.ts"
 import { createUIMessageStreamResponse, UIMessage } from 'ai';
@@ -360,7 +361,7 @@ export default function Chat() {
 
 ## 示例：LangSmith 部署传输
 
-使用 `LangSmithDeploymentTransport` 从浏览器直接连接到 LangGraph 部署，无需后端 API 路由：
+使用 `LangSmithDeploymentTransport` 直接从浏览器连接到 LangGraph 部署，无需后端 API 路由：
 
 ```tsx filename="app/langsmith/page.tsx"
 'use client';
@@ -415,9 +416,9 @@ export default function LangSmithChat() {
 
 `LangSmithDeploymentTransport` 构造函数接受以下选项：
 
-- `url`：LangSmith 部署 URL 或本地服务器 URL（必需）
-- `apiKey`：用于身份验证的 API 密钥（本地开发可选）
-- `graphId`：要连接的图的 ID（默认为 `'agent'`）
+- `url`: LangSmith 部署 URL 或本地服务器 URL（必需）
+- `apiKey`: 用于身份验证的 API 密钥（本地开发可选）
+- `graphId`: 要连接的图的 ID（默认为 `'agent'`）
 
 ## API 参考
 
@@ -433,13 +434,13 @@ const langchainMessages = await toBaseMessages(uiMessages);
 
 **参数：**
 
-- `messages`：`UIMessage[]` - AI SDK UI 消息数组
+- `messages`: `UIMessage[]` - AI SDK UI 消息数组
 
 **返回：** `Promise<BaseMessage[]>`
 
 ### `convertModelMessages(modelMessages)`
 
-将 AI SDK `ModelMessage` 对象转换为 LangChain `BaseMessage` 对象。当您已经拥有来自 `convertToModelMessages` 的模型消息时非常有用。
+将 AI SDK `ModelMessage` 对象转换为 LangChain `BaseMessage` 对象。当您已经从 `convertToModelMessages` 获得了模型消息时很有用。
 
 ```ts
 import { convertModelMessages } from '@ai-sdk/langchain';
@@ -449,11 +450,11 @@ const langchainMessages = convertModelMessages(modelMessages);
 
 **参数：**
 
-- `modelMessages`：`ModelMessage[]` - 模型消息数组
+- `modelMessages`: `ModelMessage[]` - 模型消息数组
 
 **返回：** `BaseMessage[]`
 
-### `toUIMessageStream(stream)`
+### `toUIMessageStream(stream, options?)`
 
 将 LangChain/LangGraph 流转换为 AI SDK `UIMessageStream`。自动检测流类型并处理直接模型流、LangGraph 流和 `streamEvents()` 输出。
 
@@ -485,9 +486,43 @@ return createUIMessageStreamResponse({
 
 **参数：**
 
-- `stream`：`AsyncIterable<AIMessageChunk> | ReadableStream` - LangChain 模型流、LangGraph 流或 `streamEvents()` 输出
+- `stream`: `AsyncIterable<AIMessageChunk> | ReadableStream` - LangChain 模型流、LangGraph 流或 `streamEvents()` 输出
+- `options`: `ToUIMessageStreamOptions<TState>`（可选）
+  - `sendStart`: 是否发出外部的 `start` 块。默认为 `true`。
+  - `sendFinish`: 是否发出外部的 `finish` 块。默认为 `true`。
+  - `onStart`、`onToken`、`onText`、`onFinal`、`onFinish`、`onError` 和 `onAbort`：可选的流生命周期回调。
 
 **返回：** `ReadableStream<UIMessageChunk>`
+
+#### 组合到调用者拥有的流中
+
+默认情况下，`toUIMessageStream` 会发出外部的 `start` 和 `finish` 块。当调用者拥有消息生命周期时，应抑制这些块以避免重复的边界。所有转换后的文本、推理、工具、数据和步骤块保持不变。
+
+```ts
+import { toUIMessageStream } from '@ai-sdk/langchain';
+import { createUIMessageStream } from 'ai';
+
+const stream = createUIMessageStream({
+  async execute({ writer }) {
+    writer.write({ type: 'start' });
+
+    const reader = toUIMessageStream(langchainStream, {
+      sendStart: false,
+      sendFinish: false,
+    }).getReader();
+
+    while (true) {
+      const { done, value: chunk } = await reader.read();
+      if (done) break;
+      writer.write(chunk);
+    }
+
+    writer.write({ type: 'finish' });
+  },
+});
+```
+
+当调用者仅拥有一个生命周期边界时，可以独立设置任一选项。如果某个边界被抑制，则当最终流协议需要时，调用者负责提供它。
 
 ### `LangSmithDeploymentTransport`
 
@@ -514,10 +549,10 @@ const { messages, sendMessage } = useChat({
 
 **构造函数参数：**
 
-- `options`：`LangSmithDeploymentTransportOptions`
-  - `url`：`string` - LangSmith 部署 URL 或本地服务器 URL（必需）
-  - `apiKey?`：`string` - 用于身份验证的 API 密钥（可选）
-  - `graphId?`：`string` - 要连接的图的 ID（默认为 `'agent'`）
+- `options`: `LangSmithDeploymentTransportOptions`
+  - `url`: `string` - LangSmith 部署 URL 或本地服务器 URL（必需）
+  - `apiKey?`: `string` - 用于身份验证的 API 密钥（可选）
+  - `graphId?`: `string` - 要连接的图的 ID（默认为 `'agent'`）
 
 **实现：** `ChatTransport`
 

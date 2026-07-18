@@ -1,6 +1,6 @@
 ---
 title: "Moonshot AI"
-description: "了解如何通过 AI SDK 使用 Moonshot AI 模型。"
+description: "了解如何将 Moonshot AI 模型与 AI SDK 结合使用。"
 ---
 
 # Moonshot AI 提供商
@@ -11,19 +11,19 @@ API 密钥可以从 [Moonshot 平台](https://platform.moonshot.ai) 获取。
 
 ## 设置
 
-Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。你可以使用以下命令安装：
+Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。您可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/moonshotai" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/moonshotai` 导入默认的提供商实例 `moonshotai`：
+您可以从 `@ai-sdk/moonshotai` 导入默认的提供商实例 `moonshotai`：
 
 ```ts
 import { moonshotai } from '@ai-sdk/moonshotai';
 ```
 
-对于自定义配置，你可以导入 `createMoonshotAI` 并使用你的设置创建一个提供商实例：
+对于自定义配置，您可以导入 `createMoonshotAI` 并使用您的设置创建提供商实例：
 
 ```ts
 import { createMoonshotAI } from '@ai-sdk/moonshotai';
@@ -33,16 +33,16 @@ const moonshotai = createMoonshotAI({
 });
 ```
 
-你可以使用以下可选设置来自定义 Moonshot AI 提供商实例：
+您可以使用以下可选设置来自定义 Moonshot AI 提供商实例：
 
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀。
-  默认前缀是 `https://api.moonshot.ai/v1`
+  默认前缀为 `https://api.moonshot.ai/v1`
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。它默认为
+  通过 `Authorization` 标头发送的 API 密钥。默认值为
   `MOONSHOT_API_KEY` 环境变量
 
 - **headers** _Record&lt;string,string&gt;_
@@ -55,40 +55,64 @@ const moonshotai = createMoonshotAI({
 
 ## 语言模型
 
-你可以使用提供商实例创建语言模型：
+您可以使用提供商实例创建语言模型：
 
 ```ts
 import { moonshotai } from '@ai-sdk/moonshotai';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: moonshotai('kimi-k2.5'),
-  prompt: '写一份适合4人份的素食千层面食谱。',
+  model: moonshotai('kimi-k3'),
+  prompt: '写一份供4人食用的素食千层面食谱。',
 });
 ```
 
-你也可以使用 `.chatModel()` 或 `.languageModel()` 工厂方法：
+您也可以使用 `.chatModel()` 或 `.languageModel()` 工厂方法：
 
 ```ts
-const model = moonshotai.chatModel('kimi-k2.5');
+const model = moonshotai.chatModel('kimi-k3');
 // 或
-const model = moonshotai.languageModel('kimi-k2.5');
+const model = moonshotai.languageModel('kimi-k3');
 ```
 
-Moonshot AI 语言模型可以在 `streamText` 函数中使用
+Moonshot AI 语言模型可用于 `streamText` 函数
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 #### 结构化输出
 
 对于模型 ID 以 `kimi-` 开头的 Moonshot 模型，原生结构化输出已启用。
 
-对于其他 Moonshot 模型，对象生成会回退到 JSON 模式，而不是受模式约束的解码。
+对于其他 Moonshot 模型，对象生成会回退到 JSON 模式，而不是模式约束解码。
 
-为了获得最佳可靠性，强烈建议在提示词中包含你的模式要求，同时通过 `Output` 传递模式。
+为了获得最佳可靠性，强烈建议在提示词中包含您的模式要求，同时通过 `Output` 传递模式。
 
 ### 推理模型
 
-Moonshot AI 提供思考模型，例如 `kimi-k2-thinking`，这些模型在最终响应之前会生成中间推理令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
+Kimi K3 始终进行推理。它目前仅支持 `max` 推理努力，
+您可以通过提供商选项进行配置：
+
+```ts
+import {
+  moonshotai,
+  type MoonshotAILanguageModelOptions,
+} from '@ai-sdk/moonshotai';
+import { generateText } from 'ai';
+
+const { text, reasoningText } = await generateText({
+  model: moonshotai('kimi-k3'),
+  providerOptions: {
+    moonshotai: {
+      reasoningEffort: 'max',
+    } satisfies MoonshotAILanguageModelOptions,
+  },
+  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+});
+
+console.log(reasoningText);
+console.log(text);
+```
+
+Moonshot AI 提供思考模型，例如 `kimi-k2-thinking`，这些模型在生成最终响应之前会生成中间推理 token。推理输出通过标准的 AI SDK 推理部分进行流式传输。
 
 ```ts
 import {
@@ -112,11 +136,15 @@ console.log(reasoningText);
 console.log(text);
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
-以下可选的提供商选项可用于 Moonshot AI 语言模型：
+Moonshot AI 语言模型提供以下可选提供商选项：
+
+- **reasoningEffort** _'max'_
+
+  Kimi K3 的推理努力。目前仅支持 `'max'`。
 
 - **thinking** _object_
 
@@ -127,13 +155,13 @@ console.log(text);
 
   - **budgetTokens** _number_
 
-    思考的最大令牌数（最小 1024）
+    思考的最大 token 数（最小 1024）
 
 - **reasoningHistory** _'disabled' | 'interleaved' | 'preserved'_
 
   控制多轮对话中推理历史的处理方式：
   - `'disabled'`：从历史记录中移除推理
-  - `'interleaved'`：在单轮对话中，在工具调用之间包含推理
+  - `'interleaved'`：在单轮对话中的工具调用之间包含推理
   - `'preserved'`：保留历史记录中的所有推理
 
 ## 模型能力
@@ -148,9 +176,10 @@ console.log(text);
 | `kimi-k2-thinking`         | <Cross /> | <Check /> | <Check /> | <Check />    |
 | `kimi-k2-thinking-turbo`   | <Cross /> | <Check /> | <Check /> | <Check />    |
 | `kimi-k2-turbo`            | <Cross /> | <Check /> | <Check /> | <Check />    |
+| `kimi-k3`                  | <Check /> | <Check /> | <Check /> | <Check />    |
 
 <Note>
-  请参阅 [Moonshot AI 文档](https://platform.moonshot.ai/docs/intro) 获取
-  可用模型的完整列表。如果需要，你也可以将任何可用的提供商
+  请参阅 [Moonshot AI 文档](https://platform.moonshot.ai/docs/intro) 以获取
+  可用模型的完整列表。如果需要，您也可以将任何可用的提供商
   模型 ID 作为字符串传递。
 </Note>

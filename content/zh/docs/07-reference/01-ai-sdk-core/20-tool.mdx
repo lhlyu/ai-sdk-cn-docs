@@ -1,22 +1,22 @@
 ---
-title: tool
-description: 用于工具类型推断的辅助函数
+title: "tool"
+description: "用于工具类型推断的辅助函数"
 ---
 
 # `tool()`
 
-Tool 是一个辅助函数，用于推断其 `execute` 方法和生命周期回调函数的工具输入和上下文。
+Tool 是一个辅助函数，用于推断其 `execute` 方法和生命周期回调中的工具输入和上下文。
 
-它没有任何运行时行为，但能帮助 TypeScript 推断工具回调函数的类型。
+它没有任何运行时行为，但能帮助 TypeScript 推断工具回调的类型。
 
-如果没有这个辅助函数，TypeScript 无法将 `inputSchema` 和 `contextSchema` 属性与工具回调函数关联起来，因此回调参数的类型也无法被推断。
+如果没有这个辅助函数，TypeScript 无法将 `inputSchema` 和 `contextSchema` 属性连接到工具回调，并且回调参数类型也无法被推断。
 
 关于 `runtimeContext`、`toolsContext`、工具 `context` 以及敏感上下文过滤的完整模型，请参阅[运行时与工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
 
 `Tool` 类型是四种工具类型的联合：
 
 - `FunctionTool`：用户定义的函数式工具，具有已知的输入和输出类型。
-- `DynamicTool`：运行时定义的函数式工具，输入和输出类型为 `unknown`。
+- `DynamicTool`：在运行时定义的函数式工具，输入和输出类型为 `unknown`。
 - `ProviderDefinedTool`：提供商定义的工具，由你的代码执行。
 - `ProviderExecutedTool`：提供商定义的工具，由提供商执行。
 
@@ -60,21 +60,21 @@ export const weatherTool = tool({
               isOptional: true,
               type: 'string | ((options: { context: CONTEXT; experimental_sandbox?: Experimental_SandboxSession }) => string)',
               description:
-                '关于工具用途的信息，包括模型如何以及何时可以使用它的详细信息。提供一个固定描述的字符串，或一个函数，用于在每次模型调用前根据工具特定的上下文和可选的实验性沙箱来生成描述。',
+                '关于工具用途的信息，包括模型如何使用以及何时使用它的详细信息。提供一个固定描述的字符串，或者提供一个函数，以便在每次模型调用前从工具特定的上下文和可选的实验性沙箱中派生描述。',
             },
             {
               name: 'title',
               isOptional: true,
               type: 'string',
               description:
-                '已弃用。请使用 `providerMetadata` 来提供特定来源的工具显示元数据。',
+                '已弃用。请使用 `providerMetadata` 来提供特定于来源的工具显示元数据。',
             },
             {
               name: 'needsApproval',
               isOptional: true,
               type: 'boolean | ((input: INPUT, options: { toolCallId: string; messages: ModelMessage[]; context: CONTEXT }) => boolean | Promise<boolean>)',
               description:
-                '已弃用。对于 `generateText`、`streamText` 和 `ToolLoopAgent`，请改用 `toolApproval` 配置审批。现有的 `needsApproval` 用法仍可作为兼容性回退。使用时，它可以是一个布尔值，或一个接收工具输入及执行元数据（包括类型化的 `context`）的函数。',
+                '已弃用。对于 `generateText`、`streamText` 和 `ToolLoopAgent`，请改用 `toolApproval` 配置审批。现有的 `needsApproval` 用法仍可作为兼容性回退。使用时，它可以是一个布尔值，或者一个接收工具输入和执行元数据（包括类型化的 `context`）的函数。',
             },
             {
               name: 'inputSchema',
@@ -87,28 +87,28 @@ export const weatherTool = tool({
               isOptional: true,
               type: 'Array<{ input: INPUT }>',
               description:
-                '一个可选的输入示例列表，用于向语言模型展示输入应该是什么样子。',
+                '一个可选的输入示例列表，向语言模型展示输入应该是什么样子。',
             },
             {
               name: 'contextSchema',
               isOptional: true,
               type: 'Zod Schema | JSON Schema',
               description:
-                '一个可选的模式，描述工具期望的特定上下文。提供时，`execute`、`needsApproval` 和输入生命周期回调中的 `context` 类型将从此模式推断。该值通过工具在 `toolsContext` 中的条目提供。',
+                '一个可选的模式，描述工具期望的工具特定上下文。提供时，`execute`、`needsApproval` 和输入生命周期回调中的 `context` 类型将从此模式推断。该值通过 `toolsContext` 中工具的条目提供。',
             },
             {
               name: 'strict',
               isOptional: true,
               type: 'boolean',
               description:
-                '工具的严格模式设置。支持严格模式的提供商将使用此设置来决定如何生成输入。严格模式总是会产生有效的输入，但可能会限制支持的输入模式。',
+                '工具的严格模式设置。支持严格模式的提供商将使用此设置来确定如何生成输入。严格模式将始终生成有效输入，但可能会限制支持的输入模式。',
             },
             {
               name: 'execute',
               isOptional: true,
               type: 'async (input: INPUT, options: ToolExecutionOptions<CONTEXT>) => RESULT | Promise<RESULT> | AsyncIterable<RESULT>',
               description:
-                '一个异步函数，使用工具调用的参数调用，并产生一个结果或结果的可迭代对象。如果提供了可迭代对象，除最后一个结果外，所有结果都被视为初步结果。如果未提供，工具将不会自动执行。',
+                '一个异步函数，使用工具调用的参数调用并产生结果或结果的可迭代对象。如果提供了可迭代对象，除最后一个结果外的所有结果都被视为初步结果。如果未提供，工具将不会自动执行。',
               properties: [
                 {
                   type: 'ToolExecutionOptions<CONTEXT>',
@@ -123,27 +123,27 @@ export const weatherTool = tool({
                       name: 'messages',
                       type: 'ModelMessage[]',
                       description:
-                        '发送给语言模型以发起包含该工具调用的响应的消息。这些消息不包括系统提示词，也不包含包含该工具调用的助手响应。',
+                        '发送给语言模型以发起包含工具调用的响应的消息。这些消息不包括系统提示词，也不包含包含工具调用的助手响应。',
                     },
                     {
                       name: 'abortSignal',
                       type: 'AbortSignal',
                       isOptional: true,
                       description:
-                        '一个可选的终止信号，指示整个操作应被中止。',
+                        '一个可选的终止信号，指示应中止整个操作。',
                     },
                     {
                       name: 'context',
                       type: 'CONTEXT',
                       description:
-                        '传递给工具执行的特定上下文。当提供了 `contextSchema` 时，此类型将从该模式推断，并由 `toolsContext` 中匹配的条目提供。',
+                        '传递给工具执行的工具特定上下文。当提供了 `contextSchema` 时，此类型从该模式推断，并从 `toolsContext` 中的匹配条目提供。',
                     },
                     {
                       name: 'experimental_sandbox',
                       type: 'Experimental_SandboxSession',
                       isOptional: true,
                       description:
-                        '可选的实验性沙箱环境，从生成或智能体调用传递而来。当工具需要在实验性沙箱中执行命令或代码时使用。',
+                        '从生成或智能体调用传递的可选实验性沙箱环境。当工具需要在实验性沙箱中执行命令或代码时使用。',
                     },
                   ],
                 },
@@ -154,35 +154,35 @@ export const weatherTool = tool({
               isOptional: true,
               type: 'Zod Schema | JSON Schema',
               description:
-                '工具产生的输出模式。用于类型推断。',
+                '工具产生的输出的模式。用于类型推断。',
             },
             {
               name: 'toModelOutput',
               isOptional: true,
               type: '({toolCallId: string; input: INPUT; output: OUTPUT}) => ToolResultOutput | PromiseLike<ToolResultOutput>',
               description:
-                '可选的转换函数，将工具结果映射为语言模型可以使用的输出。如果未提供，工具结果将作为 JSON 对象发送。此函数由 "convertToModelMessages" 在服务器端调用，因此请确保将相同的 "tools"（ToolSet）同时传递给 "convertToModelMessages" 和 "streamText"（或其他生成 API）。',
+                '可选转换函数，将工具结果映射为语言模型可以使用的输出。如果未提供，工具结果将作为 JSON 对象发送。此函数由 "convertToModelMessages" 在服务器端调用，因此请确保将相同的 "tools"（ToolSet）同时传递给 "convertToModelMessages" 和 "streamText"（或其他生成 API）。',
             },
             {
               name: 'onInputStart',
               isOptional: true,
               type: '(options: ToolExecutionOptions<CONTEXT>) => void | PromiseLike<void>',
               description:
-                '可选函数，在参数流式传输开始时调用。仅在工具用于流式传输上下文时调用。',
+                '可选函数，当模型开始生成工具输入时调用。在非流式传输上下文中，它会在 onInputAvailable 之前立即调用。',
             },
             {
               name: 'onInputDelta',
               isOptional: true,
               type: '(options: { inputTextDelta: string } & ToolExecutionOptions<CONTEXT>) => void | PromiseLike<void>',
               description:
-                '可选函数，在参数流式传输增量可用时调用。仅在工具用于流式传输上下文时调用。',
+                '可选函数，当参数流式传输增量可用时调用。仅在流式传输上下文中使用工具时调用。',
             },
             {
               name: 'onInputAvailable',
               isOptional: true,
               type: '(options: { input: INPUT } & ToolExecutionOptions<CONTEXT>) => void | PromiseLike<void>',
               description:
-                '可选函数，在工具调用可以启动时调用，即使未提供 execute 函数。',
+                '可选函数，当工具调用可以启动时调用，即使未提供 execute 函数。',
             },
             {
               name: 'providerOptions',

@@ -1,18 +1,18 @@
 ---
 title: "dynamicTool"
-description: "用于创建类型未知的动态工具的辅助函数"
+description: "用于创建未知类型动态工具的辅助函数"
 ---
 
 # `dynamicTool()`
 
-`dynamicTool` 函数用于创建编译时输入和输出类型未知的工具。这在以下场景中非常有用：
+`dynamicTool` 函数用于创建在编译时输入和输出类型未知的工具。这在以下场景中非常有用：
 
 - 无模式的 MCP（模型上下文协议）工具
-- 运行时加载的用户自定义函数
+- 运行时加载的用户定义函数
 - 从外部来源或数据库加载的工具
-- 基于用户输入动态生成的工具
+- 基于用户输入动态生成工具
 
-与常规的 `tool` 函数不同，`dynamicTool` 接受并返回 `unknown` 类型，使您能够处理运行时确定模式的工具。
+与常规的 `tool` 函数不同，`dynamicTool` 接受并返回 `unknown` 类型，允许你处理具有运行时确定模式的工具。
 
 ```ts highlight={"1,4,9,11"}
 import { dynamicTool } from 'ai';
@@ -25,7 +25,7 @@ export const customTool = dynamicTool({
   execute: async input => {
     const { action, parameters } = input as any;
 
-    // 执行您的动态逻辑
+    // 执行你的动态逻辑
     return {
       result: `已执行 ${action}，参数为 ${JSON.stringify(parameters)}`,
     };
@@ -56,7 +56,7 @@ export const customTool = dynamicTool({
               isOptional: true,
               type: 'string | ((options: { context: Context; experimental_sandbox?: Experimental_SandboxSession }) => string)',
               description:
-                '关于工具用途的信息，包括模型如何使用以及何时使用该工具的详细信息。提供字符串作为固定描述，或提供函数以在每次模型调用前从工具特定上下文和可选的实验性沙箱中派生描述。'
+                '关于工具用途的信息，包括模型如何使用以及何时使用该工具的详细信息。提供字符串作为固定描述，或提供函数以在每次模型调用前从工具特定上下文和可选的实验性沙箱中推导出描述。'
             },
             {
               name: 'title',
@@ -76,7 +76,7 @@ export const customTool = dynamicTool({
               name: 'inputSchema',
               type: 'FlexibleSchema<unknown>',
               description:
-                '工具期望的输入模式。虽然类型为 unknown，但仍需要模式进行验证。对于完全动态的输入，您可以使用带有 z.unknown() 或 z.any() 的 Zod 模式。'
+                '工具期望的输入模式。虽然类型为 unknown，但仍需要模式进行验证。对于完全动态的输入，你可以使用带有 z.unknown() 或 z.any() 的 Zod 模式。'
             },
             {
               name: 'execute',
@@ -106,7 +106,7 @@ export const customTool = dynamicTool({
                       {
                         name: "context",
                         type: "Context",
-                        description: "传递给工具执行的工具特定上下文。该值来自 `toolsContext` 中的匹配条目。"
+                        description: "传递给工具执行的工具特定上下文。此值来自 `toolsContext` 中的匹配条目。"
                       }
                     ]
                   }
@@ -123,28 +123,28 @@ export const customTool = dynamicTool({
               name: 'toModelOutput',
               isOptional: true,
               type: '({toolCallId: string; input: unknown; output: unknown}) => ToolResultOutput | PromiseLike<ToolResultOutput>',
-              description: '可选的转换函数，将工具结果映射为语言模型可使用的输出。'
+              description: '可选的转换函数，将工具结果映射为语言模型可用的输出。'
             },
             {
               name: 'onInputStart',
               isOptional: true,
               type: '(options: ToolExecutionOptions<Context>) => void | PromiseLike<void>',
               description:
-                '可选函数，在参数流式传输开始时调用。仅在工具用于流式传输上下文时调用。'
+                '可选函数，当模型开始生成工具输入时调用。在非流式上下文中，它会在 onInputAvailable 之前立即调用。'
             },
             {
               name: 'onInputDelta',
               isOptional: true,
               type: '(options: { inputTextDelta: string } & ToolExecutionOptions<Context>) => void | PromiseLike<void>',
               description:
-                '可选函数，在参数流式传输增量可用时调用。仅在工具用于流式传输上下文时调用。'
+                '可选函数，当参数流式增量可用时调用。仅在工具用于流式上下文时调用。'
             },
             {
               name: 'onInputAvailable',
               isOptional: true,
               type: '(options: { input: unknown } & ToolExecutionOptions<Context>) => void | PromiseLike<void>',
               description:
-                '可选函数，在工具调用可以启动时调用，即使未提供 execute 函数。'
+                '可选函数，当工具调用可以启动时调用，即使未提供 execute 函数。'
             },
             {
               name: 'providerOptions',
@@ -157,7 +157,7 @@ export const customTool = dynamicTool({
               isOptional: true,
               type: 'JSONObject',
               description:
-                "关于工具本身的可选元数据（例如其来源）。它会传播到生成的工具调用的 toolMetadata 中，以便消费者可以从工具调用/结果部分和 UI 消息部分读取它。对于动态工具（例如 MCP 服务器）的来源标识非常有用。"
+                "关于工具本身的可选元数据（例如其来源）。它会传播到生成的工具调用的 toolMetadata 中，以便消费者可以从工具调用/结果部分和 UI 消息部分读取它。对于动态工具（例如 MCP 服务器）的来源标识自身非常有用。"
             }
           ]
         }
@@ -169,19 +169,19 @@ export const customTool = dynamicTool({
 
 ### 返回值
 
-一个 `Tool<unknown, unknown>`，类型为 `'dynamic'`，可与 `generateText`、`streamText` 及其他 AI SDK 函数一起使用。
+一个 `Tool<unknown, unknown>`，其 `type: 'dynamic'`，可与 `generateText`、`streamText` 以及其他 AI SDK 函数一起使用。
 
 ## 类型安全用法
 
-当动态工具与静态工具一起使用时，您需要检查 `dynamic` 标志以进行正确的类型收窄：
+当动态工具与静态工具一起使用时，你需要检查 `dynamic` 标志以进行正确的类型收窄：
 
 ```ts
 const result = await generateText({
   model: __MODEL__,
   tools: {
-    // 类型已知的静态工具
+    // 具有已知类型的静态工具
     weather: weatherTool,
-    // 类型未知的动态工具
+    // 具有未知类型的动态工具
     custom: dynamicTool({
       /* ... */
     }),
