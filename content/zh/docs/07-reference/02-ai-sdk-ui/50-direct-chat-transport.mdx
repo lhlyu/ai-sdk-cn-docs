@@ -1,13 +1,13 @@
 ---
-title: DirectChatTransport
-description: DirectChatTransport 类的 API 参考文档。
+title: "DirectChatTransport"
+description: "DirectChatTransport 类的 API 参考文档。"
 ---
 
 # `DirectChatTransport`
 
-一种传输方式，直接与进程内的[智能体](/docs/reference/ai-sdk-core/agent)通信，无需经过 HTTP。适用于以下场景：
+一种传输方式，可直接与进程内的[智能体](/docs/reference/ai-sdk-core/agent)通信，无需经过 HTTP。适用于以下场景：
 
-- 服务端渲染场景
+- 服务端渲染
 - 无需网络的测试
 - 单进程应用
 
@@ -47,7 +47,7 @@ export default function Chat() {
       type: 'Agent',
       isRequired: true,
       description:
-        '用于生成响应的智能体实例。每次消息都会调用智能体的 `stream()` 方法。',
+        '用于生成回复的 Agent 实例。每次消息都会调用该智能体的 `stream()` 方法。',
     },
     {
       name: 'options',
@@ -75,40 +75,40 @@ export default function Chat() {
       type: '(options: { part: TextStreamPart }) => METADATA | undefined',
       isOptional: true,
       description:
-        '提取将发送到客户端的消息元数据。在 `start` 和 `finish` 事件上调用。',
+        '提取将发送到客户端的消息元数据。在 `start` 和 `finish` 事件时调用。',
     },
     {
       name: 'sendReasoning',
       type: 'boolean',
       isOptional: true,
-      description: '将推理部分发送到客户端。默认为 true。',
+      description: '向客户端发送推理部分。默认为 true。',
     },
     {
       name: 'sendSources',
       type: 'boolean',
       isOptional: true,
-      description: '将来源部分发送到客户端。默认为 false。',
+      description: '向客户端发送来源部分。默认为 false。',
     },
     {
       name: 'sendFinish',
       type: 'boolean',
       isOptional: true,
       description:
-        '将完成事件发送到客户端。如果使用额外的 streamText 调用来发送额外数据，请设置为 false。默认为 true。',
+        '向客户端发送完成事件。如果你使用额外的 streamText 调用来发送附加数据，请设置为 false。默认为 true。',
     },
     {
       name: 'sendStart',
       type: 'boolean',
       isOptional: true,
       description:
-        '将消息开始事件发送到客户端。如果使用额外的 streamText 调用且消息开始事件已发送，请设置为 false。默认为 true。',
+        '向客户端发送消息开始事件。如果你使用额外的 streamText 调用并且消息开始事件已经发送，请设置为 false。默认为 true。',
     },
     {
       name: 'onError',
       type: '(error: unknown) => string',
       isOptional: true,
       description:
-        '处理错误，例如记录错误。默认为 `() => "发生错误。"`。返回要包含在数据流中的错误消息。',
+        '处理错误，例如记录日志。默认为 `() => \'发生错误。\'`。返回要包含在数据流中的错误消息。',
     },
   ]}
 />
@@ -182,7 +182,7 @@ const stream = await transport.sendMessages({
 
 #### 返回值
 
-返回一个 `Promise<ReadableStream<UIMessageChunk>>` - 一个 UI 消息块流，可由聊天 UI 处理。
+返回 `Promise<ReadableStream<UIMessageChunk>>` - 一个可由聊天 UI 处理的 UI 消息块流。
 
 ### `reconnectToStream()`
 
@@ -237,7 +237,7 @@ import { z } from 'zod';
 
 const weatherTool = tool({
   description: '获取当前天气',
-  parameters: z.object({
+  inputSchema: z.object({
     location: z.string().describe('城市和州'),
   }),
   execute: async ({ location }) => {
@@ -289,7 +289,7 @@ export default function Chat({ userId }: { userId: string }) {
 }
 ```
 
-### 使用推理
+### 使用推理功能
 
 ```tsx
 import { useChat } from '@ai-sdk/react';

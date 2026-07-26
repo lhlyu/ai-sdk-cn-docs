@@ -1,21 +1,21 @@
 ---
-title: "迁移 AI SDK 5.x 到 6.0"
-description: "了解如何将 AI SDK 从 5.x 升级到 6.0。"
+title: "Migrate AI SDK 5.x to 6.0"
+description: "Learn how to upgrade AI SDK 5.x to 6.0."
 ---
 
-# 迁移 AI SDK 5.x 到 6.0
+# 从 AI SDK 5.x 迁移到 6.0
 
 ## 推荐的迁移流程
 
-1.  备份你的项目。如果你使用版本控制系统，请确保所有之前的版本都已提交。
-1.  升级到 AI SDK 6.0。
-1.  遵循下面的重大变更指南。
-1.  验证你的项目是否按预期工作。
-1.  提交你的更改。
+1. 备份你的项目。如果你使用版本控制系统，请确保所有之前的版本都已提交。
+1. 升级到 AI SDK 6.0。
+1. 遵循下面的破坏性变更指南。
+1. 验证你的项目是否按预期工作。
+1. 提交你的更改。
 
 ## AI SDK 6.0 包版本
 
-你需要在你的 `package.json` 文件中将以下包更新到最新版本：
+你需要在 `package.json` 文件中将以下包更新到最新版本：
 
 - `ai` 包：`^6.0.0`
 - `@ai-sdk/provider` 包：`^3.0.0`
@@ -30,7 +30,7 @@ pnpm install ai@latest @ai-sdk/react@latest @ai-sdk/openai@latest
 
 ## Codemod
 
-AI SDK 提供了 Codemod 转换，以帮助你在功能被弃用、移除或以其他方式更改时升级你的代码库。
+AI SDK 提供了 Codemod 转换，以帮助你在功能被弃用、移除或以其他方式更改时升级代码库。
 
 Codemod 是自动在你的代码库上运行的转换。它们允许你轻松地应用许多更改，而无需手动检查每个文件。
 
@@ -41,7 +41,7 @@ npx @ai-sdk/codemod v6
 ```
 
 <Note>
-  还有一个 `npx @ai-sdk/codemod upgrade` 命令，但它会运行所有版本（v4、v5 和 v6）的 codemod。从 v5 升级时请使用 `v6`。
+  还有一个 `npx @ai-sdk/codemod upgrade` 命令，但它会运行所有版本的 codemod（v4、v5 和 v6）。从 v5 升级时请使用 `v6`。
 </Note>
 
 可以通过指定 codemod 的名称来运行单个 codemod：
@@ -50,7 +50,7 @@ npx @ai-sdk/codemod v6
 npx @ai-sdk/codemod <codemod-name> <path>
 ```
 
-例如，要运行特定的 v6 codemod：
+例如，要运行一个特定的 v6 codemod：
 
 ```sh
 npx @ai-sdk/codemod v6/rename-text-embedding-to-embedding src/
@@ -62,25 +62,25 @@ npx @ai-sdk/codemod v6/rename-text-embedding-to-embedding src/
 
 ## Codemod 表格
 
-| Codemod 名称                                             | 描述                                                                                          |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Codemod 名称                                             | 描述                                                                                        |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `rename-text-embedding-to-embedding`                     | 将提供商上的 `textEmbeddingModel` 重命名为 `embeddingModel`，将 `textEmbedding` 重命名为 `embedding` |
-| `rename-mock-v2-to-v3`                                   | 将 `ai/test` 中的 V2 模拟类重命名为 V3（例如，`MockLanguageModelV2` → `MockLanguageModelV3`）      |
-| `rename-tool-call-options-to-tool-execution-options`     | 将 `ToolCallOptions` 类型重命名为 `ToolExecutionOptions`                                         |
-| `rename-core-message-to-model-message`                   | 将 `CoreMessage` 类型重命名为 `ModelMessage`                                                     |
-| `rename-converttocoremessages-to-converttomodelmessages` | 将 `convertToCoreMessages` 函数重命名为 `convertToModelMessages`                                 |
-| `rename-vertex-provider-metadata-key`                    | 为 Google Vertex 文件将 `providerMetadata` 和 `providerOptions` 中的 `google` 重命名为 `vertex`    |
-| `wrap-tomodeloutput-parameter`                           | 将 `toModelOutput` 参数包装在对象解构中（`output` → `{ output }`）                                |
-| `add-await-converttomodelmessages`                       | 为 `convertToModelMessages` 调用添加 `await`（在 AI SDK 6 中现在是异步的）                        |
+| `rename-mock-v2-to-v3`                                   | 将 `ai/test` 中的 V2 模拟类重命名为 V3（例如，`MockLanguageModelV2` → `MockLanguageModelV3`） |
+| `rename-tool-call-options-to-tool-execution-options`     | 将 `ToolCallOptions` 类型重命名为 `ToolExecutionOptions`                                       |
+| `rename-core-message-to-model-message`                   | 将 `CoreMessage` 类型重命名为 `ModelMessage`                                                   |
+| `rename-converttocoremessages-to-converttomodelmessages` | 将 `convertToCoreMessages` 函数重命名为 `convertToModelMessages`                               |
+| `rename-vertex-provider-metadata-key`                    | 将 Google Vertex 文件的 `providerMetadata` 和 `providerOptions` 中的 `google` 重命名为 `vertex`   |
+| `wrap-tomodeloutput-parameter`                           | 将 `toModelOutput` 参数包装在对象解构中（`output` → `{ output }`）                              |
+| `add-await-converttomodelmessages`                       | 为 `convertToModelMessages` 调用添加 `await`（在 AI SDK 6 中现在是异步的）                     |
 
 ## AI SDK Core
 
-### `Experimental_Agent` 类变为 `ToolLoopAgent` 类
+### `Experimental_Agent` 类替换为 `ToolLoopAgent` 类
 
 `Experimental_Agent` 类已被 `ToolLoopAgent` 类取代。两个关键变化：
 
-1.  `system` 参数已重命名为 `instructions`
-2.  默认的 `stopWhen` 已从 `isStepCount(1)` 更改为 `isStepCount(20)`
+1. `system` 参数已重命名为 `instructions`
+2. 默认的 `stopWhen` 已从 `isStepCount(1)` 更改为 `isStepCount(20)`
 
 ```tsx filename="AI SDK 5"
 import { Experimental_Agent as Agent, isStepCount } from 'ai';
@@ -88,15 +88,15 @@ __PROVIDER_IMPORT__;
 
 const agent = new Agent({
   model: __MODEL__,
-  system: '你是一个乐于助人的助手。',
+  system: 'You are a helpful assistant.',
   tools: {
-    // 你的工具在这里
+    // your tools here
   },
-  stopWhen: isStepCount(20), // 多步骤智能体循环必需
+  stopWhen: isStepCount(20), // Required for multi-step agent loops
 });
 
 const result = await agent.generate({
-  prompt: '旧金山天气怎么样？',
+  prompt: 'What is the weather in San Francisco?',
 });
 ```
 
@@ -106,15 +106,15 @@ __PROVIDER_IMPORT__;
 
 const agent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: '你是一个乐于助人的助手。',
+  instructions: 'You are a helpful assistant.',
   tools: {
-    // 你的工具在这里
+    // your tools here
   },
-  // stopWhen 默认为 isStepCount(20)
+  // stopWhen defaults to isStepCount(20)
 });
 
 const result = await agent.generate({
-  prompt: '旧金山天气怎么样？',
+  prompt: 'What is the weather in San Francisco?',
 });
 ```
 
@@ -142,7 +142,9 @@ const modelMessages = await convertToModelMessages(messages); // ModelMessage[]
 
 ### `generateObject` 和 `streamObject` 弃用
 
-`generateObject` 和 `streamObject` 已被弃用（[PR #10754](https://github.com/vercel/ai/pull/10754)）。它们将在未来版本中被移除。请改用带有 `output` 设置的 `generateText` 和 `streamText`。
+`generateObject` 和 `streamObject` 已被弃用（[PR #10754](https://github.com/vercel/ai/pull/10754)）。
+它们将在未来版本中被移除。
+请改用带有 `output` 设置的 `generateText` 和 `streamText`。
 
 ```tsx filename="AI SDK 5"
 import { generateObject } from 'ai';
@@ -158,7 +160,7 @@ const { object } = await generateObject({
       steps: z.array(z.string()),
     }),
   }),
-  prompt: '生成一份千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
@@ -180,11 +182,11 @@ const { output } = await generateText({
       }),
     }),
   }),
-  prompt: '生成一份千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
-对于流式传输结构化数据，将 `streamObject` 替换为 `streamText`：
+对于流式结构化数据，将 `streamObject` 替换为 `streamText`：
 
 ```tsx filename="AI SDK 5"
 import { streamObject } from 'ai';
@@ -200,7 +202,7 @@ const { partialObjectStream } = streamObject({
       steps: z.array(z.string()),
     }),
   }),
-  prompt: '生成一份千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 
 for await (const partialObject of partialObjectStream) {
@@ -226,7 +228,7 @@ const { partialOutputStream } = streamText({
       }),
     }),
   }),
-  prompt: '生成一份千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 
 for await (const partialObject of partialOutputStream) {
@@ -258,7 +260,7 @@ const modelMessages = await convertToModelMessages(uiMessages);
 
 ### `Tool.toModelOutput` 变更
 
-在 AI SDK 6 中，`toModelOutput()` 接收一个包含 `output` 属性的参数对象。
+在 AI SDK 6 中，`toModelOutput()` 接收一个带有 `output` 属性的参数对象。
 
 在 AI SDK 5 中，`output` 就是参数本身。
 
@@ -335,19 +337,19 @@ const tools = {
 
 ### 每个工具的严格模式
 
-现在通过在每个工具上设置 `strict` 来控制工具的严格模式（[PR #10817](https://github.com/vercel/ai/pull/10817)）。这实现了对严格工具调用的细粒度控制，这一点很重要，因为严格模式取决于特定的工具输入模式。
+现在通过在每个工具上设置 `strict` 来控制工具的严格模式（[PR #10817](https://github.com/vercel/ai/pull/10817)）。这可以实现对严格工具调用的细粒度控制，因为严格模式取决于特定的工具输入模式。
 
 ```tsx filename="AI SDK 5"
 __PROVIDER_IMPORT__;
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
 
-// 工具严格模式由 strictJsonSchema 控制
+// Tool strict mode was controlled by strictJsonSchema
 const result = streamText({
   model: __MODEL__,
   tools: {
     calculator: tool({
-      description: '一个简单的计算器',
+      description: 'A simple calculator',
       inputSchema: z.object({
         expression: z.string(),
       }),
@@ -359,7 +361,7 @@ const result = streamText({
   },
   providerOptions: {
     openai: {
-      strictJsonSchema: true, // 应用于所有工具
+      strictJsonSchema: true, // Applied to all tools
     },
   },
 });
@@ -374,7 +376,7 @@ const result = streamText({
   model: __MODEL__,
   tools: {
     calculator: tool({
-      description: '一个简单的计算器',
+      description: 'A simple calculator',
       inputSchema: z.object({
         expression: z.string(),
       }),
@@ -382,7 +384,7 @@ const result = streamText({
         const result = eval(expression);
         return { result };
       },
-      strict: true, // 每个工具控制严格模式
+      strict: true, // Control strict mode per tool
     }),
   },
 });
@@ -400,7 +402,7 @@ AI SDK 6 引入了更灵活的工具输出和结果内容支持（[PR #9605](htt
 import type { ToolCallRepairFunction } from 'ai';
 
 const repairToolCall: ToolCallRepairFunction<MyTools> = async ({
-  system, // 类型：string | undefined
+  system, // type: string | undefined
   messages,
   toolCall,
   tools,
@@ -415,14 +417,14 @@ const repairToolCall: ToolCallRepairFunction<MyTools> = async ({
 import type { ToolCallRepairFunction, SystemModelMessage } from 'ai';
 
 const repairToolCall: ToolCallRepairFunction<MyTools> = async ({
-  system, // 类型：string | SystemModelMessage | undefined
+  system, // type: string | SystemModelMessage | undefined
   messages,
   toolCall,
   tools,
   inputSchema,
   error,
 }) => {
-  // 处理 string 和 SystemModelMessage
+  // Handle both string and SystemModelMessage
   const systemText = typeof system === 'string' ? system : system?.content;
   // ...
 };
@@ -430,21 +432,21 @@ const repairToolCall: ToolCallRepairFunction<MyTools> = async ({
 
 ### 嵌入模型方法重命名
 
-提供商上的 `textEmbeddingModel` 和 `textEmbedding` 方法已分别重命名为 `embeddingModel` 和 `embedding`。此外，已从 `EmbeddingModel`、`embed` 和 `embedMany` 中移除了泛型（[PR #10592](https://github.com/vercel/ai/pull/10592)）。
+提供商上的 `textEmbeddingModel` 和 `textEmbedding` 方法已分别重命名为 `embeddingModel` 和 `embedding`。此外，泛型已从 `EmbeddingModel`、`embed` 和 `embedMany` 中移除（[PR #10592](https://github.com/vercel/ai/pull/10592)）。
 
 ```tsx filename="AI SDK 5"
 import { openai } from '@ai-sdk/openai';
 import { embed } from 'ai';
 
-// 使用完整方法名
+// Using the full method name
 const model = openai.textEmbeddingModel('text-embedding-3-small');
 
-// 使用简写
+// Using the shorthand
 const model = openai.textEmbedding('text-embedding-3-small');
 
 const { embedding } = await embed({
   model: openai.textEmbedding('text-embedding-3-small'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
 });
 ```
 
@@ -452,15 +454,15 @@ const { embedding } = await embed({
 import { openai } from '@ai-sdk/openai';
 import { embed } from 'ai';
 
-// 使用完整方法名
+// Using the full method name
 const model = openai.embeddingModel('text-embedding-3-small');
 
-// 使用简写
+// Using the shorthand
 const model = openai.embedding('text-embedding-3-small');
 
 const { embedding } = await embed({
   model: openai.embedding('text-embedding-3-small'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
 });
 ```
 
@@ -483,7 +485,7 @@ export AI_SDK_LOG_WARNINGS=false
 每个生成函数的单独警告类型已合并为从 `ai` 包导出的单个 `Warning` 类型（[PR #10631](https://github.com/vercel/ai/pull/10631)）。
 
 ```tsx filename="AI SDK 5"
-// 每个生成函数的单独警告类型
+// Separate warning types for each generation function
 import type {
   CallWarning,
   ImageModelCallWarning,
@@ -493,7 +495,7 @@ import type {
 ```
 
 ```tsx filename="AI SDK 6"
-// 所有生成函数的单个 Warning 类型
+// Single Warning type for all generation functions
 import type { Warning } from 'ai';
 ```
 
@@ -503,9 +505,34 @@ import type { Warning } from 'ai';
 
 ## AI SDK UI
 
+### 工具 UI 部分审批状态
+
+AI SDK 6 在工具 UI 部分的 `state` 联合类型中添加了 `approval-requested`、`approval-responded` 和 `output-denied`。更新详尽的 `switch` 语句和其他状态处理，以涵盖这三种审批状态。
+
+```tsx filename="AI SDK 6"
+switch (part.state) {
+  case 'input-streaming':
+    return 'Loading input';
+  case 'input-available':
+    return 'Input ready';
+  case 'approval-requested':
+    return 'Approval requested';
+  case 'approval-responded':
+    return 'Approval response received';
+  case 'output-available':
+    return 'Output ready';
+  case 'output-error':
+    return part.errorText;
+  case 'output-denied':
+    return 'Tool call denied';
+}
+```
+
+请参阅[工具执行审批](/docs/ai-sdk-ui/chatbot-tool-usage#tool-execution-approval)以了解如何在聊天 UI 中处理审批请求和响应。
+
 ### 工具 UI 部分辅助函数重命名
 
-工具 UI 部分辅助函数已重命名，以更好地反映其用途，并适应静态和动态工具部分（[PR #XXXX](https://github.com/vercel/ai/pull/XXXX)）。
+工具 UI 部分辅助函数已重命名，以更好地反映其用途，并同时支持静态和动态工具部分（[PR #XXXX](https://github.com/vercel/ai/pull/XXXX)）。
 
 #### `isToolUIPart` → `isStaticToolUIPart`
 
@@ -514,7 +541,7 @@ import type { Warning } from 'ai';
 ```tsx filename="AI SDK 5"
 import { isToolUIPart } from 'ai';
 
-// 检查一个部分是否是工具 UI 部分
+// Check if a part is a tool UI part
 if (isToolUIPart(part)) {
   console.log(part.toolName);
 }
@@ -523,7 +550,7 @@ if (isToolUIPart(part)) {
 ```tsx filename="AI SDK 6"
 import { isStaticToolUIPart } from 'ai';
 
-// 检查一个部分是否是静态工具 UI 部分
+// Check if a part is a static tool UI part
 if (isStaticToolUIPart(part)) {
   console.log(part.toolName);
 }
@@ -536,18 +563,18 @@ if (isStaticToolUIPart(part)) {
 ```tsx filename="AI SDK 5"
 import { isToolOrDynamicToolUIPart } from 'ai';
 
-// 检查一个部分是静态还是动态工具 UI 部分
+// Check if a part is either a static or dynamic tool UI part
 if (isToolOrDynamicToolUIPart(part)) {
-  console.log('找到工具部分');
+  console.log('Tool part found');
 }
 ```
 
 ```tsx filename="AI SDK 6"
 import { isToolUIPart } from 'ai';
 
-// 检查一个部分是静态还是动态工具 UI 部分
+// Check if a part is either a static or dynamic tool UI part
 if (isToolUIPart(part)) {
-  console.log('找到工具部分');
+  console.log('Tool part found');
 }
 ```
 
@@ -558,14 +585,14 @@ if (isToolUIPart(part)) {
 ```tsx filename="AI SDK 5"
 import { getToolName } from 'ai';
 
-// 从工具部分获取工具名称
+// Get the tool name from a tool part
 const name = getToolName(toolPart);
 ```
 
 ```tsx filename="AI SDK 6"
 import { getStaticToolName } from 'ai';
 
-// 从静态工具部分获取工具名称
+// Get the tool name from a static tool part
 const name = getStaticToolName(toolPart);
 ```
 
@@ -576,14 +603,14 @@ const name = getStaticToolName(toolPart);
 ```tsx filename="AI SDK 5"
 import { getToolOrDynamicToolName } from 'ai';
 
-// 从静态或动态工具部分获取工具名称
+// Get the tool name from either a static or dynamic tool part
 const name = getToolOrDynamicToolName(toolPart);
 ```
 
 ```tsx filename="AI SDK 6"
 import { getToolName } from 'ai';
 
-// 从静态或动态工具部分获取工具名称
+// Get the tool name from either a static or dynamic tool part
 const name = getToolName(toolPart);
 ```
 
@@ -593,22 +620,22 @@ const name = getToolName(toolPart);
 
 #### `strictJsonSchema` 默认为 True
 
-JSON 输出和工具调用的 `strictJsonSchema` 设置现已默认启用（[PR #10752](https://github.com/vercel/ai/pull/10752)）。这提高了稳定性，并确保生成符合你模式的合法 JSON 输出。
+JSON 输出和工具调用的 `strictJsonSchema` 设置默认启用（[PR #10752](https://github.com/vercel/ai/pull/10752)）。这提高了稳定性，并确保生成符合你模式的 JSON 输出。
 
-然而，严格模式对模式要求更严格。如果你收到模式拒绝错误，请调整你的模式（例如，使用 `null` 而不是 `undefined`）或禁用严格模式。
+但是，严格模式对模式要求更严格。如果你收到模式拒绝错误，请调整你的模式（例如，使用 `null` 而不是 `undefined`）或禁用严格模式。
 
 ```tsx filename="AI SDK 5"
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
-// strictJsonSchema 默认为 false
+// strictJsonSchema was false by default
 const result = await generateObject({
   model: openai('gpt-5.1'),
   schema: z.object({
     name: z.string(),
   }),
-  prompt: '生成一个人',
+  prompt: 'Generate a person',
 });
 ```
 
@@ -617,22 +644,22 @@ import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
-// strictJsonSchema 默认为 true
+// strictJsonSchema is true by default
 const result = await generateObject({
   model: openai('gpt-5.1'),
   schema: z.object({
     name: z.string(),
   }),
-  prompt: '生成一个人',
+  prompt: 'Generate a person',
 });
 
-// 如果需要，禁用严格模式
+// Disable strict mode if needed
 const resultNoStrict = await generateObject({
   model: openai('gpt-5.1'),
   schema: z.object({
     name: z.string(),
   }),
-  prompt: '生成一个人',
+  prompt: 'Generate a person',
   providerOptions: {
     openai: {
       strictJsonSchema: false,
@@ -654,47 +681,47 @@ const resultNoStrict = await generateObject({
 ```tsx filename="AI SDK 5"
 import { azure } from '@ai-sdk/azure';
 
-// 使用 Chat Completions API
+// Used Chat Completions API
 const model = azure('gpt-4o');
 ```
 
 ```tsx filename="AI SDK 6"
 import { azure } from '@ai-sdk/azure';
 
-// 现在默认使用 Responses API
+// Now uses Responses API by default
 const model = azure('gpt-4o');
 
-// 使用 azure.chat() 调用 Chat Completions API
+// Use azure.chat() for Chat Completions API
 const chatModel = azure.chat('gpt-4o');
 
-// 显式使用 azure.responses() 调用 Responses API
+// Use azure.responses() explicitly for Responses API
 const responsesModel = azure.responses('gpt-4o');
 ```
 
 <Note>
-  Responses 和 Chat Completions API 具有不同的行为和默认值。如果你依赖于 Chat Completions API，请将你的模型实例切换到 `azure.chat()` 并审计你的配置。
+  Responses 和 Chat Completions API 具有不同的行为和默认值。如果你依赖 Chat Completions API，请将你的模型实例切换到 `azure.chat()` 并审计你的配置。
 </Note>
 
 #### Responses API 的 `providerMetadata` 和 `providerOptions` 键
 
-对于 **Responses API**，`@ai-sdk/azure` 提供商现在使用 `azure` 作为 `providerMetadata` 和 `providerOptions` 的键，而不是 `openai`。`openai` 键仍然支持用于 `providerOptions` 输入，但生成的 `providerMetadata` 输出现在使用 `azure`。
+对于 **Responses API**，`@ai-sdk/azure` 提供商现在使用 `azure` 作为 `providerMetadata` 和 `providerOptions` 的键，而不是 `openai`。`providerOptions` 输入仍然支持 `openai` 键，但生成的 `providerMetadata` 输出现在使用 `azure`。
 
 ```tsx filename="AI SDK 5"
 import { azure } from '@ai-sdk/azure';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: azure.responses('gpt-5-mini'), // 使用你自己的部署
-  prompt: '你好',
+  model: azure.responses('gpt-5-mini'), // use your own deployment
+  prompt: 'Hello',
   providerOptions: {
     openai: {
-      // AI SDK 5：使用 `openai` 键设置 Responses API 选项
+      // AI SDK 5: use `openai` key for Responses API options
       reasoningSummary: 'auto',
     },
   },
 });
 
-// 通过 'openai' 键访问元数据
+// Accessed metadata via 'openai' key
 console.log(result.providerMetadata?.openai?.responseId);
 ```
 
@@ -703,18 +730,18 @@ import { azure } from '@ai-sdk/azure';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  // azure() 现在默认使用 Responses API
-  model: azure('gpt-5-mini'), // 使用你自己的部署
-  prompt: '你好',
+  // azure() now uses the Responses API by default
+  model: azure('gpt-5-mini'), // use your own deployment
+  prompt: 'Hello',
   providerOptions: {
     azure: {
-      // AI SDK 6：使用 `azure` 键设置 Responses API 选项
+      // AI SDK 6: use `azure` key for Responses API options
       reasoningSummary: 'auto',
     },
   },
 });
 
-// 通过 'azure' 键访问元数据
+// Access metadata via 'azure' key
 console.log(result.providerMetadata?.azure?.responseId);
 ```
 
@@ -722,11 +749,11 @@ console.log(result.providerMetadata?.azure?.responseId);
 
 #### 结构化输出模式
 
-Anthropic [为 Claude Sonnet 4.5 及更高版本模型引入了原生结构化输出](https://www.claude.com/blog/structured-outputs-on-the-claude-developer-platform)。`@ai-sdk/anthropic` 提供商现在包含一个 `structuredOutputMode` 选项，用于控制如何生成结构化输出（[PR #10502](https://github.com/vercel/ai/pull/10502)）。
+Anthropic 已为 Claude Sonnet 4.5 及更高版本模型引入了原生结构化输出（https://www.claude.com/blog/structured-outputs-on-the-claude-developer-platform）。`@ai-sdk/anthropic` 提供商现在包含一个 `structuredOutputMode` 选项，用于控制如何生成结构化输出（[PR #10502](https://github.com/vercel/ai/pull/10502)）。
 
 可用的模式有：
 
-- `'outputFormat'`：使用 Anthropic 的原生 `output_format` 参数
+- `'outputFormat'`：使用 Anthropic 原生的 `output_format` 参数
 - `'jsonTool'`：使用特殊的 JSON 工具来指定结构化输出格式
 - `'auto'`（默认）：当模型支持时使用 `'outputFormat'`，否则回退到 `'jsonTool'`
 
@@ -741,10 +768,10 @@ const result = await generateObject({
     name: z.string(),
     age: z.number(),
   }),
-  prompt: '生成一个人',
+  prompt: 'Generate a person',
   providerOptions: {
     anthropic: {
-      // 显式设置结构化输出模式（可选）
+      // Explicitly set the structured output mode (optional)
       structuredOutputMode: 'outputFormat',
     } satisfies AnthropicProviderOptions,
   },
@@ -755,7 +782,7 @@ const result = await generateObject({
 
 #### `providerMetadata` 和 `providerOptions` 键
 
-`@ai-sdk/google-vertex` 提供商现在使用 `vertex` 作为 `providerMetadata` 和 `providerOptions` 的键，而不是 `google`。`google` 键仍然支持用于 `providerOptions` 输入，但生成的 `providerMetadata` 输出现在使用 `vertex`。
+`@ai-sdk/google-vertex` 提供商现在使用 `vertex` 作为 `providerMetadata` 和 `providerOptions` 的键，而不是 `google`。`providerOptions` 输入仍然支持 `google` 键，但生成的 `providerMetadata` 输出现在使用 `vertex`。
 
 ```tsx filename="AI SDK 5"
 import { vertex } from '@ai-sdk/google-vertex';
@@ -768,12 +795,12 @@ const result = await generateText({
       safetySettings: [
         /* ... */
       ],
-    }, // 使用 'google' 键
+    }, // Used 'google' key
   },
-  prompt: '你好',
+  prompt: 'Hello',
 });
 
-// 通过 'google' 键访问元数据
+// Accessed metadata via 'google' key
 console.log(result.providerMetadata?.google?.safetyRatings);
 ```
 
@@ -788,12 +815,12 @@ const result = await generateText({
       safetySettings: [
         /* ... */
       ],
-    }, // 现在使用 'vertex' 键
+    }, // Now uses 'vertex' key
   },
-  prompt: '你好',
+  prompt: 'Hello',
 });
 
-// 通过 'vertex' 键访问元数据
+// Access metadata via 'vertex' key
 console.log(result.providerMetadata?.vertex?.safetyRatings);
 ```
 

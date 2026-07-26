@@ -1,31 +1,31 @@
 ---
-title: 工具调用缺失结果错误
-description: 如何修复使用无执行函数的工具时出现的"ToolInvocation must have a result"错误
+title: "工具调用缺少结果错误"
+description: "如何修复使用无执行函数的工具时出现的“ToolInvocation must have a result”错误"
 ---
 
-# 工具调用缺失结果错误
+# 工具调用缺少结果错误
 
 ## 问题
 
-当使用 `generateText()` 或 `streamText()` 时，如果调用了一个没有 `execute` 函数的工具，可能会遇到"ToolInvocation must have a result"错误。
+使用 `generateText()` 或 `streamText()` 时，如果调用了没有 `execute` 函数的工具，可能会遇到 "ToolInvocation must have a result" 错误。
 
 ## 原因
 
-当你定义了一个没有 `execute` 函数的工具，并且没有通过其他方式（如 `useChat` 的 `onToolCall` 或 `addToolOutput` 函数）提供结果时，就会触发此错误。
+当您定义了一个没有 `execute` 函数的工具，并且没有通过其他方式（如 `useChat` 的 `onToolCall` 或 `addToolOutput` 函数）提供结果时，就会发生此错误。
 
-每次调用工具时，模型都期望在继续对话前收到结果。如果没有结果，模型无法判断工具调用是否成功，对话状态将变得无效。
+每次调用工具时，模型都期望在继续对话前收到结果。如果没有结果，模型无法判断工具调用是成功还是失败，对话状态将变得无效。
 
 ## 解决方案
 
-处理工具结果有两种选择：
+您有两种处理工具结果的方式：
 
 1. 使用带 `execute` 函数的工具在服务端执行：
 
 ```tsx
 const tools = {
   weather: tool({
-    description: '获取某个位置的天气',
-    parameters: z.object({
+    description: '获取某个地点的天气',
+    inputSchema: z.object({
       location: z
         .string()
         .describe('城市和州，例如 "San Francisco, CA"'),
@@ -38,7 +38,7 @@ const tools = {
 };
 ```
 
-2. 使用 `useChat` 在客户端执行（省略 `execute` 函数），必须通过 `addToolOutput` 提供结果：
+2. 使用 `useChat` 在客户端执行（省略 `execute` 函数），您必须通过 `addToolOutput` 提供结果：
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -48,7 +48,7 @@ import {
 } from 'ai';
 
 const { messages, sendMessage, addToolOutput } = useChat({
-  // 当所有工具结果就绪时自动提交
+  // 当所有工具结果可用时自动提交
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 
   // 在 onToolCall 中处理工具调用
@@ -78,20 +78,20 @@ const { messages, sendMessage, addToolOutput } = useChat({
 ```
 
 ```tsx
-// 用于交互式 UI 元素：
+// 对于交互式 UI 元素：
 const { messages, sendMessage, addToolOutput } = useChat({
   transport: new DefaultChatTransport({ api: '/api/chat' }),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 });
 
-// 在 JSX 中渲染工具调用时：
+// 在您的 JSX 中，渲染工具调用时：
 <button
   onClick={() =>
     addToolOutput({
       tool: 'myTool',
       toolCallId, // 必须提供工具调用 ID
       output: {
-        /* 你的工具结果 */
+        /* 您的工具结果 */
       },
     })
   }
@@ -101,5 +101,5 @@ const { messages, sendMessage, addToolOutput } = useChat({
 ```
 
 <Note type="warning">
-  无论是在服务端还是客户端处理工具，每次工具调用都必须有对应的结果，对话才能继续。
+  无论是在服务端还是客户端处理工具，每个工具调用在对话继续之前都必须有对应的结果。
 </Note>

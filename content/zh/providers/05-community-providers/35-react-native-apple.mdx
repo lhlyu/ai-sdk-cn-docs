@@ -5,17 +5,17 @@ description: "了解如何使用 Apple 提供商进行设备端 AI。"
 
 # React Native Apple 提供商
 
-[@react-native-ai/apple](https://github.com/callstackincubator/ai/tree/main/packages/apple-llm) 是一个社区提供商，它将 Apple 的设备端 AI 能力引入 React Native 和 Expo 应用。它允许你完全在设备端运行 AI SDK，利用 iOS 26+ 上可用的 Apple Intelligence 基础模型，通过 Apple 的原生 AI 框架提供文本生成、嵌入、转录和语音合成功能。
+[@react-native-ai/apple](https://github.com/callstackincubator/ai/tree/main/packages/apple-llm) 是一个社区提供商，它将 Apple 的设备端 AI 能力引入 React Native 和 Expo 应用。它允许你完全在设备端运行 AI SDK，利用 iOS 26+ 上可用的 Apple Intelligence 基础模型，通过 Apple 原生 AI 框架提供文本生成、嵌入、转录和语音合成功能。
 
 ## 设置
 
-Apple 提供商可在 `@react-native-ai/apple` 模块中获得。你可以通过以下方式安装：
+Apple 提供商位于 `@react-native-ai/apple` 模块中。你可以通过以下方式安装：
 
 <InstallPackages packages="@react-native-ai/apple" />
 
 ### 前提条件
 
-在使用 Apple 提供商之前，你需要：
+使用 Apple 提供商之前，你需要：
 
 - **React Native 或 Expo 应用**：此提供商仅适用于 React Native 和 Expo 应用。有关设置说明，请参阅 [Expo 快速入门指南](/docs/getting-started/expo)
 - **iOS 26+**：Apple Intelligence 基础模型和核心功能所需
@@ -30,7 +30,7 @@ import { apple } from '@react-native-ai/apple';
 
 ### 可用性检查
 
-在使用 Apple AI 功能之前，你可以检查它们在当前设备上是否可用：
+在使用 Apple AI 功能之前，你可以检查当前设备是否支持：
 
 ```ts
 if (!apple.isAvailable()) {
@@ -113,7 +113,7 @@ const { text } = await generateText({
 
 ### 工具调用
 
-Apple 提供商支持工具调用，其中工具由 Apple Intelligence 而非 AI SDK 执行。工具必须使用 `createAppleProvider` 预先在提供商中注册，然后才能在生成调用中使用。
+Apple 提供商支持工具调用，其中工具由 Apple Intelligence 执行，而非 AI SDK。工具必须使用 `createAppleProvider` 预先在提供商中注册，然后才能在生成调用中使用。
 
 ```ts
 import { createAppleProvider } from '@react-native-ai/apple';
@@ -122,11 +122,11 @@ import { z } from 'zod';
 
 const getWeather = tool({
   description: '获取当前天气信息',
-  parameters: z.object({
+  inputSchema: z.object({
     city: z.string().describe('城市名称'),
   }),
   execute: async ({ city }) => {
-    return `${city} 的天气：晴天，25°C`;
+    return `天气：${city}，晴天，25°C`;
   },
 });
 
@@ -181,7 +181,7 @@ console.log(response.text);
 
 ## 语音合成
 
-Apple 使用 `AVSpeechSynthesizer` 提供文本转语音合成，适用于 iOS 13+，并在 iOS 17+ 上具有增强功能。
+Apple 使用 `AVSpeechSynthesizer` 提供文本转语音合成，适用于 iOS 13+，并在 iOS 17+ 上提供增强功能。
 
 ### 基本语音生成
 
@@ -194,7 +194,7 @@ import { generateSpeech } from 'ai';
 const response = await generateSpeech({
   model: apple.speechModel(),
   text: '来自 Apple 设备端语音的问候！',
-  language: 'en-US',
+  language: 'zh-CN',
 });
 ```
 
@@ -221,14 +221,14 @@ console.log(voices);
 
 ## 平台要求
 
-不同的 Apple AI 功能对 iOS 版本有不同的要求：
+不同的 Apple AI 功能有不同的 iOS 版本要求：
 
 | 功能             | 最低 iOS 版本 | 额外要求                     |
 | ------------------- | ------------------- | --------------------------------- |
 | 文本生成     | iOS 26+             | 已启用 Apple Intelligence 的设备 |
 | 文本嵌入     | iOS 17+             | -                                 |
 | 音频转录 | iOS 26+             | 已下载语言资源        |
-| 语音合成    | iOS 13+             | iOS 17+ 用于个人语音        |
+| 语音合成    | iOS 13+             | iOS 17+ 支持个人语音        |
 
 <Note>
   Apple Intelligence 功能目前仅在选定设备上可用。请查看 Apple 文档以获取最新的设备兼容性信息。

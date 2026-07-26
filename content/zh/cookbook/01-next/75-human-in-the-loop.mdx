@@ -1,18 +1,18 @@
 ---
-title: 在 Next.js 中实现人工介入
-description: 使用 Next.js 和 AI SDK 为智能体系统添加人工审批步骤
-tags: ['next', '智能体', '工具使用']
+title: "Human-in-the-Loop with Next.js"
+description: "使用 Next.js 和 AI SDK 为智能体系统添加人工审批步骤"
+tags: ['next', 'agents', 'tool use']
 ---
 
-# 在 Next.js 中实现人工介入
+# 使用 Next.js 实现人工介入
 
-构建智能体系统时，添加人工介入（HITL）功能至关重要，以确保系统在执行操作前能获得用户批准。AI SDK 通过工具的 `needsApproval` 属性提供对工具执行审批的内置支持。
+在构建智能体系统时，添加人工介入（HITL）功能至关重要，以确保用户在系统执行操作前能够审批这些操作。AI SDK 通过工具的 `needsApproval` 属性为工具执行审批提供原生支持。
 
-本教程演示如何使用 AI SDK 的原生工具执行审批功能，为 Next.js 聊天机器人添加人工审批步骤。
+本指南演示如何使用 AI SDK 的原生工具执行审批功能，为 Next.js 聊天机器人添加人工审批步骤。
 
 ## 背景
 
-要理解如何实现此功能，我们先看看在 Next.js 聊天机器人应用中，AI SDK 如何处理工具调用。
+要理解如何实现此功能，我们先看看在 Next.js 聊天机器人应用中，AI SDK 的工具调用是如何工作的。
 
 在前端，使用 `useChat` Hook 管理消息状态和用户交互。
 
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         description: '向用户展示指定城市的天气',
         inputSchema: z.object({ city: z.string() }),
         execute: async ({ city }) => {
-          const weatherOptions = ['晴天', '多云', '雨天', '雪天'];
+          const weatherOptions = ['sunny', 'cloudy', 'rainy', 'snowy'];
           return weatherOptions[
             Math.floor(Math.random() * weatherOptions.length)
           ];
@@ -106,9 +106,9 @@ export async function POST(req: Request) {
 }
 ```
 
-当用户询问纽约的天气时，模型会生成一个包含城市参数的工具调用。AI SDK 随后自动执行 `execute` 函数并返回结果。
+当用户向 LLM 询问纽约的天气时，模型会生成一个包含城市参数的工具调用。AI SDK 随后自动执行 `execute` 函数并返回结果。
 
-要添加人工介入步骤，你需要在工具调用和工具执行之间，通过 `needsApproval` 设置一个审批关卡。
+要添加人工介入步骤，你需要在工具调用和工具执行之间，通过 `needsApproval` 添加一个审批关卡。
 
 ## 添加工具执行审批
 
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
         inputSchema: z.object({ city: z.string() }),
         needsApproval: true,
         execute: async ({ city }) => {
-          const weatherOptions = ['晴天', '多云', '雨天', '雪天'];
+          const weatherOptions = ['sunny', 'cloudy', 'rainy', 'snowy'];
           return weatherOptions[
             Math.floor(Math.random() * weatherOptions.length)
           ];
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 }
 ```
 
-当模型调用此工具时，SDK 不会运行 `execute` 函数，而是向客户端发送一个状态为 `approval-requested` 的工具部分。工具只有在用户响应后才会执行。
+当模型调用此工具时，SDK 不会运行 `execute` 函数，而是向客户端发送一个状态为 `approval-requested` 的工具部分。工具仅在用户响应后执行。
 
 ### 客户端审批界面
 
@@ -258,18 +258,18 @@ export default function Chat() {
 }
 ```
 
-审批流程如下：
+审批流程的工作原理如下：
 
-1. 模型调用 `getWeatherInformation` 并传入城市参数
-2. 工具部分进入 `approval-requested` 状态，并附带 `approval.id`
-3. 界面渲染批准/拒绝按钮
-4. 用户点击按钮后，`addToolApprovalResponse` 记录决定
-5. `sendAutomaticallyWhen` 检测到所有审批都已响应后，自动发送消息
-6. 在服务端，如果批准，则执行 `execute` 函数并返回结果；如果拒绝，模型收到拒绝信息并做出相应回应
+1. 模型使用城市参数调用 `getWeatherInformation`
+2. 工具部分进入 `approval-requested` 状态，并附带一个 `approval.id`
+3. UI 渲染批准/拒绝按钮
+4. 用户点击按钮时，`addToolApprovalResponse` 记录决定
+5. `sendAutomaticallyWhen` 检测到所有审批都已响应，并发送消息
+6. 在服务端，如果批准，则执行 `execute` 函数并返回结果。如果拒绝，模型会收到拒绝通知并相应回应。
 
 ### 审批后自动提交
 
-`sendAutomaticallyWhen` 选项配合 `lastAssistantMessageIsCompleteWithApprovalResponses`，会在上一步所有工具审批都得到响应后自动发送消息。如果不使用此选项，你需要在每次审批后手动调用 `sendMessage()`。
+`sendAutomaticallyWhen` 选项配合 `lastAssistantMessageIsCompleteWithApprovalResponses` 会在上一步骤中所有工具审批都已响应后自动发送消息。如果没有这个选项，你需要在每次审批后手动调用 `sendMessage()`。
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -281,13 +281,12 @@ const { messages, addToolApprovalResponse } = useChat({
 ```
 
 <Note>
-  如果批准工具执行后没有任何反应，请确保你手动调用了 `sendMessage`，或者在
-  `useChat` Hook 上配置了 `sendAutomaticallyWhen`。
+  如果批准工具执行后没有任何反应，请确保你手动调用了 `sendMessage`，或者在 `useChat` Hook 上配置了 `sendAutomaticallyWhen`。
 </Note>
 
 ### 动态审批
 
-你可以通过为 `needsApproval` 提供一个异步函数，根据工具输入条件性地决定是否需要审批：
+你可以通过为 `needsApproval` 提供一个异步函数，使审批条件基于工具的输入：
 
 ```ts filename="app/api/chat/route.ts" highlight="23"
 import {
@@ -326,11 +325,11 @@ export async function POST(req: Request) {
 }
 ```
 
-在此示例中，只有超过 1000 美元的付款需要审批。较小金额会自动执行。
+在此示例中，只有超过 $1000 的付款需要审批。较小金额会自动执行。
 
 ### 处理拒绝
 
-当用户拒绝工具执行时，模型会收到拒绝信息并做出相应回应。为防止模型重试相同的工具调用，可以添加一条指令：
+当用户拒绝工具执行时，模型会收到拒绝通知并可以相应回应。为防止模型重试相同的工具调用，请添加一条指令：
 
 ```ts highlight="5-6"
 const result = streamText({
@@ -347,6 +346,6 @@ const result = streamText({
 
 ## 完整示例
 
-要查看此代码的实际运行效果，请查看 AI SDK 仓库中的 [`next-openai` 示例](https://github.com/vercel/ai/tree/main/examples/next-openai)。导航到 `/test-tool-approval` 页面及其关联的路由处理器。
+要查看工具审批的实际效果，请查看 `ai-e2e-next` 示例中的 [`/chat/tool-approval` 页面](https://github.com/vercel/ai/blob/main/examples/ai-e2e-next/app/chat/tool-approval/page.tsx) 及其[路由处理器](https://github.com/vercel/ai/blob/main/examples/ai-e2e-next/app/api/chat/tool-approval/route.ts)。
 
 有关工具执行审批的更多详细信息，请参阅[工具执行审批](/docs/ai-sdk-core/tools-and-tool-calling#tool-execution-approval)和[聊天机器人工具使用](/docs/ai-sdk-ui/chatbot-tool-usage#tool-execution-approval)文档。

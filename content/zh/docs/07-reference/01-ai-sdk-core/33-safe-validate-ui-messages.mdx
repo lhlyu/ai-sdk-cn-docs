@@ -5,11 +5,11 @@ description: "safeValidateUIMessages 的 API 参考文档"
 
 # `safeValidateUIMessages`
 
-`safeValidateUIMessages` 是一个异步函数，用于验证 UI 消息，与 [`validateUIMessages`](/docs/reference/ai-sdk-core/validate-ui-messages) 类似，但它不会抛出异常，而是返回一个包含 `success` 键以及 `data` 或 `error` 的对象。
+`safeValidateUIMessages` 是一个异步函数，用于验证 UI 消息，其功能与 [`validateUIMessages`](/docs/reference/ai-sdk-core/validate-ui-messages) 类似，但不会抛出异常，而是返回一个包含 `success` 键以及 `data` 或 `error` 的对象。
 
 ## 基本用法
 
-无需自定义模式的简单验证：
+不使用自定义模式的简单验证：
 
 ```typescript
 import { safeValidateUIMessages } from 'ai';
@@ -35,7 +35,7 @@ if (!result.success) {
 
 ## 高级用法
 
-包含自定义元数据、数据部分和工具的全面验证：
+使用自定义元数据、数据部分和工具的全面验证：
 
 ```typescript
 import { safeValidateUIMessages, tool } from 'ai';
@@ -61,7 +61,7 @@ const dataSchemas = {
 const tools = {
   weather: tool({
     description: '获取天气信息',
-    parameters: z.object({
+    inputSchema: z.object({
       location: z.string(),
     }),
     execute: async ({ location }) => `Weather in ${location}: sunny`,
@@ -75,7 +75,7 @@ const messages = [
     role: 'user',
     metadata: { timestamp: '2024-01-01T00:00:00Z', userId: 'user123' },
     parts: [
-      { type: 'text', text: '显示图表' },
+      { type: 'text', text: '显示一个图表' },
       {
         type: 'data-chart',
         data: { data: [1, 2, 3], labels: ['A', 'B', 'C'] },

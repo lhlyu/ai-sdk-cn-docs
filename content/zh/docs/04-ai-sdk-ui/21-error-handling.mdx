@@ -1,25 +1,25 @@
 ---
-title: 错误处理
-description: 了解如何在 AI SDK UI 中处理错误
+title: "错误处理"
+description: "学习如何在 AI SDK UI 中处理错误"
 ---
 
 # 错误处理与警告
 
 ## 警告
 
-当某些功能可能无法按预期工作时，AI SDK 会显示警告。这些警告有助于在问题引发错误之前进行修复。
+AI SDK 会在某些情况可能不如预期工作时显示警告。这些警告帮助您在问题引发错误之前修复它们。
 
 ### 警告出现时机
 
-在以下情况下，浏览器控制台会显示警告：
+警告会在浏览器控制台中显示，当出现以下情况时：
 
 - **不支持的功能**：您使用了 AI 模型不支持的功能或设置（例如某些选项或参数）。
-- **兼容性警告**：某项功能在兼容模式下使用，其运行方式可能与预期不同或效果不佳。
-- **其他警告**：AI 模型报告了其他类型的问题，例如一般性问题或提示性消息。
+- **兼容性警告**：某个功能以兼容模式使用，可能运行方式不同或效果不如预期。
+- **其他警告**：AI 模型报告了其他类型的问题，例如一般性问题或建议性消息。
 
 ### 警告消息
 
-所有警告均以“AI SDK Warning:”开头，便于查找。例如：
+所有警告都以“AI SDK Warning:”开头，方便您快速定位。例如：
 
 ```
 AI SDK Warning: The feature "temperature" is not supported by this model
@@ -27,19 +27,19 @@ AI SDK Warning: The feature "temperature" is not supported by this model
 
 ### 关闭警告
 
-默认情况下，控制台会显示警告。您可以控制此行为：
+默认情况下，警告会在控制台中显示。您可以控制此行为：
 
 #### 关闭所有警告
 
-设置全局变量以完全关闭警告：
+设置一个全局变量以完全关闭警告：
 
 ```ts
 globalThis.AI_SDK_LOG_WARNINGS = false;
 ```
 
-#### 自定义警告处理器
+#### 自定义警告处理函数
 
-您也可以提供自己的函数来处理警告。该函数接收提供商 ID、模型 ID 和警告列表。
+您也可以提供自己的函数来处理警告。该函数会接收提供商 ID、模型 ID 以及警告列表。
 
 ```ts
 globalThis.AI_SDK_LOG_WARNINGS = ({ warnings, provider, model }) => {
@@ -51,10 +51,10 @@ globalThis.AI_SDK_LOG_WARNINGS = ({ warnings, provider, model }) => {
 
 ### 错误辅助对象
 
-每个 AI SDK UI Hook 还会返回一个 [error](/docs/reference/ai-sdk-ui/use-chat#error) 对象，您可以使用它在 UI 中渲染错误。您可以使用该错误对象来显示错误消息、禁用提交按钮或显示重试按钮。
+每个 AI SDK UI Hook 也会返回一个 [error](/docs/reference/ai-sdk-ui/use-chat#error) 对象，您可以使用它在 UI 中渲染错误信息。您可以使用该错误对象来显示错误消息、禁用提交按钮或显示重试按钮。
 
 <Note>
-  我们建议向用户显示通用错误消息，例如“出了点问题”。这是避免泄露服务器信息的好做法。
+  我们建议向用户显示通用的错误消息，例如“出了点问题”。这是一种避免从服务器泄露信息的好做法。
 </Note>
 
 ```tsx file="app/page.tsx" highlight="8,28-35,41"
@@ -87,9 +87,9 @@ export default function Chat() {
 
       {error && (
         <>
-          <div>发生了错误。</div>
+          <div>An error occurred.</div>
           <button type="button" onClick={() => regenerate()}>
-            重试
+            Retry
           </button>
         </>
       )}
@@ -106,11 +106,11 @@ export default function Chat() {
 }
 ```
 
-#### 替代方案：替换最后一条消息
+#### 替代方案：替换失败的消息
 
-或者，您可以编写一个自定义提交处理器，在出现错误时替换最后一条消息。
+或者，您可以编写一个自定义提交处理程序，用新的输入替换失败的用户消息。如果助手响应在错误发生前已经开始流式传输，则同时移除部分助手响应及其对应的用户消息。
 
-```tsx file="app/page.tsx" highlight="13-15,17-18,35"
+```tsx file="app/page.tsx" highlight="13-19,21-22,39"
 'use client';
 
 import { useChat } from '@ai-sdk/react';
@@ -124,7 +124,11 @@ export default function Chat() {
     event.preventDefault();
 
     if (error != null) {
-      setMessages(messages.slice(0, -1)); // 移除最后一条消息
+      setMessages(messages =>
+        messages.at(-1)?.role === 'assistant'
+          ? messages.slice(0, -2)
+          : messages.slice(0, -1),
+      );
     }
 
     sendMessage({ text: input });
@@ -143,7 +147,7 @@ export default function Chat() {
         </div>
       ))}
 
-      {error && <div>发生了错误。</div>}
+      {error && <div>An error occurred.</div>}
 
       <form onSubmit={customSubmit}>
         <input value={input} onChange={e => setInput(e.target.value)} />
@@ -174,10 +178,10 @@ export default function Page() {
 
 ### 注入错误以进行测试
 
-您可能希望创建错误用于测试。只需在路由处理器中抛出错误即可轻松实现：
+您可能希望创建错误用于测试。只需在路由处理程序中抛出错误即可轻松实现：
 
 ```ts file="app/api/chat/route.ts"
 export async function POST(req: Request) {
-  throw new Error('这是一个测试错误');
+  throw new Error('This is a test error');
 }
 ```

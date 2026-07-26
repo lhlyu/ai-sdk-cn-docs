@@ -7,9 +7,9 @@ description: "了解如何使用 Google 提供商。"
 
 [Google](https://ai.google.dev) 提供商为 [Google](https://ai.google.dev/api/rest) API 提供语言和嵌入模型支持。
 
-## 设置
+## 安装
 
-Google 提供商在 `@ai-sdk/google` 模块中提供。你可以通过以下命令安装它：
+Google 提供商在 `@ai-sdk/google` 模块中可用。你可以通过以下方式安装：
 
 <InstallPackages packages="@ai-sdk/google" />
 
@@ -21,7 +21,7 @@ Google 提供商在 `@ai-sdk/google` 模块中提供。你可以通过以下命�
 import { google } from '@ai-sdk/google';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/google` 导入 `createGoogle` 并使用你的设置创建一个提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/google` 导入 `createGoogle` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createGoogle } from '@ai-sdk/google';
@@ -45,7 +45,7 @@ const google = createGoogle({
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  包含在请求中的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -82,7 +82,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: google('gemini-2.5-flash'),
-  prompt: '为 4 个人写一份素食千层面食谱。',
+  prompt: '为4个人写一份素食千层面食谱。',
 });
 ```
 
@@ -90,7 +90,14 @@ Google 语言模型也可以在 `streamText` 函数中使用，
 并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
-Google 还支持一些不属于 [标准调用设置](/docs/ai-sdk-core/settings) 的模型特定设置。
+<Note>
+  为了保持向前兼容，该提供商将未识别的 `gemini-*` 模型 ID 和 `-latest` 别名视为最新支持的 Gemini 版本。
+  目前，这意味着对于提供商定义和混合工具、`thinkingLevel` 推理、多模态函数响应以及思维签名，采用 Gemini 3 请求行为。
+  已知的旧版 Gemini 模型 ID 保留其特定版本的请求行为。
+  此 SDK 默认控制请求序列化；所选模型仍必须支持 Google API 中的每个功能。
+</Note>
+
+Google 还支持一些不属于[标准调用设置](/docs/ai-sdk-core/settings)的模型特定设置。
 你可以将它们作为选项参数传递：
 
 ```ts
@@ -113,7 +120,7 @@ await generateText({
 });
 ```
 
-Google 模型可以使用以下可选的提供商选项：
+Google 模型提供以下可选的提供商选项：
 
 - **cachedContent** _string_
 
@@ -125,10 +132,10 @@ Google 模型可以使用以下可选的提供商选项：
   可选。启用结构化输出。默认为 true。
 
   当 JSON Schema 包含 Google 使用的 OpenAPI schema 版本不支持的
-  元素时，这很有用。如果需要，你可以使用此选项
-  禁用结构化输出。
+  元素时，这很有用。如果需要，你可以使用此选项禁用
+  结构化输出。
 
-  有关更多详细信息，请参阅 [故障排除：Schema 限制](#schema-limitations)。
+  有关更多详细信息，请参阅[故障排除：Schema 限制](#schema-limitations)。
 
 - **safetySettings** _Array\<\{ category: string; threshold: string \}\>_
 
@@ -154,23 +161,23 @@ Google 模型可以使用以下可选的提供商选项：
     - `OFF`
 
 - **responseModalities** _string[]_
-  用于响应的模态。支持以下模态：`TEXT`、`IMAGE`。当未定义或为空时，模型默认仅返回文本。
+  响应的模态。支持以下模态：`TEXT`、`IMAGE`。当未定义或为空时，模型默认仅返回文本。
 
 - **thinkingConfig** _\{ thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high'; thinkingBudget?: number; includeThoughts?: boolean \}_
 
-  可选。模型思考过程的配置。仅受特定 [Google 模型](https://ai.google.dev/gemini-api/docs/thinking) 支持。
+  可选。模型思考过程的配置。仅特定 [Google 模型](https://ai.google.dev/gemini-api/docs/thinking)支持。
   - **thinkingLevel** _'minimal' | 'low' | 'medium' | 'high'_
 
-    可选。控制 Gemini 3 模型的思考深度。Gemini 3.1 Pro 支持 'low'、'medium' 和 'high'，Gemini 3 Pro 支持 'low' 和 'high'，而 Gemini 3 Flash 支持所有四个级别：'minimal'、'low'、'medium' 和 'high'。仅受 Gemini 3 模型支持。
+    可选。控制 Gemini 3 及更高版本模型的思考深度。Gemini 3.1 Pro 支持 'low'、'medium' 和 'high'，Gemini 3 Pro 支持 'low' 和 'high'，而 Gemini 3 Flash 支持所有四个级别：'minimal'、'low'、'medium' 和 'high'。
 
   - **thinkingBudget** _number_
 
-    可选。指导模型在生成响应时可以使用的思考 token 数量。如果设置为 0，则禁用思考（如果模型支持）。
-    有关每个模型可能的值范围，请参阅 [Google 思考文档](https://ai.google.dev/gemini-api/docs/thinking#set-budget)。
+    可选。指导模型在生成响应时可以使用的思考 token 数量。如果模型支持，将其设置为 0 可禁用思考。
+    有关每个模型可能值范围的更多信息，请参阅 [Google 思考文档](https://ai.google.dev/gemini-api/docs/thinking#set-budget)。
 
     <Note>
-      此选项适用于 Gemini 2.5 模型。Gemini 3 模型应使用
-      `thinkingLevel`。
+      此选项适用于 Gemini 2.5 模型。Gemini 3 及更高版本模型应使用
+      `thinkingLevel` 代替。
     </Note>
 
   - **includeThoughts** _boolean_
@@ -179,10 +186,10 @@ Google 模型可以使用以下可选的提供商选项：
 
 - **imageConfig** _\{ aspectRatio?: string, imageSize?: string \}_
 
-  可选。模型图像生成的配置。仅受特定 [Google 模型](https://ai.google.dev/gemini-api/docs/image-generation) 支持。
+  可选。模型图像生成的配置。仅特定 [Google 模型](https://ai.google.dev/gemini-api/docs/image-generation)支持。
   - **aspectRatio** _string_
 
-    模型默认为生成 1:1 的正方形，或使输出图像大小与输入图像匹配。可以是以下之一：
+    模型默认为生成 1:1 的正方形，或匹配输出图像大小与输入图像大小。可以是以下之一：
     - 1:1
     - 2:3
     - 3:2
@@ -203,7 +210,7 @@ Google 模型可以使用以下可选的提供商选项：
 
 - **audioTimestamp** _boolean_
 
-  可选。启用纯音频文件的时间戳理解。
+  可选。启用仅音频文件的时间戳理解。
   请参阅 [Google Cloud 音频理解文档](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/audio-understanding)。
 
 - **mediaResolution** _string_
@@ -218,13 +225,13 @@ Google 模型可以使用以下可选的提供商选项：
 
 - **labels** _Record&lt;string, string&gt;_
 
-  可选。定义用于账单报告的标签。仅在 Vertex AI 上可用。
+  可选。定义账单报告中使用的标签。仅在 Vertex AI 上可用。
   请参阅 [Google Cloud 标签文档](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/add-labels-to-api-calls)。
 
 - **serviceTier** _'standard' | 'flex' | 'priority'_
 
-  可选。用于请求的服务层级。
-  设置为 `'flex'` 可获得 50% 的折扣，但延迟会增加。
+  可选。请求的服务层级。
+  设置为 `'flex'` 可享受 50% 的折扣，但会增加延迟。
   设置为 `'priority'` 可获得超低延迟，但价格比 `'standard'` 高 75-100%。
 
   由于 Priority 在负载下可以优雅地降级为 Standard，因此请求实际运行的层级会显示在
@@ -239,11 +246,11 @@ Google 模型可以使用以下可选的提供商选项：
 
 ### 思考
 
-Gemini 2.5 和 Gemini 3 系列模型使用内部的"思考过程"，显著提高了它们的推理和多步骤规划能力，使其在编码、高级数学和数据分析等复杂任务中非常有效。有关更多信息，请参阅 [Google 思考文档](https://ai.google.dev/gemini-api/docs/thinking)。
+Gemini 2.5 和 Gemini 3 及更高版本系列模型使用内部“思考过程”，显著提高了它们的推理和多步骤规划能力，使其对编码、高等数学和数据分析等复杂任务非常有效。有关更多信息，请参阅 [Google 思考文档](https://ai.google.dev/gemini-api/docs/thinking)。
 
-#### Gemini 3 模型
+#### Gemini 3 及更高版本模型
 
-对于 Gemini 3 模型，使用 `thinkingLevel` 参数控制推理深度：
+对于 Gemini 3 及更高版本模型，使用 `thinkingLevel` 参数控制推理深度：
 
 ```ts
 import { google, GoogleLanguageModelOptions } from '@ai-sdk/google';
@@ -253,7 +260,7 @@ const model = google('gemini-3.1-pro-preview');
 
 const { text, reasoning } = await generateText({
   model: model,
-  prompt: '前 10 个质数的和是多少？',
+  prompt: '前10个质数的和是多少？',
   providerOptions: {
     google: {
       thinkingConfig: {
@@ -271,7 +278,7 @@ console.log(reasoning); // 推理摘要
 
 #### Gemini 2.5 模型
 
-对于 Gemini 2.5 模型，使用 `thinkingBudget` 参数控制思考 token 的数量：
+对于 Gemini 2.5 模型，使用 `thinkingBudget` 参数控制思考 token 数量：
 
 ```ts
 import { google, GoogleLanguageModelOptions } from '@ai-sdk/google';
@@ -281,7 +288,7 @@ const model = google('gemini-2.5-flash');
 
 const { text, reasoning } = await generateText({
   model: model,
-  prompt: '前 10 个质数的和是多少？',
+  prompt: '前10个质数的和是多少？',
   providerOptions: {
     google: {
       thinkingConfig: {
@@ -313,7 +320,7 @@ const result = await generateText({
       content: [
         {
           type: 'text',
-          text: '根据此文档，什么是嵌入模型？',
+          text: '根据这份文档，什么是嵌入模型？',
         },
         {
           type: 'file',
@@ -360,7 +367,7 @@ const result = await generateText({
   - 每个请求可以指定一个 YouTube 视频 URL。
 </Note>
 
-有关如何在提示词中使用文件的详细信息，请参阅 [文件部分](/docs/foundations/prompts#file-parts)。
+有关如何在提示词中使用文件的详细信息，请参阅[文件部分](/docs/foundations/prompts#file-parts)。
 
 ### 缓存内容
 
@@ -368,7 +375,7 @@ Google 支持显式和隐式缓存，以帮助降低重复内容的成本。
 
 #### 隐式缓存
 
-Gemini 2.5 模型自动提供缓存成本节省，无需创建显式缓存。当你发送与先前请求共享公共前缀的请求时，你将在缓存内容上获得 75% 的 token 折扣。
+Gemini 2.5 模型自动提供缓存成本节省，无需创建显式缓存。当你发送与先前请求共享公共前缀的请求时，你将获得缓存内容 75% 的 token 折扣。
 
 要最大化隐式缓存的缓存命中率：
 
@@ -388,13 +395,13 @@ const baseContext =
 
 const { text: veggieLasagna } = await generateText({
   model: google('gemini-2.5-pro'),
-  prompt: `${baseContext}\n\n为 4 个人写一份素食千层面食谱。`,
+  prompt: `${baseContext}\n\n为4个人写一份素食千层面食谱。`,
 });
 
 // 第二个请求具有相同前缀 - 有资格获得缓存命中
 const { text: meatLasagna, providerMetadata } = await generateText({
   model: google('gemini-2.5-pro'),
-  prompt: `${baseContext}\n\n为 12 个人写一份肉酱千层面食谱。`,
+  prompt: `${baseContext}\n\n为12个人写一份肉酱千层面食谱。`,
 });
 
 // 检查使用情况元数据中的缓存 token 计数
@@ -414,12 +421,12 @@ console.log('缓存的 token:', providerMetadata.google);
 ```
 
 <Note>
-  使用情况元数据在 `@ai-sdk/google@1.2.23` 中被添加到 `providerMetadata`。如果你使用的是旧版本，使用情况元数据可在作为 `generateText` 返回值一部分的原始 HTTP `response` 正文中找到。
+  使用情况元数据已在 `@ai-sdk/google@1.2.23` 中添加到 `providerMetadata`。如果你使用的是旧版本，使用情况元数据可在作为 `generateText` 返回值一部分返回的原始 HTTP `response` 正文中找到。
 </Note>
 
 #### 显式缓存
 
-为了确保成本节省，你仍然可以对 Gemini 2.5 和 2.0 模型使用显式缓存。请参阅 [模型页面](https://ai.google.dev/gemini-api/docs/models) 检查所使用的模型是否支持缓存：
+为了确保成本节省，你仍然可以对 Gemini 2.5 和 2.0 模型使用显式缓存。请参阅[模型页面](https://ai.google.dev/gemini-api/docs/models)检查所用模型是否支持缓存：
 
 ```ts
 import { google, type GoogleLanguageModelOptions } from '@ai-sdk/google';
@@ -432,7 +439,7 @@ const ai = new GoogleGenAI({
 
 const model = 'gemini-2.5-pro';
 
-// 使用要重复使用的内容创建缓存
+// 使用要重用的内容创建缓存
 const cache = await ai.caches.create({
   model,
   config: {
@@ -448,7 +455,7 @@ const cache = await ai.caches.create({
 
 const { text: veggieLasagnaRecipe } = await generateText({
   model: google(model),
-  prompt: '为 4 个人写一份素食千层面食谱。',
+  prompt: '为4个人写一份素食千层面食谱。',
   providerOptions: {
     google: {
       cachedContent: cache.name,
@@ -458,7 +465,7 @@ const { text: veggieLasagnaRecipe } = await generateText({
 
 const { text: meatLasagnaRecipe } = await generateText({
   model: google(model),
-  prompt: '为 12 个人写一份肉酱千层面食谱。',
+  prompt: '为12个人写一份肉酱千层面食谱。',
   providerOptions: {
     google: {
       cachedContent: cache.name,
@@ -469,7 +476,7 @@ const { text: meatLasagnaRecipe } = await generateText({
 
 ### 代码执行
 
-通过 [代码执行](https://ai.google.dev/gemini-api/docs/code-execution)，某些模型可以生成并执行 Python 代码来执行计算、解决问题或提供更准确的信息。
+通过[代码执行](https://ai.google.dev/gemini-api/docs/code-execution)，某些模型可以生成并执行 Python 代码来执行计算、解决问题或提供更准确的信息。
 
 你可以通过将 `code_execution` 工具添加到请求中来启用代码执行。
 
@@ -481,11 +488,11 @@ import { generateText } from 'ai';
 const { text, toolCalls, toolResults } = await generateText({
   model: google('gemini-2.5-pro'),
   tools: { code_execution: google.tools.codeExecution({}) },
-  prompt: '使用 python 计算第 20 个斐波那契数。',
+  prompt: '使用 python 计算第20个斐波那契数。',
 });
 ```
 
-响应将包含代码执行的工具调用和结果。
+响应将包含来自代码执行的工具调用和结果。
 
 ### Google 搜索
 
@@ -503,7 +510,7 @@ const { text, sources, providerMetadata } = await generateText({
     google_search: google.tools.googleSearch({}),
   },
   prompt:
-    '列出过去一周旧金山的前 5 条新闻。' +
+    '列出过去一周旧金山的前5条新闻。' +
     '你必须包含每篇文章的日期。',
 });
 
@@ -520,7 +527,7 @@ const safetyRatings = metadata?.safetyRatings;
 
   启用特定的搜索类型。两者可以结合使用。
   - `webSearch`：启用网络搜索接地（传递 `{}` 以启用）。这是默认设置。
-  - `imageSearch`：启用 [图像搜索接地](https://ai.google.dev/gemini-api/docs/image-generation#image-search)（传递 `{}` 以启用）。
+  - `imageSearch`：启用[图像搜索接地](https://ai.google.dev/gemini-api/docs/image-generation#image-search)（传递 `{}` 以启用）。
 
 - **timeRangeFilter** _object_
 
@@ -550,7 +557,7 @@ google.tools.googleSearch({
   - 包含用作入口点的主要搜索结果内容
   - `renderedContent` 字段包含格式化内容
 
-- **`groundingSupports`** (Array of support objects | null)
+- **`groundingSupports`** (支持对象数组 | null)
   - 包含有关特定响应部分如何由搜索结果支持的详细信息
   - 每个支持对象包括：
     - **`segment`**：关于接地文本段的信息
@@ -586,12 +593,12 @@ google.tools.googleSearch({
 
 ### 企业级网络搜索
 
-通过 [企业级网络搜索](https://cloud.google.com/vertex-ai/generative-ai/docs/grounding/web-grounding-enterprise)，
-模型可以访问专为金融、医疗保健和公共部门等高度监管行业设计的、注重合规性的网络索引。
+通过[企业级网络搜索](https://cloud.google.com/vertex-ai/generative-ai/docs/grounding/web-grounding-enterprise)，
+模型可以访问一个专注于合规性的网络索引，专为金融、医疗保健和公共部门等高度监管行业设计。
 
 <Note>
   企业级网络搜索仅在 Vertex AI 上可用。你必须使用 Google
-  Vertex 提供商 (`@ai-sdk/google-vertex`) 而不是标准的 Google
+  Vertex 提供商 (`@ai-sdk/google-vertex`) 而不是标准 Google
   提供商 (`@ai-sdk/google`) 来使用此功能。需要 Gemini 2.0 或更新
   模型。
 </Note>
@@ -618,11 +625,11 @@ const { text, sources, providerMetadata } = await generateText({
 
 - 不记录客户数据
 - 支持 VPC 服务控制
-- 为受监管行业提供注重合规性的网络索引
+- 面向受监管行业的合规性网络索引
 
 ### 文件搜索
 
-[文件搜索工具](https://ai.google.dev/gemini-api/docs/file-search) 允许 Gemini 从你在文件搜索存储中索引的自己的文档中检索上下文。只有 Gemini 2.5 和 Gemini 3 模型支持此功能。
+[文件搜索工具](https://ai.google.dev/gemini-api/docs/file-search) 允许 Gemini 从你在文件搜索存储中索引的自己的文档中检索上下文。该提供商为 Gemini 2.5 和 Gemini 3 及更高版本模型 ID 启用此工具，包括未识别的未来 Gemini ID。
 
 ```ts highlight="9-13"
 import { google } from '@ai-sdk/google';
@@ -643,7 +650,7 @@ const { text, sources } = await generateText({
 });
 ```
 
-文件搜索响应通过常规的 `sources` 字段包含引用，并在 `providerMetadata.google.groundingMetadata` 中公开原始 [接地元数据](#google-search)。
+文件搜索响应通过常规的 `sources` 字段包含引用，并在 `providerMetadata.google.groundingMetadata` 中公开原始[接地元数据](#google-search)。
 
 ### URL 上下文
 
@@ -658,7 +665,7 @@ import { generateText } from 'ai';
 const { text, sources, providerMetadata } = await generateText({
   model: google('gemini-2.5-flash'),
   prompt: `基于文档：https://ai.google.dev/gemini-api/docs/url-context。
-          回答这个问题：我们一次请求可以消耗多少个链接？`,
+          回答问题：我们可以在一个请求中消费多少个链接？`,
   tools: {
     url_context: google.tools.urlContext({}),
   },
@@ -720,7 +727,7 @@ URL 上下文元数据包含有关模型如何使用 URL 上下文生成响应�
 <Note>每个请求最多可以添加 20 个 URL。</Note>
 
 <Note>
-  URL 上下文工具仅受 Gemini 2.0 Flash 及以上模型支持。
+  URL 上下文工具仅支持 Gemini 2.0 Flash 及以上模型。
   查看 [URL 上下文工具支持的模型](https://ai.google.dev/gemini-api/docs/url-context#supported-models)。
 </Note>
 
@@ -734,8 +741,8 @@ import { generateText } from 'ai';
 
 const { text, sources, providerMetadata } = await generateText({
   model: google('gemini-2.5-flash'),
-  prompt: `基于此上下文：https://ai-sdk.dev/providers/ai-sdk-providers/google，告诉我如何使用 AI SDK 使用 Gemini。
-    另外，提供关于 AI SDK V5 的最新消息。`,
+  prompt: `基于此上下文：https://ai-sdk.dev/providers/ai-sdk-providers/google，告诉我如何使用 Gemini 与 AI SDK。
+    同时，提供关于 AI SDK V5 的最新消息。`,
   tools: {
     google_search: google.tools.googleSearch({}),
     url_context: google.tools.urlContext({}),
@@ -750,7 +757,7 @@ const urlContextMetadata = metadata?.urlContextMetadata;
 ### Google 地图接地
 
 通过 [Google 地图接地](https://ai.google.dev/gemini-api/docs/maps-grounding)，
-模型可以访问 Google 地图数据以提供位置感知响应。这使其能够提供本地数据和地理空间上下文，例如查找附近的餐馆。
+模型可以访问 Google 地图数据以提供位置感知响应。这使得能够提供本地数据和地理空间上下文，例如查找附近的餐馆。
 
 ```ts highlight="7-16"
 import { google, type GoogleLanguageModelOptions } from '@ai-sdk/google';
@@ -770,7 +777,7 @@ const { text, sources, providerMetadata } = await generateText({
     } satisfies GoogleLanguageModelOptions,
   },
   prompt:
-    '从这里步行 15 分钟内有哪些最好的意大利餐厅？',
+    '从这里步行15分钟范围内最好的意大利餐厅有哪些？',
 });
 
 const metadata = providerMetadata?.google as GoogleProviderMetadata | undefined;
@@ -788,7 +795,7 @@ const groundingMetadata = metadata?.groundingMetadata;
       {
         "maps": {
           "uri": "https://maps.google.com/?cid=12345",
-          "title": "Restaurant Name",
+          "title": "餐厅名称",
           "placeId": "places/ChIJ..."
         }
       }
@@ -797,7 +804,7 @@ const groundingMetadata = metadata?.groundingMetadata;
 }
 ```
 
-<Note>Google 地图接地受 Gemini 2.0 及更新模型支持。</Note>
+<Note>Google 地图接地支持 Gemini 2.0 及更新模型。</Note>
 
 ### RAG 引擎接地
 
@@ -806,8 +813,8 @@ const groundingMetadata = metadata?.groundingMetadata;
 这使得模型能够基于你的特定数据源和文档提供答案。
 
 <Note>
-  RAG 引擎接地仅受 Vertex Gemini 模型支持。你必须使用
-  Google Vertex 提供商 (`@ai-sdk/google-vertex`) 而不是标准的 Google
+  RAG 引擎接地仅支持 Vertex Gemini 模型。你必须使用
+  Google Vertex 提供商 (`@ai-sdk/google-vertex`) 而不是标准 Google
   提供商 (`@ai-sdk/google`) 来使用此功能。
 </Note>
 
@@ -845,7 +852,7 @@ const safetyRatings = metadata?.safetyRatings;
 
 此外，接地元数据包含有关 RAG 结果如何用于接地模型响应的详细信息。以下是可用字段：
 
-- **`groundingChunks`** (Array of chunk objects | null)
+- **`groundingChunks`** (块对象数组 | null)
   - 包含从你的 RAG 语料库检索到的上下文块
   - 每个块包括：
     - **`retrievedContext`**：关于检索到的上下文的信息
@@ -853,7 +860,7 @@ const safetyRatings = metadata?.safetyRatings;
       - `title`：源文档的标题（可选）
       - `text`：块的实际文本内容
 
-- **`groundingSupports`** (Array of support objects | null)
+- **`groundingSupports`** (支持对象数组 | null)
   - 包含有关特定响应部分如何由 RAG 结果支持的详细信息
   - 每个支持对象包括：
     - **`segment`**：关于接地文本段的信息
@@ -872,8 +879,8 @@ const safetyRatings = metadata?.safetyRatings;
       {
         "retrievedContext": {
           "uri": "gs://my-bucket/docs/product-guide.pdf",
-          "title": "Product User Guide",
-          "text": "Our product includes advanced AI capabilities, real-time processing, and enterprise-grade security features."
+          "title": "产品用户指南",
+          "text": "我们的产品包括先进的 AI 能力、实时处理和企业级安全功能。"
         }
       }
     ],
@@ -882,7 +889,7 @@ const safetyRatings = metadata?.safetyRatings;
         "segment": {
           "startIndex": 0,
           "endIndex": 45,
-          "text": "Our product includes advanced AI capabilities and real-time processing."
+          "text": "我们的产品包括先进的 AI 能力和实时处理。"
         },
         "groundingChunkIndices": [0],
         "confidenceScores": [0.95]
@@ -896,11 +903,11 @@ const safetyRatings = metadata?.safetyRatings;
 
 `vertexRagStore` 工具接受以下配置选项：
 
-- **`ragCorpus`** (`string`, required)
+- **`ragCorpus`** (`string`, 必需)
   - RagCorpus 资源名称，格式为：`projects/{project}/locations/{location}/ragCorpora/{rag_corpus}`
-  - 这标识了要搜索的特定 RAG 语料库
+  - 这标识了你要搜索的特定 RAG 语料库
 
-- **`topK`** (`number`, optional)
+- **`topK`** (`number`, 可选)
   - 从你的 RAG 语料库中检索的顶部上下文数量
   - 如果未指定，默认为语料库配置
 
@@ -915,7 +922,7 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: google('gemini-2.5-flash-image'),
   prompt:
-    '创建一张图片，展示一个纳米香蕉菜肴，放在一家以 Gemini 为主题的豪华餐厅里',
+    '创建一张图片，展示一家以 Gemini 为主题的豪华餐厅中的纳米香蕉菜肴',
 });
 
 for (const file of result.files) {
@@ -979,7 +986,7 @@ for (const file of result.files) {
 #### Schema 限制
 
 Google Generative AI API 使用 OpenAPI 3.0 schema 的子集，
-它不支持诸如联合类型之类的功能。
+它不支持联合等特性。
 在这种情况下，你遇到的错误如下所示：
 
 `GenerateContentRequest.generation_config.response_schema.properties[occupation].type: must be specified`
@@ -1015,7 +1022,7 @@ const { output } = await generateText({
 });
 ```
 
-已知以下 Zod 功能无法与 Google 一起使用：
+已知以下 Zod 特性无法与 Google 一起使用：
 
 - `z.union`
 - `z.record`
@@ -1024,7 +1031,9 @@ const { output } = await generateText({
 
 | 模型                                 | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 | Google 搜索 | URL 上下文 |
 | ------------------------------------- | ----------- | ----------------- | ---------- | -------------- | ------------- | ----------- |
+| `gemini-3.6-flash`                    | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
 | `gemini-3.5-flash`                    | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
+| `gemini-3.5-flash-lite`               | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
 | `gemini-3.1-pro-preview`              | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
 | `gemini-3.1-flash-image-preview`      | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
 | `gemini-3.1-flash-lite-preview`       | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
@@ -1038,8 +1047,10 @@ const { output } = await generateText({
 | `gemini-2.0-flash`                    | <Check />   | <Check />         | <Check />  | <Check />      | <Check />     | <Check />   |
 
 <Note>
-  上表列出了流行的模型。请参阅 [Google Generative AI
-  文档](https://ai.google.dev/gemini-api/docs/models/) 获取完整的可用模型列表。上表列出了流行的模型。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  上表列出了流行模型。请参阅 [Google Generative AI
+  文档](https://ai.google.dev/gemini-api/docs/models/) 获取完整列表
+  可用模型。上表列出了流行模型。如果需要，你也可以传递任何
+  可用的提供商模型 ID 作为字符串。
 </Note>
 
 ## 实时模型
@@ -1054,7 +1065,7 @@ import { google } from '@ai-sdk/google';
 const model = google.experimental_realtime('gemini-3.1-flash-live-preview');
 ```
 
-实时会话在浏览器中运行，并且需要你在服务器上使用 `google.experimental_realtime.getToken()` 创建的短期 token：
+实时会话在浏览器中运行，并且需要在你服务器上使用 `google.experimental_realtime.getToken()` 创建的短期令牌：
 
 ```ts
 const token = await google.experimental_realtime.getToken({
@@ -1062,11 +1073,13 @@ const token = await google.experimental_realtime.getToken({
 });
 ```
 
-Google 实时模型可能需要特定于提供商的音频格式，具体取决于模型和模态。有关完整设置和工具调用模式，请参阅 [实时](/docs/ai-sdk-core/realtime)。
+Google 实时模型可能需要特定于提供商的音频格式，具体取决于模型和模态。请参阅 [Realtime](/docs/ai-sdk-core/realtime) 了解完整的设置和工具调用模式。
+
+没有提供商中立的等效项的 Gemini 生命周期信号将作为自定义事件发出。检查 `rawType` 以获取 `goAway`、`sessionResumptionUpdate` 和 `generationComplete`，并使用事件的 `raw` 有效负载获取特定于提供商的详细信息。
 
 ### 实时翻译
 
-使用 `gemini-3.5-live-translate-preview` 进行低延迟的语音到语音翻译。在创建 token 时使用的实时会话配置中，通过 `providerOptions.google.translationConfig` 配置目标语言：
+使用 `gemini-3.5-live-translate-preview` 进行低延迟的语音到语音翻译。在创建令牌时使用的实时会话配置中，通过 `providerOptions.google.translationConfig` 配置目标语言：
 
 ```ts
 import {
@@ -1092,14 +1105,17 @@ const token = await google.experimental_realtime.getToken({
 });
 ```
 
-将 `targetLanguageCode` 设置为 BCP-47 语言代码（默认为 `en`）。当 `echoTargetLanguage` 为 `true` 时，输入音频如果已经是目标语言，则会回显，而不是产生静音。
+将 `targetLanguageCode` 设置为 BCP-47 语言代码（默认为 `en`）。当 `echoTargetLanguage` 为 `true` 时，已经处于目标语言的输入音频将被回显，而不是产生静音。
 
 Gemini Live Translation 接受音频输入并生成翻译后的音频输出。此模型不支持文本输入、工具和自定义指令。
 
 ## Interactions API
 
 [Gemini Interactions API](https://ai.google.dev/gemini-api/docs/interactions)
-(`POST /v1beta/interactions`) 是一个独立的 Google 端点，具有服务器端状态、统一的内容块、一流的內建工具、智能体预设、在沙盒 Linux 环境中运行的托管智能体，以及原生多模态图像输出。通过 `google.interactions(...)` 工厂访问：
+(`POST /v1beta/interactions`) 是一个独立的 Google 端点，具有服务器端
+状态、统一的内容块、一流的內建工具、智能体预设、
+在沙盒 Linux 环境中运行的托管智能体，以及原生
+多模态图像输出。它通过 `google.interactions(...)` 工厂方法访问：
 
 ```ts
 import { google } from '@ai-sdk/google';
@@ -1114,18 +1130,19 @@ const { text } = await generateText({
 `google.interactions(...)` 接受一个模型 ID 字符串（例如
 `'gemini-2.5-flash'`、`'gemini-3-pro-preview'`）、`{ agent: <name> }` 以使用
 Gemini [智能体预设](#agent-presets)，或 `{ managedAgent: <name> }` 以调用
-你在 Google 端创建的 [托管智能体](#managed-agents)。
+你在 Google 端创建的[托管智能体](#managed-agents)。
 返回的模型可以像任何其他 AI SDK 语言模型一样传递给 `generateText` 和 `streamText`。
 
 <Note>
-  对标准的 `:generateContent` / `:streamGenerateContent` 端点使用 `google(...)`，对新的
-  Interactions 端点使用 `google.interactions(...)`。每个模型实例选择一个——它们针对不同的
+  使用 `google(...)` 访问标准的 `:generateContent` /
+  `:streamGenerateContent` 端点，使用 `google.interactions(...)` 访问新的
+  Interactions 端点。每个模型实例选择一个——它们针对不同的
   请求体和 SSE 事件词汇表。
 </Note>
 
 ### 提供商选项
 
-Interactions 模型从共享的 `providerOptions.google.*` 命名空间读取其选项。使用 `GoogleLanguageModelInteractionsOptions` 类型进行验证：
+Interactions 模型从共享的 `providerOptions.google.*` 命名空间读取其选项。使用 `GoogleLanguageModelInteractionsOptions` 类型验证它们：
 
 ```ts
 import {
@@ -1136,7 +1153,7 @@ import { generateText } from 'ai';
 
 await generateText({
   model: google.interactions('gemini-2.5-flash'),
-  prompt: '用一个词回答，天空是什么颜色？',
+  prompt: '用一个词描述天空是什么颜色？',
   providerOptions: {
     google: {
       serviceTier: 'priority',
@@ -1149,12 +1166,12 @@ await generateText({
 
 - **previousInteractionId** _string_
 
-  来自上一轮的服务器端交互 ID。设置后，服务器从其自身状态中提取先前的上下文，并且只通过网络发送新的用户消息。与默认的 `store: true` 配对以链接有状态对话。请参阅 [有状态链接](#stateful-chaining)。
+  来自上一轮的服务器端交互 ID。设置后，服务器从自己的状态中提取先前的上下文，并且只通过网络发送新的用户消息。与默认的 `store: true` 配对以链接有状态对话。请参阅[有状态链接](#stateful-chaining)。
 
 - **store** _boolean_
 
   服务器是否应持久化交互。默认为 `true`。
-  对于无状态的多轮对话，设置为 `false`，其中完整的消息历史记录在每一轮都会重新发送。
+  设置为 `false` 用于无状态的多轮对话，其中完整的消息历史记录在每一轮中重新发送。
 
 - **agent** _string_
 
@@ -1162,13 +1179,13 @@ await generateText({
 
       <Note>
 
-  优先使用工厂形式 `google.interactions({ agent: '...' })` 而不是在提供商选项中设置 `agent`——工厂会根据支持的智能体名称进行类型检查。
+  优先使用工厂形式 `google.interactions({ agent: '...' })` 而不是在提供商选项中设置 `agent`——工厂会针对支持的智能体名称进行类型检查。
 
   </Note>
 
 - **agentConfig** _object_
 
-  每个智能体的配置。目前支持 `{ type: 'dynamic' }` 和 `{ type: 'deep-research', thinkingSummaries?, visualization?, collaborativePlanning? }`。
+  每个智能体的配置。当前支持 `{ type: 'dynamic' }` 和 `{ type: 'deep-research', thinkingSummaries?, visualization?, collaborativePlanning? }`。
 
 - **thinkingLevel** _'minimal' | 'low' | 'medium' | 'high'_
 
@@ -1176,17 +1193,17 @@ await generateText({
 
 - **thinkingSummaries** _'auto' | 'none'_
 
-  模型是否在推理部分返回综合思考摘要。默认为 API 默认值。
+  模型是否在推理部分返回合成的思考摘要。默认为 API 默认值。
 
 - **responseFormat** _Array\<\{ type: 'text' | 'image' | 'audio'; mimeType?: string; schema?: unknown; aspectRatio?: string; imageSize?: '1K' \| '2K' \| '4K' \| '512' \}\>_
 
-  输出格式条目，直接映射到 API 的 `response_format` 数组。用于对图像、音频或非 JSON 文本输出进行精细控制（例如，用于图像生成的 `aspectRatio` 和 `imageSize`）。AI SDK 调用级别的 `responseFormat: { type: 'json', schema }` 仍然自动驱动 JSON 模式并预先添加一个匹配的文本条目；此处列出的条目将被追加。
+  输出格式条目，直接映射到 API 的 `response_format` 数组。使用此选项对图像、音频或非 JSON 文本输出（例如图像生成的 `aspectRatio` 和 `imageSize`）进行精细控制。AI SDK 调用级别的 `responseFormat: { type: 'json', schema }` 仍然自动驱动 JSON 模式并预先添加一个匹配的文本条目；此处列出的条目将被追加。
 
   `aspectRatio` 接受 `1:1`、`2:3`、`3:2`、`3:4`、`4:3`、`4:5`、`5:4`、`9:16`、`16:9`、`21:9`、`1:8`、`8:1`、`1:4`、`4:1`。
 
 - **imageConfig** _\{ aspectRatio?: string; imageSize?: '1K' | '2K' | '4K' | '512' \}_ (已弃用)
 
-  请改用 **responseFormat** 并添加 `{ type: 'image', ... }` 条目。为向后兼容而保留；SDK 会将 `imageConfig` 转换为匹配的 `response_format` 图像条目，并在设置时发出警告。当 `responseFormat` 已经提供图像条目时忽略。
+  改用 **responseFormat** 并包含一个 `{ type: 'image', ... }` 条目。为向后兼容而保留；SDK 将 `imageConfig` 转换为匹配的 `response_format` 图像条目，并在设置时发出警告。当 `responseFormat` 已提供图像条目时忽略。
 
 - **mediaResolution** _'low' | 'medium' | 'high' | 'ultra_high'_
 
@@ -1194,7 +1211,7 @@ await generateText({
 
 - **serviceTier** _'flex' | 'standard' | 'priority'_
 
-  请求的服务层级。在 `result.providerMetadata.google.serviceTier` 上镜像返回，以便可观察性。
+  请求的服务层级。在 `result.providerMetadata.google.serviceTier` 上镜像返回以进行可观测性。
 
 - **systemInstruction** _string_
 
@@ -1206,12 +1223,12 @@ await generateText({
 
 - **environment** _string \| object_
 
-  用于 [托管智能体](#managed-agents) 的沙盒环境配置。
-  传递 `'remote'` 以配置一个新的沙盒，传递一个 `environment_id` 字符串以重用现有的沙盒，或传递一个形式为 `{ type: 'remote', sources?, network? }` 的对象以预加载文件和/或限制出站流量。仅适用于智能体调用。
+  [托管智能体](#managed-agents)的沙盒环境配置。
+  传递 `'remote'` 以配置一个新的沙盒，传递一个 `environment_id` 字符串以重用现有沙盒，或传递一个形式为 `{ type: 'remote', sources?, network? }` 的对象以预加载文件和/或限制出站流量。仅适用于智能体调用。
 
 - **pollingTimeoutMs** _number_
 
-  在放弃之前轮询后台交互的最长时间（以毫秒为单位）。默认为 30 分钟（1,800,000 毫秒）。长时间运行的智能体可能需要更长的时间。
+  轮询后台交互的最大时间（毫秒），超时后放弃。默认为 30 分钟（1,800,000 毫秒）。长时间运行的智能体可能需要更长的时间。
 
 ### 提供商元数据
 
@@ -1227,7 +1244,7 @@ await generateText({
 
 - **signature** _string_
 
-  每个块的签名哈希，由 SDK 在输出推理和工具调用部分上设置。在下一轮自动往返。
+  每个块的签名哈希，由 SDK 在输出推理和工具调用部分上设置。在下一轮中自动往返。
 
 ### 有状态链接
 
@@ -1242,7 +1259,7 @@ import { generateText } from 'ai';
 
 const turn1 = await generateText({
   model: google.interactions('gemini-2.5-flash'),
-  prompt: '西班牙最大的三个城市是什么？',
+  prompt: '西班牙最大的三个城市是哪些？',
 });
 
 const interactionId = turn1.providerMetadata?.google?.interactionId as
@@ -1270,7 +1287,7 @@ import {
 import { generateText, type ModelMessage } from 'ai';
 
 const messages: Array<ModelMessage> = [
-  { role: 'user', content: '西班牙最大的三个城市是什么？' },
+  { role: 'user', content: '西班牙最大的三个城市是哪些？' },
 ];
 
 const turn1 = await generateText({
@@ -1300,15 +1317,15 @@ const turn2 = await generateText({
 
 Interactions API 附带一个內建工具目录。`google.tools.*` 下的提供商定义工具映射到 Interactions 工具描述符：
 
-| AI SDK 工具                           | Interactions 工具类型 | 备注                                     |
+| AI SDK 工具                           | Interactions 工具类型 | 说明                                     |
 | ------------------------------------- | ---------------------- | ----------------------------------------- |
 | `google.tools.googleSearch`           | `google_search`        | 网络/图像搜索接地。             |
 | `google.tools.codeExecution`          | `code_execution`       | 服务器端 Python 执行。             |
 | `google.tools.urlContext`             | `url_context`          | 获取提示词中引用的 URL。      |
 | `google.tools.fileSearch`             | `file_search`          | 从文件搜索存储中检索。        |
-| `google.tools.googleMaps`             | `google_maps`          | 用于附近地点查询的地图接地。       |
+| `google.tools.googleMaps`             | `google_maps`          | 用于附近地点查询的地图接地。 |
 | _提供商工具_ `google.computer_use` | `computer_use`         | 计算机使用（浏览器环境）。       |
-| _提供商工具_ `google.mcp_server`   | `mcp_server`           | 远程 MCP 服务器透传。            |
+| _提供商工具_ `google.mcp_server`   | `mcp_server`           | 远程 MCP 服务器直通。            |
 | _提供商工具_ `google.retrieval`    | `retrieval`            | Vertex AI 搜索检索。               |
 
 使用 AI SDK `tool(...)` 助手定义的函数工具（`type: 'function'`）被转换为 Interactions `function` 工具描述符。其他工具类型会发出警告并被丢弃。
@@ -1324,7 +1341,7 @@ const { text, sources } = await generateText({
   },
   prompt:
     "过去一周有什么值得注意的 AI 发展？" +
-    "为你提到的每个项目包含日期。",
+    '为你提到的每个项目包含日期。',
 });
 ```
 
@@ -1338,7 +1355,7 @@ import { z } from 'zod';
 const weatherTool = tool({
   description: '获取某个城市的天气。',
   inputSchema: z.object({ city: z.string() }),
-  execute: async ({ city }) => `It is sunny in ${city}.`,
+  execute: async ({ city }) => `${city} 天气晴朗。`,
 });
 
 const { text, toolCalls } = await generateText({
@@ -1351,7 +1368,7 @@ const { text, toolCalls } = await generateText({
 
 ### 通过 Interactions 输出图像
 
-在支持图像的 Gemini 模型上，向 `responseFormat` 添加一个 `{ type: 'image' }` 条目，以在响应中获取 `LanguageModelV4FilePart` 文件。不需要工具包装，该条目也是设置 `aspectRatio`、`imageSize` 和 `mimeType` 的地方。
+在支持图像的 Gemini 模型上向 `responseFormat` 添加一个 `{ type: 'image' }` 条目，以在响应中获取 `LanguageModelV4FilePart` 文件。不需要工具包装，该条目也充当设置 `aspectRatio`、`imageSize` 和 `mimeType` 的位置。
 
 ```ts
 import {
@@ -1362,7 +1379,7 @@ import { generateText } from 'ai';
 
 const result = await generateText({
   model: google.interactions('gemini-3-pro-image-preview'),
-  prompt: '生成一张漫画猫在宇宙飞船里的图片。',
+  prompt: '生成一张漫画猫在宇宙飞船中的图片。',
   providerOptions: {
     google: {
       responseFormat: [{ type: 'image' }],
@@ -1403,7 +1420,7 @@ const result = await generateText({
 });
 ```
 
-对于多模态输出，为每个模态列出一个条目。模型在 `result.text` 中返回文本，并在 `result.files` 中返回附带的图像：
+对于多模态输出，每个模态列出一个条目。模型在 `result.text` 中返回文本，并在 `result.files` 中返回附带的图像：
 
 ```ts
 import {
@@ -1415,7 +1432,7 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: google.interactions('gemini-2.5-flash-image'),
   prompt:
-    '讲一个关于独角兽的三句话睡前故事，并配上一幅合适的插图。',
+    '给我讲一个关于独角兽的三句睡前故事，并配上一幅合适的插图。',
   providerOptions: {
     google: {
       responseFormat: [
@@ -1445,7 +1462,7 @@ const model = google.interactions('gemini-3-pro-image-preview');
 
 const turn1 = await generateText({
   model,
-  prompt: '生成一张漫画猫在宇宙飞船里的图片。',
+  prompt: '生成一张漫画猫在宇宙飞船中的图片。',
   providerOptions: {
     google: {
       responseFormat: [{ type: 'image' }],
@@ -1471,7 +1488,7 @@ const turn2 = await generateText({
 
 ### 智能体预设
 
-传递 `{ agent: <name> }` 以定位 Gemini 智能体预设。工厂会根据支持的集合对智能体名称进行类型检查：
+传递 `{ agent: <name> }` 以定位 Gemini 智能体预设。工厂会针对支持的集合对智能体名称进行类型检查：
 
 ```ts
 import {
@@ -1485,7 +1502,7 @@ const result = await generateText({
     agent: 'deep-research-pro-preview-12-2025',
   }),
   prompt:
-    '简要总结自 2024 年以来关于检索增强生成被引用最多的论文（2-3 句话）。',
+    '简要总结自2024年以来关于检索增强生成引用最多的论文（2-3句话）。',
   providerOptions: {
     google: {
       background: true,
@@ -1521,7 +1538,7 @@ await generateText({
 
 ### 托管智能体
 
-[托管智能体](https://ai.google.dev/gemini-api/docs/agents) 在每次交互配置的沙盒 Linux 环境中运行。传递 `environment` 提供商选项以控制沙盒的设置方式；该选项仅在智能体调用时接受。
+[托管智能体](https://ai.google.dev/gemini-api/docs/agents)在每次交互配置的沙盒 Linux 环境中运行。传递 `environment` 提供商选项以控制沙盒的设置方式；该选项仅在智能体调用时接受。
 
 最简单的形式是配置一个新的沙盒：
 
@@ -1546,8 +1563,8 @@ const result = await generateText({
 `environment` 接受三种形式：
 
 - `'remote'`——为此调用配置一个新的沙盒。
-- 任何其他字符串——一个 `environment_id` 以重用，分叉先前的沙盒，使其文件系统和已安装的包持久化。
-- 一个对象——配置一个新的沙盒，并可选地通过 `network` 预加载 `sources` 和/或限制出站流量：
+- 任何其他字符串——一个 `environment_id` 以重用，分叉先前的沙盒，使其文件系统和已安装的包得以持久化。
+- 一个对象——配置一个新的沙盒，并可选择预加载 `sources` 和/或通过 `network` 限制出站流量：
 
 ```ts
 import {
@@ -1567,7 +1584,7 @@ await generateText({
         sources: [
           {
             type: 'inline',
-            content: 'hello from the AI SDK example\n',
+            content: '来自 AI SDK 示例的问候\n',
             target: '/data/note.txt',
           },
         ],
@@ -1579,11 +1596,11 @@ await generateText({
 
 支持三种源类型：`inline`（将字符串写入沙盒中的 `target`）、`repository`（克隆一个 git 仓库——将 URL 作为 `source` 传递）和 `gcs`（挂载一个 Google Cloud Storage 前缀）。
 
-`network` 字段接受字符串 `'disabled'` 以阻止所有出站流量，或者一个带有 `allowlist` 数组的对象，该数组的每个条目都带有一个 `domain` 加上一个可选的 `transform` 数组，用于将标头对象注入到匹配的请求中。
+`network` 字段接受字符串 `'disabled'` 以阻止所有出站流量，或一个对象，其 `allowlist` 数组中的每个条目都带有一个 `domain` 以及一个可选的 `transform` 标头对象数组，以注入到匹配的请求中。
 
 #### 自定义托管智能体
 
-对于你在 Google 端通过 Gemini API 的 `/v1beta/agents` 端点创建的用户定义智能体，请通过专用的 `managedAgent` 工厂形式传递智能体的名称，而不是 `agent`（它只接受已知的预设名称）：
+对于你在 Google 端通过 Gemini API 的 `/v1beta/agents` 端点创建的用户定义智能体，通过专用的 `managedAgent` 工厂形式传递智能体的名称，而不是 `agent`（它只接受已知的预设名称）：
 
 ```ts
 import {
@@ -1626,7 +1643,7 @@ console.log('交互 ID:', googleMetadata?.interactionId);
 
 ## Gemma 模型
 
-你可以将 [Gemma 模型](https://deepmind.google/models/gemma/) 与 Google Generative AI API 一起使用。
+你可以将 [Gemma 模型](https://deepmind.google/models/gemma/)与 Google Generative AI API 一起使用。
 以下 Gemma 模型可用：
 
 - `gemma-3-27b-it`
@@ -1640,7 +1657,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: google('gemma-3-27b-it'),
-  system: '你是一个简洁回答的有用助手。',
+  system: '你是一个乐于助人的助手，回答简洁明了。',
   prompt: '什么是机器学习？',
 });
 ```
@@ -1657,10 +1674,10 @@ const model = google.embedding('gemini-embedding-001');
 
 Google 提供商根据嵌入类型将 API 调用发送到正确的端点：
 
-- **单一嵌入**：当使用 `embed()` 嵌入单个值时，提供商使用单一的 `:embedContent` 端点，该端点通常比批处理端点具有更高的速率限制。
-- **批量嵌入**：当使用 `embedMany()` 嵌入多个值或使用 `embed()` 嵌入多个值时，提供商使用 `:batchEmbedContents` 端点。
+- **单嵌入**：当使用 `embed()` 嵌入单个值时，提供商使用单个 `:embedContent` 端点，该端点通常比批量端点具有更高的速率限制。
+- **批量嵌入**：当使用 `embedMany()` 嵌入多个值或在 `embed()` 中嵌入多个值时，提供商使用 `:batchEmbedContents` 端点。
 
-Google 嵌入模型支持额外的设置。你可以将它们作为选项参数传递：
+Google 嵌入模型支持其他设置。你可以将它们作为选项参数传递：
 
 ```ts
 import { google, type GoogleEmbeddingModelOptions } from '@ai-sdk/google';
@@ -1670,12 +1687,12 @@ const model = google.embedding('gemini-embedding-001');
 
 const { embedding } = await embed({
   model,
-  value: '海滩上的晴天',
+  value: '阳光明媚的海滩日',
   providerOptions: {
     google: {
       outputDimensionality: 512, // 可选，嵌入的维度数
       taskType: 'SEMANTIC_SIMILARITY', // 可选，指定生成嵌入的任务类型
-      content: [[{ text: 'additional context' }]], // 可选，每个值的多模态内容（这里只有 1 个，因为 `value` 只有一个）
+      content: [[{ text: '额外上下文' }]], // 可选，每个值的多模态内容（这里只有1个，因为 `value` 只有一个）
     } satisfies GoogleEmbeddingModelOptions,
   },
 });
@@ -1689,7 +1706,7 @@ import { embedMany } from 'ai';
 
 const { embeddings } = await embedMany({
   model: google.embedding('gemini-embedding-2-preview'),
-  values: ['海滩上的晴天', '城市的雨日下午'],
+  values: ['阳光明媚的海滩日', '城市里的雨日下午'],
   providerOptions: {
     google: {
       // content 数组必须与 values 长度相同
@@ -1702,7 +1719,7 @@ const { embeddings } = await embedMany({
 });
 ```
 
-Google 嵌入模型可以使用以下可选的提供商选项：
+Google 嵌入模型提供以下可选的提供商选项：
 
 - **outputDimensionality**: _number_
 
@@ -1722,7 +1739,7 @@ Google 嵌入模型可以使用以下可选的提供商选项：
 
 - **content**: _array_
 
-  可选。用于嵌入非文本内容（图像、视频、PDF、音频）的每个值的多模态内容部分。每个条目对应于相同索引处的嵌入值——其部分与请求中的文本值合并。对于纯文本的条目使用 `null`。数组长度必须与正在嵌入的值的数量匹配。每个非 null 条目是一个部分数组，其中每个部分可以是 `{ text: string }`、用于内联 base64 数据的 `{ inlineData: { mimeType: string, data: string } }`，或用于引用远程内容（通过 HTTP URL 或 Google Cloud Storage URI (`gs://...`)）的 `{ fileData: { fileUri: string, mimeType: string } }`。由 `gemini-embedding-2-preview` 支持。
+  可选。用于嵌入非文本内容（图像、视频、PDF、音频）的每个值的多模态内容部分。每个条目对应于相同索引处的嵌入值——其部分与请求中的文本值合并。对于纯文本的条目使用 `null`。数组长度必须与正在嵌入的值数量匹配。每个非 null 条目是一个部分数组，其中每个部分可以是 `{ text: string }`、用于内联 base64 数据的 `{ inlineData: { mimeType: string, data: string } }`，或用于通过 HTTP URL 或 Google Cloud Storage URI (`gs://...`) 引用远程内容的 `{ fileData: { fileUri: string, mimeType: string } }`。由 `gemini-embedding-2-preview` 支持。
 
 ### 模型能力
 
@@ -1735,12 +1752,12 @@ Google 嵌入模型可以使用以下可选的提供商选项：
 ## 图像模型
 
 你可以使用 `.image()` 工厂方法创建调用 Google Generative AI API 的图像模型。
-有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+有关使用 AI SDK 生成图像的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 Google 提供商支持两种类型的图像模型：
 
 - **Imagen 模型**：使用 `:predict` API 的专用图像生成模型
-- **Gemini 图像模型**：使用 `:generateContent` API 的具有图像输出能力的多模态语言模型
+- **Gemini 图像模型**：具有使用 `:generateContent` API 的图像输出能力的多模态语言模型
 
 ### Imagen 模型
 
@@ -1775,7 +1792,7 @@ const { image } = await generateImage({
 });
 ```
 
-Imagen 模型可以使用以下提供商选项：
+Imagen 模型提供以下提供商选项：
 
 - **personGeneration** `allow_adult` | `allow_all` | `dont_allow`
   是否允许生成人物。默认为 `allow_adult`。
@@ -1802,7 +1819,7 @@ import { generateImage } from 'ai';
 
 const { image } = await generateImage({
   model: google.image('gemini-2.5-flash-image'),
-  prompt: '一只戴着巫师帽的猫的照片级真实图像',
+  prompt: '一张戴着巫师帽的猫的照片级真实感图像',
   aspectRatio: '1:1',
 });
 ```
@@ -1841,19 +1858,16 @@ const { image } = await generateImage({
 ```
 
 <Note>
-  Gemini 图像模型不支持 `size` 或 `n` 参数。请使用
-  `aspectRatio` 代替 `size`。也不支持基于遮罩的修复。
+  Gemini 图像模型不支持 `size` 或 `n` 参数。请使用 `aspectRatio` 代替 `size`。也不支持基于遮罩的修复。
 </Note>
 
 <Note>
-  对于需要同时输出文本和图像的更高级用例，或者
-  希望对生成过程有更多控制，你可以直接使用 Gemini 图像模型
-  与 `generateText()`。有关详细信息，请参阅 [图像输出](#image-outputs)。
+  对于需要同时输出文本和图像的更高级用例，或者希望对生成过程进行更多控制，你可以直接使用 `generateText()` 使用 Gemini 图像模型。有关详细信息，请参阅[图像输出](#image-outputs)。
 </Note>
 
 #### Google 搜索接地
 
-Gemini 图像模型通过 `providerOptions.google.googleSearch` 支持 [Google 搜索接地](#google-search)。该值与 `google.tools.googleSearch(...)` 的参数匹配；传递 `{}` 以使用默认设置启用，或传递 `{ searchTypes: { imageSearch: {} } }` 以基于参考照片进行接地。
+Gemini 图像模型通过 `providerOptions.google.googleSearch` 支持 [Google 搜索接地](#google-search)。该值与 `google.tools.googleSearch(...)` 的参数匹配；传递 `{}` 以使用默认值启用，或传递 `{ searchTypes: { imageSearch: {} } }` 以基于参考照片进行接地。
 
 ```ts
 import { google } from '@ai-sdk/google';
@@ -1862,7 +1876,7 @@ import { generateImage } from 'ai';
 const result = await generateImage({
   model: google.image('gemini-3.1-flash-image-preview'),
   prompt:
-    '搜索 2026 年超级碗中场秀艺术家的现场镜头，然后在太空中生成一个特写。',
+    '搜索 2026 年超级碗中场秀艺人的现场镜头，然后在太空中生成一张特写。',
   providerOptions: {
     google: {
       googleSearch: { searchTypes: { imageSearch: {} } },
@@ -1883,10 +1897,7 @@ console.log(result.providerMetadata?.google?.groundingMetadata);
 | `gemini-3.1-flash-image-preview` | <Check />        | <Check />     | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9 |
 
 <Note>
-  `gemini-3-pro-image-preview` 支持额外功能，包括最多 14 张
-  用于编辑的参考图像（6 个物体、5 个人）、分辨率选项（1K、
-  2K、4K 通过 `providerOptions.google.imageConfig.imageSize`）和 Google 搜索
-  接地。
+  `gemini-3-pro-image-preview` 支持附加功能，包括最多 14 张用于编辑的参考图像（6 个物体，5 个人物）、分辨率选项（1K、2K、4K，通过 `providerOptions.google.imageConfig.imageSize`）以及 Google 搜索接地。
 </Note>
 
 ## 语音模型
@@ -1899,7 +1910,7 @@ console.log(result.providerMetadata?.google?.groundingMetadata);
 const model = google.speech('gemini-2.5-flash-preview-tts');
 ```
 
-`voice` 参数可以设置为 Gemini 的 [30 种预制语音](https://ai.google.dev/gemini-api/docs/speech-generation#voices) 之一，例如 `Kore`、`Puck`、`Zephyr` 或 `Charon`。语音名称区分大小写。默认为 `Kore`。
+`voice` 参数可以设置为 Gemini 的 [30 个预建语音](https://ai.google.dev/gemini-api/docs/speech-generation#voices)之一，例如 `Kore`、`Puck`、`Zephyr` 或 `Charon`。语音名称区分大小写。默认为 `Kore`。
 
 ```ts highlight="6"
 import { generateSpeech } from 'ai';
@@ -1912,7 +1923,7 @@ const result = await generateSpeech({
 });
 ```
 
-默认情况下，生成的音频作为可播放的 WAV 文件返回（`result.audio.mediaType` 是 `audio/wav`）。设置 `outputFormat: 'pcm'` 以接收原始的带符号 16 位小端序单声道 PCM 字节；采样率在 `result.providerMetadata.google.sampleRate` 中报告。
+默认情况下，生成的音频作为可播放的 WAV 文件返回（`result.audio.mediaType` 是 `audio/wav`）。设置 `outputFormat: 'pcm'` 以接收原始的 16 位小端单声道 PCM 字节；采样率在 `result.providerMetadata.google.sampleRate` 中报告。
 
 Gemini 遵循自然语言风格指导。`instructions` 参数被预先添加到口语文本中，因此 `instructions: '高兴地说'` 与 `text: '你好'` 会说出 `高兴地说：你好`。
 
@@ -1947,13 +1958,13 @@ const result = await generateSpeech({
 ```
 
 <Note>
-  Gemini TTS 模型不支持 `speed` 或 `language` 选项；传递它们会向 `result.warnings` 添加警告。语言会根据输入文本自动检测。
+  Gemini TTS 模型不支持 `speed` 或 `language` 选项；传递它们会向 `result.warnings` 添加警告。语言会自动从输入文本中检测。
 </Note>
 
 ### 模型能力
 
-| 模型                          | 多说话人 | 通过指令设置风格 |
-| ------------------------------ | ------------- | ---------------------- |
-| `gemini-2.5-flash-preview-tts` | <Check />     | <Check />              |
-| `gemini-2.5-pro-preview-tts`   | <Check />     | <Check />              |
-| `gemini-3.1-flash-tts-preview` | <Check />     | <Check />              |
+| 模型                          | 多说话人 | 通过指令的风格 |
+| ------------------------------ | ---------------------- | ---------------------- |
+| `gemini-2.5-flash-preview-tts` | <Check />              | <Check />              |
+| `gemini-2.5-pro-preview-tts`   | <Check />              | <Check />              |
+| `gemini-3.1-flash-tts-preview` | <Check />              | <Check />              |

@@ -1,15 +1,15 @@
 ---
-title: Braintrust
-description: 使用 Braintrust 监控和追踪 LLM 应用
+title: "Braintrust"
+description: "使用 Braintrust 监控和追踪 LLM 应用"
 ---
 
 # Braintrust 可观测性
 
-Braintrust 是一个用于构建 AI 应用的全栈平台。当使用 AI SDK 构建时，你可以集成 Braintrust 来[记录](https://www.braintrust.dev/docs/guides/logging)、监控真实世界的交互并采取行动。
+Braintrust 是一个用于构建 AI 应用的全栈平台。当使用 AI SDK 构建时，你可以集成 Braintrust 来[记录](https://www.braintrust.dev/docs/guides/logging)、监控真实世界的交互并采取相应措施。
 
 ## 设置
 
-Braintrust 原生支持 OpenTelemetry，并且可以通过 Next.js 或 Node.js 与 AI SDK 开箱即用。
+Braintrust 原生支持 OpenTelemetry，并且可以通过 Next.js 或 Node.js 与 AI SDK 无缝集成。
 
 ### Next.js
 
@@ -34,9 +34,9 @@ export function register() {
 }
 ```
 
-被追踪的 LLM 调用将出现在 `parent` 字段提供的 Braintrust 项目或实验下。
+被追踪的 LLM 调用将显示在 `parent` 字段指定的 Braintrust 项目或实验中。
 
-集成注册后，遥测数据会自动捕获。你可以通过 `context` 选项传递额外的元数据：
+集成注册后，遥测数据将自动捕获。你可以通过 `context` 选项传递额外的元数据：
 
 ```typescript
 import { generateText } from 'ai';
@@ -53,7 +53,7 @@ const result = await generateText({
 ```
 
 <Note>
-该集成支持流式函数，如 `streamText`。每个流式调用将在 Braintrust 中生成 `ai.streamText` 跨度。
+该集成支持流式函数，例如 `streamText`。每次流式调用将在 Braintrust 中生成 `ai.streamText` 跨度。
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
 
 ### Node.js
 
-如果你在没有框架的情况下使用 Node.js，则必须直接配置 `NodeSDK`。在这种情况下，使用 `BraintrustSpanProcessor` 更为直接。
+如果你使用 Node.js 且没有框架，则必须直接配置 `NodeSDK`。在这种情况下，使用 `BraintrustSpanProcessor` 更为直接。
 
 首先，安装必要的依赖：
 
@@ -117,13 +117,13 @@ async function main() {
     tools: {
       listOrders: tool({
         description: '列出所有订单',
-        parameters: z.object({ userId: z.string() }),
+        inputSchema: z.object({ userId: z.string() }),
         execute: async ({ userId }) =>
           `用户 ${userId} 有以下订单：1`,
       }),
       viewTrackingInformation: tool({
         description: '查看特定订单的追踪信息',
-        parameters: z.object({ orderId: z.string() }),
+        inputSchema: z.object({ orderId: z.string() }),
         execute: async ({ orderId }) =>
           `这是 ${orderId} 的追踪信息`,
       }),
@@ -146,10 +146,10 @@ main().catch(console.error);
 
 ## 资源
 
-要查看逐步示例，请查看 Braintrust [cookbook](https://www.braintrust.dev/docs/cookbook/recipes/OTEL-logging)。
+要查看分步示例，请查阅 Braintrust [cookbook](https://www.braintrust.dev/docs/cookbook/recipes/OTEL-logging)。
 
-在 Braintrust 中记录你的应用后，探索其他工作流程，例如：
+在 Braintrust 中记录你的应用后，可以探索其他工作流程，例如：
 
 - 将[工具](https://www.braintrust.dev/docs/guides/functions/tools)添加到你的库中，并在[实验](https://www.braintrust.dev/docs/guides/evals)和[游乐场](https://www.braintrust.dev/docs/guides/playground)中使用它们
-- 创建[自定义评分器](https://www.braintrust.dev/docs/guides/functions/scorers)来评估你的 LLM 调用质量
+- 创建[自定义评分器](https://www.braintrust.dev/docs/guides/functions/scorers)来评估 LLM 调用的质量
 - 将你的日志添加到[数据集](https://www.braintrust.dev/docs/guides/datasets)中，并运行评估以比较模型和提示词

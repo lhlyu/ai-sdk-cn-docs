@@ -1,6 +1,6 @@
 ---
-title: 编写自定义提供商
-description: 了解如何为 AI SDK 编写自定义提供商
+title: "编写自定义提供商"
+description: "了解如何为 AI SDK 编写自定义提供商"
 ---
 
 # 编写自定义提供商
@@ -13,7 +13,7 @@ AI SDK 提供了[语言模型规范](https://github.com/vercel/ai/tree/main/pack
 
 ## 为什么需要语言模型规范？
 
-语言模型规范 V4 是一个用于与语言模型交互的标准化规范，它为所有 AI 提供商提供了一个统一的抽象层。该规范创建了一个一致的接口，可以与不同的语言模型无缝协作，确保开发者能够使用相同的模式和方法与任何提供商交互。它支持：
+语言模型规范 V4 是一个用于与语言模型交互的标准化规范，它为所有 AI 提供商提供了一个统一的抽象层。该规范创建了一个一致的接口，可以与不同的语言模型无缝协作，确保开发者可以使用相同的模式和方法与任何提供商进行交互。它支持：
 
 <Note>
   如果您开源了一个提供商，我们很乐意在此推广。请向我们发送 PR，将其添加到[社区提供商](/providers/community-providers)部分。
@@ -21,19 +21,19 @@ AI SDK 提供了[语言模型规范](https://github.com/vercel/ai/tree/main/pack
 
 ## 理解 V4 规范
 
-语言模型规范 V4 创建了一个强大的抽象层，适用于所有当前和未来的 AI 提供商。通过建立标准化接口，它提供了支持新兴 LLM 能力的灵活性，同时确保您的应用程序代码与提供商无关且面向未来。
+语言模型规范 V4 创建了一个强大的抽象层，适用于所有当前和未来的 AI 提供商。通过建立标准化的接口，它提供了支持新兴 LLM 能力的灵活性，同时确保您的应用程序代码保持提供商无关且面向未来。
 
 ### 架构
 
 V4 规范的核心定义了三个主要接口：
 
-1. **ProviderV4**：顶层接口，作为不同模型类型的工厂
+1. **ProviderV4**：顶级接口，作为不同模型类型的工厂
 2. **LanguageModelV4**：文本生成模型的主要接口
 3. **EmbeddingModelV4** 和 **ImageModelV4**：嵌入和图像生成的接口
 
 ### `ProviderV4`
 
-`ProviderV4` 接口作为入口点：
+`ProviderV4` 接口充当入口点：
 
 ```ts
 interface ProviderV4 {
@@ -70,15 +70,15 @@ interface LanguageModelV4 {
 在深入细节之前，理解 V4 规范中两个关键概念的区别很重要：
 
 1. **LanguageModelV4Content**：模型生成内容的规范
-2. **LanguageModelV4Prompt**：发送给模型的内容的规范
+2. **LanguageModelV4Prompt**：发送给模型的内容规范
 
 ### `LanguageModelV4Content`
 
-V4 规范支持五种不同的内容类型，模型可以生成这些类型，每种类型都针对特定的用例设计：
+V4 规范支持五种不同的内容类型，模型可以生成这些类型，每种类型都针对特定用例设计：
 
 #### 文本内容
 
-所有文本生成的基本构建块：
+所有文本生成的基础构建块：
 
 ```ts
 type LanguageModelV4Text = {
@@ -103,7 +103,7 @@ type LanguageModelV4ToolCall = {
 };
 ```
 
-`toolCallId` 对于将工具结果与其调用关联至关重要，尤其是在流式传输场景中。
+`toolCallId` 对于将工具结果关联回其调用至关重要，尤其是在流式传输场景中。
 
 #### 文件生成
 
@@ -121,7 +121,7 @@ type LanguageModelV4File = {
 
 #### 推理
 
-专门支持链式推理（对于像 OpenAI 的 o1 这样的模型至关重要）：
+专门支持思维链推理（对于像 OpenAI 的 o1 这样的模型至关重要）：
 
 ```ts
 type LanguageModelV4Reasoning = {
@@ -135,7 +135,7 @@ type LanguageModelV4Reasoning = {
 };
 ```
 
-推理内容与常规文本分开跟踪，以便进行正确的令牌计数和 UI 呈现。
+推理内容与常规文本分开跟踪，以便进行正确的令牌核算和 UI 呈现。
 
 #### 来源
 
@@ -152,49 +152,49 @@ type LanguageModelV4Source = {
 
 ### `LanguageModelV4Prompt`
 
-V4 提示词格式（`LanguageModelV4Prompt`）被设计为一个灵活的消息数组，支持多模态输入：
+V4 提示格式（`LanguageModelV4Prompt`）被设计为一个灵活的消息数组，支持多模态输入：
 
 #### 消息角色
 
 每条消息都有一个特定的角色，并带有允许的内容类型：
 
-- **系统**：模型指令（仅文本）
+- **System**：模型指令（仅文本）
 
   ```ts
   { role: 'system', content: string }
   ```
 
-- **用户**：支持文本和文件的人类输入
+- **User**：支持文本和文件的人类输入
 
   ```ts
   { role: 'user', content: Array<LanguageModelV4TextPart | LanguageModelV4FilePart> }
   ```
 
-- **助手**：支持完整内容类型的模型输出
+- **Assistant**：支持完整内容类型的模型输出
 
   ```ts
   { role: 'assistant', content: Array<LanguageModelV4TextPart | LanguageModelV4FilePart | LanguageModelV4ReasoningPart | LanguageModelV4ToolCallPart> }
   ```
 
-- **工具**：工具执行的结果
+- **Tool**：工具执行的结果
   ```ts
   { role: 'tool', content: Array<LanguageModelV4ToolResultPart> }
   ```
 
-#### 提示词部分
+#### 提示部分
 
-提示词部分是提示词结构中消息的构建块。虽然 `LanguageModelV4Content` 表示模型的输出内容，但提示词部分专门用于构建输入消息。每个消息角色支持不同类型的提示词部分：
+提示部分是提示结构中消息的构建块。虽然 `LanguageModelV4Content` 代表模型的输出内容，但提示部分是专门为构建输入消息而设计的。每条消息角色支持不同类型的提示部分：
 
 - **系统消息**：仅支持文本内容
 - **用户消息**：支持文本和文件部分
 - **助手消息**：支持文本、文件、推理和工具调用部分
 - **工具消息**：仅支持工具结果部分
 
-让我们探索每种提示词部分类型：
+让我们探索每种提示部分类型：
 
 ##### 文本部分
 
-最基本的提示词部分，包含纯文本内容：
+最基本的提示部分，包含纯文本内容：
 
 ```ts
 interface LanguageModelV4TextPart {
@@ -218,7 +218,7 @@ interface LanguageModelV4ReasoningPart {
 
 ##### 文件部分
 
-通过在提示词中包含文件来实现多模态输入：
+通过将文件包含在提示中来实现多模态输入：
 
 ```ts
 interface LanguageModelV4FilePart {
@@ -277,20 +277,20 @@ interface LanguageModelV4ToolResultPart {
 
 #### 流部分
 
-流式系统使用类型化事件来处理不同阶段：
+流式传输系统使用类型化事件来处理不同阶段：
 
 1. **流生命周期事件**：
    - `stream-start`：初始事件，包含关于不支持功能的任何警告
    - `response-metadata`：模型信息和响应头
    - `finish`：最终事件，包含使用统计和完成原因
-   - `error`：可能在任何时候发生的错误事件
+   - `error`：可能在任何点发生的错误事件
 
 2. **内容事件**：
    - 所有内容类型（`text`、`file`、`reasoning`、`source`、`tool-call`）直接流式传输
    - `tool-call-delta`：工具调用参数的增量更新
    - `reasoning-part-finish`：推理部分完成的显式标记
 
-示例流序列：
+流序列示例：
 
 ```ts
 { type: 'stream-start', warnings: [] }
@@ -328,13 +328,13 @@ type LanguageModelV4FunctionTool = {
   type: 'function';
   name: string;
   description?: string;
-  parameters: JSONSchema7; // 完整的 JSON Schema 支持
+  inputSchema: JSONSchema7; // 完整的 JSON Schema 支持
 };
 ```
 
 #### 提供商定义的客户端工具
 
-作为工具暴露的原生提供商能力：
+作为工具公开的原生提供商能力：
 
 ```ts
 export type LanguageModelV4ProviderClientDefinedTool = {
@@ -386,7 +386,7 @@ providerOptions: {
 
 - **调用级别**：在 `LanguageModelV4CallOptions` 中
 - **消息级别**：在单个消息上
-- **部分级别**：在特定内容部分（文本、文件等）上
+- **部分级别**：在特定内容部分上（文本、文件等）
 
 这种分层方法允许细粒度控制，同时保持兼容性。
 
@@ -394,7 +394,7 @@ providerOptions: {
 
 V4 规范强调健壮的错误处理：
 
-1. **流式传输错误**：可以在任何时候通过 `{ type: 'error', error: unknown }` 发出
+1. **流式传输错误**：可以通过 `{ type: 'error', error: unknown }` 在任何点发出
 2. **警告**：在 `stream-start` 和响应对象中报告的非致命问题
 3. **完成原因**：明确指示生成停止的原因：
    - `'stop'`：自然完成
@@ -416,7 +416,7 @@ npm install @ai-sdk/provider @ai-sdk/provider-utils
 
 - 创建入口点
 - 添加语言模型实现
-- 映射输入（提示词、工具、设置）
+- 映射输入（提示、工具、设置）
 - 处理结果（生成、流式传输、工具调用）
 - 支持对象生成
 
@@ -426,7 +426,7 @@ npm install @ai-sdk/provider @ai-sdk/provider-utils
 
 ### 步骤 1：创建提供商入口点
 
-首先创建一个 `provider.ts` 文件，导出一个工厂函数和一个默认实例：
+首先创建一个 `provider.ts` 文件，导出工厂函数和默认实例：
 
 ```ts filename="provider.ts"
 import {
@@ -437,7 +437,7 @@ import {
 import { ProviderV4 } from '@ai-sdk/provider';
 import { CustomChatLanguageModel } from './custom-chat-language-model';
 
-// 定义扩展 ProviderV4 的提供商接口
+// 定义您的提供商接口，扩展 ProviderV4
 interface CustomProvider extends ProviderV4 {
   (modelId: string, settings?: CustomChatSettings): CustomChatLanguageModel;
 
@@ -466,7 +466,7 @@ interface CustomProviderSettings {
   headers?: Record<string, string>;
 }
 
-// 创建提供商实例的工厂函数
+// 工厂函数，用于创建提供商实例
 function createCustom(options: CustomProviderSettings = {}): CustomProvider {
   const createChatModel = (
     modelId: string,
@@ -529,7 +529,7 @@ class CustomChatLanguageModel implements LanguageModelV4 {
     // 使用设置和配置进行初始化
   }
 
-  // 将 AI SDK 提示词转换为提供商格式
+  // 将 AI SDK 提示转换为提供商格式
   private getArgs(options: LanguageModelV4CallOptions) {
     const warnings: SharedV4Warning[] = [];
 
@@ -627,7 +627,7 @@ class CustomChatLanguageModel implements LanguageModelV4 {
     return { stream, warnings };
   }
 
-  // 原生文件处理的受支持 URL 模式
+  // 用于原生文件处理的受支持 URL 模式
   get supportedUrls() {
     return {
       'image/*': [/^https:\/\/example\.com\/images\/.*/],
@@ -668,7 +668,7 @@ private convertToProviderMessages(prompt: LanguageModelV4Prompt) {
         };
 
       case 'assistant':
-        // 处理包含文本、工具调用等的助手消息
+        // 处理带有文本、工具调用等的助手消息
         return this.convertAssistantMessage(message);
 
       case 'tool':
@@ -737,7 +737,7 @@ private createTransformer(warnings: SharedV4Warning[]) {
 
 ### 步骤 5：处理错误
 
-使用标准化的 AI SDK 错误以实现一致的错误处理：
+使用标准化的 AI SDK 错误进行一致的错误处理：
 
 ```ts filename="custom-chat-language-model.ts#L250-280"
 import {
@@ -771,9 +771,9 @@ private handleError(error: unknown): never {
 
 ### 步骤 6：添加工作流序列化支持
 
-为了使您的提供商与 [Workflow DevKit](https://useworkflow.dev) 兼容，模型实例在跨越工作流步骤边界时需要可序列化。AI SDK 提供了使这变得简单的辅助函数。
+为了使您的提供商与 [Workflow DevKit](https://useworkflow.dev) 兼容，模型实例在跨越工作流步骤边界时需要可序列化。AI SDK 提供了使这变得简单的辅助工具。
 
-首先，在配置类型中将 `headers` 设为可选，以便反序列化的模型无需预配置的身份验证即可工作：
+首先，在您的配置类型中将 `headers` 设为可选，以便反序列化的模型无需预配置的身份验证即可工作：
 
 ```ts filename="custom-chat-language-model.ts"
 type CustomChatConfig = {
@@ -785,7 +785,7 @@ type CustomChatConfig = {
 };
 ```
 
-然后，将静态序列化方法添加到您的模型类中：
+然后将静态序列化方法添加到您的模型类中：
 
 ```ts filename="custom-chat-language-model.ts"
 import {
@@ -831,7 +831,7 @@ headers: combineHeaders(this.config.headers?.(), options.headers),
 
 ## 后续步骤
 
-- 深入了解[语言模型规范 V4](https://github.com/vercel/ai/tree/main/packages/provider/src/language-model/v4)
+- 深入研究[语言模型规范 V4](https://github.com/vercel/ai/tree/main/packages/provider/src/language-model/v4)
 - 查看 [Mistral 提供商](https://github.com/vercel/ai/tree/main/packages/mistral)参考实现
 - 查看[提供商实用工具](https://github.com/vercel/ai/tree/main/packages/provider-utils)以获取有用的函数
 - 使用 AI SDK 的内置示例测试您的提供商

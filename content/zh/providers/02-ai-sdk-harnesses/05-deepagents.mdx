@@ -1,17 +1,17 @@
 ---
 title: "Deep Agents"
-description: "了解如何使用 Deep Agents 工具适配器。"
+description: "了解如何使用 Deep Agents 适配器。"
 ---
 
-# Deep Agents 工具
+# Deep Agents 适配器
 
-Deep Agents 工具适配器将 `HarnessAgent` 连接到
+Deep Agents 适配器将 `HarnessAgent` 连接到
 [Deep Agents](https://github.com/langchain-ai/deepagentsjs)，这是一个基于 LangGraph 的智能体
 运行时。该适配器在沙箱内运行一个 Node 桥接器，驱动
 `deepagents` 包，并通过沙箱暴露的 WebSocket 将其 `streamEvents` 输出流式传输回主机。
 
 <Note>
-  Harness 包是**实验性的**。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  Harness 包是**实验性**的。随着这个早期 API 的进一步完善，不同版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -26,7 +26,7 @@ Deep Agents 工具适配器将 `HarnessAgent` 连接到
 import { deepAgents, createDeepAgents } from '@ai-sdk/harness-deepagents';
 ```
 
-`deepAgents` 等同于使用默认配置的 `createDeepAgents()`。
+`deepAgents` 等同于使用默认配置调用 `createDeepAgents()`。
 
 ## 基本用法
 
@@ -78,16 +78,17 @@ const harness = createDeepAgents({
 });
 ```
 
-设置项：
+设置：
 
 - `auth`：Anthropic 或 AI Gateway 身份验证设置。
 - `model`：传递给 Deep Agents (LangChain) 运行时的模型 ID。通过 AI Gateway，使用 `creator/model` 标识符（例如 `anthropic/claude-sonnet-4-6`、`google/gemini-2.5-flash`、`openai/gpt-4.1-mini`）。
 - `port`：桥接器端口覆盖。
+- `recursionLimit`：每轮的最大 LangGraph 超级步骤数。省略时，应用 Deep Agents 默认值。
 - `startupTimeoutMs`：等待桥接器启动的最长时间。
 
 ## 身份验证
 
-Deep Agents 始终驱动 Anthropic 客户端。非 Anthropic 模型通过 AI Gateway 的 Anthropic 兼容端点访问它，该端点可转换为任何模型（Gemini、OpenAI 等），包括工具调用。身份验证从主机环境解析并转发到沙箱桥接器：首先是显式的 Anthropic 身份验证，然后是 AI Gateway 凭据，最后是环境中的 Anthropic 凭据。
+Deep Agents 始终驱动 Anthropic 客户端。非 Anthropic 模型通过 AI Gateway 的 Anthropic 兼容端点访问，该端点可转换为任何模型（Gemini、OpenAI 等），包括工具调用。身份验证从主机环境解析并转发到沙箱桥接器：首先使用显式的 Anthropic 身份验证，然后是 AI Gateway 凭据，最后是环境中的 Anthropic 凭据。
 
 支持的环境变量：
 
@@ -124,7 +125,7 @@ const sandbox = createVercelSandbox({
 
 ## 技能
 
-传递给会话的技能会被物化为沙箱中 `$HOME/.agents/skills/` 下的原生 Deep Agents 技能文件夹（`<name>/SKILL.md` 加上任何附加文件）（位于工作目录之外，因此不会与克隆的代码冲突），并通过 Deep Agents 的 `skills` 选项加载——这样智能体按需加载它们，并且技能文件引用得以解析。已经存在于 `<workDir>/.agents/skills/` 下的技能（例如在克隆的仓库中）也会被发现。
+传递给会话的技能会物化为原生的 Deep Agents 技能文件夹（`<name>/SKILL.md` 以及任何附加文件），位于沙箱中的 `$HOME/.agents/skills/` 下（在工作目录之外，因此不会与克隆的代码冲突），并通过 Deep Agents 的 `skills` 选项加载——因此智能体会按需加载它们，并且技能文件引用得以解析。已存在于 `<workDir>/.agents/skills/` 下的技能（例如在克隆的仓库中）也会被发现。
 
 ## 内置工具
 
@@ -142,7 +143,7 @@ const sandbox = createVercelSandbox({
 
 ## 已知限制
 
-- **不支持恢复已停止会话的对话**——在 `session.stop()` 之后，Deep Agents 的内存中对话状态（LangGraph `MemorySaver`）会丢失；只有沙箱工作区通过其快照持久存在。对于跨进程交接，请使用 `session.detach()`；对于在保持实时桥接器运行的同时继续对话轮次，请使用 `session.suspendTurn()`。
+- **不支持恢复已停止会话的对话**——在 `session.stop()` 之后，Deep Agents 的内存对话状态（LangGraph `MemorySaver`）会丢失；只有沙箱工作区通过其快照持久存在。使用 `session.detach()` 进行跨进程交接，或使用 `session.suspendTurn()` 在保持实时桥接器运行的同时继续对话轮次。
 - **不支持手动压缩**。
 
 ## 相关

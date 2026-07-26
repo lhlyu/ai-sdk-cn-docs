@@ -1,6 +1,6 @@
 ---
 title: "从 RSC 迁移到 UI"
-description: "学习如何从 AI SDK RSC 迁移到 AI SDK UI。"
+description: "了解如何从 AI SDK RSC 迁移到 AI SDK UI。"
 ---
 
 # 从 RSC 迁移到 UI
@@ -9,23 +9,23 @@ description: "学习如何从 AI SDK RSC 迁移到 AI SDK UI。"
 
 ## 背景
 
-AI SDK 有两个包可帮助你构建应用的前端——[AI SDK UI](/docs/ai-sdk-ui) 和 [AI SDK RSC](/docs/ai-sdk-rsc)。
+AI SDK 有两个包可以帮助你构建应用的前端——[AI SDK UI](/docs/ai-sdk-ui) 和 [AI SDK RSC](/docs/ai-sdk-rsc)。
 
-我们引入了对在 AI SDK 中使用 [React Server Components](https://react.dev/reference/rsc/server-components) (RSC) 的支持，以简化在支持 RSC 的框架中构建生成式用户界面的过程。
+我们引入了对在 AI SDK 中使用 [React Server Components](https://react.dev/reference/rsc/server-components) (RSC) 的支持，以简化为支持 RSC 的框架构建生成式用户界面的过程。
 
 然而，鉴于我们正在突破这项技术的边界，AI SDK RSC 目前面临着重大限制，使其不适合稳定的生产环境使用。
 
-- 无法使用服务器操作中止流。这将在 React 和 Next.js 的未来版本中得到改进 [(1122)](https://github.com/vercel/ai/issues/1122)。
-- 使用 `createStreamableUI` 和 `streamUI` 时，组件会在 `.done()` 时重新挂载，导致闪烁 [(2939)](https://github.com/vercel/ai/issues/2939)。
+- 无法使用服务器操作中止流。这将在未来的 React 和 Next.js 版本中得到改进 [(1122)](https://github.com/vercel/ai/issues/1122)。
+- 当使用 `createStreamableUI` 和 `streamUI` 时，组件会在 `.done()` 时重新挂载，导致闪烁 [(2939)](https://github.com/vercel/ai/issues/2939)。
 - 许多 Suspense 边界可能导致崩溃 [(2843)](https://github.com/vercel/ai/issues/2843)。
 - 使用 `createStreamableUI` 可能导致二次方数据传输。你可以改用 `createStreamableValue` 并在客户端渲染组件来避免此问题。
 - 关闭的 RSC 流会导致更新问题 [(3007)](https://github.com/vercel/ai/issues/3007)。
 
 由于这些限制，AI SDK RSC 被标记为实验性，我们不建议在稳定的生产环境中使用它。
 
-因此，我们强烈建议迁移到 AI SDK UI，它经过了广泛的开发，提供了更稳定、更生产级的体验。
+因此，我们强烈建议迁移到 AI SDK UI，它经过了大量开发，以提供更稳定、更成熟的生产级体验。
 
-在构建 [v0](https://v0.dev) 的过程中，我们投入了大量时间探索如何在 Web 上创造最佳的聊天体验。AI SDK UI 内置了许多这些最佳实践和常用模式，例如[语言模型中间件](/docs/ai-sdk-core/middleware)、[多步工具调用](/docs/ai-sdk-core/tools-and-tool-calling#multi-step-calls-using-stopwhen)、[附件](/docs/ai-sdk-ui/chatbot#attachments)、[遥测](/docs/ai-sdk-core/telemetry)、[提供商注册表](/docs/ai-sdk-core/provider-management#provider-registry)等等。这些功能经过精心设计，形成了一个简洁的抽象层，你可以使用它将 AI 可靠地集成到你的应用中。
+在构建 [v0](https://v0.dev) 的过程中，我们投入了大量时间来探索如何在 Web 上创造最佳的聊天体验。AI SDK UI 内置了许多这些最佳实践和常用模式，例如[语言模型中间件](/docs/ai-sdk-core/middleware)、[多步工具调用](/docs/ai-sdk-core/tools-and-tool-calling#multi-step-calls-using-stopwhen)、[附件](/docs/ai-sdk-ui/chatbot#attachments)、[遥测](/docs/ai-sdk-core/telemetry)、[提供商注册表](/docs/ai-sdk-core/provider-management#provider-registry)等等。这些特性经过精心设计，形成了一个简洁的抽象层，你可以使用它将 AI 可靠地集成到你的应用中。
 
 ## 流式聊天补全
 
@@ -33,7 +33,7 @@ AI SDK 有两个包可帮助你构建应用的前端——[AI SDK UI](/docs/ai-s
 
 `streamUI` 函数作为服务器操作的一部分执行，如下所示。
 
-#### 迁移前：在单个服务器操作中处理生成和渲染
+#### 之前：在单个服务器操作中处理生成和渲染
 
 ```tsx filename="@/app/actions.tsx"
 import { openai } from '@ai-sdk/openai';
@@ -51,10 +51,10 @@ export async function sendMessage(message: string) {
     instructions: 'you are a friendly assistant!',
     messages: messages.get(),
     text: async function* ({ content, done }) {
-      // 处理文本
+      // process text
     },
     tools: {
-      // 工具定义
+      // tool definitions
     },
   });
 
@@ -62,7 +62,7 @@ export async function sendMessage(message: string) {
 }
 ```
 
-#### 迁移前：调用服务器操作并更新 UI 状态
+#### 之前：调用服务器操作并更新 UI 状态
 
 聊天界面调用服务器操作。然后使用 `useUIState` Hook 保存响应。
 
@@ -88,16 +88,16 @@ export default function Page() {
         }}
       >
         <input type="text" />
-        <button type="submit">提交</button>
+        <button type="submit">Submit</button>
       </form>
     </div>
   );
 }
 ```
 
-`streamUI` 函数将生成文本和渲染用户界面结合在一起。要迁移到 AI SDK UI，你需要**分离这些关注点**——使用 `streamText` 进行流式生成，使用 `useChat` 渲染 UI。
+`streamUI` 函数结合了生成文本和渲染用户界面。要迁移到 AI SDK UI，你需要**分离这些关注点**——使用 `streamText` 进行流式生成，使用 `useChat` 渲染 UI。
 
-#### 迁移后：用路由处理器替换服务器操作
+#### 之后：用路由处理器替换服务器操作
 
 `streamText` 函数作为路由处理器的一部分执行，并将响应流式传输到客户端。客户端的 `useChat` Hook 解码此流并在聊天界面中渲染响应。
 
@@ -117,7 +117,7 @@ export async function POST(request) {
     instructions: 'you are a friendly assistant!',
     messages,
     tools: {
-      // 工具定义
+      // tool definitions
     },
   });
 
@@ -127,7 +127,7 @@ export async function POST(request) {
 }
 ```
 
-#### 迁移后：更新客户端以使用聊天 Hook
+#### 之后：更新客户端以使用聊天 Hook
 
 ```tsx filename="@/app/page.tsx"
 'use client';
@@ -154,7 +154,7 @@ export default function Page() {
             setInput(event.target.value);
           }}
         />
-        <button type="submit">发送</button>
+        <button type="submit">Send</button>
       </form>
     </div>
   );
@@ -163,21 +163,21 @@ export default function Page() {
 
 ### 并行工具调用
 
-在 AI SDK RSC 中，`streamUI` 不支持并行工具调用。你需要结合使用 `streamText`、`createStreamableUI` 和 `createStreamableValue`。
+在 AI SDK RSC 中，`streamUI` 不支持并行工具调用。你将不得不结合使用 `streamText`、`createStreamableUI` 和 `createStreamableValue`。
 
-使用 AI SDK UI，`useChat` 内置了对并行工具调用的支持。你可以在 `streamText` 中定义多个工具，并让它们并行调用。然后 `useChat` Hook 会自动为你处理并行工具调用。
+使用 AI SDK UI，`useChat` 内置了对并行工具调用的支持。你可以在 `streamText` 中定义多个工具，并让它们并行调用。`useChat` Hook 将自动为你处理并行工具调用。
 
 ### 多步工具调用
 
-在 AI SDK RSC 中，`streamUI` 不支持多步工具调用。你需要结合使用 `streamText`、`createStreamableUI` 和 `createStreamableValue`。
+在 AI SDK RSC 中，`streamUI` 不支持多步工具调用。你将不得不结合使用 `streamText`、`createStreamableUI` 和 `createStreamableValue`。
 
-使用 AI SDK UI，`useChat` 内置了对多步工具调用的支持。你可以在 `streamText` 函数中设置 `stopWhen` 来定义模型何时应停止进行工具调用。然后 `useChat` Hook 会自动为你处理多步工具调用。
+使用 AI SDK UI，`useChat` 内置了对多步工具调用的支持。你可以在 `streamText` 函数中设置 `stopWhen` 来定义模型何时应停止进行工具调用。`useChat` Hook 将自动为你处理多步工具调用。
 
 ### 生成式用户界面
 
 `streamUI` 函数使用 `tools` 作为根据用户输入执行函数的方式，并根据函数输出渲染 React 组件，从而在聊天界面中超越纯文本。
 
-#### 迁移前：在服务器操作中渲染组件并流式传输到客户端
+#### 之前：在服务器操作中渲染组件并流式传输到客户端
 
 ```tsx filename="@/app/actions.tsx"
 import { z } from 'zod';
@@ -191,17 +191,17 @@ const { value: stream } = await streamUI({
   instructions: 'you are a friendly assistant!',
   messages,
   text: async function* ({ content, done }) {
-    // 处理文本
+    // process text
   },
   tools: {
     displayWeather: {
-      description: '显示某个位置的天气',
+      description: 'Display the weather for a location',
       inputSchema: z.object({
         latitude: z.number(),
         longitude: z.number(),
       }),
       generate: async function* ({ latitude, longitude }) {
-        yield <div>正在加载天气...</div>;
+        yield <div>Loading weather...</div>;
 
         const { value, unit } = await getWeather({ latitude, longitude });
 
@@ -214,7 +214,7 @@ const { value: stream } = await streamUI({
 
 如前所述，`streamUI` 在单个服务器操作调用中生成文本并渲染 React 组件。
 
-#### 迁移后：用路由处理器替换，并将 props 数据流式传输到客户端
+#### 之后：用路由处理器替换，并将 props 数据流式传输到客户端
 
 `streamText` 函数将 props 数据作为响应流式传输到客户端，而 `useChat` 将流解码为 `toolInvocations` 并渲染聊天界面。
 
@@ -237,8 +237,8 @@ export async function POST(request) {
     messages,
     tools: {
       displayWeather: {
-        description: '显示某个位置的天气',
-        parameters: z.object({
+        description: 'Display the weather for a location',
+        inputSchema: z.object({
           latitude: z.number(),
           longitude: z.number(),
         }),
@@ -256,7 +256,7 @@ export async function POST(request) {
 }
 ```
 
-#### 迁移后：更新客户端以使用聊天 Hook 并通过工具调用渲染组件
+#### 之后：更新客户端以使用聊天 Hook 并通过工具调用渲染组件
 
 ```tsx filename="@/app/page.tsx"
 'use client';
@@ -292,7 +292,7 @@ export default function Page() {
                 return (
                   <div key={toolCallId}>
                     {toolName === 'displayWeather' ? (
-                      <div>正在加载天气...</div>
+                      <div>Loading weather...</div>
                     ) : null}
                   </div>
                 );
@@ -310,7 +310,7 @@ export default function Page() {
             setInput(event.target.value);
           }}
         />
-        <button type="submit">发送</button>
+        <button type="submit">Send</button>
       </form>
     </div>
   );
@@ -319,9 +319,9 @@ export default function Page() {
 
 ### 处理客户端交互
 
-使用 AI SDK RSC，流式传输到客户端的组件可以通过使用 `useActions` Hook 调用相关的服务器操作来触发后续生成。只要该组件是 `<AI/>` 上下文提供者的后代，就可以实现这一点。
+使用 AI SDK RSC，流式传输到客户端的组件可以通过使用 `useActions` Hook 调用相关的服务器操作来触发后续生成。只要组件是 `<AI/>` 上下文提供者的后代，这是可能的。
 
-#### 迁移前：使用 Actions Hook 发送消息
+#### 之前：使用 actions Hook 发送消息
 
 ```tsx filename="@/app/components/list-flights.tsx"
 'use client';
@@ -339,7 +339,7 @@ export function ListFlights({ flights }) {
           key={flight.id}
           onClick={async () => {
             const response = await sendMessage(
-              `我想选择航班 ${flight.id}!`,
+              `I would like to choose flight ${flight.id}!`,
             );
 
             setMessages(msgs => [...msgs, response]);
@@ -353,7 +353,7 @@ export function ListFlights({ flights }) {
 }
 ```
 
-#### 迁移后：从组件中使用具有相同 ID 的另一个聊天 Hook
+#### 之后：在组件中使用具有相同 ID 的另一个聊天 Hook
 
 切换到 AI SDK UI 后，这些消息通过在组件中使用与父组件相同的 `id` 初始化 `useChat` Hook 来同步。
 
@@ -376,7 +376,7 @@ export function ListFlights({ chatId, flights }) {
           onClick={async () => {
             await append({
               role: 'user',
-              content: `我想选择航班 ${flight.id}!`,
+              content: `I would like to choose flight ${flight.id}!`,
             });
           }}
         >
@@ -390,9 +390,9 @@ export function ListFlights({ chatId, flights }) {
 
 ### 加载指示器
 
-在 AI SDK RSC 中，你可以使用 `streamUI` 的 `initial` 参数来定义在生成过程中显示的组件。
+在 AI SDK RSC 中，你可以使用 `streamUI` 的 `initial` 参数来定义在生成过程中要显示的组件。
 
-#### 迁移前：使用 `loading` 显示加载指示器
+#### 之前：使用 `loading` 显示加载指示器
 
 ```tsx filename="@/app/actions.tsx"
 import { openai } from '@ai-sdk/openai';
@@ -402,12 +402,12 @@ const { value: stream } = await streamUI({
   model: openai('gpt-4o'),
   instructions: 'you are a friendly assistant!',
   messages,
-  initial: <div>加载中...</div>,
+  initial: <div>Loading...</div>,
   text: async function* ({ content, done }) {
-    // 处理文本
+    // process text
   },
   tools: {
-    // 工具定义
+    // tool definitions
   },
 });
 
@@ -416,7 +416,7 @@ return stream;
 
 使用 AI SDK UI，你可以使用工具调用状态在工具执行时显示加载指示器。
 
-#### 迁移后：使用工具调用状态显示加载指示器
+#### 之后：使用工具调用状态显示加载指示器
 
 ```tsx filename="@/app/components/message.tsx"
 'use client';
@@ -448,7 +448,7 @@ export function Message({ role, content, toolInvocations }) {
                   {toolName === 'getWeather' ? (
                     <Weather isLoading={true} />
                   ) : (
-                    <div>加载中...</div>
+                    <div>Loading...</div>
                   )}
                 </div>
               );
@@ -465,7 +465,7 @@ export function Message({ role, content, toolInvocations }) {
 
 在实现 `streamUI` 作为服务器操作之前，你应该创建一个 `<AI/>` 提供者，并在根布局中包装你的应用，以同步 AI 和 UI 状态。在初始化期间，你通常使用 `onSetAIState` 回调函数来跟踪 AI 状态的更新，并在调用 `done(...)` 时将其保存到数据库。
 
-#### 迁移前：使用上下文提供者的回调函数保存聊天记录
+#### 之前：使用上下文提供者的回调函数保存聊天记录
 
 ```ts filename="@/app/actions.ts"
 import { createAI } from '@ai-sdk/rsc';
@@ -475,7 +475,7 @@ export const AI = createAI({
   initialAIState: {},
   initialUIState: {},
   actions: {
-    // 服务器操作
+    // server actions
   },
   onSetAIState: async ({ state, done }) => {
     'use server';
@@ -487,9 +487,9 @@ export const AI = createAI({
 });
 ```
 
-#### 迁移后：使用 `streamText` 的回调函数保存聊天记录
+#### 之后：使用 `streamText` 的回调函数保存聊天记录
 
-使用 AI SDK UI，你将在路由处理器中使用 `streamText` 的 `onEnd` 回调函数来保存聊天记录。
+使用 AI SDK UI，你将使用路由处理器中 `streamText` 的 `onEnd` 回调函数来保存聊天记录。
 
 ```ts filename="@/app/api/chat/route.ts"
 import { openai } from '@ai-sdk/openai';
@@ -517,7 +517,7 @@ export async function POST(request) {
           messages: [...coreMessages, ...responseMessages],
         });
       } catch (error) {
-        console.error('保存聊天记录失败');
+        console.error('Failed to save chat');
       }
     },
   });
@@ -530,11 +530,11 @@ export async function POST(request) {
 
 ### 恢复聊天记录
 
-使用 AI SDK RSC 时，`useUIState` Hook 包含聊天的 UI 状态。恢复之前保存的聊天记录时，需要加载带有消息的 UI 状态。
+使用 AI SDK RSC 时，`useUIState` Hook 包含聊天的 UI 状态。恢复之前保存的聊天记录时，需要使用消息加载 UI 状态。
 
 与在 AI SDK RSC 中保存聊天记录的方式类似，你应该使用 `onGetUIState` 回调函数从数据库检索聊天记录，将其转换为 UI 状态，并返回以便通过 `useUIState` 访问。
 
-#### 迁移前：使用上下文提供者的回调函数从数据库加载聊天记录
+#### 之前：使用上下文提供者的回调函数从数据库加载聊天记录
 
 ```ts filename="@/app/actions.ts"
 import { createAI } from '@ai-sdk/rsc';
@@ -542,7 +542,7 @@ import { loadChatFromDB, convertToUIState } from '@/utils/queries';
 
 export const AI = createAI({
   actions: {
-    // 服务器操作
+    // server actions
   },
   onGetUIState: async () => {
     'use server';
@@ -557,15 +557,15 @@ export const AI = createAI({
 
 AI SDK UI 使用 `useChat` 的 `messages` 字段来存储消息。要在 `useChat` 挂载时加载消息，你应该使用 `initialMessages`。
 
-由于消息通常从数据库加载，我们可以在 Page 组件中使用服务器操作，在静态生成期间从数据库获取旧的聊天记录，并将消息作为 props 传递给 `<Chat/>` 组件。
+由于消息通常从数据库加载，我们可以在 Page 组件内部使用服务器操作，在静态生成期间从数据库获取较旧的聊天记录，并将消息作为 props 传递给 `<Chat/>` 组件。
 
-#### 迁移后：在页面静态生成期间从数据库加载聊天记录
+#### 之后：在页面静态生成期间从数据库加载聊天记录
 
 ```tsx filename="@/app/chat/[id]/page.tsx"
 import { Chat } from '@/app/components/chat';
 import { getChatById } from '@/utils/queries';
 
-// 链接到示例实现：https://github.com/vercel/ai-chatbot/blob/00b125378c998d19ef60b73fe576df0fe5a0e9d4/lib/utils.ts#L87-L127
+// link to example implementation: https://github.com/vercel/ai-chatbot/blob/00b125378c998d19ef60b73fe576df0fe5a0e9d4/lib/utils.ts#L87-L127
 import { convertToUIMessages } from '@/utils/functions';
 
 export default async function Page({ params }: { params: any }) {
@@ -581,7 +581,7 @@ export default async function Page({ params }: { params: any }) {
 }
 ```
 
-#### 迁移后：将聊天消息作为 props 传递并加载到聊天 Hook 中
+#### 之后：将聊天消息作为 props 传递并加载到聊天 Hook 中
 
 ```tsx filename="@/app/components/chat.tsx"
 'use client';
@@ -618,7 +618,7 @@ export function Chat({
 
 `createStreamableValue` 函数将任何可序列化的数据从服务器流式传输到客户端。因此，当与 `streamText` 和 `Output` 配对使用时，此函数允许你将对象生成从服务器流式传输到客户端。
 
-#### 迁移前：使用可流式值流式传输对象生成
+#### 之前：使用流式值来流式传输对象生成
 
 ```ts filename="@/app/actions.ts"
 import { Output, streamText } from 'ai';
@@ -634,8 +634,8 @@ export async function generateSampleNotifications() {
   (async () => {
     const { partialOutputStream } = streamText({
       model: __MODEL__,
-      instructions: '生成用于测试的示例 iOS 消息',
-      prompt: '排灯节期间家庭群聊中的消息，最多 4 条',
+      instructions: 'generate sample ios messages for testing',
+      prompt: 'messages from a family group chat during diwali, max 4',
       output: Output.object({ schema: notificationsSchema }),
     });
 
@@ -650,7 +650,7 @@ export async function generateSampleNotifications() {
 }
 ```
 
-#### 迁移前：读取可流式值并更新对象
+#### 之前：读取流式值并更新对象
 
 ```tsx filename="@/app/page.tsx"
 'use client';
@@ -678,7 +678,7 @@ export default function Page() {
           }
         }}
       >
-        生成
+        Generate
       </button>
     </div>
   );
@@ -687,7 +687,7 @@ export default function Page() {
 
 要迁移到 AI SDK UI，你应该使用 `useObject` Hook，并在路由处理器中实现带有 `Output` 的 `streamText`。
 
-#### 迁移后：用路由处理器替换并流式传输文本响应
+#### 之后：用路由处理器替换并流式传输文本响应
 
 ```ts filename="@/app/api/object/route.ts"
 import { Output, createTextStreamResponse, streamText, toTextStream } from 'ai';
@@ -701,7 +701,7 @@ export async function POST(req: Request) {
     model: __MODEL__,
     output: Output.object({ schema: notificationSchema }),
     prompt:
-      `在此上下文中为消息应用生成 3 条通知：` + context,
+      `Generate 3 notifications for a messages app in this context:` + context,
   });
 
   return createTextStreamResponse({
@@ -710,7 +710,7 @@ export async function POST(req: Request) {
 }
 ```
 
-#### 迁移后：使用对象 Hook 解码流并更新对象
+#### 之后：使用对象 Hook 解码流并更新对象
 
 ```tsx filename="@/app/page.tsx"
 'use client';
@@ -726,8 +726,8 @@ export default function Page() {
 
   return (
     <div>
-      <button onClick={() => submit('期末考试周期间的消息。')}>
-        生成通知
+      <button onClick={() => submit('Messages during finals week.')}>
+        Generate notifications
       </button>
 
       {object?.notifications?.map((notification, index) => (

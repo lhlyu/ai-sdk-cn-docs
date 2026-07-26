@@ -63,7 +63,7 @@ console.log(result.text);
       type: 'boolean',
       isOptional: true,
       description:
-        '是否允许在 `prompt` 或 `messages` 字段中使用 `role: "system"` 消息。未设置时，系统消息会被拒绝，因为这可能造成提示词注入攻击风险。理想情况下，应使用 `instructions` 选项。设置为 `true` 以允许系统消息，或设置为 `false` 以明确拒绝。',
+        '是否允许在 `prompt` 或 `messages` 字段中使用 `role: "system"` 消息。未设置时，系统消息会被拒绝，因为它们可能造成提示注入攻击风险。理想情况下，应改用 `instructions` 选项。设置为 `true` 以允许系统消息，或设置为 `false` 以明确拒绝。',
     },
     {
       name: 'tools',
@@ -91,7 +91,7 @@ console.log(result.text);
       type: 'ActiveTools<TOOLS>',
       isOptional: true,
       description:
-        '限制模型可以调用的工具，而不改变结果中的工具调用和结果类型。默认情况下所有工具都是激活的。工具名称限制为工具集的字符串键。',
+        '限制模型可调用的工具，而不改变结果中的工具调用和结果类型。默认情况下所有工具都是激活的。工具名称限制为工具集的字符串键。',
     },
     {
       name: 'toolOrder',
@@ -105,7 +105,7 @@ console.log(result.text);
       type: 'ToolApprovalConfiguration<TOOLS, RUNTIME_CONTEXT>',
       isOptional: true,
       description:
-        "智能体的审批配置。传递一个 `GenericToolApprovalFunction` 来在单个回调中处理所有工具调用，该回调接收 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`；或者传递一个按工具划分的对象，其中每个键可以是一个状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、一个对象形式（例如 `{ type: 'denied', reason: 'blocked by policy' }`），或者一个 `SingleToolApprovalFunction`，它接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`（与工具执行选项形状相同，但没有 `abortSignal`，且 `context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与智能体的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined`，效果与 `'not-applicable'` 相同。`'not-applicable'` 是默认的执行路径，运行工具时不带审批元数据。当您希望在输出中包含明确的自动审批请求/响应部分时，使用 `'approved'`、`'denied'` 或其对象形式。自动批准和拒绝可以包含一个 `reason`，该原因会转发到发出的审批响应中。此设置优先于工具的 `needsApproval` 默认值。",
+        "智能体的审批配置。传递一个 `GenericToolApprovalFunction` 来在单个回调中处理所有工具调用，该回调接收 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`；或者传递一个按工具划分的对象，其中每个键可以是一个状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、一个对象形式如 `{ type: 'denied', reason: 'blocked by policy' }`，或者一个 `SingleToolApprovalFunction`，它接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`（与工具执行选项形状相同，但没有 `abortSignal`，且 `context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与智能体的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined`，效果与 `'not-applicable'` 相同。`'not-applicable'` 是默认的执行路径，运行工具时不带审批元数据。当你希望在输出中包含明确的自动审批请求/响应部分时，使用 `'approved'`、`'denied'` 或其对象形式。自动批准和拒绝可以包含一个 `reason`，该原因会转发到发出的审批响应中。此设置优先于工具的 `needsApproval` 默认值。",
     },
     {
       name: 'output',
@@ -187,7 +187,7 @@ console.log(result.text);
               name: 'activeTools',
               type: 'ActiveTools<TOOLS>',
               description:
-                '限制模型可以调用的工具。',
+                '限制模型可调用的工具。',
             },
             {
               name: 'toolOrder',
@@ -242,13 +242,14 @@ console.log(result.text);
             },
             {
               name: 'timeout',
-              type: 'number | { totalMs?: number; stepMs?: number; chunkMs?: number } | undefined',
-              description: '生成的超时配置。',
+              type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number } | undefined',
+              description:
+                '生成的超时配置。firstChunkMs 和 chunkMs 仅由 stream() 强制执行。',
             },
             {
               name: 'headers',
               type: 'Record<string, string | undefined> | undefined',
-              description: '随请求发送的额外 HTTP 头。',
+              description: '随请求发送的额外 HTTP 标头。',
             },
             {
               name: 'providerOptions',
@@ -264,7 +265,7 @@ console.log(result.text);
             {
               name: 'abortSignal',
               type: 'AbortSignal | undefined',
-              description: '用于取消操作的中止信号。',
+              description: '用于取消操作的终止信号。',
             },
             {
               name: 'include',
@@ -282,7 +283,7 @@ console.log(result.text);
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '通过 `toolsContext` 传递的按工具上下文映射，键为工具名称。',
+                '通过 `toolsContext` 传递的按工具划分的上下文映射，键为工具名称。',
             },
           ],
         },
@@ -356,13 +357,14 @@ console.log(result.text);
             },
             {
               name: 'timeout',
-              type: 'number | { totalMs?: number; stepMs?: number; chunkMs?: number } | undefined',
-              description: '生成的超时配置。',
+              type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number } | undefined',
+              description:
+                '生成的超时配置。firstChunkMs 和 chunkMs 仅由 stream() 强制执行。',
             },
             {
               name: 'headers',
               type: 'Record<string, string | undefined> | undefined',
-              description: '随请求发送的额外 HTTP 头。',
+              description: '随请求发送的额外 HTTP 标头。',
             },
             {
               name: 'stopWhen',
@@ -378,7 +380,7 @@ console.log(result.text);
             {
               name: 'abortSignal',
               type: 'AbortSignal | undefined',
-              description: '用于取消操作的中止信号。',
+              description: '用于取消操作的终止信号。',
             },
             {
               name: 'include',
@@ -396,7 +398,7 @@ console.log(result.text);
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '按工具上下文映射。可能在步骤之间通过 prepareStep 更新。',
+                '按工具划分的上下文映射。可能在步骤之间通过 prepareStep 更新。',
             },
           ],
         },
@@ -466,7 +468,7 @@ console.log(result.text);
               name: 'toolExecutionMs',
               type: 'number',
               description:
-                '工具执行的挂钟持续时间（毫秒）。',
+                '工具执行的挂钟持续时间，以毫秒为单位。',
             },
             {
               name: 'messages',
@@ -528,7 +530,7 @@ console.log(result.text);
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
       description:
-        '按工具上下文映射，键为工具名称。当至少一个工具定义了 `contextSchema` 时必需；当没有工具需要上下文时不可接受。',
+        '按工具名称划分的上下文映射。当至少一个工具定义了 `contextSchema` 时必需；当没有工具需要上下文时不可接受。',
     },
     {
       name: 'telemetry',
@@ -544,14 +546,14 @@ console.log(result.text);
               type: '{ [KEY in keyof CONTEXT]?: boolean }',
               isOptional: true,
               description:
-                '应包含在遥测中的顶级运行时上下文属性。运行时上下文属性默认被排除，除非显式设置为 `true`。生命周期回调和返回的结果仍然接收完整的 `runtimeContext`。',
+                '应包含在遥测中的顶级运行时上下文属性。运行时上下文属性被排除，除非它们被显式设置为 `true`。生命周期回调和返回的结果仍然接收完整的 `runtimeContext`。',
             },
             {
               name: 'includeToolsContext',
               type: '{ [TOOL_NAME in keyof InferToolSetContext<TOOLS>]?: { [KEY in keyof InferToolSetContext<TOOLS>[TOOL_NAME]]?: boolean } }',
               isOptional: true,
               description:
-                '应包含在遥测中的顶级工具上下文属性，按工具配置。工具上下文属性默认被排除，除非显式设置为 `true`。生命周期回调和返回的结果仍然接收完整的 `toolsContext`。',
+                '应包含在遥测中的顶级工具上下文属性，按工具配置。工具上下文属性被排除，除非它们被显式设置为 `true`。生命周期回调和返回的结果仍然接收完整的 `toolsContext`。',
             },
           ],
         },
@@ -607,7 +609,7 @@ console.log(result.text);
       type: 'string[]',
       isOptional: true,
       description:
-        '自定义令牌序列，用于停止模型输出。传递给模型。',
+        '停止模型输出的自定义令牌序列。传递给模型。',
     },
     {
       name: 'seed',
@@ -632,7 +634,7 @@ console.log(result.text);
       type: 'Record<string, string | undefined>',
       isOptional: true,
       description:
-        '随请求发送的额外 HTTP 头。仅适用于基于 HTTP 的提供商。',
+        '随请求发送的额外 HTTP 标头。仅适用于基于 HTTP 的提供商。',
     },
     {
       name: 'callOptionsSchema',
@@ -697,21 +699,21 @@ const result = await agent.generate({
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
-      description: '完整的对话历史记录，作为模型消息列表。',
+      description: '作为模型消息列表的完整对话历史。',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
       description:
-        '可选的中止信号，可用于取消调用。',
+        '可选的终止信号，可用于取消调用。',
     },
     {
       name: 'timeout',
-      type: 'number | { totalMs?: number; stepMs?: number; chunkMs?: number }',
+      type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number }',
       isOptional: true,
       description:
-        '超时时间（毫秒）。可以指定为数字，或包含 totalMs、stepMs 和/或 chunkMs 属性的对象。如果调用时间超过指定的超时时间，将被中止。可以与 abortSignal 一起使用。',
+        '超时时间（毫秒）。可以指定为数字，或包含 totalMs、stepMs、firstChunkMs 和/或 chunkMs 属性的对象。firstChunkMs 和 chunkMs 对 generate() 无效；它们仅用于流式传输，由 stream() 强制执行。可与 abortSignal 一起使用。',
     },
     {
       name: 'experimental_sandbox',
@@ -791,7 +793,7 @@ const result = await agent.generate({
 
 ### `stream()`
 
-从智能体流式传输响应，包括智能体推理和工具调用，按发生顺序进行。返回一个 `StreamTextResult`。
+流式传输智能体的响应，包括智能体推理和工具调用，按发生顺序进行。返回一个 `StreamTextResult`。
 
 ```ts
 const stream = agent.stream({
@@ -813,21 +815,21 @@ for await (const chunk of stream.textStream) {
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
-      description: '完整的对话历史记录，作为模型消息列表。',
+      description: '作为模型消息列表的完整对话历史。',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
       description:
-        '可选的中止信号，可用于取消调用。',
+        '可选的终止信号，可用于取消调用。',
     },
     {
       name: 'timeout',
-      type: 'number | { totalMs?: number; stepMs?: number; chunkMs?: number }',
+      type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number }',
       isOptional: true,
       description:
-        '超时时间（毫秒）。可以指定为数字，或包含 totalMs、stepMs 和/或 chunkMs 属性的对象。如果调用时间超过指定的超时时间，将被中止。可以与 abortSignal 一起使用。',
+        '超时时间（毫秒）。可以指定为数字，或包含 totalMs、stepMs、firstChunkMs 和/或 chunkMs 属性的对象。firstChunkMs 限制等待每个模型调用步骤中第一个内容输出。chunkMs 限制后续内容输出块之间的间隔。可与 abortSignal 一起使用。',
     },
     {
       name: 'experimental_sandbox',
@@ -943,7 +945,7 @@ type WeatherAgentUIMessage = InferAgentUIMessage<typeof weatherAgent>;
 
 #### 带消息元数据的示例
 
-您可以提供第二个类型参数来自定义每条消息的元数据。这对于跟踪智能体返回的丰富元数据（例如 createdAt、令牌数、完成原因等）非常有用。
+您可以提供第二个类型参数来自定义每条消息的元数据。这对于跟踪智能体返回的丰富元数据（如 createdAt、tokens、finish reason 等）非常有用。
 
 ```ts
 import { ToolLoopAgent, InferAgentUIMessage } from 'ai';
@@ -958,13 +960,13 @@ const exampleMetadataSchema = z.object({
 });
 type ExampleMetadata = z.infer<typeof exampleMetadataSchema>;
 
-// 像往常一样定义智能体
+// 照常定义智能体
 const metadataAgent = new ToolLoopAgent({
   model: __MODEL__,
   // ...其他选项
 });
 
-// 带有自定义元数据的类型安全 UI 消息类型
+// 带自定义元数据的类型安全 UI 消息类型
 type MetadataAgentUIMessage = InferAgentUIMessage<
   typeof metadataAgent,
   ExampleMetadata
@@ -994,7 +996,7 @@ const result = await assistant.generate({
 });
 
 console.log(result.text);
-console.log(result.steps); // 智能体执行的所有步骤的数组
+console.log(result.steps); // 智能体执行的所有步骤数组
 ```
 
 ### 流式传输智能体响应

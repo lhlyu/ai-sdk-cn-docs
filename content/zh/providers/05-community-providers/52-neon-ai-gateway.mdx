@@ -1,0 +1,149 @@
+---
+title: "Neon AI Gateway"
+description: "了解如何使用 AI SDK 的 Neon AI Gateway 提供商。"
+---
+
+# Neon AI Gateway
+
+[Neon AI Gateway](https://neon.com/docs/ai-gateway/overview) 是内置于 Neon 的模型网关。一个分支范围的 Neon 凭证可让你访问来自 OpenAI、Anthropic、Google、Meta、Alibaba 及其他提供商的模型。用于 AI SDK 的 Neon 提供商会将每个模型路由到其所需的网关端点。
+
+它支持文本生成、流式传输、工具调用、结构化输出和图像输入。模型通过短 ID 引用，例如 `gpt-5-mini` 或 `gemini-3-5-flash`，无论它们由谁托管，每个请求都限定在你的 Neon 分支内。
+
+<Note>
+  Neon AI Gateway 处于测试阶段。要使用它，你需要一个付费的 Neon 计划和一个位于 AWS 美国东部（俄亥俄）区域（`aws-us-east-2`）的项目。测试期间推理是免费的。Neon 在 [AI Gateway 概述](https://neon.com/docs/ai-gateway/overview) 中记录了当前的可用性和定价。
+</Note>
+
+## 设置
+
+Neon 提供商位于 [`@neon/ai-sdk-provider`](https://www.npmjs.com/package/@neon/ai-sdk-provider) 包中。它需要 Node.js 22 或更高版本。将其与 AI SDK 7 一起安装：
+
+<InstallPackages packages="ai @neon/ai-sdk-provider" />
+
+在 [Neon 控制台](https://console.neon.tech) 中，打开你的分支并创建一个具有 `ai_gateway:invoke` 范围的凭证。在你的环境中设置分支的 AI Gateway URL 和凭证：
+
+```bash
+NEON_AI_GATEWAY_BASE_URL=https://<branch-id>-api.ai.<cell>.us-east-2.aws.neon.tech
+NEON_AI_GATEWAY_TOKEN=nt_live_...
+```
+
+使用不带 API 路径的裸分支网关 URL。提供商会为每个模型添加路径。
+
+如果你使用 Neon CLI，`neon env pull` 会将这两个变量写入当前分支的 `.env` 文件。
+
+[Neon AI Gateway 快速入门](https://neon.com/docs/ai-gateway/get-started) 解释了如何创建凭证以及查找分支 URL。
+
+## 提供商实例
+
+该包导出一个默认的 `neon` 提供商。它会从环境中读取 `NEON_AI_GATEWAY_BASE_URL` 和 `NEON_AI_GATEWAY_TOKEN`：
+
+```ts
+import { neon } from '@neon/ai-sdk-provider';
+```
+
+当你想要显式传递分支 URL 和凭证时，请使用 `createNeon`：
+
+```ts
+import { createNeon } from '@neon/ai-sdk-provider';
+
+const neon = createNeon({
+  baseURL: process.env.NEON_AI_GATEWAY_BASE_URL,
+  apiKey: process.env.NEON_AI_GATEWAY_TOKEN,
+});
+```
+
+`createNeon` 也接受自定义的 `headers` 和自定义的 `fetch` 实现。
+
+## 语言模型
+
+使用 Neon 模型 ID 调用提供商以创建语言模型：
+
+```ts
+const model = neon('gpt-5-mini');
+```
+
+要切换提供商，请更改模型 ID：
+
+```ts
+const openAIModel = neon('gpt-5-mini');
+const anthropicModel = neon('claude-haiku-4-5');
+const googleModel = neon('gemini-3-5-flash');
+const metaModel = neon('llama-4-maverick');
+const alibabaModel = neon('qwen3-next-80b-a3b-instruct');
+```
+
+模型 ID 决定了提供商使用哪个端点。OpenAI 模型使用 Responses API，Anthropic 模型使用 Messages API，其他模型使用 Neon 统一的 OpenAI 兼容端点。提供商接受规范的模型 ID 以及传统的 `databricks-` 前缀形式（例如 `databricks-gpt-5`）。
+
+Neon 会根据可用性变化更新模型目录。在选择模型 ID 之前，请查看 [Neon 模型目录](https://neon.com/docs/ai-gateway/models)。该目录也作为 [`neon` 提供商发布在 models.dev 上](https://models.dev/providers/neon/)。
+
+## 示例
+
+### `generateText`
+
+```ts
+import { neon } from '@neon/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: neon('gpt-5-mini'),
+  prompt: '什么是无服务器 Postgres？',
+});
+
+console.log(text);
+```
+
+### `streamText`
+
+```ts
+import { neon } from '@neon/ai-sdk-provider';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: neon('gemini-3-5-flash'),
+  prompt: '写一个关于数据库分支的短篇故事。',
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+### 图像生成
+
+对于支持图像生成的 OpenAI 模型，`neon.tools.imageGeneration` 暴露了 Responses API 的 `image_generation` 工具。使用 `streamText` 将生成的图像作为工具结果接收：
+
+```ts
+import { neon } from '@neon/ai-sdk-provider';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: neon('gpt-5-mini'),
+  prompt: '生成一张服务器机房中霓虹大象的图像。',
+  tools: {
+    image: neon.tools.imageGeneration({ outputFormat: 'png' }),
+  },
+});
+
+for await (const part of result.stream) {
+  if (part.type === 'tool-result' && 'result' in part.output) {
+    const image = Buffer.from(part.output.result as string, 'base64');
+    // 保存或返回生成的图像。
+  }
+}
+```
+
+图像生成通过工具而非 AI SDK 图像模型进行。该提供商不支持 `generateImage()`、`embed()` 或 `embedMany()`。
+
+## 分支范围的身份验证
+
+Neon 将每个网关 URL 绑定到一个分支。一个凭证在其创建的分支以及从该分支派生的分支上有效。例如，从 `main` 分支出来的预览分支可以使用在 `main` 上创建的凭证。不相关的分支则无法使用。
+
+模型请求遵循与数据库相同的分支隔离。[AI Gateway 身份验证指南](https://neon.com/docs/ai-gateway/authentication) 涵盖了凭证创建、轮换和分支绑定。
+
+## 其他资源
+
+- [Neon AI Gateway 文档](https://neon.com/docs/ai-gateway/overview)
+- [Neon AI Gateway 快速入门](https://neon.com/docs/ai-gateway/get-started)
+- [Neon 模型目录](https://neon.com/docs/ai-gateway/models)
+- [models.dev 上的 Neon 提供商](https://models.dev/providers/neon/)
+- [Neon AI SDK 提供商仓库](https://github.com/neondatabase/neon-pkgs/tree/main/packages/ai-sdk-provider)
+- [Neon 控制台](https://console.neon.tech)
