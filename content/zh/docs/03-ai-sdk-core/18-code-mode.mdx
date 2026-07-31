@@ -1,0 +1,218 @@
+---
+title: "代码模式"
+description: "让模型通过沙箱化的 JavaScript 和 TypeScript 编排 AI SDK 工具。"
+---
+
+# 代码模式
+
+代码模式允许模型编写 JavaScript 或 TypeScript 代码来调用你的 AI SDK 工具。生成的代码在隔离的 QuickJS 沙箱中运行，并返回 JSON 可序列化的结果。
+
+模型无需逐个调用工具，而是可以使用代码模式来：
+
+- 并发调用独立工具
+- 转换和组合工具结果
+- 在返回给模型之前过滤大型工具响应
+- 使用 JavaScript 控制流进行多步骤操作
+
+代码模式由 `@ai-sdk/code-mode` 包提供。
+
+<Note type="warning">
+  代码模式为实验性功能，其 API 在未来的版本中可能会发生变化。它需要 Node.js 22 或更高版本，并且不适用于浏览器或边缘运行时。
+</Note>
+
+## 安装
+
+```bash
+pnpm add ai @ai-sdk/code-mode zod
+```
+
+## 将代码模式与 `generateText` 结合使用
+
+在一个工具集中定义你的工具，并使用 `experimental_toolCallers` 来选择代码模式可以调用哪些工具：
+
+```ts
+import { experimental_codeModeTool as codeModeTool } from '@ai-sdk/code-mode';
+import { generateText, isStepCount, tool } from 'ai';
+import { z } from 'zod';
+
+const getInventory = tool({
+  description: '获取产品的可用库存。',
+  inputSchema: z.object({
+    productId: z.string(),
+  }),
+  outputSchema: z.object({
+    productId: z.string(),
+    availableUnits: z.number(),
+  }),
+  execute: async ({ productId }) => ({
+    productId,
+    availableUnits: 42,
+  }),
+});
+
+const getDemand = tool({
+  description: '获取产品的请求数量。',
+  inputSchema: z.object({
+    productId: z.string(),
+  }),
+  outputSchema: z.object({
+    productId: z.string(),
+    requestedUnits: z.number(),
+  }),
+  execute: async ({ productId }) => ({
+    productId,
+    requestedUnits: 31,
+  }),
+});
+
+const tools = {
+  code_mode: codeModeTool({
+    executionPolicy: {
+      timeoutMs: 30_000,
+    },
+  }),
+  getInventory,
+  getDemand,
+} as const;
+
+const result = await generateText({
+  model: __MODEL__,
+  tools,
+  experimental_toolCallers: ({ code_mode }) => ({
+    getInventory: [code_mode],
+    getDemand: [code_mode],
+  }),
+  stopWhen: isStepCount(10),
+  prompt: '比较产品 sku_123 的库存和需求。',
+});
+```
+
+`experimental_toolCallers` 返回的键是被管理的工具。其值标识允许的调用者。在此示例中，`getInventory` 和 `getDemand` 可通过 `code_mode` 使用，但它们不会作为可直接调用的工具暴露给模型。当某个工具也应可直接调用时，请包含 `'direct'`：
+
+```ts
+experimental_toolCallers: ({ code_mode }) => ({
+  getInventory: ['direct', code_mode],
+});
+```
+
+没有 `experimental_toolCallers` 条目的工具保持其现有的直接工具调用行为。
+
+代码模式工具的描述包含根据其允许工具的输入和输出模式生成的 TypeScript 签名。描述、`inputExamples` 和精确的模式有助于模型编写正确的代码。
+
+对于上述示例，模型可以生成如下程序：
+
+```ts
+const [inventory, demand] = await Promise.all([
+  tools.getInventory({ productId: 'sku_123' }),
+  tools.getDemand({ productId: 'sku_123' }),
+]);
+
+return {
+  sufficient: inventory.availableUnits >= demand.requestedUnits,
+  remaining: inventory.availableUnits - demand.requestedUnits,
+};
+```
+
+每个提供的工具都可通过全局 `tools` 对象使用。不是有效 JavaScript 标识符的工具名称使用方括号表示法：
+
+```ts
+const user = await tools['lookup-user']({ userId: 'user_123' });
+return { id: user.id, plan: user.plan };
+```
+
+## 编写代码模式程序
+
+生成的程序支持：
+
+- JavaScript 和类型剥离的 TypeScript
+- 顶层 `await` 和 `return`
+- 标准 JavaScript 控制流和数据转换
+- 用于并发工具调用的 `Promise.all`
+- `JSON.parse` 和 `JSON.stringify`
+- `console.log`、`console.info`、`console.debug` 和 `console.error`
+
+每个工具调用都是异步的，必须等待或以其他方式观察。在工具调用仍处于分离状态时返回会导致调用失败并中止未完成的工作。
+
+程序和工具输入输出以 JSON 形式跨越沙箱边界。只返回 JSON 可序列化的值。TypeScript 支持仅限于移除类型语法；代码模式不执行类型检查，也不提供完整的 TypeScript 编译器。
+
+## 直接执行
+
+当你想要直接执行程序而不是将代码模式暴露给模型时，请使用 `experimental_runCodeMode`：
+
+```ts
+import { experimental_runCodeMode as runCodeMode } from '@ai-sdk/code-mode';
+
+const result = await runCodeMode({
+  js: `
+    const inventory = await tools.getInventory({
+      productId: 'sku_123',
+    });
+
+    return {
+      productId: inventory.productId,
+      available: inventory.availableUnits > 0,
+    };
+  `,
+  tools: { getInventory },
+});
+```
+
+`runCodeMode` 返回程序返回的值。它使用与 AI SDK 工具相同的沙箱和执行限制。
+
+## 执行限制
+
+每次调用都有运行时、内存、源代码大小、结果、工具负载、控制台输出和工具调用的限制。使用 `executionPolicy` 覆盖它们：
+
+```ts
+const codeMode = codeModeTool({
+  executionPolicy: {
+    timeoutMs: 30_000,
+    memoryLimitBytes: 64 * 1024 * 1024,
+    maxResultBytes: 1024 * 1024,
+    maxBridgeRequests: 100,
+    maxInFlightBridgeRequests: 10,
+  },
+});
+```
+
+可用的限制包括：
+
+- `timeoutMs`：总执行时间
+- `memoryLimitBytes`：QuickJS 内存
+- `maxStackSizeBytes`：QuickJS 栈
+- `maxSourceBytes`：生成的源代码
+- `maxResultBytes`：返回的结果
+- `maxConsoleOutputBytes`：合并的控制台输出
+- `maxToolInputBytes`：每次工具调用的输入
+- `maxToolOutputBytes`：每次工具调用的输出
+- `maxBridgeRequests`：总工具调用次数
+- `maxInFlightBridgeRequests`：并发工具调用次数
+
+使用 `experimental_setMaxWorkers` 设置进程范围内并发代码模式工作线程的上限：
+
+```ts
+import { experimental_setMaxWorkers as setMaxWorkers } from '@ai-sdk/code-mode';
+
+setMaxWorkers(4);
+```
+
+如果没有显式上限，代码模式会根据可用内存选择一个，最多 32 个工作线程。
+
+## 隔离和工具访问
+
+每次调用都会获得一个全新的 QuickJS 上下文。沙箱代码无法访问：
+
+- Node.js 全局对象，如 `process`、`require` 或 `module`
+- 主机文件系统或模块加载器
+- `fetch`、WebCrypto 或性能 API
+- `eval` 或动态 `Function` 构造
+
+网络或系统访问必须在工具中实现，并显式提供给代码模式。
+
+<Note type="warning">
+  将沙箱视为纵深防御。生成的代码和工具参数是不可信的。工具在你的主机应用程序中执行，位于 QuickJS 沙箱之外，并且提供的工具暴露的每个能力都可供生成的程序使用。在每个工具内部强制执行授权并验证输入。
+</Note>
+
+工具输入模式在其 `execute` 函数运行之前进行验证。中止信号和 AI SDK 工具执行上下文会转发到嵌套工具调用。
+
+代码模式目前不支持嵌套工具调用的审批流程。需要审批的工具会被拒绝而不是执行。

@@ -1,21 +1,21 @@
 ---
 title: "ElevenLabs"
-description: "了解如何使用 AI SDK 的 ElevenLabs 提供商。"
+description: "了解如何将 ElevenLabs 提供商用于 AI SDK。"
 ---
 
 # ElevenLabs 提供商
 
-[ElevenLabs](https://elevenlabs.io/) 提供商为 ElevenLabs 转录和语音生成 API 提供语言模型支持。
+[ElevenLabs](https://elevenlabs.io/) 提供商包含对 ElevenLabs 转录和语音生成 API 的语言模型支持。
 
-## 安装
+## 设置
 
-ElevenLabs 提供商位于 `@ai-sdk/elevenlabs` 模块中。您可以通过以下命令安装：
+ElevenLabs 提供商可在 `@ai-sdk/elevenlabs` 模块中使用。您可以通过以下命令安装：
 
 <InstallPackages packages="@ai-sdk/elevenlabs" />
 
 ## 提供商实例
 
-您可以从 `@ai-sdk/elevenlabs` 导入默认的提供商实例 `elevenLabs`：
+您可以从 `@ai-sdk/elevenlabs` 导入默认提供商实例 `elevenLabs`：
 
 ```ts
 import { elevenLabs } from '@ai-sdk/elevenlabs';
@@ -36,19 +36,25 @@ const elevenLabs = createElevenLabs({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。
-  默认为 `ELEVENLABS_API_KEY` 环境变量。
+  通过 `xi-api-key` 请求头发送的 API 密钥。
+  默认使用 `ELEVENLABS_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
-  您可以将其用作拦截请求的中间件，
-  或为测试等场景提供自定义 fetch 实现。
+  您可以将其用作中间件来拦截请求，
+  或提供自定义 fetch 实现，例如用于测试。
+
+- **webSocket** _WebSocketConstructor_
+
+  用于实时转录的自定义 WebSocket 实现。在原生 WebSocket
+  构造函数无法发送 `xi-api-key` 身份验证请求头的运行时中，
+  需要支持请求头的实现。
 
 ## 语音模型
 
@@ -61,7 +67,7 @@ const model = elevenLabs.speech('eleven_multilingual_v2');
 ```
 
 `voice` 参数可以设置为 [ElevenLabs 语音库](https://elevenlabs.io/app/voice-library) 中的语音 ID。
-您可以通过在库中选择一个语音并复制其 ID 来找到语音 ID。
+您可以通过在语音库中选择一个语音并复制其 ID 来找到语音 ID。
 
 ```ts highlight="6"
 import { generateSpeech } from 'ai';
@@ -74,7 +80,7 @@ const result = await generateSpeech({
 });
 ```
 
-您还可以使用 `providerOptions` 参数传递额外的提供商特定选项：
+您还可以使用 `providerOptions` 参数传递其他提供商特定选项：
 
 ```ts highlight="7-9"
 import { generateSpeech } from 'ai';
@@ -99,10 +105,10 @@ const result = await generateSpeech({
 ```
 
 - **languageCode** _string 或 null_  
-  可选。语言代码（ISO 639-1），用于强制模型使用特定语言。目前，只有 Turbo v2.5 和 Flash v2.5 支持语言强制。对于其他模型，提供语言代码将导致错误。
+  可选。用于强制模型使用某种语言的语言代码（ISO 639-1）。目前，只有 Turbo v2.5 和 Flash v2.5 支持语言强制。对于其他模型，提供语言代码将导致错误。
 
 - **voiceSettings** _object 或 null_  
-  可选。覆盖给定语音的存储设置的语音设置。这些设置仅应用于当前请求。
+  可选。覆盖给定语音的已存储设置的语音设置。这些设置仅应用于当前请求。
   - **stability** _double 或 null_  
     可选。决定语音的稳定性以及每次生成之间的随机性。较低的值会引入更广泛的情感范围；较高的值会导致更单调的语音。
   - **useSpeakerBoost** _boolean 或 null_  
@@ -112,10 +118,10 @@ const result = await generateSpeech({
   - **style** _double 或 null_  
     可选。放大原始说话者的风格。如果设置为高于 0，可能会增加延迟。
 
-- **pronunciationDictionaryLocators** _array of objects 或 null_  
-  可选。要应用于文本的发音词典定位器列表，按顺序排列。每个请求最多 3 个定位器。  
+- **pronunciationDictionaryLocators** _object 数组 或 null_  
+  可选。要按顺序应用于文本的发音词典定位器列表。每个请求最多 3 个定位器。  
   每个定位器对象：
-  - **pronunciationDictionaryId** _string_（必需）  
+  - **pronunciationDictionaryId** _string_（必填）  
     发音词典的 ID。
   - **versionId** _string 或 null_（可选）  
     词典的版本 ID。如果未提供，则使用最新版本。
@@ -124,55 +130,55 @@ const result = await generateSpeech({
   可选。如果指定，系统将尝试确定性采样。必须在 0 到 4294967295 之间。不保证确定性。
 
 - **previousText** _string 或 null_  
-  可选。当前请求文本之前的文本。在连接生成或影响当前生成连续性时，可以改善连续性。
+  可选。当前请求文本之前的文本。可以在拼接生成结果时提高连续性，或影响当前生成的连续性。
 
 - **nextText** _string 或 null_  
-  可选。当前请求文本之后的文本。在连接生成或影响当前生成连续性时，可以改善连续性。
+  可选。当前请求文本之后的文本。可以在拼接生成结果时提高连续性，或影响当前生成的连续性。
 
-- **previousRequestIds** _array of strings 或 null_  
-  可选。在此样本之前生成的样本的请求 ID 列表。在拆分大型任务时改善连续性。最多 3 个 ID。如果同时发送了 `previousText` 和 `previousRequestIds`，则忽略 `previousText`。
+- **previousRequestIds** _string 数组 或 null_  
+  可选。在此样本之前生成的样本的请求 ID 列表。在拆分大型任务时提高连续性。最多 3 个 ID。如果同时发送 `previousText` 和 `previousRequestIds`，则忽略 `previousText`。
 
-- **nextRequestIds** _array of strings 或 null_  
-  可选。在此样本之后生成的样本的请求 ID 列表。在重新生成样本时有助于保持连续性。最多 3 个 ID。如果同时发送了 `nextText` 和 `nextRequestIds`，则忽略 `nextText`。
+- **nextRequestIds** _string 数组 或 null_  
+  可选。在此样本之后生成的样本的请求 ID 列表。在重新生成样本时有助于保持连续性。最多 3 个 ID。如果同时发送 `nextText` 和 `nextRequestIds`，则忽略 `nextText`。
 
 - **applyTextNormalization** _enum_  
   可选。控制文本规范化。  
   允许的值：`'auto'`（默认）、`'on'`、`'off'`。
-  - `'auto'`：系统决定是否应用规范化（例如，拼写数字）。
+  - `'auto'`：系统决定是否应用规范化（例如，拼出数字）。
   - `'on'`：始终应用规范化。
   - `'off'`：从不应用规范化。  
-    对于 `eleven_turbo_v2_5` 和 `eleven_flash_v2_5`，仅企业计划可以启用。
+    对于 `eleven_turbo_v2_5` 和 `eleven_flash_v2_5`，只能通过企业版计划启用。
 
 - **applyLanguageTextNormalization** _boolean_  
-  可选。默认为 `false`。控制语言文本规范化，有助于在某些支持的语言（目前仅日语）中实现正确发音。可能会显著增加延迟。
+  可选。默认为 `false`。控制语言文本规范化，有助于在某些支持的语言（目前仅限日语）中实现正确发音。可能会显著增加延迟。
 
 - **enableLogging** _boolean_  
-  可选。是否为此 API 调用启用请求日志记录。默认为账户级别设置。
+  可选。是否为此 API 调用启用请求日志记录。默认为账户级设置。
 
 ### 模型能力
 
-| 模型                       | 指令     |
-| -------------------------- | -------- |
-| `eleven_v3`                | <Check /> |
-| `eleven_multilingual_v2`   | <Check /> |
-| `eleven_flash_v2_5`        | <Check /> |
-| `eleven_flash_v2`          | <Check /> |
-| `eleven_turbo_v2_5`        | <Check /> |
-| `eleven_turbo_v2`          | <Check /> |
-| `eleven_monolingual_v1`    | <Check /> |
-| `eleven_multilingual_v1`   | <Check /> |
+| 模型                      | 指令       |
+| ------------------------ | ---------- |
+| `eleven_v3`              | <Check />  |
+| `eleven_multilingual_v2` | <Check />  |
+| `eleven_flash_v2_5`      | <Check />  |
+| `eleven_flash_v2`        | <Check />  |
+| `eleven_turbo_v2_5`      | <Check />  |
+| `eleven_turbo_v2`        | <Check />  |
+| `eleven_monolingual_v1`  | <Check />  |
+| `eleven_multilingual_v1` | <Check />  |
 
 ## 转录模型
 
 您可以使用 `.transcription()` 工厂方法创建调用 [ElevenLabs 转录 API](https://elevenlabs.io/speech-to-text) 的模型。
 
-第一个参数是模型 ID，例如 `scribe_v1`。
+第一个参数是模型 ID，例如 `scribe_v2`。
 
 ```ts
-const model = elevenLabs.transcription('scribe_v1');
+const model = elevenLabs.transcription('scribe_v2');
 ```
 
-您还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，如果事先知道输入语言，以 ISO-639-1（例如 `en`）格式提供有时可以提高转录性能。
+您还可以使用 `providerOptions` 参数传递其他提供商特定选项。例如，如果事先知道输入语言，以 ISO-639-1（例如 `en`）格式提供有时可以提高转录性能。
 
 ```ts highlight="10-14"
 import { transcribe } from 'ai';
@@ -182,7 +188,7 @@ import {
 } from '@ai-sdk/elevenlabs';
 
 const result = await transcribe({
-  model: elevenLabs.transcription('scribe_v1'),
+  model: elevenLabs.transcription('scribe_v2'),
   audio: new Uint8Array([1, 2, 3, 4]),
   providerOptions: {
     elevenlabs: {
@@ -198,7 +204,7 @@ const result = await transcribe({
 
   与音频文件语言对应的 ISO-639-1 或 ISO-639-3 语言代码。
   如果事先知道，有时可以提高转录性能。
-  默认为 `null`，此时语言会自动预测。
+  默认为 `null`，此时会自动预测语言。
 
 - **tagAudioEvents** _boolean_
 
@@ -220,7 +226,7 @@ const result = await transcribe({
 
 - **diarize** _boolean_
 
-  是否在上传文件中注释当前正在说话的说话者。
+  是否标注上传文件中当前正在说话的说话者。
   默认为 `true`。
 
 - **fileFormat** _enum_
@@ -228,12 +234,71 @@ const result = await transcribe({
   输入音频的格式。
   默认为 `'other'`。
   允许的值：`'pcm_s16le_16'`、`'other'`。
-  对于 `'pcm_s16le_16'`，输入音频必须是 16 位 PCM，采样率为 16kHz，单声道（单声道），小端字节序。
+  对于 `'pcm_s16le_16'`，输入音频必须是 16 位 PCM、16kHz 采样率、单声道（单声道）且为小端字节序。
   延迟将低于传递编码波形。
 
 ### 模型能力
 
-| 模型                       | 转录     | 时长     | 分段     | 语言     |
-| -------------------------- | -------- | -------- | -------- | -------- |
-| `scribe_v1`                | <Check /> | <Check /> | <Check /> | <Check /> |
-| `scribe_v1_experimental`   | <Check /> | <Check /> | <Check /> | <Check /> |
+| 模型                      | 转录       | 时长       | 分段       | 语言       |
+| ------------------------ | ---------- | ---------- | ---------- | ---------- |
+| `scribe_v1`              | <Check />  | <Check />  | <Check />  | <Check />  |
+| `scribe_v1_experimental` | <Check />  | <Check />  | <Check />  | <Check />  |
+| `scribe_v2`              | <Check />  | <Check />  | <Check />  | <Check />  |
+
+## 流式转录模型
+
+<Note type="warning">流式转录是一项实验性功能。</Note>
+
+Scribe v2 Realtime 支持通过 `experimental_streamTranscribe` 进行实时转录。它接受 8、16、22.05、24、44.1 或 48 kHz 的原始 PCM 音频，或 8 kHz mu-law 音频。
+
+```ts
+import {
+  createElevenLabs,
+  type ElevenLabsProviderSettings,
+} from '@ai-sdk/elevenlabs';
+import { experimental_streamTranscribe as streamTranscribe } from 'ai';
+import { WebSocket } from 'ws';
+
+const elevenLabs = createElevenLabs({
+  webSocket: WebSocket as unknown as ElevenLabsProviderSettings['webSocket'],
+});
+
+const result = streamTranscribe({
+  model: elevenLabs.transcription('scribe_v2_realtime'),
+  audio,
+  inputAudioFormat: { type: 'audio/pcm', rate: 16000 },
+  providerOptions: {
+    elevenlabs: {
+      languageCode: 'en',
+      streaming: {
+        includeLanguageDetection: true,
+        includeTimestamps: true,
+      },
+    },
+  },
+});
+
+for await (const part of result.fullStream) {
+  if (part.type === 'transcript-partial') {
+    console.log('partial:', part.text);
+  }
+
+  if (part.type === 'transcript-final') {
+    console.log('final:', part.text);
+  }
+}
+```
+
+ElevenLabs 实时端点使用 WebSocket 请求头进行身份验证。在原生 WebSocket 构造函数无法发送请求头的运行时中，请使用支持请求头的 WebSocket 实现，例如 `ws`。
+
+`streaming` 提供商选项镜像了 ElevenLabs 的实时转录设置：`commitStrategy`、`enableLogging`、`filterBackgroundAudio`、`includeLanguageDetection`、`includeTimestamps`、`keyterms`、`minSilenceDurationMs`、`minSpeechDurationMs`、`noVerbatim`、`previousText`、`secondaryLanguages`、`vadSilenceThresholdSecs` 和 `vadThreshold`。
+
+ElevenLabs 在其带有时间戳的提交事件中传递检测到的语言。当启用 `includeLanguageDetection` 时，提供商会在内部请求该事件，但仅在同时启用 `includeTimestamps` 时才返回时间戳分段。`filterBackgroundAudio` 不能与任一选项组合使用。
+
+有关流式转录的更多信息，请参阅 [转录](/docs/ai-sdk-core/transcription)。
+
+### 模型能力
+
+| 模型                  | 流式转录             | 时间戳               | 语言检测             |
+| -------------------- | -------------------- | -------------------- | -------------------- |
+| `scribe_v2_realtime` | <Check size={18} />  | <Check size={18} />  | <Check size={18} />  |

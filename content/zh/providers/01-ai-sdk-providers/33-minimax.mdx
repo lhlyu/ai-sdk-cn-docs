@@ -1,0 +1,138 @@
+---
+title: "MiniMax"
+description: "了解如何将 MiniMax 模型与 AI SDK 结合使用。"
+---
+
+# MiniMax 提供商
+
+[MiniMax](https://www.minimax.io) 提供商通过 MiniMax API 提供对 MiniMax-M
+系列语言模型的访问，包括具有推理能力的模型。
+
+API 密钥可从 [MiniMax 平台](https://platform.minimax.io) 获取。
+
+## 安装
+
+MiniMax 提供商可通过 `@ai-sdk/minimax` 模块获得。您可以使用以下命令安装：
+
+<InstallPackages packages="@ai-sdk/minimax" />
+
+## 提供商实例
+
+您可以从 `@ai-sdk/minimax` 导入默认提供商实例 `minimax`：
+
+```ts
+import { minimax } from '@ai-sdk/minimax';
+```
+
+对于自定义配置，您可以导入 `createMiniMax` 并使用您的设置创建提供商实例：
+
+```ts
+import { createMiniMax } from '@ai-sdk/minimax';
+
+const minimax = createMiniMax({
+  apiKey: process.env.MINIMAX_API_KEY ?? '',
+});
+```
+
+您可以使用以下可选设置来自定义 MiniMax 提供商实例：
+
+- **baseURL** _string_
+
+  为 API 调用使用不同的 URL 前缀。
+  默认前缀为 `https://api.minimax.io/v1`
+
+- **apiKey** _string_
+
+  通过 `Authorization` 标头发送的 API 密钥。默认为
+  `MINIMAX_API_KEY` 环境变量
+
+- **headers** _Record&lt;string,string&gt;_
+
+  要包含在请求中的自定义标头
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现
+
+## 语言模型
+
+您可以使用提供商实例创建语言模型：
+
+```ts
+import { minimax } from '@ai-sdk/minimax';
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: minimax('minimax-m3'),
+  prompt: '为 4 人写一份素食千层面食谱。',
+});
+```
+
+您也可以使用 `.chat()` 或 `.languageModel()` 工厂方法：
+
+```ts
+const model = minimax.chat('minimax-m3');
+// 或
+const model = minimax.languageModel('minimax-m3');
+```
+
+MiniMax 语言模型可用于 `streamText` 函数
+（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+
+### 推理
+
+MiniMax-M 模型可以在最终响应之前产生中间推理（“思考”）。您可以通过提供商选项控制此行为。推理输出通过标准 AI SDK 推理部分进行流式传输。
+
+```ts
+import { minimax, type MiniMaxLanguageModelOptions } from '@ai-sdk/minimax';
+import { generateText } from 'ai';
+
+const { text, reasoningText } = await generateText({
+  model: minimax('minimax-m3'),
+  providerOptions: {
+    minimax: {
+      thinking: { type: 'adaptive' },
+    } satisfies MiniMaxLanguageModelOptions,
+  },
+  prompt: '单词 "strawberry" 中有多少个 "r"？',
+});
+
+console.log(reasoningText);
+console.log(text);
+```
+
+有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+
+### 提供商选项
+
+以下可选的提供商选项可用于 MiniMax 语言模型：
+
+- **thinking** _object_
+
+  控制模型的推理（“思考”）行为。
+  - **type** _'adaptive' | 'disabled'_
+    - `'adaptive'`：模型决定何时推理（启用深度推理）
+    - `'disabled'`：模型直接响应而不进行推理，以获得更高的吞吐量和更低的延迟
+
+  省略时，模型使用其提供商端默认值。
+
+  <Note>
+    思考控制仅在 `minimax-m3` 上受支持。M2.x 模型始终进行思考，因此 `'disabled'` 对它们没有效果。
+  </Note>
+
+## 模型能力
+
+| 模型                       | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| -------------------------- | -------- | -------- | -------- | ------------ |
+| `minimax-m3`               | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2.7`             | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2.7-highspeed`   | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2.5`             | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2.5-highspeed`   | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2.1`             | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2.1-highspeed`   | <Cross />| <Check />| <Check />| <Check />    |
+| `minimax-m2`               | <Cross />| <Check />| <Check />| <Check />    |
+
+<Note>
+  有关可用模型的完整列表，请参阅 [MiniMax 文档](https://platform.minimax.io/docs)。如有需要，您也可以将任何可用的提供商模型 ID 作为字符串传递。
+</Note>

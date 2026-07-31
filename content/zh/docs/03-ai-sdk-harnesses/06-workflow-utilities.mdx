@@ -1,30 +1,31 @@
 ---
 title: "工作流工具"
-description: "将 HarnessAgent 轮次运行为持久化 Workflow DevKit 工作流。"
+description: "将 HarnessAgent 轮次作为持久化 Workflow DevKit 工作流运行。"
 ---
 
 # 工作流工具
 
-`@ai-sdk/workflow-harness` 提供了在 [workflow](https://vercel.com/docs/workflow) 中运行 `HarnessAgent` 轮次的辅助工具。
+`@ai-sdk/workflow-harness` 提供了在 [workflow](https://vercel.com/docs/workflow) 中运行 `HarnessAgent` 轮次的辅助函数。
 
-该包提供了一个可序列化的状态机和一个切片运行器，你可以在自己的 `'use workflow'` 和 `'use step'` 函数中调用它们。
+该包提供了一个可序列化的状态机，以及用于时间切片和语义智能体步骤轮次的运行器。您可以从自己的 `'use workflow'` 和 `'use step'` 函数中调用相应的运行器。
 
-核心的 harness 和工作流文件是框架无关的。下面展示的 HTTP 处理器和 Next.js 配置是如何从一个应用框架中暴露工作流的示例；请根据你的运行时和 Workflow SDK 集成来调整这些部分。
+核心 harness 和工作流文件与框架无关。下面显示的 HTTP 处理程序以 Next.js 为例；请根据您的运行时和 Workflow SDK 集成进行调整。如果您使用 Next.js，请确保在遵循示例之前已[为 Workflow 配置了您的项目](https://workflow-sdk.dev/docs/getting-started/next)。
 
 ## 安装
 
 <InstallPackages packages="@ai-sdk/workflow-harness workflow" />
 
-按照 [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent) 中的说明，安装核心的 harness 包、一个 harness 适配器和一个沙箱提供商。
+除了工作流特定的包之外，还需要按照 [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent) 中的说明安装核心 harness 包、harness 适配器和沙箱提供商。
 
-## 使用持久化 Harness 智能体
+## 配置 Harness Agent
 
-智能体可以按常规方式进行配置。
+智能体大部分情况下可以按照常规方式进行配置。使用语义智能体步骤时，将 `stopWhen` 设置为 `isStepCount(1)`，这样一次 `stream()` 调用即可完成一个智能体步骤。使用时间切片时则省略此项。
 
-```ts filename='harness-workflow/agent.ts'
+```ts filename='harness-workflow/agent.ts' highlight="13-17"
 import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { claudeCode } from '@ai-sdk/harness-claude-code';
 import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { isStepCount } from 'ai';
 
 export const agent = new HarnessAgent({
   harness: claudeCode,
@@ -32,84 +33,83 @@ export const agent = new HarnessAgent({
     runtime: 'node24',
     ports: [4000],
   }),
-  instructions: '你是一个乐于助人的编码助手。',
+  instructions: 'You are a helpful coding assistant.',
+  /*
+   * 仅语义智能体步骤工作流需要。
+   * 时间切片工作流请省略此项。
+   */
+  stopWhen: isStepCount(1),
 });
 ```
 
-在准备好智能体定义文件后，从两个工作流特定的部分开始：一个切片步骤，用于运行 harness 轮次中一个有时间限制的部分；以及一个工作流，用于调用该步骤直到轮次完成。
+## 使用语义智能体步骤
 
-```ts filename='harness-workflow/run-slice-step.ts'
+语义智能体步骤会在每个智能体步骤之后持久化 harness 轮次。使用上面显示的带高亮 `stopWhen` 选项的共享智能体进行配置，然后从 Workflow 步骤中调用 `runHarnessAgentStep()`。
+
+### 定义智能体步骤
+
+将 Workflow 步骤放在其自己的模块中，并在步骤体内动态导入智能体。这可以将智能体、沙箱提供商和其他 Node.js 依赖项排除在工作流捆绑包之外。
+
+```ts filename='harness-workflow/agent-step.ts'
 import {
-  runHarnessAgentSlice,
+  runHarnessAgentStep,
   type HarnessWorkflowState,
 } from '@ai-sdk/workflow-harness';
 
-export async function runSlice(
+export async function agentStep(
   state: HarnessWorkflowState,
 ): Promise<HarnessWorkflowState> {
   'use step';
 
   const { agent } = await import('./agent');
 
-  return runHarnessAgentSlice({
+  return runHarnessAgentStep({
     agent,
     state,
   });
 }
 ```
 
+### 定义语义智能体步骤工作流
+
+创建工作流状态，并在智能体有更多工作时持续调度 `agentStep()`。
+
 ```ts filename='harness-workflow/workflow.ts'
-import { runSlice } from './run-slice-step';
+import { agentStep } from './agent-step';
 import {
   createHarnessWorkflowState,
   finalizeHarnessWorkflow,
   type HarnessWorkflowInput,
 } from '@ai-sdk/workflow-harness';
 
-export async function codingWorkflow(
-  input: Pick<HarnessWorkflowInput, 'prompt' | 'sessionId'>,
-) {
+export async function agentWorkflow(input: {
+  messages: NonNullable<HarnessWorkflowInput['messages']>;
+  sessionId: string;
+}) {
   'use workflow';
 
   let state = createHarnessWorkflowState(input);
 
-  while (state.status === 'running' || state.status === 'timed_out') {
-    state = await runSlice(state);
-  }
+  do {
+    state = await agentStep(state);
+  } while (state.status === 'ready_for_next_step');
 
   return finalizeHarnessWorkflow(state);
 }
 ```
 
-### 启动工作流
+<Note>
+  此示例仅涵盖工作流执行基础。对于多轮对话，您必须在工作流运行之间持久化 harness 会话的 `resumeFrom` 状态。请参阅 [恢复持久化](#resume-persistence)。
+</Note>
 
-从服务端代码启动工作流。你可以从 HTTP 端点返回 `run.readable`，直接消费它，或者通过你框架的流式响应原语暴露它。
+每个 `ready_for_next_step` 结果都带有 `continueFrom`，它允许下一个 Workflow 步骤继续同一个未完成的轮次。当轮次完成时，`finalizeHarnessWorkflow()` 返回其结果，如果工作流失败则抛出异常。
 
-```ts filename='server/start-coding-workflow.ts'
-import { codingWorkflow } from '../harness-workflow/workflow';
-import { start } from 'workflow/api';
+### 启动语义智能体步骤工作流
 
-export async function startCodingWorkflow({
-  prompt,
-  sessionId,
-}: {
-  prompt: string;
-  sessionId: string;
-}) {
-  const run = await start(codingWorkflow, [{ prompt, sessionId }]);
-
-  return run.readable;
-}
-```
-
-这是核心的工作流/harness 集成。当你需要多轮聊天在跨工作流运行时重新连接到同一个原生 harness 会话时，请添加恢复持久化。
-
-### HTTP 路由示例
-
-此示例使用 Next.js 的 `Request`/`Response` 处理器和 AI SDK UI 消息流。对于其他框架，工作流相关代码类似：提取最新的用户消息，调用 `start(codingWorkflow, [...])`，并返回运行的 readable 流。
+从服务器端代码启动工作流。此 Next.js 路由转换 AI SDK UI 消息，启动 `agentWorkflow()`，并返回工作流的 AI SDK UI 消息流。传递转换后的消息可以让 `HarnessAgent` 区分新的用户轮次与工具审批和工具结果延续。
 
 ```ts filename='app/api/harness-workflow/route.ts'
-import { codingWorkflow } from '../../../harness-workflow/workflow';
+import { agentWorkflow } from '../../../harness-workflow/workflow';
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
@@ -118,15 +118,6 @@ import {
 } from 'ai';
 import { start } from 'workflow/api';
 
-function latestUserMessage(
-  messages: Awaited<ReturnType<typeof convertToModelMessages>>,
-) {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message.role === 'user') return message;
-  }
-}
-
 export async function POST(request: Request) {
   const body: {
     id?: string;
@@ -134,17 +125,13 @@ export async function POST(request: Request) {
   } = await request.json();
 
   if (!body.id) {
-    return new Response('缺少聊天 ID', { status: 400 });
+    return new Response('Missing chat ID', { status: 400 });
   }
 
-  const prompt = latestUserMessage(await convertToModelMessages(body.messages));
-  if (!prompt) {
-    return new Response('没有要运行的用户消息', { status: 400 });
-  }
-
-  const run = await start(codingWorkflow, [
+  const messages = await convertToModelMessages(body.messages);
+  const run = await start(agentWorkflow, [
     {
-      prompt,
+      messages,
       sessionId: body.id,
     },
   ]);
@@ -155,19 +142,115 @@ export async function POST(request: Request) {
 }
 ```
 
-如果你使用 Next.js，请使用 `withWorkflow()` 包裹你的配置，以便 Workflow SDK 转换 `'use workflow'` 和 `'use step'` 模块。其他框架有自己的 Workflow SDK 设置。
+`sessionId` 为沙箱提供了跨工作流运行的稳定身份。将 `agent.ts`、`agent-step.ts`、`workflow.ts` 和路由放在单独的模块中，这样工作流捆绑包就不会包含 Node 重量级的智能体、沙箱或框架依赖项。
 
-```js filename='next.config.js'
-const { withWorkflow } = require('workflow/next');
+## 使用时间切片
 
-const nextConfig = {};
+时间切片会在墙钟时间边界持久化长时间运行的 harness 轮次。省略共享智能体中高亮的 `stopWhen` 选项，然后从 Workflow 步骤中调用 `runHarnessAgentTimeSlice()`。默认使用 750 秒的预算；传入 `timeSliceSeconds` 以选择不同的预算。
 
-module.exports = withWorkflow(nextConfig, {});
+### 定义时间切片步骤
+
+与语义智能体步骤一样，将 Workflow 步骤放在其自己的模块中，并在步骤体内动态导入智能体。
+
+```ts filename='harness-workflow/time-slice-step.ts'
+import {
+  runHarnessAgentTimeSlice,
+  type HarnessWorkflowState,
+} from '@ai-sdk/workflow-harness';
+
+export async function timeSliceStep(
+  state: HarnessWorkflowState,
+): Promise<HarnessWorkflowState> {
+  'use step';
+
+  const { agent } = await import('./agent');
+
+  return runHarnessAgentTimeSlice({
+    agent,
+    state,
+  });
+}
 ```
+
+### 定义时间切片工作流
+
+创建工作流状态，并在智能体有更多工作时持续调度 `timeSliceStep()`。
+
+```ts filename='harness-workflow/workflow.ts'
+import { timeSliceStep } from './time-slice-step';
+import {
+  createHarnessWorkflowState,
+  finalizeHarnessWorkflow,
+  type HarnessWorkflowInput,
+} from '@ai-sdk/workflow-harness';
+
+export async function timeSliceWorkflow(input: {
+  messages: NonNullable<HarnessWorkflowInput['messages']>;
+  sessionId: string;
+}) {
+  'use workflow';
+
+  let state = createHarnessWorkflowState(input);
+
+  do {
+    state = await timeSliceStep(state);
+  } while (state.status === 'ready_for_next_step');
+
+  return finalizeHarnessWorkflow(state);
+}
+```
+
+<Note>
+  此示例仅涵盖工作流执行基础。对于多轮对话，您必须在工作流运行之间持久化 harness 会话的 `resumeFrom` 状态。请参阅 [恢复持久化](#resume-persistence)。
+</Note>
+
+每个 `ready_for_next_step` 结果都带有 `continueFrom`，它允许下一个 Workflow 步骤继续同一个未完成的轮次。当轮次完成时，`finalizeHarnessWorkflow()` 返回其结果，如果工作流失败则抛出异常。
+
+### 启动时间切片工作流
+
+从服务器端代码启动工作流。与语义智能体步骤一样，传递转换后的消息，以便 `HarnessAgent` 可以区分新的用户轮次与工具审批和工具结果延续。
+
+```ts filename='app/api/harness-workflow/route.ts'
+import { timeSliceWorkflow } from '../../../harness-workflow/workflow';
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  type UIMessage,
+  type UIMessageChunk,
+} from 'ai';
+import { start } from 'workflow/api';
+
+export async function POST(request: Request) {
+  const body: {
+    id?: string;
+    messages: UIMessage[];
+  } = await request.json();
+
+  if (!body.id) {
+    return new Response('Missing chat ID', { status: 400 });
+  }
+
+  const messages = await convertToModelMessages(body.messages);
+  const run = await start(timeSliceWorkflow, [
+    {
+      messages,
+      sessionId: body.id,
+    },
+  ]);
+
+  return createUIMessageStreamResponse({
+    stream: run.readable as ReadableStream<UIMessageChunk>,
+  });
+}
+```
+
+`sessionId` 为沙箱提供了跨工作流运行的稳定身份。将 `agent.ts`、`time-slice-step.ts`、`workflow.ts` 和路由放在单独的模块中，这样工作流捆绑包就不会包含 Node 重量级的智能体、沙箱或框架依赖项。
 
 ## 恢复持久化
 
-仅持久化在完成轮次后返回的不透明 `resumeFrom` 状态。下面的示例使用 Workflow 步骤，因为文件系统访问必须保持在 workflow 函数之外。在生产环境中，请使用持久化存储而不是本地文件。
+Workflow 会自动持久化每个步骤返回的 `HarnessWorkflowState`（包括 `continueFrom`），持续时间为当前工作流运行期间。要在单独的用户轮次工作流运行之间继续原生 harness 会话，请按 `sessionId` 持久化不透明的 `resumeFrom` 状态。
+
+存储实现对于语义智能体步骤和时间切片是相同的。此示例使用 Workflow 步骤，因为文件系统访问必须保持在工作流函数之外。在生产环境中，请使用持久化存储而不是本地文件。
 
 ```ts filename='harness-workflow/resume-store.ts'
 import type { HarnessV1ResumeSessionState } from '@ai-sdk/harness';
@@ -224,28 +307,31 @@ export async function persistResumeStep({
 }
 ```
 
-在第一个切片之前加载恢复状态，并在轮次完成后持久化新的状态：
+在创建工作流状态之前加载之前的 `resumeFrom` 状态，然后在执行循环之后持久化更新后的值。两种工作流方法的集成点相同。
+
+### 语义智能体步骤工作流
 
 ```ts filename='harness-workflow/workflow.ts'
+import { agentStep } from './agent-step';
 import { loadResumeStep, persistResumeStep } from './resume-store';
-import { runSlice } from './run-slice-step';
 import {
   createHarnessWorkflowState,
   finalizeHarnessWorkflow,
   type HarnessWorkflowInput,
 } from '@ai-sdk/workflow-harness';
 
-export async function codingWorkflow(
-  input: Pick<HarnessWorkflowInput, 'prompt' | 'sessionId'>,
-) {
+export async function agentWorkflow(input: {
+  messages: NonNullable<HarnessWorkflowInput['messages']>;
+  sessionId: string;
+}) {
   'use workflow';
 
   const resumeFrom = await loadResumeStep(input.sessionId);
   let state = createHarnessWorkflowState({ ...input, resumeFrom });
 
-  while (state.status === 'running' || state.status === 'timed_out') {
-    state = await runSlice(state);
-  }
+  do {
+    state = await agentStep(state);
+  } while (state.status === 'ready_for_next_step');
 
   await persistResumeStep({
     sessionId: state.sessionId,
@@ -256,32 +342,38 @@ export async function codingWorkflow(
 }
 ```
 
-harness 的 `sessionId` 为沙箱提供了跨工作流运行的稳定身份标识，并允许工作流在发送下一条用户消息之前加载上一轮次的恢复状态。
+### 时间切片工作流
 
-一个 harness 会话拥有其原生的对话历史，因此路由只发送最新的用户消息。不要将完整的 UI 消息历史重放到 harness 中。
+```ts filename='harness-workflow/workflow.ts'
+import { loadResumeStep, persistResumeStep } from './resume-store';
+import { timeSliceStep } from './time-slice-step';
+import {
+  createHarnessWorkflowState,
+  finalizeHarnessWorkflow,
+  type HarnessWorkflowInput,
+} from '@ai-sdk/workflow-harness';
 
-## 工作原理
+export async function timeSliceWorkflow(input: {
+  messages: NonNullable<HarnessWorkflowInput['messages']>;
+  sessionId: string;
+}) {
+  'use workflow';
 
-每个用户轮次由一个 `HarnessWorkflowState` 表示：
+  const resumeFrom = await loadResumeStep(input.sessionId);
+  let state = createHarnessWorkflowState({ ...input, resumeFrom });
 
-- `createHarnessWorkflowState()` 为该轮次创建初始状态。
-- `runHarnessAgentSlice()` 流式传输该轮次的一个有时间限制的切片。
-- 如果切片超时，harness 轮次会非破坏性地挂起，返回的状态包含用于下一个切片的 `continueFrom`。
-- 如果轮次完成，辅助工具会关闭工作流输出流，并返回用于下一个用户轮次的 `resumeFrom`。
-- `finalizeHarnessWorkflow()` 返回最终结果，如果工作流失败则抛出异常。
+  do {
+    state = await timeSliceStep(state);
+  } while (state.status === 'ready_for_next_step');
 
-工作流输出流接收 AI SDK UI 消息块，因此路由可以通过 `createUIMessageStreamResponse()` 返回 `run.readable`。
+  await persistResumeStep({
+    sessionId: state.sessionId,
+    resumeState: state.resumeFrom,
+  });
 
-## 文件边界
-
-将工作流入口点与智能体定义分开：
-
-- `agent.ts` 定义 `HarnessAgent`。
-- `run-slice-step.ts` 是一个 `'use step'` 模块，并在步骤体内动态导入智能体。
-- `workflow.ts` 包含 `'use workflow'` 函数，并仅导入工作流安全的辅助工具和步骤模块。
-- 你的路由或服务端入口点启动工作流。它可以导入 `ai` 辅助工具，例如 `convertToModelMessages()` 和 `createUIMessageStreamResponse()`。
-
-不要在与路由处理器、服务端入口点或智能体相同的模块中定义工作流函数。Workflow DevKit 会编译从 `'use workflow'` 指令可达的模块图。保持图的小型化可以防止将 Node 重型的智能体、沙箱和框架依赖拉入工作流包中。
+  return finalizeHarnessWorkflow(state);
+}
+```
 
 ## 相关
 

@@ -1,0 +1,169 @@
+---
+title: "experimental_streamTranslate"
+description: "experimental_streamTranslate 的 API 参考。"
+---
+
+# `experimental_streamTranslate()`
+
+<Note type="warning">
+  `experimental_streamTranslate` 是一个实验性功能。
+</Note>
+
+从实时原始音频流式传输语音到语音的翻译。模型将实时源音频翻译为目标语言的音频和文本。
+
+`experimental_streamTranslate` 基于语音翻译模型规范（`Experimental_SpeechTranslationModelV4`）构建。该规范的提供商实现单独发布——请参阅您的提供商的文档以了解可用的翻译模型。
+
+```ts
+import { experimental_streamTranslate as streamTranslate } from 'ai';
+
+const result = streamTranslate({
+  // 任何实现了实验性语音翻译模型规范（Experimental_SpeechTranslationModelV4）的提供商模型实例：
+  model: translationModel,
+  audio: audioStream, // ReadableStream<Uint8Array | string>
+  inputAudioFormat: { type: 'audio/pcm', rate: 24000 },
+  targetLanguage: 'es',
+});
+
+for await (const part of result.fullStream) {
+  if (part.type === 'output-text-delta') {
+    process.stdout.write(part.delta);
+  }
+}
+
+console.log(await result.translationText);
+```
+
+## 导入
+
+<Snippet
+  text={`import { experimental_streamTranslate as streamTranslate } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'Experimental_SpeechTranslationModelV4',
+      description:
+        '要使用的语音翻译模型。翻译是一种仅支持流式传输的模态。传入一个实现了实验性语音翻译模型规范的提供商模型实例。当全局提供商（默认为 AI Gateway）支持语音翻译模型时，字符串模型 ID 会通过该提供商解析。',
+    },
+    {
+      name: 'audio',
+      type: 'ReadableStream<Uint8Array | string>',
+      description:
+        '要翻译的原始音频块。`Uint8Array` 块包含原始音频字节；`string` 块包含 base64 编码的原始音频字节。',
+    },
+    {
+      name: 'inputAudioFormat',
+      type: '{ type: string; rate?: number }',
+      description:
+        '原始音频块的输入音频格式，例如 `{ type: "audio/pcm", rate: 24000 }`。支持的类型因提供商而异（例如 `audio/pcm`、`audio/pcmu`、`audio/pcma`）。',
+    },
+    {
+      name: 'targetLanguage',
+      type: 'string',
+      description:
+        '要将音频翻译成的语言，使用 BCP-47 风格的语言标签（例如 `en`、`es`、`fr-CA`）。支持的值因提供商而异，并由提供商验证。',
+    },
+    {
+      name: 'sourceLanguage',
+      type: 'string',
+      isOptional: true,
+      description:
+        '源音频的语言，使用 BCP-47 风格的语言标签。当缺省时，提供商会自动检测源语言。',
+    },
+    {
+      name: 'outputAudioFormat',
+      type: '{ type: string; rate?: number }',
+      isOptional: true,
+      description:
+        '翻译后音频块所需的音频格式。当缺省时，使用提供商的默认输出格式。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'Record<string, JSONObject>',
+      isOptional: true,
+      description: '额外的提供商特定选项。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '可选的取消信号，用于取消调用。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description:
+        '额外的 HTTP/WebSocket 头，如果提供商支持的话。',
+    },
+    {
+      name: 'includeRawChunks',
+      type: 'boolean',
+      isOptional: true,
+      description:
+        '当为 true 时，提供商将原始提供商块作为 `raw` 部分包含在流中。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'fullStream',
+      type: 'AsyncIterableStream<TranslationStreamPart>',
+      description:
+        '翻译部分的单消费者实时流：`audio`、`output-text-delta`、`output-text-final`、`source-transcript-delta`、`source-transcript-partial`、`source-transcript-final`、`raw` 和 `error`。在需要同时获取流部分和最终结果时，在任何结果 Promise 之前访问它一次。先访问结果 Promise 会在内部消耗流，并使 `fullStream` 不可用。',
+    },
+    {
+      name: 'sourceText',
+      type: 'Promise<string>',
+      description: '输入音频的最终源语言转录文本。',
+    },
+    {
+      name: 'translationText',
+      type: 'Promise<string>',
+      description:
+        '目标语言的最终翻译文本。对于仅生成音频输出的提供商，可能会解析为空字符串。',
+    },
+    {
+      name: 'durationInSeconds',
+      type: 'Promise<number | undefined>',
+      description: '源音频的时长（秒），如果可用的话。',
+    },
+    {
+      name: 'usage',
+      type: 'Promise<Experimental_SpeechTranslationModelV4Usage | undefined>',
+      description:
+        '翻译调用的使用信息，如果提供商报告的话：`inputAudioSeconds`、`inputAudioTokens`、`outputAudioTokens`、`inputTextTokens`、`outputTextTokens`（均为可选数字）。',
+    },
+    {
+      name: 'warnings',
+      type: 'Promise<Warning[]>',
+      description:
+        '调用的警告，例如不支持的设置。在流开始时解析，或者如果在结束时未发出流开始，则解析为空数组。',
+    },
+    {
+      name: 'response',
+      type: 'Promise<SpeechTranslationModelResponseMetadata>',
+      description: '响应元数据（时间戳、模型 ID、头）。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'Promise<Record<string, JSONObject>>',
+      description: '额外的提供商特定元数据。',
+    },
+  ]}
+/>
+
+<Note>
+  结果 Promise 在流被消耗时完成。如果您提前停止消耗 `fullStream`（例如通过 `break` 退出循环），底层提供商连接将被关闭，待处理的结果 Promise 将被拒绝。
+</Note>
