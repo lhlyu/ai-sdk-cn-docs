@@ -1,28 +1,31 @@
 ---
 title: "生成结构化数据"
-description: "学习如何使用 AI SDK 生成结构化数据。"
+description: "了解如何使用 AI SDK 生成结构化数据。"
 ---
 
 # 生成结构化数据
 
-虽然文本生成很有用，但你的用例很可能需要生成结构化数据。
-例如，你可能想从文本中提取信息、对数据进行分类或生成合成数据。
+虽然文本生成可能很有用，但您的用例很可能需要生成结构化数据。
+例如，您可能希望从文本中提取信息、对数据进行分类或生成合成数据。
 
 许多语言模型能够生成结构化数据，通常定义为使用“JSON 模式”或“工具”。
-然而，你需要手动提供模式并验证生成的数据，因为 LLM 可能会生成不正确或不完整的结构化数据。
+但是，您需要手动提供模式，然后验证生成的数据，因为 LLM 可能会生成不正确或不完整的结构化数据。
 
-AI SDK 使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 上的 `output` 属性，标准化了跨模型提供商的结构化对象生成。
-你可以使用 [Zod 模式](/docs/reference/ai-sdk-core/zod-schema)、[Valibot](/docs/reference/ai-sdk-core/valibot-schema) 或 [JSON 模式](/docs/reference/ai-sdk-core/json-schema) 来指定所需数据的形状，
+AI SDK 标准化了跨模型提供商的结构化对象生成，
+使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text)
+和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 上的 `output` 属性。
+您可以使用 [Zod 模式](/docs/reference/ai-sdk-core/zod-schema)、[Valibot](/docs/reference/ai-sdk-core/valibot-schema) 或 [JSON 模式](/docs/reference/ai-sdk-core/json-schema) 来指定所需数据的形状，
 AI 模型将生成符合该结构的数据。
 
 <Note>
-  结构化输出生成是 `generateText` 和 `streamText` 流程的一部分。这意味着你可以在同一个请求中将其与工具调用结合使用。
+  结构化输出生成是 `generateText` 和 `streamText`
+  流程的一部分。这意味着您可以在同一请求中将其与工具调用结合使用。
 </Note>
 
 ## 生成结构化输出
 
 使用带有 `Output.object()` 的 `generateText` 从提示词生成结构化数据。
-该模式也用于验证生成的数据，确保类型安全和正确性。
+该模式还用于验证生成的数据，确保类型安全和正确性。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -42,20 +45,20 @@ const { output } = await generateText({
       }),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
 <Note>
-  在 AI SDK 的多轮执行模型（每次模型调用或工具执行为一步）中，结构化输出生成计为一步。当与工具结合使用时，请在 `stopWhen` 配置中考虑这一点。
+  结构化输出生成在 AI SDK 的多轮执行模型中计为一步（每次模型调用或工具执行即为一步）。当与工具结合使用时，请在 `stopWhen` 配置中考虑这一点。
 </Note>
 
-### 访问响应头部和主体
+### 访问响应头和响应体
 
-有时你需要访问来自模型提供商的完整响应，
-例如，访问某些提供商特定的头部或主体内容。
+有时您需要访问模型提供商的完整响应，
+例如访问某些提供商特定的头或正文内容。
 
-你可以使用 `response` 属性访问原始响应头部和主体：
+您可以使用 `response` 属性访问原始响应头和响应体：
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -71,8 +74,8 @@ console.log(JSON.stringify(result.response.body, null, 2));
 
 ## 流式传输结构化输出
 
-由于返回结构化数据增加了复杂性，模型响应时间可能对你的交互式用例来说不可接受。
-使用 `streamText` 和 `output`，你可以在生成模型的结构化响应时对其进行流式传输。
+考虑到返回结构化数据的额外复杂性，模型响应时间对于您的交互式用例来说可能不可接受。
+使用 `streamText` 和 `output`，您可以在生成模型的结构化响应时对其进行流式传输。
 
 ```ts
 import { streamText, Output } from 'ai';
@@ -92,22 +95,22 @@ const { partialOutputStream } = streamText({
       }),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 
-// 将 partialOutputStream 用作异步可迭代对象
+// use partialOutputStream as an async iterable
 for await (const partialObject of partialOutputStream) {
   console.log(partialObject);
 }
 ```
 
-你可以在客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 消费结构化输出。
+您可以在客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 消费结构化输出。
 
 ### 流中的错误处理
 
 `streamText` 会立即开始流式传输。当流式传输过程中发生错误时，它们会成为流的一部分，而不是抛出异常（以防止流崩溃）。
 
-要处理错误，请提供一个 `onError` 回调：
+要处理错误，请提供 `onError` 回调：
 
 ```tsx highlight="6-8"
 import { streamText, Output } from 'ai';
@@ -116,20 +119,20 @@ const result = streamText({
   // ...
   output: Output.object({ schema }),
   onError({ error }) {
-    console.error(error); // 记录到你的错误跟踪服务
+    console.error(error); // log to your error tracking service
   },
 });
 ```
 
-有关使用 `generateText` 的非流式错误处理，请参阅下面的[错误处理](#错误处理)部分。
+有关使用 `generateText` 的非流式错误处理，请参阅下面的 [错误处理](#错误处理) 部分。
 
 ## 输出类型
 
-AI SDK 支持通过 `Output` 对象指定生成数据预期结构的多种方式。你可以从各种结构化/文本生成和验证策略中进行选择。
+AI SDK 支持通过 `Output` 对象以多种方式指定生成数据的预期结构。您可以从各种结构化/文本生成和验证策略中进行选择。
 
 ### `Output.text()`
 
-使用 `Output.text()` 从模型生成纯文本。此选项不对结果强制执行任何模式：你只需将模型的文本作为字符串接收。当未指定 `output` 时，这是默认行为。
+使用 `Output.text()` 从模型生成纯文本。此选项不对结果强制执行任何模式：您只需将模型的文本作为字符串接收。这是未指定 `output` 时的默认行为。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -137,14 +140,14 @@ import { generateText, Output } from 'ai';
 const { output } = await generateText({
   // ...
   output: Output.text(),
-  prompt: '讲个笑话。',
+  prompt: 'Tell me a joke.',
 });
-// output 将是一个字符串（笑话）
+// output will be a string (the joke)
 ```
 
 ### `Output.object()`
 
-使用 `Output.object({ schema })` 基于模式（例如，Zod 模式）生成结构化对象。输出会进行类型验证，以确保返回的结果与模式匹配。
+使用 `Output.object({ schema })` 基于模式（例如，Zod 模式）生成结构化对象。输出经过类型验证，以确保返回的结果与模式匹配。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -159,18 +162,18 @@ const { output } = await generateText({
       labels: z.array(z.string()),
     }),
   }),
-  prompt: '生成一个测试用户的信息。',
+  prompt: 'Generate information for a test user.',
 });
-// output 将是一个与上述模式匹配的对象
+// output will be an object matching the schema above
 ```
 
 <Note>
-  通过 `streamText` 流式传输的部分输出无法根据你提供的模式进行验证，因为不完整的数据可能尚未符合预期的结构。
+  通过 `streamText` 流式传输的部分输出无法根据您提供的模式进行验证，因为不完整的数据可能尚不符合预期的结构。
 </Note>
 
 ### `Output.array()`
 
-使用 `Output.array({ element })` 指定你期望从模型获得一个类型化对象数组，其中每个元素应符合一个模式（在 `element` 属性中定义）。
+使用 `Output.array({ element })` 指定您期望从模型中获得一个类型化对象数组，其中每个元素应符合一个模式（在 `element` 属性中定义）。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -185,16 +188,16 @@ const { output } = await generateText({
       condition: z.string(),
     }),
   }),
-  prompt: '列出旧金山和巴黎的天气。',
+  prompt: 'List the weather for San Francisco and Paris.',
 });
-// output 将是一个对象数组，例如：
+// output will be an array of objects like:
 // [
 //   { location: 'San Francisco', temperature: 70, condition: 'Sunny' },
 //   { location: 'Paris', temperature: 65, condition: 'Cloudy' },
 // ]
 ```
 
-当使用 `streamText` 流式传输数组时，你可以使用 `elementStream` 在生成每个完整元素时接收它：
+使用 `streamText` 流式传输数组时，您可以使用 `elementStream` 在生成每个完整元素时接收它：
 
 ```ts
 import { streamText, Output } from 'ai';
@@ -209,21 +212,21 @@ const { elementStream } = streamText({
       description: z.string(),
     }),
   }),
-  prompt: '为一个奇幻角色扮演游戏生成 3 个英雄描述。',
+  prompt: 'Generate 3 hero descriptions for a fantasy role playing game.',
 });
 
 for await (const hero of elementStream) {
-  console.log(hero); // 每个英雄都是完整且经过验证的
+  console.log(hero); // Each hero is complete and validated
 }
 ```
 
 <Note>
-  `elementStream` 发出的每个元素都是完整且根据你的元素模式验证过的。这与 `partialOutputStream` 不同，后者会流式传输整个部分数组，包括不完整的元素。
+  `elementStream` 发出的每个元素都是完整的，并根据您的元素模式进行了验证。这与 `partialOutputStream` 不同，后者会流式传输整个部分数组，包括不完整的元素。
 </Note>
 
 ### `Output.choice()`
 
-当你期望模型从一组特定的字符串选项中进行选择时，例如用于分类或固定枚举答案，请使用 `Output.choice({ options })`。
+当您期望模型从一组特定的字符串选项中进行选择时，例如用于分类或固定枚举答案，请使用 `Output.choice({ options })`。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -233,18 +236,18 @@ const { output } = await generateText({
   output: Output.choice({
     options: ['sunny', 'rainy', 'snowy'],
   }),
-  prompt: '今天的天气是晴天、雨天还是雪天？',
+  prompt: 'Is the weather sunny, rainy, or snowy today?',
 });
-// output 将是以下之一：'sunny'、'rainy' 或 'snowy'
+// output will be one of: 'sunny', 'rainy', or 'snowy'
 ```
 
-你可以提供任何字符串选项集，输出将始终是一个与指定选项之一匹配的单个字符串值。AI SDK 会验证结果是否与你的选项之一匹配，如果模型返回无效内容，则会抛出错误。
+您可以提供任何一组字符串选项，输出将始终是与指定选项之一匹配的单个字符串值。AI SDK 会验证结果是否与您的选项之一匹配，如果模型返回无效内容，则会抛出错误。
 
-这对于进行分类式生成或强制 API 兼容性的有效值特别有用。
+这对于生成分类风格的输出或为 API 兼容性强制有效值特别有用。
 
 ### `Output.json()`
 
-当你想要从模型生成并解析非结构化的 JSON 值，而不强制执行特定模式时，请使用 `Output.json()`。如果你想捕获任意对象、灵活的结构，或者想依赖模型的自然输出而不是严格验证，这很有用。
+当您想从模型生成和解析非结构化的 JSON 值，而不强制执行特定模式时，请使用 `Output.json()`。如果您想捕获任意对象、灵活的结构，或者当您想依赖模型的自然输出而不是严格的验证时，这很有用。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -253,23 +256,23 @@ const { output } = await generateText({
   // ...
   output: Output.json(),
   prompt:
-    '对于每个城市，以 JSON 对象形式返回当前温度和天气状况。',
+    'For each city, return the current temperature and weather condition as a JSON object.',
 });
 
-// output 可以是任何有效的 JSON，例如：
+// output could be any valid JSON, for example:
 // {
 //   "San Francisco": { "temperature": 70, "condition": "Sunny" },
 //   "Paris": { "temperature": 65, "condition": "Cloudy" }
 // }
 ```
 
-使用 `Output.json`，AI SDK 仅检查响应是否为有效的 JSON；它不验证值的结构或类型。如果你需要模式验证，请改用 `.object` 或 `.array` 输出。
+使用 `Output.json`，AI SDK 仅检查响应是否为有效的 JSON；它不验证值的结构或类型。如果您需要模式验证，请改用 `.object` 或 `.array` 输出。
 
 有关更高级的验证或不同的结构，请参阅 [Output API 参考](/docs/reference/ai-sdk-core/output)。
 
 ## 使用工具生成结构化输出
 
-将结构化输出与 `generateText` 和 `streamText` 结合使用的一个关键优势是能够与工具调用结合。
+将结构化输出与 `generateText` 和 `streamText` 结合使用的关键优势之一是能够将其与工具调用相结合。
 
 ```ts
 import { generateText, Output, tool, isStepCount } from 'ai';
@@ -280,10 +283,10 @@ const { output } = await generateText({
   model: __MODEL__,
   tools: {
     weather: tool({
-      description: '获取某个位置的天气',
+      description: 'Get the weather for a location',
       inputSchema: z.object({ location: z.string() }),
       execute: async ({ location }) => {
-        // 获取天气数据
+        // fetch weather data
         return { temperature: 72, condition: 'sunny' };
       },
     }),
@@ -295,17 +298,17 @@ const { output } = await generateText({
     }),
   }),
   stopWhen: isStepCount(5),
-  prompt: '我今天在旧金山应该穿什么？',
+  prompt: 'What should I wear in San Francisco today?',
 });
 ```
 
 <Note>
-  当将工具与结构化输出一起使用时，请记住生成结构化输出计为一步。配置 `stopWhen` 以允许足够的步骤用于工具执行和输出生成。
+  将工具与结构化输出结合使用时，请记住生成结构化输出计为一步。配置 `stopWhen` 以允许足够的步骤来完成工具执行和输出生成。
 </Note>
 
 ## 属性描述
 
-你可以向各个模式属性添加 `.describe("...")`，以向模型提示每个属性的用途。这有助于提高生成结构化数据的质量和准确性：
+您可以向各个模式属性添加 `.describe("...")`，以向模型提示每个属性的用途。这有助于提高生成的结构化数据的质量和准确性：
 
 ```ts highlight="9,16,19-20"
 import { generateText, Output } from 'ai';
@@ -316,21 +319,21 @@ const { output } = await generateText({
   model: __MODEL__,
   output: Output.object({
     schema: z.object({
-      name: z.string().describe('食谱的名称'),
+      name: z.string().describe('The name of the recipe'),
       ingredients: z
         .array(
           z.object({
             name: z.string(),
             amount: z
               .string()
-              .describe('配料的用量（克或毫升）'),
+              .describe('The amount of the ingredient (grams or ml)'),
           }),
         )
-        .describe('配料列表及其用量'),
-      steps: z.array(z.string()).describe('分步烹饪说明'),
+        .describe('List of ingredients with amounts'),
+      steps: z.array(z.string()).describe('Step-by-step cooking instructions'),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
@@ -342,7 +345,7 @@ const { output } = await generateText({
 
 ## 输出名称和描述
 
-你可以选择为输出指定 `name` 和 `description`。某些提供商使用这些信息进行额外的 LLM 指导，例如通过工具或模式名称。
+您可以选择为输出指定 `name` 和 `description`。某些提供商使用这些信息进行额外的 LLM 指导，例如通过工具或模式名称。
 
 ```ts highlight="8-9"
 import { generateText, Output } from 'ai';
@@ -353,14 +356,14 @@ const { output } = await generateText({
   model: __MODEL__,
   output: Output.object({
     name: 'Recipe',
-    description: '一道菜的食谱。',
+    description: 'A recipe for a dish.',
     schema: z.object({
       name: z.string(),
       ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
       steps: z.array(z.string()),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
@@ -373,7 +376,7 @@ const { output } = await generateText({
 
 ## 访问推理过程
 
-你可以通过结果上的 `reasoning` 属性访问语言模型用于生成对象的推理过程。如果可用，此属性包含一个字符串，表示模型的思考过程。
+您可以通过结果上的 `reasoning` 属性访问语言模型用于生成对象的推理过程。如果可用，此属性包含一个字符串，其中包含模型的思考过程。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -381,7 +384,7 @@ __PROVIDER_IMPORT__;
 import { z } from 'zod';
 
 const result = await generateText({
-  model: __MODEL__, // 必须是推理模型
+  model: __MODEL__, // must be a reasoning model
   output: Output.object({
     schema: z.object({
       recipe: z.object({
@@ -396,7 +399,7 @@ const result = await generateText({
       }),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 
 console.log(result.reasoningText);
@@ -404,31 +407,41 @@ console.log(result.reasoningText);
 
 ## 错误处理
 
-当带有结构化输出的 `generateText` 无法生成有效对象时，它会抛出一个 [`AI_NoObjectGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-object-generated-error)。
+`generateText` 可以通过两种方式报告结构化输出失败：
 
-当 AI 提供商无法生成符合模式的可解析对象时，会发生此错误。
-可能由以下原因引起：
+- 如果模型响应无法根据模式进行解析或验证，
+  `generateText` 会以
+  [`AI_NoObjectGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-object-generated-error) 拒绝。
+- 如果 `generateText` 返回的结果没有输出，访问 `result.output`
+  会抛出
+  [`AI_NoOutputGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-output-generated-error)。
+  当最后一步不是以 `stop` 原因结束时，可能会发生这种情况，例如当它以 `tool-calls` 结束时。
 
-- 模型未能生成响应。
-- 模型生成了无法解析的响应。
-- 模型生成了无法根据模式验证的响应。
+`output` 属性是一个 getter，因此解构它也会触发此访问。
 
-该错误保留了以下信息以帮助你记录问题：
+`NoObjectGeneratedError` 保留以下信息以帮助您记录问题：
 
 - `text`：模型生成的文本。根据对象生成模式，这可以是原始文本或工具调用文本。
 - `response`：关于语言模型响应的元数据，包括响应 ID、时间戳和模型。
-- `usage`：请求的 token 使用情况。
-- `cause`：错误的原因（例如，JSON 解析错误）。你可以使用它进行更详细的错误处理。
+- `usage`：请求的令牌使用情况。
+- `cause`：错误的原因（例如 JSON 解析错误）。您可以使用它进行更详细的错误处理。
 
 ```ts
-import { generateText, Output, NoObjectGeneratedError } from 'ai';
+import {
+  generateText,
+  NoObjectGeneratedError,
+  NoOutputGeneratedError,
+  Output,
+} from 'ai';
 
 try {
-  await generateText({
+  const result = await generateText({
     model,
     output: Output.object({ schema }),
     prompt,
   });
+
+  console.log(result.output);
 } catch (error) {
   if (NoObjectGeneratedError.isInstance(error)) {
     console.log('NoObjectGeneratedError');
@@ -436,13 +449,15 @@ try {
     console.log('Text:', error.text);
     console.log('Response:', error.response);
     console.log('Usage:', error.usage);
+  } else if (NoOutputGeneratedError.isInstance(error)) {
+    console.log('NoOutputGeneratedError');
   }
 }
 ```
 
 ## 更多示例
 
-你可以在以下示例中看到使用各种框架的结构化输出生成的实际应用：
+您可以在以下示例中看到使用各种框架进行结构化输出生成的实际应用：
 
 ### 使用 Output 的 `generateText`
 

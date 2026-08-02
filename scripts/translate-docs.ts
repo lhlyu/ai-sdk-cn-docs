@@ -1,5 +1,9 @@
 import logUpdate from "log-update";
 import { normalizeMdxFrontmatter } from "../lib/frontmatter";
+import {
+  findCodeFenceError,
+  stripOuterCodeFence,
+} from "../lib/mdx-fence";
 
 type PageStatus =
   | "new"
@@ -49,6 +53,8 @@ type ChatCompletionResponse = {
   };
 };
 
+class RetryableTranslationError extends Error {}
+
 const root = process.cwd();
 const reportPath = `${root}/metadata/sync-report.json`;
 const glossaryPath = `${root}/metadata/glossary.json`;
@@ -73,6 +79,8 @@ const translationState = await readTranslationState();
 const targets = report.items.filter(
   (item) =>
     translateStatuses.has(item.status) && item.sourcePath && item.targetPath,
+).filter(
+  (item) => translationState[item.path]?.sourceHash !== item.sourceHash,
 );
 
 if (targets.length === 0) {
@@ -164,22 +172,36 @@ async function translateItem(
   const sourcePath = `${root}/${item.sourcePath}`;
   const targetPath = `${root}/${item.targetPath}`;
   const source = await Bun.file(sourcePath).text();
+  const maxAttempts = 3;
 
-  renderProgress(completed, total, `${label} translating ${item.path}`);
-  if (dryRun) {
-    renderProgress(
-      completed + 1,
-      total,
-      `${label} would translate ${item.path}`,
-    );
-    return;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    renderProgress(completed, total, `${label} translating ${item.path}`);
+    if (dryRun) {
+      renderProgress(
+        completed + 1,
+        total,
+        `${label} would translate ${item.path}`,
+      );
+      return;
+    }
+
+    try {
+      const translated = await translateMdx(source, item.path, glossary);
+      validateTranslatedMdx(translated, item.path);
+      await ensureParentDir(targetPath);
+      await Bun.write(targetPath, ensureTrailingNewline(translated));
+      await markTranslated(item);
+      return;
+    } catch (error) {
+      if (error instanceof RetryableTranslationError && attempt < maxAttempts) {
+        persistProgress(
+          `${label} retrying ${item.path} (attempt ${attempt}/${maxAttempts})`,
+        );
+        continue;
+      }
+      throw error;
+    }
   }
-
-  const translated = await translateMdx(source, item.path, glossary);
-  validateTranslatedMdx(translated, item.path);
-  await ensureParentDir(targetPath);
-  await Bun.write(targetPath, ensureTrailingNewline(translated));
-  await markTranslated(item);
 }
 
 async function translateMdx(
@@ -239,7 +261,7 @@ async function translateMdx(
   const choice = body.choices?.[0];
   const finishReason = choice?.finish_reason;
   if (finishReason && finishReason !== "stop") {
-    throw new Error(
+    throw new RetryableTranslationError(
       `translation did not finish cleanly for ${path}: finish_reason=${finishReason}${formatUsage(body.usage)}`,
     );
   }
@@ -249,18 +271,20 @@ async function translateMdx(
     throw new Error(`translation response is empty for ${path}`);
   }
 
-  return normalizeMdxFrontmatter(stripMarkdownFence(content.trim()));
+  return normalizeMdxFrontmatter(stripOuterCodeFence(content.trim()));
 }
 
 function validateTranslatedMdx(content: string, path: string): void {
   if (!content.startsWith("---\n")) {
-    throw new Error(`${path}: translated MDX missing frontmatter`);
+    throw new RetryableTranslationError(
+      `${path}: translated MDX missing frontmatter`,
+    );
   }
 
-  const fenceMatches = content.match(/```/g) ?? [];
-  if (fenceMatches.length % 2 !== 0) {
-    throw new Error(
-      `${path}: translated MDX has unbalanced markdown code fences`,
+  const fenceError = findCodeFenceError(content);
+  if (fenceError) {
+    throw new RetryableTranslationError(
+      `${path}: translated MDX has unbalanced markdown code fences (${fenceError})`,
     );
   }
 }
@@ -433,11 +457,6 @@ function trimTrailingSlash(value: string): string {
 
 function ensureTrailingNewline(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
-}
-
-function stripMarkdownFence(value: string): string {
-  const match = value.match(/^```(?:mdx|markdown|md)?\n([\s\S]*?)\n```$/);
-  return match?.[1] ?? value;
 }
 
 export {};
