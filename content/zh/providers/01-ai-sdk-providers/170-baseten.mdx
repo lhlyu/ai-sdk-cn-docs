@@ -5,23 +5,23 @@ description: "了解如何将 Baseten 模型与 AI SDK 结合使用。"
 
 # Baseten 提供商
 
-[Baseten](https://baseten.co/) 是一个推理平台，通过其 [API](https://docs.baseten.co/overview) 提供前沿、企业级的开源 AI 模型。
+[Baseten](https://baseten.co/) 是一个推理平台，通过其 [API](https://docs.baseten.co/overview) 提供前沿、企业级的开源 AI 模型服务。
 
 ## 安装
 
-Baseten 提供商可通过 `@ai-sdk/baseten` 模块获取。您可以使用以下命令安装：
+Baseten 提供商可通过 `@ai-sdk/baseten` 模块获取。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/baseten" />
 
 ## 提供商实例
 
-您可以从 `@ai-sdk/baseten` 导入默认的提供商实例 `baseten`：
+你可以从 `@ai-sdk/baseten` 导入默认提供商实例 `baseten`：
 
 ```ts
 import { baseten } from '@ai-sdk/baseten';
 ```
 
-如果您需要自定义设置，可以从 `@ai-sdk/baseten` 导入 `createBaseten`，并使用您的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/baseten` 导入 `createBaseten`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createBaseten } from '@ai-sdk/baseten';
@@ -31,23 +31,35 @@ const baseten = createBaseten({
 });
 ```
 
-您可以使用以下可选设置来自定义 Baseten 提供商实例：
+你可以使用以下可选设置来自定义 Baseten 提供商实例：
 
 - **baseURL** _string_
 
-  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。默认前缀为 `https://inference.baseten.co/v1`。
+  为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
+  默认前缀为 `https://inference.baseten.co/v1`。
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认值为 `BASETEN_API_KEY` 环境变量。建议您使用 `export` 设置环境变量，这样就不必每次都包含该字段。您可以在[此处](https://app.baseten.co/settings/api_keys)获取您的 Baseten API 密钥。
+  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  `BASETEN_API_KEY` 环境变量。建议你使用 `export` 设置环境变量，这样就不需要每次都包含该字段。
+  你可以从[此处](https://app.baseten.co/settings/api_keys)获取你的 Baseten API 密钥。
 
 - **modelURL** _string_
 
-  特定模型（聊天或嵌入）的自定义模型 URL。如果未提供，将使用默认的模型 API。
+  特定模型（聊天或嵌入）的自定义模型 URL。如果未提供，
+  将使用默认的模型 API。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
+
+- **performanceClient** _PerformanceClient 构造函数_
+
+  选择使用 Baseten 原生的嵌入性能客户端，以实现客户端
+  批处理和请求对冲。传入来自
+  `@basetenlabs/performance-client` 的 `PerformanceClient` 构造函数，你需要自行安装。如果省略，
+  嵌入将使用普通 HTTP。请参阅
+  [原生性能客户端](#native-performance-client-optional)。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -55,7 +67,8 @@ const baseten = createBaseten({
 
 ## 模型 API
 
-您可以使用提供商实例选择 [Baseten 模型](https://www.baseten.co/products/model-apis/)。第一个参数是模型 ID，例如 `'moonshotai/Kimi-K2-Instruct-0905'`：模型 API 下支持的完整模型列表可在[此处](https://docs.baseten.co/development/model-apis/overview#supported-models)找到。
+你可以使用提供商实例选择 [Baseten 模型](https://www.baseten.co/products/model-apis/)。
+第一个参数是模型 ID，例如 `'moonshotai/Kimi-K2-Instruct-0905'`：模型 API 下支持的完整模型列表可在[此处](https://docs.baseten.co/development/model-apis/overview#supported-models)找到。
 
 ```ts
 const model = baseten('moonshotai/Kimi-K2-Instruct-0905');
@@ -63,7 +76,7 @@ const model = baseten('moonshotai/Kimi-K2-Instruct-0905');
 
 ### 示例
 
-您可以使用 Baseten 语言模型通过 `generateText` 函数生成文本：
+你可以使用 Baseten 语言模型通过 `generateText` 函数生成文本：
 
 ```ts
 import { baseten } from '@ai-sdk/baseten';
@@ -71,17 +84,18 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: baseten('moonshotai/Kimi-K2-Instruct-0905'),
-  prompt: 'What is the meaning of life? Answer in one sentence.',
+  prompt: '生命的意义是什么？用一句话回答。',
 });
 ```
 
-Baseten 语言模型也可以用于 `streamText` 函数（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
+Baseten 语言模型也可以用于 `streamText` 函数
+（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ## 专用模型
 
-Baseten 支持聊天和嵌入模型的专用模型 URL。您必须在创建提供商时指定 `modelURL`：
+Baseten 支持聊天和嵌入模型的专用模型 URL。你需要在创建提供商时指定 `modelURL`：
 
-### OpenAI 兼容端点 (`/sync/v1`)
+### OpenAI 兼容端点（`/sync/v1`）
 
 对于使用 Baseten 的 OpenAI 兼容端点部署的模型：
 
@@ -91,24 +105,26 @@ import { createBaseten } from '@ai-sdk/baseten';
 const baseten = createBaseten({
   modelURL: 'https://model-{MODEL_ID}.api.baseten.co/sync/v1',
 });
-// 不需要 modelId，因为我们指定了 modelURL
+// 由于我们指定了 modelURL，因此不需要 modelId
 const model = baseten();
 const { text } = await generateText({
   model: model,
-  prompt: 'Say hello from a Baseten chat model!',
+  prompt: '从 Baseten 聊天模型打个招呼！',
 });
 ```
 
 ### `/predict` 端点
 
-`/predict` 端点目前**不支持**聊天模型。您必须使用 `/sync/v1` 端点来实现聊天功能。
+目前**不支持**将 `/predict` 端点用于聊天模型。你必须使用 `/sync/v1` 端点来实现聊天功能。
 
 ## 嵌入模型
 
-您可以使用 `.embeddingModel()` 工厂方法创建调用 Baseten 嵌入 API 的模型。Baseten 提供商使用高性能的 `@basetenlabs/performance-client` 来实现最佳嵌入性能。
+你可以使用 `.embeddingModel()` 工厂方法创建调用 Baseten 嵌入 API 的模型。Baseten 嵌入推理部署兼容 OpenAI，因此嵌入默认使用普通 HTTP，无需额外依赖。
 
 <Note>
-  **重要提示：** 嵌入模型需要具有自定义 `modelURL` 的专用部署。与聊天模型不同，嵌入模型不能使用 Baseten 的默认模型 API，必须指定一个专用的模型端点。
+  **重要提示：** 嵌入模型需要具有自定义
+  `modelURL` 的专用部署。与聊天模型不同，嵌入无法使用 Baseten 的默认模型
+  API，必须指定专用的模型端点。
 </Note>
 
 ```ts
@@ -124,39 +140,60 @@ const embeddingModel = baseten.embeddingModel();
 // 单个嵌入
 const { embedding } = await embed({
   model: embeddingModel,
-  value: 'sunny day at the beach',
+  value: '阳光明媚的海滩日',
 });
 
 // 批量嵌入
 const { embeddings } = await embedMany({
   model: embeddingModel,
   values: [
-    'sunny day at the beach',
-    'rainy afternoon in the city',
-    'snowy mountain peak',
+    '阳光明媚的海滩日',
+    '城市里阴雨绵绵的下午',
+    '白雪皑皑的山峰',
   ],
 });
 ```
+
+每个请求最多发送 128 个值。`embedMany` 会将较大的输入拆分为
+该大小的块并并行运行，因此你可以传递任意数量的值。
 
 ### 嵌入的端点支持
 
 **支持：**
 
-- `/sync` 端点（性能客户端会自动添加 `/v1/embeddings`）
-- `/sync/v1` 端点（在传递给性能客户端之前会自动去除 `/v1`）
+- `/sync` 端点（会自动为你追加 `/v1/embeddings`）
+- `/sync/v1` 端点
 
 **不支持：**
 
-- `/predict` 端点（与性能客户端不兼容）
+- `/predict` 端点
 
-### 性能特性
+### 原生性能客户端（可选）
 
-嵌入实现包括：
+Baseten 还发布了 `@basetenlabs/performance-client`，这是一个原生客户端，
+在部署已有的服务端动态批处理之上增加了客户端批处理和请求对冲功能。它**不会**默认安装：它是
+一个原生插件，因此无法在边缘运行时加载，打包器也无法解析
+其平台二进制文件。
 
-- **高性能客户端**：使用 `@basetenlabs/performance-client` 实现最佳性能
-- **自动批处理**：高效处理单个请求中的多个文本
-- **连接复用**：性能客户端创建一次，所有请求复用
-- **内置重试**：失败请求的自动重试逻辑
+要使用它，请自行安装并传入构造函数：
+
+```bash
+npm i @basetenlabs/performance-client
+```
+
+```ts
+import { createBaseten } from '@ai-sdk/baseten';
+import { PerformanceClient } from '@basetenlabs/performance-client';
+
+const baseten = createBaseten({
+  modelURL:
+    'https://model-{MODEL_ID}.api.baseten.co/environments/production/sync',
+  performanceClient: PerformanceClient,
+});
+```
+
+当你选择使用后，客户端会自行处理批处理，因此值会在
+单次调用中发送，而不是按 128 个拆分。
 
 ## 错误处理
 
@@ -169,10 +206,10 @@ import { generateText } from 'ai';
 try {
   const { text } = await generateText({
     model: baseten('moonshotai/Kimi-K2-Instruct-0905'),
-    prompt: 'Hello, world!',
+    prompt: '你好，世界！',
   });
 } catch (error) {
-  console.error('Baseten API error:', error.message);
+  console.error('Baseten API 错误：', error.message);
 }
 ```
 
@@ -215,7 +252,7 @@ try {
   // 错误："Not supported. You must use a /sync or /sync/v1 endpoint for embeddings."
 }
 
-// 图像模型不支持
+// 不支持图像模型
 try {
   baseten.imageModel('test-model');
 } catch (error) {
@@ -224,5 +261,6 @@ try {
 ```
 
 <Note>
-  有关 Baseten 模型和部署选项的更多信息，请参阅 [Baseten 文档](https://docs.baseten.co/)。
+  有关 Baseten 模型和部署选项的更多信息，请参阅
+  [Baseten 文档](https://docs.baseten.co/)。
 </Note>

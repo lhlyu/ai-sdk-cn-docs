@@ -1,6 +1,6 @@
 ---
 title: "experimental_generateVideo"
-description: "experimental_generateVideo 的 API 参考文档。"
+description: "experimental_generateVideo 的 API 参考。"
 ---
 
 # `experimental_generateVideo()`
@@ -9,7 +9,7 @@ description: "experimental_generateVideo 的 API 参考文档。"
   视频生成是一项实验性功能。API 在未来的版本中可能会发生变化。
 </Note>
 
-使用视频模型根据给定的提示词生成视频。
+根据给定的提示词，使用视频模型生成视频。
 
 它非常适合需要以编程方式生成视频的场景，例如创建视觉内容、动画或从图像生成视频。
 
@@ -59,7 +59,7 @@ console.log(videos);
               name: 'image',
               type: 'DataContent',
               description:
-                '用于图像到视频生成的输入图像。可以是 URL 字符串、base64 编码字符串、`Uint8Array`、`ArrayBuffer` 或 `Buffer`。',
+                '用于图像转视频生成的输入图像。可以是 URL 字符串、base64 编码字符串、`Uint8Array`、`ArrayBuffer` 或 `Buffer`。',
             },
             {
               name: 'text',
@@ -81,14 +81,14 @@ console.log(videos);
       type: 'string',
       isOptional: true,
       description:
-        '生成视频的宽高比。格式：`{width}:{height}`。',
+        '要生成的视频的宽高比。格式：`{width}:{height}`。',
     },
     {
       name: 'resolution',
       type: 'string',
       isOptional: true,
       description:
-        '生成视频的分辨率。格式：`{width}x{height}`。',
+        '要生成的视频的分辨率。格式：`{width}x{height}`。',
     },
     {
       name: 'duration',
@@ -106,7 +106,7 @@ console.log(videos);
       name: 'seed',
       type: 'number',
       isOptional: true,
-      description: '视频生成的种子。',
+      description: '视频生成的随机种子。',
     },
     {
       name: 'frameImages',
@@ -119,7 +119,7 @@ console.log(videos);
       type: 'Array<DataContent | { data: DataContent; mediaType?: string }>',
       isOptional: true,
       description:
-        '用于参考到视频生成的参考图像或视频输入。对于基于 URL 的视频引用，请使用带有显式 mediaType 的对象形式。提供商根据媒体类型路由每个引用，并在引用类型不受支持时发出警告。',
+        '用于参考转视频生成的参考图像或视频输入。对于基于 URL 的视频引用，请使用带有显式 mediaType 的对象形式。提供商根据每个引用的媒体类型进行路由，并在引用类型不受支持时发出警告。',
     },
     {
       name: 'generateAudio',
@@ -132,7 +132,7 @@ console.log(videos);
       name: 'providerOptions',
       type: 'ProviderOptions',
       isOptional: true,
-      description: '额外的提供商特定选项。',
+      description: '提供商特定的附加选项。',
     },
     {
       name: 'maxVideosPerCall',
@@ -157,7 +157,7 @@ console.log(videos);
       name: 'headers',
       type: 'Record<string, string>',
       isOptional: true,
-      description: '请求的额外 HTTP 头。',
+      description: '请求的附加 HTTP 头。',
     },
     {
       name: 'download',
@@ -165,6 +165,48 @@ console.log(videos);
       isOptional: true,
       description:
         '用于从 URL 获取视频的自定义下载函数。使用 `ai` 中的 `createDownload()` 创建具有自定义大小限制的下载函数，例如 `createDownload({ maxBytes: 50 * 1024 * 1024 })`。默认值：内置下载，限制为 2 GiB。',
+    },
+    {
+      name: 'poll',
+      type: 'object',
+      isOptional: true,
+      description:
+        '异步开始/状态流程的轮询配置。',
+      properties: [
+        {
+          type: 'object',
+          parameters: [
+            {
+              name: 'intervalMs',
+              type: 'number',
+              isOptional: true,
+              description:
+                '状态检查之间的间隔（毫秒）。默认值：5000。',
+            },
+            {
+              name: 'timeoutMs',
+              type: 'number',
+              isOptional: true,
+              description:
+                '等待完成的最大时间（毫秒），包括等待 webhook 通知的时间。默认值：600000（10 分钟）。',
+            },
+            {
+              name: 'delay',
+              type: '(delayInMs: number, options?: { abortSignal?: AbortSignal }) => PromiseLike<void>',
+              isOptional: true,
+              description:
+                '用于轮询间隔和 webhook 超时的自定义延迟实现。适用于持久工作流睡眠函数。默认值：基于内置定时器的延迟。',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'webhook',
+      type: '() => PromiseLike<{ url: string; received: PromiseLike<VideoModelV4OperationWebhook> }>',
+      isOptional: true,
+      description:
+        '用于支持 webhook 通知的提供商的 webhook 工厂。当提供此选项且模型支持 webhook 时，SDK 将使用 webhook 而不是轮询。该工厂应返回一个供提供商通知的 URL，以及一个在通知到达时解析的 `received` promise。也可以提供 `poll` 选项来配置 webhook 超时和轮询回退。',
     },
   ]}
 />
@@ -184,18 +226,18 @@ console.log(videos);
             {
               name: 'base64',
               type: 'string',
-              description: 'base64 编码的视频字符串。',
+              description: '视频的 base64 编码字符串。',
             },
             {
               name: 'uint8Array',
               type: 'Uint8Array',
-              description: 'Uint8Array 格式的视频。',
+              description: '视频的 Uint8Array 表示。',
             },
             {
               name: 'mediaType',
               type: 'string',
               description:
-                '视频的 IANA 媒体类型（例如 video/mp4）。',
+                '视频的 IANA 媒体类型（例如，video/mp4）。',
             },
           ],
         },
@@ -212,18 +254,18 @@ console.log(videos);
             {
               name: 'base64',
               type: 'string',
-              description: 'base64 编码的视频字符串。',
+              description: '视频的 base64 编码字符串。',
             },
             {
               name: 'uint8Array',
               type: 'Uint8Array',
-              description: 'Uint8Array 格式的视频。',
+              description: '视频的 Uint8Array 表示。',
             },
             {
               name: 'mediaType',
               type: 'string',
               description:
-                '视频的 IANA 媒体类型（例如 video/mp4）。',
+                '视频的 IANA 媒体类型（例如，video/mp4）。',
             },
           ],
         },
@@ -233,20 +275,20 @@ console.log(videos);
       name: 'warnings',
       type: 'Warning[]',
       description:
-        '来自模型提供商的警告（例如不支持的设置）。',
+        '来自模型提供商的警告（例如，不支持的设置）。',
     },
     {
       name: 'providerMetadata',
       type: 'VideoModelProviderMetadata',
       isOptional: true,
       description:
-        '来自提供商的元数据（可选）。外层键是提供商名称。内层值是元数据。元数据中通常存在一个 `videos` 键，它是一个与顶层 `videos` 键长度相同的数组。具体细节取决于提供商。',
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。元数据中通常存在一个 `videos` 键，它是一个数组，长度与顶层 `videos` 键相同。具体细节取决于提供商。',
     },
     {
       name: 'responses',
       type: 'Array<VideoModelResponseMetadata>',
       description:
-        '来自提供商的响应元数据。如果对模型进行了多次调用，则可能存在多个响应。',
+        '来自提供商的响应元数据。如果我们对模型进行了多次调用，则可能存在多个响应。',
       properties: [
         {
           type: 'VideoModelResponseMetadata',
@@ -260,7 +302,7 @@ console.log(videos);
               name: 'modelId',
               type: 'string',
               description:
-                '用于生成响应的响应模型 ID。',
+                '用于生成响应的响应模型的 ID。',
             },
             {
               name: 'headers',
@@ -273,7 +315,7 @@ console.log(videos);
               type: 'VideoModelProviderMetadata',
               isOptional: true,
               description:
-                '此单独 API 调用的提供商特定元数据。当进行多次调用时，可用于访问每次调用的元数据。',
+                '此单个 API 调用的提供商特定元数据。当进行多次调用时，可用于访问每次调用的元数据。',
             },
           ],
         },

@@ -1,30 +1,29 @@
 ---
 title: "MiniMax"
-description: "了解如何将 MiniMax 模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用 MiniMax 模型。"
 ---
 
 # MiniMax 提供商
 
-[MiniMax](https://www.minimax.io) 提供商通过 MiniMax API 提供对 MiniMax-M
-系列语言模型的访问，包括具有推理能力的模型，以及通过 MiniMax-H 系列进行视频生成。
+[MiniMax](https://www.minimax.io) 提供商通过 MiniMax API 提供对 MiniMax-M 系列语言模型的访问，包括具有推理能力的模型，以及通过 MiniMax-H 系列进行视频生成。
 
 API 密钥可以从 [MiniMax 平台](https://platform.minimax.io) 获取。
 
-## 安装
+## 设置
 
-MiniMax 提供商可通过 `@ai-sdk/minimax` 模块获得。你可以使用以下命令安装：
+MiniMax 提供商可通过 `@ai-sdk/minimax` 模块获得。您可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/minimax" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/minimax` 导入默认提供商实例 `minimax`：
+您可以从 `@ai-sdk/minimax` 导入默认提供商实例 `minimax`：
 
 ```ts
 import { minimax } from '@ai-sdk/minimax';
 ```
 
-对于自定义配置，你可以导入 `createMiniMax` 并使用你的设置创建提供商实例：
+对于自定义配置，您可以导入 `createMiniMax` 并使用您的设置创建提供商实例：
 
 ```ts
 import { createMiniMax } from '@ai-sdk/minimax';
@@ -34,27 +33,19 @@ const minimax = createMiniMax({
 });
 ```
 
-你可以使用以下可选设置来自定义 MiniMax 提供商实例：
+您可以使用以下可选设置来自定义 MiniMax 提供商实例：
 
 - **baseURL** _string_
 
-  为 API 调用使用不同的 URL 前缀。此提供商使用 MiniMax 的
-  Anthropic 兼容协议，因此默认前缀是
-  `https://api.minimax.io/anthropic/v1` — 而不是 OpenAI 兼容的
-  `https://api.minimax.io/v1`。
+  为 API 调用使用不同的 URL 前缀。此提供商使用 MiniMax 的 Anthropic 兼容协议，因此默认前缀是 `https://api.minimax.io/anthropic/v1` — 而不是 OpenAI 兼容的 `https://api.minimax.io/v1`。
 
 - **videoBaseURL** _string_
 
-  为视频生成 API 调用使用不同的 URL 前缀。视频 API 使用
-  MiniMax V2 原生端点（不是 Anthropic 兼容端点）。
-  默认前缀是 `https://api.minimax.io`。
+  为视频生成 API 调用使用不同的 URL 前缀。视频 API 使用 MiniMax V2 原生端点（不是 Anthropic 兼容端点）。默认前缀是 `https://api.minimax.io`。
 
 - **apiKey** _string_
 
-  MiniMax API 的 API 密钥。它默认为 `MINIMAX_API_KEY` 环境
-  变量。语言模型将其发送在 `x-api-key` 头中（
-  Anthropic 兼容协议）；视频模型将其作为
-  `Authorization: Bearer` 发送。
+  MiniMax API 的 API 密钥。它默认为 `MINIMAX_API_KEY` 环境变量。语言模型将其发送在 `x-api-key` 头中（Anthropic 兼容协议）；视频模型将其作为 `Authorization: Bearer` 发送。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -66,7 +57,7 @@ const minimax = createMiniMax({
 
 ## 语言模型
 
-你可以使用提供商实例创建语言模型：
+您可以使用提供商实例创建语言模型：
 
 ```ts
 import { minimax } from '@ai-sdk/minimax';
@@ -74,11 +65,11 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: minimax('minimax-m3'),
-  prompt: '写一份适合4人食用的素食千层面食谱。',
+  prompt: '写一份适合 4 人的素食千层面食谱。',
 });
 ```
 
-你也可以使用 `.chat()` 或 `.languageModel()` 工厂方法：
+您也可以使用 `.chat()` 或 `.languageModel()` 工厂方法：
 
 ```ts
 const model = minimax.chat('minimax-m3');
@@ -86,13 +77,11 @@ const model = minimax.chat('minimax-m3');
 const model = minimax.languageModel('minimax-m3');
 ```
 
-MiniMax 语言模型可以在 `streamText` 函数中使用
-（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+MiniMax 语言模型可以在 `streamText` 函数中使用（参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ### 推理
 
-MiniMax-M 模型可以在最终响应之前产生中间推理（“思考”）。你可以通过提供商选项控制此行为。推理
-输出通过标准的 AI SDK 推理部分进行流式传输。
+MiniMax-M 模型可以在最终响应之前产生中间推理（“思考”）。您可以通过提供商选项控制此行为。推理输出通过标准的 AI SDK 推理部分进行流式传输。
 
 ```ts
 import { minimax, type MiniMaxLanguageModelOptions } from '@ai-sdk/minimax';
@@ -105,14 +94,14 @@ const { text, reasoningText } = await generateText({
       thinking: { type: 'adaptive' },
     } satisfies MiniMaxLanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  prompt: '单词 "strawberry" 中有多少个 "r"？',
 });
 
 console.log(reasoningText);
 console.log(text);
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
@@ -123,21 +112,17 @@ console.log(text);
   控制模型的推理（“思考”）行为。
   - **type** _'adaptive' | 'disabled'_
     - `'adaptive'`：模型自行决定何时推理（启用深度推理）
-    - `'disabled'`：模型直接响应而不进行推理，以获得更高的
-      吞吐量和更低的延迟
+    - `'disabled'`：模型直接响应而不进行推理，以获得更高的吞吐量和更低的延迟
 
-  省略时，模型使用其提供商侧默认值。
+  省略时，模型使用其提供商端默认值。
 
   <Note>
-    思考控制仅在 `minimax-m3` 上受支持。M2.x 模型始终
-    会思考，因此 `'disabled'` 对它们没有效果。
+    思考控制仅在 `minimax-m3` 上受支持。M2.x 模型始终进行思考，因此 `'disabled'` 对它们没有效果。
   </Note>
 
 ## 视频模型
 
-你可以使用
-[`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video)
-函数通过 MiniMax-H3 模型生成视频：
+您可以使用 [`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video) 函数通过 MiniMax-H3 模型生成视频：
 
 ```ts
 import { minimax, type MiniMaxVideoModelOptions } from '@ai-sdk/minimax';
@@ -145,7 +130,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: minimax.video('MiniMax-H3'),
-  prompt: '一只白色的小猫在阳光明媚的花园里追逐蝴蝶。',
+  prompt: '一只白色小猫在阳光明媚的花园里追逐蝴蝶。',
   aspectRatio: '16:9',
   duration: 5,
   providerOptions: {
@@ -156,33 +141,26 @@ const { video } = await generateVideo({
 });
 ```
 
-MiniMax-H3 每次调用生成一个视频。生成是异步的 — 模型
-创建一个任务并轮询直到完成，然后返回生成的 MP4 URL。
+MiniMax-H3 每次调用生成一个视频。生成是异步的 — 模型创建一个任务并轮询直到完成，然后返回生成的 MP4 URL。
 
-`duration` 接受从 5 到 15 的整数秒数，默认为 5。小数
-值将被四舍五入，超出范围的值将被限制，每次都会发出
-警告。唯一支持的输出分辨率是 `2K`。
+`duration` 接受从 5 到 15 的整数秒，默认为 5。小数值将被四舍五入，超出范围的值将被限制，每次都会发出警告。唯一支持的输出分辨率是 `2K`。
+
+对于**文本到视频**，省略 `aspectRatio` 时默认为 `16:9`。MiniMax API 要求纯文本请求具有具体的比例，并且不接受 `adaptive`。对于**参考到视频**，省略 `aspectRatio` 时 API 默认为 `adaptive`。对于带有帧图像的**图像到视频**，宽高比遵循输入图像。
 
 <Note>
-  结果 URL 具有时效性。生成后请及时下载并将视频持久化到您自己的
-  存储中。
+  结果 URL 具有时间限制。生成后请及时将视频下载并持久化到您自己的存储中。
 </Note>
 
 ### 生成模式
 
-生成模式根据您传入的输入进行推断：
+生成模式根据您传递的输入进行推断：
 
-- **文本转视频** — 仅 `prompt`。
-- **首帧图像转视频** — 传入 `image`（或 `frameImages` 条目，其中
-  `frameType: 'first_frame'`）来动画化起始图像。
-- **首尾关键帧** — 传入同时包含 `first_frame` 和
-  `last_frame` 的 `frameImages` 来控制过渡。
-- **参考转视频** — 传入 `inputReferences`（图像和/或视频，按
-  媒体类型路由）以保持主体/风格或跟随运动。帧图像和
-  参考互斥。
+- **文本到视频** — 仅 `prompt`。
+- **首帧图像到视频** — 传递 `image`（或带有 `frameType: 'first_frame'` 的 `frameImages` 条目）来动画化起始图像。
+- **首尾关键帧** — 传递同时包含 `first_frame` 和 `last_frame` 的 `frameImages` 来控制过渡。
+- **参考到视频** — 传递 `inputReferences`（图像和/或视频，按媒体类型路由）以保持主体/风格或跟随运动。帧图像和引用是互斥的。
 
-当提供帧图像时，宽高比遵循图像，任何显式的
-`aspectRatio` 将被忽略。
+当提供帧图像时，宽高比遵循图像，任何显式的 `aspectRatio` 都将被忽略。
 
 ### 视频提供商选项
 
@@ -198,8 +176,7 @@ MiniMax-H3 每次调用生成一个视频。生成是异步的 — 模型
 
 - **referenceAudioUrls** _string[]_
 
-  用于参考转视频生成的参考音频 URL（或 `mm_file://` 句柄）。
-  必须与至少一个参考图像或视频配对。最多 3 个。
+  用于参考到视频生成的参考音频 URL（或 `mm_file://` 句柄）。必须与至少一个参考图像或视频配对。最多 3 个。
 
 - **aigcWatermark** _boolean_
 
@@ -214,11 +191,7 @@ MiniMax-H3 每次调用生成一个视频。生成是异步的 — 模型
   超时前轮询的最长时间（毫秒）。默认值：`600000`。
 
 <Note>
-  MiniMax `mm_file://` 句柄仅按原样转发用于
-  `referenceAudioUrls`。它们不能用于 `image`、`frameImages` 或
-  `inputReferences`：这些输入通过 AI SDK 的文件处理，该处理
-  会对任何不是 `http(s)://` 或 `data:` URL 的字符串进行 base64 解码。请将
-  这些输入作为公共 URL、数据 URI 或二进制数据传递。
+  MiniMax `mm_file://` 句柄仅按原样转发用于 `referenceAudioUrls`。它们不能用于 `image`、`frameImages` 或 `inputReferences`：这些输入通过 AI SDK 的文件处理，该处理会将任何不是 `http(s)://` 或 `data:` URL 的字符串进行 base64 解码。请将这些输入作为公共 URL、数据 URI 或二进制数据传递。
 </Note>
 
 ### 视频提供商元数据
@@ -231,20 +204,17 @@ MiniMax 视频结果包含 `providerMetadata.minimax`：
 
 - **videoUrl** _string_
 
-  MiniMax 托管的 MP4 URL（与 `video` 相同的 URL）。具有时效性。
+  MiniMax 托管的 MP4 URL（与 `video` 相同的 URL）。具有时间限制。
 
 - **resolvedInputs** _object_
 
-  实际发送的输入，在 H3 施加的限制和拒绝之后
-  （警告报告某个输入被丢弃，但不报告有多少幸存）。
-  - **imageCount** _number_ — 发送的图像数量（帧图像或参考
-    图像）。
-  - **referenceVideoUrls** _string[]_ — 发送的参考视频的 URL。
-    内联视频数据被省略，因为它作为数据 URI 发送。
+  实际发送的输入，在 H3 施加的限制和拒绝之后（警告报告输入被丢弃，但不报告有多少幸存）。
+  - **imageCount** _number_ — 发送的图像数量（帧图像或参考图像）。
+  - **referenceVideoUrls** _string[]_ — 发送的参考视频的 URL。内联视频数据被省略，因为它作为数据 URI 发送。
 
 - **duration** _number_
 
-  生成的视频的时长（秒），当 API 报告时。
+  生成的视频的持续时间（秒），当 API 报告时。
 
 - **ratio** _string_
 
@@ -252,12 +222,11 @@ MiniMax 视频结果包含 `providerMetadata.minimax`：
 
 - **resolution** _string_
 
-  生成的视频的分辨率等级，当 API 报告时。
+  生成的视频的分辨率级别，当 API 报告时。
 
 - **usage** _object_
 
-  计费秒数，当 API 报告时：`totalSeconds`、`inputSeconds`
-  和 `outputSeconds`。
+  计费秒数，当 API 报告时：`totalSeconds`、`inputSeconds` 和 `outputSeconds`。
 
 ## 模型能力
 
@@ -273,7 +242,5 @@ MiniMax 视频结果包含 `providerMetadata.minimax`：
 | `minimax-m2`               | <Cross /> | <Check /> | <Check /> | <Check />    |
 
 <Note>
-  请参阅 [MiniMax 文档](https://platform.minimax.io/docs) 获取完整
-  的可用模型列表。如有需要，您也可以将任何可用的提供商模型 ID 作为
-  字符串传递。
+  请参阅 [MiniMax 文档](https://platform.minimax.io/docs) 获取可用模型的完整列表。如果需要，您也可以将任何可用的提供商模型 ID 作为字符串传递。
 </Note>
