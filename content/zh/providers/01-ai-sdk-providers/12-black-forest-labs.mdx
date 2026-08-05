@@ -5,23 +5,23 @@ description: "了解如何将 Black Forest Labs 模型与 AI SDK 结合使用。
 
 # Black Forest Labs 提供商
 
-[Black Forest Labs](https://bfl.ai/) 为开发者提供了一个基于 FLUX 模型的生成式图像平台。该平台提供快速、高质量且具有上下文感知能力的图像生成与编辑功能，结果精确且连贯。
+[Black Forest Labs](https://bfl.ai/) 为开发者提供了一个基于 FLUX 模型的生成式图像平台。该平台提供快速、高质量且具有上下文感知的图像生成和编辑功能，结果精确且连贯。
 
 ## 安装
 
-Black Forest Labs 提供商可通过 `@ai-sdk/black-forest-labs` 模块获取。你可以使用以下命令安装：
+Black Forest Labs 提供商可通过 `@ai-sdk/black-forest-labs` 模块获得。您可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/black-forest-labs" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/black-forest-labs` 导入默认的提供商实例 `blackForestLabs`：
+您可以从 `@ai-sdk/black-forest-labs` 导入默认提供商实例 `blackForestLabs`：
 
 ```ts
 import { blackForestLabs } from '@ai-sdk/black-forest-labs';
 ```
 
-如果你需要自定义配置，可以导入 `createBlackForestLabs` 并根据你的设置创建提供商实例：
+如果您需要自定义配置，可以导入 `createBlackForestLabs` 并使用您的设置创建提供商实例：
 
 ```ts
 import { createBlackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -35,7 +35,7 @@ const blackForestLabs = createBlackForestLabs({
 });
 ```
 
-你可以使用以下可选设置来自定义 Black Forest Labs 提供商实例：
+您可以使用以下可选设置来自定义 Black Forest Labs 提供商实例：
 
 - **baseURL** _string_
 
@@ -54,22 +54,22 @@ const blackForestLabs = createBlackForestLabs({
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  你可以将其用作中间件来拦截请求，
-  或为测试等场景提供自定义 fetch 实现。
+  您可以将其用作中间件来拦截请求，
+  或提供自定义 fetch 实现，例如用于测试。
 
 - **pollIntervalMillis** _number_
 
-  等待图像生成完成时，轮询尝试之间的间隔（毫秒）。
-  默认为 500 毫秒。
+  等待生成完成时轮询尝试之间的间隔（毫秒）。
+  图像模型默认为 500 毫秒，视频模型默认为 2000 毫秒。
 
 - **pollTimeoutMillis** _number_
 
-  轮询超时前的总超时时间（毫秒）。
-  默认为 60000 毫秒（60 秒）。
+  放弃前轮询的总超时时间（毫秒）。
+  图像模型默认为 60000 毫秒（60 秒），视频模型默认为 600000 毫秒（10 分钟）。
 
 ## 图像模型
 
-你可以使用 `.image()` 工厂方法创建 Black Forest Labs 图像模型。
+您可以使用 `.image()` 工厂方法创建 Black Forest Labs 图像模型。
 有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ### 基本用法
@@ -91,25 +91,25 @@ console.log(`Image saved to ${filename}`);
 
 ### 模型能力
 
-Black Forest Labs 提供多种针对不同用例优化的模型。以下是一些流行的示例。有关完整模型列表，请参阅 [Black Forest Labs 模型页面](https://bfl.ai/models)。
+Black Forest Labs 提供多种针对不同用例优化的模型。以下是一些常用示例。有关完整模型列表，请参阅 [Black Forest Labs 模型页面](https://bfl.ai/models)。
 
-| 模型                  | 描述                                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| `flux-kontext-pro`   | FLUX.1 Kontext [pro] 同时处理文本和参考图像作为输入，支持目标编辑和复杂变换                       |
-| `flux-kontext-max`   | FLUX.1 Kontext [max] 改进了提示词遵循能力和排版生成                                              |
-| `flux-pro-1.1-ultra` | 超快速、超高分辨率图像创建                                                                       |
-| `flux-pro-1.1`       | 从文本快速生成高质量图像。                                                                       |
-| `flux-pro-1.0-fill`  | 用于填充图像中遮罩区域新内容的修复模型                                                           |
+| 模型                  | 描述                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `flux-kontext-pro`   | FLUX.1 Kontext [pro] 可同时处理文本和参考图像作为输入，实现精准编辑和复杂变换 |
+| `flux-kontext-max`   | FLUX.1 Kontext [max] 具有改进的提示词遵循能力和排版生成能力 |
+| `flux-pro-1.1-ultra` | 超快速、超高分辨率图像创建 |
+| `flux-pro-1.1`       | 从文本快速生成高质量图像。 |
+| `flux-pro-1.0-fill`  | 修复模型，用于用新内容填充图像的遮罩区域 |
 
 Black Forest Labs 模型支持从 3:7（竖屏）到 7:3（横屏）的宽高比。
 
 ### 图像编辑
 
-Black Forest Labs Kontext 模型支持使用参考图像进行强大的图像编辑功能。通过 `prompt.images` 传递输入图像，以转换、组合或编辑现有图像。
+Black Forest Labs Kontext 模型支持使用参考图像进行强大的图像编辑功能。通过 `prompt.images` 传递输入图像来变换、组合或编辑现有图像。
 
 #### 单图像编辑
 
-使用文本提示词转换现有图像：
+使用文本提示词变换现有图像：
 
 ```ts
 import {
@@ -135,9 +135,9 @@ const { images } = await generateImage({
 });
 ```
 
-#### 多参考图像编辑
+#### 多参考编辑
 
-组合多个参考图像进行复杂变换。Black Forest Labs 最多支持 10 个输入图像：
+组合多个参考图像进行复杂变换。Black Forest Labs 支持最多 10 个输入图像：
 
 ```ts
 import { blackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -156,12 +156,13 @@ const { images } = await generateImage({
 ```
 
 <Note>
-  输入图像可以作为 URL 或 base64 编码的字符串提供。每张图像支持最大 20MB 或 2000 万像素。
+  输入图像可以作为 URL 或 base64 编码字符串提供。每个图像支持
+  最大 20MB 或 2000 万像素。
 </Note>
 
 #### 修复
 
-`flux-pro-1.0-fill` 模型支持修复，允许你用新内容填充图像的遮罩区域。通过 `prompt.images` 传递源图像，通过 `prompt.mask` 传递遮罩图像：
+`flux-pro-1.0-fill` 模型支持修复功能，允许您用新内容填充图像的遮罩区域。通过 `prompt.images` 传递源图像，通过 `prompt.mask` 传递遮罩图像：
 
 ```ts
 import { blackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -181,32 +182,33 @@ const { images } = await generateImage({
 
 ### 提供商选项
 
-Black Forest Labs 图像模型通过 `providerOptions.blackForestLabs` 对象支持灵活的提供商选项。支持的参数取决于使用的模型 ID：
+Black Forest Labs 图像模型通过 `providerOptions.blackForestLabs` 对象支持灵活的提供商选项。支持的参数取决于所使用的模型 ID：
 
 - **width** _number_ - 输出宽度（像素，256–1920）。设置后，将覆盖从 `size` 派生的任何宽度。
 - **height** _number_ - 输出高度（像素，256–1920）。设置后，将覆盖从 `size` 派生的任何高度。
 - **outputFormat** _string_ - 输出图像的所需格式（`"jpeg"` 或 `"png"`）。
-- **steps** _number_ - 推理步数。较高的值可能会提高质量，但会增加生成时间。
-- **guidance** _number_ - 生成的引导尺度。较高的值会更严格地遵循提示词。
-- **imagePrompt** _string_ - 用作生成额外视觉上下文的 Base64 编码图像。
+- **steps** _number_ - 推理步数。较高的值可能提高质量，但会增加生成时间。
+- **guidance** _number_ - 生成的引导比例。较高的值更严格地遵循提示词。
+- **imagePrompt** _string_ - 用作生成额外视觉上下文的 base64 编码图像。
 - **imagePromptStrength** _number_ - 图像提示词对生成的影响强度（0.0 到 1.0）。
 - **promptUpsampling** _boolean_ - 如果为 true，则对提示词执行上采样。
 - **raw** _boolean_ - 启用原始模式以获得更自然、真实的视觉效果。
 - **safetyTolerance** _number_ - 输入和输出的审核级别（0 = 最严格，6 = 更宽松）。
-- **pollIntervalMillis** _number_ - 轮询尝试之间的间隔（毫秒，默认 500 毫秒）。
-- **pollTimeoutMillis** _number_ - 轮询超时前的总超时时间（毫秒，默认 60 秒）。
+- **pollIntervalMillis** _number_ - 轮询尝试之间的间隔（毫秒）（默认 500 毫秒）。
+- **pollTimeoutMillis** _number_ - 超时前轮询的总超时时间（毫秒）（默认 60 秒）。
 - **webhookUrl** _string_ - 异步完成通知的 URL。必须是有效的 HTTP/HTTPS URL。
 - **webhookSecret** _string_ - 用于 Webhook 签名验证的密钥，通过 `X-Webhook-Secret` 请求头发送。
 
 <Note>
-  要传递参考图像进行编辑，请使用 `prompt.images` 而不是提供商选项。这支持最多 10 张图像作为 URL 或 base64 编码的字符串。
+  要传递参考图像进行编辑，请使用 `prompt.images` 而不是提供商
+  选项。这支持最多 10 个图像作为 URL 或 base64 编码字符串。
 </Note>
 
 ### 提供商元数据
 
 `generateImage` 响应在 `providerMetadata.blackForestLabs.images[]` 中包含提供商特定的元数据。每个图像对象可能包含以下属性：
 
-- **seed** _number_ - 用于生成的种子。有助于重现结果。
+- **seed** _number_ - 用于生成的种子。有助于复现结果。
 - **start_time** _number_ - 生成开始时的 Unix 时间戳。
 - **end_time** _number_ - 生成完成时的 Unix 时间戳。
 - **duration** _number_ - 生成持续时间（秒）。
@@ -232,7 +234,7 @@ console.log('Duration:', metadata?.duration);
 
 ### 区域端点
 
-默认情况下，请求发送到 `https://api.bfl.ai/v1`。你可以在创建提供商实例时通过设置 `baseURL` 来选择[区域端点](https://docs.bfl.ai/api_integration/integration_guidelines#regional-endpoints)：
+默认情况下，请求发送到 `https://api.bfl.ai/v1`。您可以通过在创建提供商实例时设置 `baseURL` 来选择 [区域端点](https://docs.bfl.ai/api_integration/integration_guidelines#regional-endpoints)：
 
 ```ts
 import { createBlackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -241,3 +243,248 @@ const blackForestLabs = createBlackForestLabs({
   baseURL: 'https://api.eu.bfl.ai/v1', // 或 https://api.us.bfl.ai/v1
 });
 ```
+
+## 视频模型
+
+您可以使用 FLUX 3 视频模型通过
+[`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video)
+函数生成视频：
+
+```ts
+import {
+  blackForestLabs,
+  type BlackForestLabsVideoModelOptions,
+} from '@ai-sdk/black-forest-labs';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: blackForestLabs.video('flux-3-video'),
+  prompt: 'A white kitten chases a butterfly across a sunlit garden.',
+  aspectRatio: '16:9',
+  duration: 8,
+  poll: {
+    intervalMs: 2000,
+    timeoutMs: 600000, // 10 分钟
+  },
+  providerOptions: {
+    blackForestLabs: {
+      resolution: 'fhd',
+    } satisfies BlackForestLabsVideoModelOptions,
+  },
+});
+```
+
+FLUX 3 每次调用生成一个视频。生成是异步的——模型
+提交任务并轮询直到完成，然后将签名的 MP4 URL 传递给 AI
+SDK Core。`generateVideo` 在解析前下载它，因此 `video` 是一个
+`GeneratedFile`。签名 URL 仍然可以在
+`providerMetadata.blackForestLabs.videos[0].videoUrl` 中获取。
+
+使用顶层 `poll` 选项让 AI SDK Core 编排轮询并设置
+间隔和超时。FLUX 3 视频 API 目前不暴露
+Webhook 回调输入，因此顶层 `webhook` 会回退到轮询。
+
+`duration` 接受 5 到 20 的整数秒。小数值会被
+四舍五入，超出范围的值会被限制，每种情况都会发出警告。省略它让
+FLUX 3 根据内容调整时长。
+
+默认生成音频，因此 `generateAudio` 只需设置为关闭
+即可。API 不支持 `fps` 和 `seed`，会报告为警告。
+
+<Note>
+  提供商元数据中的 URL 有时间限制。请将返回的 `video`
+  字节持久化到您自己的存储中。
+</Note>
+
+### 分辨率和宽高比
+
+API 采用命名分辨率级别，`hd` 或 `fhd`（默认为 `hd`），其中
+`fhd` 由视频上采样器完成。确切的帧大小取决于
+宽高比。
+
+顶层 `resolution` 选项是 `{width}x{height}`，因此通过其较短边映射到
+级别——`1280x720` 变为 `hd`，`1920x1080` 变为 `fhd`。
+其他值在较短边最多 720 像素时映射到 `hd`，超过 720 时映射到
+`fhd`，并报告映射警告。使用
+`providerOptions.blackForestLabs.resolution` 直接设置级别。
+
+`aspectRatio` 接受 `21:9`、`2:1`、`16:9`、`4:3`、`1:1`、`3:4` 和 `9:16`。API 默认为 `auto`，从提示词和任何
+条件媒体推断比例；因为顶层选项必须是 `{width}:{height}`，
+`auto` 只能通过
+`providerOptions.blackForestLabs.aspectRatio` 请求。
+
+### 生成模式
+
+FLUX 3 是带有 `mode` 判别器的单一端点。模式从
+您传递的输入推断：
+
+- **文本到视频** — 仅 `prompt`。
+- **图像到视频** — 传递 `image`（或带有
+  `frameType: 'first_frame'` 的 `frameImages` 条目）来动画化起始图像。添加 `last_frame`
+  在该图像上结束片段。没有 `first_frame` 的 `last_frame` 无法
+  表达，会被丢弃并发出警告。
+- **关键帧** — 对于超过两个图像，或固定到特定
+  秒的图像，传递 `providerOptions.blackForestLabs.keyframes`。它优先于
+  `image` 和 `frameImages`。
+- **视频续接** — 在 `inputReferences` 中传递视频类型条目以
+  从现有 MP4 的最后一帧继续。FLUX 3 接受单个
+  视频；关键帧和续接互斥。
+- **草稿增强** — 传递 `providerOptions.blackForestLabs.draftCache`。请参阅
+  [草稿模式](#draft-mode)。
+
+FLUX 3 没有参考图像输入，因此在 `inputReferences` 中传递的图像会被
+忽略，并发出指向 `image`、`frameImages` 或 `keyframes` 的警告。
+
+### 关键帧
+
+关键帧是位置性的：一个图像打开片段，两个打开和关闭它，并且
+更多时第一个和最后一个是端点，而其他图像均匀分布在
+它们之间。每个图像是 `http(s)` URL 或 base64 字符串，一个请求
+接受 1 到 10 个。
+
+三个或更多未定时关键帧需要显式 `duration`；提供商
+在发送该组合时报告警告，因为 API 拒绝它。
+
+按时间顺序传递 `[seconds, image]` 对，将每个图像固定到
+片段的特定秒：
+
+```ts
+import {
+  blackForestLabs,
+  type BlackForestLabsVideoModelOptions,
+} from '@ai-sdk/black-forest-labs';
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { readFileSync } from 'node:fs';
+
+const asBase64 = (file: string) => readFileSync(file).toString('base64');
+
+const { video } = await generateVideo({
+  model: blackForestLabs.video('flux-3-video'),
+  prompt: 'The cat, then the dog, then the owl each take a turn in the room.',
+  duration: 12,
+  providerOptions: {
+    blackForestLabs: {
+      keyframes: [
+        [0, asBase64('cat.png')],
+        [4.5, asBase64('dog.png')],
+        [9, asBase64('owl.png')],
+      ],
+    } satisfies BlackForestLabsVideoModelOptions,
+  },
+});
+```
+
+### 草稿模式
+
+设置 `draft: true` 渲染快速、较低质量的预览，并留下一个
+加密包，报告为
+`providerMetadata.blackForestLabs.videos[0].draftCache`。将该包传递回
+作为 `draftCache` 以全质量重现相同的生成。
+
+该包固定原始模式、提示词、种子和条件媒体，因此
+增强请求除了 `safetyTolerance` 外不接受任何内容。调用上设置的任何其他
+选项报告为 `unsupported` 警告。`generateVideo` 需要
+`prompt` 参数，因此传递空字符串表示没有要添加的内容。
+
+```ts
+import {
+  blackForestLabs,
+  type BlackForestLabsVideoModelOptions,
+} from '@ai-sdk/black-forest-labs';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const draft = await generateVideo({
+  model: blackForestLabs.video('flux-3-video'),
+  prompt: 'A white kitten chases a butterfly across a sunlit garden.',
+  duration: 6,
+  providerOptions: {
+    blackForestLabs: { draft: true } satisfies BlackForestLabsVideoModelOptions,
+  },
+});
+
+const draftCacheUrl = (
+  draft.providerMetadata.blackForestLabs?.videos as
+    | Array<{ draftCache?: string }>
+    | undefined
+)?.[0]?.draftCache;
+
+// 下载 URL 会过期；发送 base64 `.bin` 是持久路径，
+// 尽管 URL 本身在链接仍然有效时也可以使用。
+const response = await fetch(draftCacheUrl!);
+const arrayBuffer = await response.arrayBuffer();
+
+const enhanced = await generateVideo({
+  model: blackForestLabs.video('flux-3-video'),
+  prompt: '',
+  providerOptions: {
+    blackForestLabs: {
+      draftCache: Buffer.from(arrayBuffer).toString('base64'),
+    } satisfies BlackForestLabsVideoModelOptions,
+  },
+});
+```
+
+<Note>
+  草稿及其增强是两次独立的生成，每次分别计费。
+</Note>
+
+### 视频提供商选项
+
+以下可选的提供商选项可用于 FLUX 3 视频：
+
+- **resolution** _'hd' | 'fhd'_
+
+  输出分辨率级别。优先于顶层 `resolution`。
+
+- **aspectRatio** _'21:9' | '2:1' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | 'auto'_
+
+  生成视频的宽高比。优先于顶层
+  `aspectRatio`，与它不同，可以设置为 `auto`。
+
+- **keyframes** _Array&lt;string | [number, string]&gt;_
+
+  用于图像到视频生成的关键帧，适用于 `image` 和
+  `frameImages` 无法表达的形状：超过两个图像，或固定到
+  特定秒的图像。优先于两者。
+
+- **safetyTolerance** _number_
+
+  审核严格程度从 0（最严格）到 4。默认为 2。性内容
+  上限为 3，仇恨内容上限为 2，无论请求如何，任何携带
+  条件媒体的请求上限为 2。
+
+- **draft** _boolean_
+
+  渲染快速、较低质量的预览而不是完成的视频。默认为
+  `false`。
+
+- **draftCache** _string_
+
+  来自先前 `draft` 生成的加密草稿缓存包，将
+  请求切换到草稿增强模式。
+
+- **version** _string_
+
+  要固定的模型版本。目前只有 `latest` 可用。
+
+### 视频提供商元数据
+
+FLUX 3 视频结果包括 `providerMetadata.blackForestLabs.videos[]`。每个
+视频对象可能包含以下属性：
+
+- **id** _string_ - Black Forest Labs 生成请求的 ID。
+- **videoUrl** _string_ - 签名的 MP4 URL（与 `video` 相同的 URL）。有时间限制。
+- **draftCache** _string_ - 草稿包的下载 URL。仅在 `draft` 生成时存在。
+- **seed** _number_ - 用于生成的种子，当 API 报告时。
+- **start_time** _number_ - 生成开始时的 Unix 时间戳。
+- **end_time** _number_ - 生成完成时的 Unix 时间戳。
+- **duration** _number_ - API 报告的持续时间（秒）。
+- **cost** _number_ - 生成请求的成本（积分）。
+- **inputMegapixels** _number_ - 输入大小（百万像素）。
+- **outputMegapixels** _number_ - 输出大小（百万像素）。
+
+### 视频模型能力
+
+| 模型              | 描述                                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `flux-3-video`   | 最高全高清和 20 秒，带同步音频。支持文本到视频、关键帧和视频续接。 |
