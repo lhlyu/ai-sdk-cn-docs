@@ -1,17 +1,17 @@
 ---
-title: 语言模型中间件
-description: 了解如何使用中间件增强语言模型的行为
+title: "语言模型中间件"
+description: "了解如何使用中间件增强语言模型的行为"
 ---
 
 # 语言模型中间件
 
-语言模型中间件是一种通过拦截和修改对语言模型的调用来增强其行为的方式。
+语言模型中间件是一种通过拦截和修改对语言模型的调用来增强语言模型行为的方式。
 
-它可以用于以语言模型无关的方式添加防护栏、RAG、缓存和日志记录等功能。此类中间件可以独立于其应用的语言模型进行开发和分发。
+它可以用于以与语言模型无关的方式添加护栏、RAG、缓存和日志记录等功能。此类中间件可以独立于其所应用的语言模型进行开发和分发。
 
 ## 使用语言模型中间件
 
-你可以使用 `wrapLanguageModel` 函数来应用语言模型中间件。它接收一个语言模型和一个语言模型中间件，并返回一个整合了中间件的新的语言模型。
+你可以使用 `wrapLanguageModel` 函数来使用语言模型中间件。它接收一个语言模型和一个语言模型中间件，并返回一个包含该中间件的新的语言模型。
 
 ```ts
 import { wrapLanguageModel, streamText } from 'ai';
@@ -27,7 +27,7 @@ const wrappedLanguageModel = wrapLanguageModel({
 ```ts highlight="2"
 const result = streamText({
   model: wrappedLanguageModel,
-  prompt: 'What cities are in the United States?',
+  prompt: '美国有哪些城市？',
 });
 ```
 
@@ -46,19 +46,20 @@ const wrappedLanguageModel = wrapLanguageModel({
 
 ## 内置中间件
 
-AI SDK 附带几个内置中间件，可用于配置语言模型：
+AI SDK 附带几个内置中间件，你可以使用它们来配置语言模型：
 
-- `extractReasoningMiddleware`：从生成的文本中提取推理信息，并将其作为结果的 `reasoning` 属性暴露出来。
-- `extractJsonMiddleware`：通过去除 Markdown 代码围栏，从文本内容中提取 JSON。当使用 `Output.object()` 且模型将 JSON 响应包裹在代码块中时，此功能非常有用。
-- `simulateStreamingMiddleware`：使用非流式语言模型的响应模拟流式行为。
+- `extractReasoningMiddleware`：从生成的文本中提取推理信息，并将其作为结果上的 `reasoning` 属性公开。
+- `extractJsonMiddleware`：通过去除 Markdown 代码围栏从文本内容中提取 JSON。当使用 `Output.object()` 且模型将 JSON 响应包裹在代码块中时非常有用。
+- `simulateStreamingMiddleware`：使用非流式语言模型的响应模拟流式传输行为。
+- `defaultInstructionsMiddleware`：当调用未提供自己的指令时应用默认指令。
 - `defaultSettingsMiddleware`：为语言模型应用默认设置。
-- `addToolInputExamplesMiddleware`：为不支持 `inputExamples` 属性的提供商，向工具描述中添加工具输入示例。
+- `addToolInputExamplesMiddleware`：为不支持 `inputExamples` 属性的提供商将工具输入示例添加到工具描述中。
 
 ### 提取推理
 
-某些提供商和模型会使用特殊标签（例如 &lt;think&gt; 和 &lt;/think&gt;）在生成的文本中暴露推理信息。
+某些提供商和模型使用特殊标签（例如 &lt;think&gt; 和 &lt;/think&gt;）在生成的文本中公开推理信息。
 
-`extractReasoningMiddleware` 函数可用于提取此推理信息，并将其作为结果的 `reasoning` 属性暴露出来。
+`extractReasoningMiddleware` 函数可用于提取此推理信息，并将其作为结果上的 `reasoning` 属性公开。
 
 ```ts
 import { wrapLanguageModel, extractReasoningMiddleware } from 'ai';
@@ -69,9 +70,9 @@ const model = wrapLanguageModel({
 });
 ```
 
-然后，你可以在 `generateText` 和 `streamText` 等函数中使用这个增强后的模型。
+然后你可以在 `generateText` 和 `streamText` 等函数中使用该增强模型。
 
-`extractReasoningMiddleware` 函数还包含一个 `startWithReasoning` 选项。当设置为 `true` 时，推理标签将被前置到生成的文本中。这对于那些在响应开头不包含推理标签的模型非常有用。更多详情，请参阅 [DeepSeek R1 指南](/cookbook/guides/r1#deepseek-r1-middleware)。
+`extractReasoningMiddleware` 函数还包含一个 `startWithReasoning` 选项。当设置为 `true` 时，推理标签将前置到生成的文本中。这对于响应开头不包含推理标签的模型非常有用。有关更多详细信息，请参阅 [DeepSeek R1 指南](/cookbook/guides/r1#deepseek-r1-middleware)。
 
 ### 提取 JSON
 
@@ -101,7 +102,7 @@ const result = await generateText({
       ingredients: z.array(z.string()),
     }),
   }),
-  prompt: 'Generate a recipe.',
+  prompt: '生成一个食谱。',
 });
 ```
 
@@ -118,7 +119,7 @@ const model = wrapLanguageModel({
 
 ### 模拟流式传输
 
-`simulateStreamingMiddleware` 函数可用于使用非流式语言模型的响应来模拟流式行为。当你希望即使在使用仅提供完整响应的模型时也能保持一致的流式接口时，这非常有用。
+`simulateStreamingMiddleware` 函数可用于使用非流式语言模型的响应模拟流式传输行为。当你希望保持一致的流式传输接口，即使使用仅提供完整响应的模型时，这非常有用。
 
 ```ts
 import { wrapLanguageModel, simulateStreamingMiddleware } from 'ai';
@@ -148,9 +149,30 @@ const model = wrapLanguageModel({
 });
 ```
 
+### 默认指令
+
+`defaultInstructionsMiddleware` 函数将指令应用于尚未包含系统消息的调用。直接在调用上提供的指令优先于默认指令。
+
+```ts
+import { wrapLanguageModel, defaultInstructionsMiddleware } from 'ai';
+
+const model = wrapLanguageModel({
+  model: yourModel,
+  middleware: defaultInstructionsMiddleware({
+    instructions: '你是一位简洁的技术助手。',
+  }),
+});
+```
+
+`instructions` 选项还接受 `SystemModelMessage` 或 `SystemModelMessage` 对象数组，当你需要在指令上设置提供商选项时。
+
+<Note>
+  中间件将规范化提示词中的任何系统消息视为调用级指令，并且不会添加默认指令。仅对可信的消息历史启用 `allowSystemInMessages`，因为该历史中的系统消息可能会覆盖这些默认指令。
+</Note>
+
 ### 添加工具输入示例
 
-`addToolInputExamplesMiddleware` 函数向工具描述中添加工具输入示例。这对于那些本身不支持工具上 `inputExamples` 属性的提供商非常有用。该中间件将示例序列化到工具的描述文本中，以便模型仍然可以从查看示例输入中受益。
+`addToolInputExamplesMiddleware` 函数将工具输入示例添加到工具描述中。这对于不支持工具上 `inputExamples` 属性的提供商非常有用。中间件将示例序列化到工具的描述文本中，以便模型仍然可以从查看示例输入中受益。
 
 ```ts
 import { wrapLanguageModel, addToolInputExamplesMiddleware } from 'ai';
@@ -158,48 +180,48 @@ import { wrapLanguageModel, addToolInputExamplesMiddleware } from 'ai';
 const model = wrapLanguageModel({
   model: yourModel,
   middleware: addToolInputExamplesMiddleware({
-    prefix: 'Input Examples:',
+    prefix: '输入示例：',
   }),
 });
 ```
 
-当你使用 `inputExamples` 定义一个工具时，中间件会将其附加到工具的描述中：
+当你使用 `inputExamples` 定义工具时，中间件会将它们追加到工具的描述中：
 
 ```ts
 import { generateText, tool } from 'ai';
 import { z } from 'zod';
 
 const result = await generateText({
-  model, // 来自上面的包装模型
+  model, // 上面的包装模型
   tools: {
     weather: tool({
-      description: 'Get the weather in a location',
+      description: '获取某个地点的天气',
       inputSchema: z.object({
         location: z.string(),
       }),
       inputExamples: [
-        { input: { location: 'San Francisco' } },
-        { input: { location: 'London' } },
+        { input: { location: '旧金山' } },
+        { input: { location: '伦敦' } },
       ],
     }),
   },
-  prompt: 'What is the weather in Tokyo?',
+  prompt: '东京的天气怎么样？',
 });
 ```
 
 工具描述将被转换为：
 
 ```
-Get the weather in a location
+获取某个地点的天气
 
-Input Examples:
-{"location":"San Francisco"}
-{"location":"London"}
+输入示例：
+{"location":"旧金山"}
+{"location":"伦敦"}
 ```
 
 #### 选项
 
-- `prefix`（可选）：在示例之前添加的前缀文本。默认值：`'Input Examples:'`。
+- `prefix`（可选）：在示例之前添加的前缀文本。默认值：`'输入示例：'`。
 - `format`（可选）：每个示例的自定义格式化函数。接收示例对象及其索引。默认值：`JSON.stringify(example.input)`。
 - `remove`（可选）：是否在将示例添加到描述后从工具中移除 `inputExamples` 属性。默认值：`true`。
 
@@ -207,7 +229,7 @@ Input Examples:
 const model = wrapLanguageModel({
   model: yourModel,
   middleware: addToolInputExamplesMiddleware({
-    prefix: 'Input Examples:',
+    prefix: '输入示例：',
     format: (example, index) =>
       `${index + 1}. ${JSON.stringify(example.input)}`,
     remove: true,
@@ -217,27 +239,27 @@ const model = wrapLanguageModel({
 
 ## 社区中间件
 
-AI SDK 提供了一个语言模型中间件规范。社区成员可以开发符合此规范的中间件，使其与 AI SDK 生态系统兼容。
+AI SDK 提供了语言模型中间件规范。社区成员可以开发符合此规范的中间件，使其与 AI SDK 生态系统兼容。
 
 以下是一些你可以探索的社区中间件：
 
 ### 自定义工具调用解析器
 
-[自定义工具调用解析器](https://github.com/minpeter/ai-sdk-tool-call-middleware)中间件将工具调用能力扩展到本身不支持 OpenAI 风格 `tools` 参数的模型。这包括许多缺乏原生函数调用功能的自托管和第三方模型。
+[自定义工具调用解析器](https://github.com/minpeter/ai-sdk-tool-call-middleware)中间件将工具调用能力扩展到不支持 OpenAI 风格 `tools` 参数的模型。这包括许多缺乏原生函数调用功能的自托管和第三方模型。
 
 <Note>
-  在支持原生函数调用的模型上使用此中间件可能会导致意外的性能下降，因此在决定使用前，请检查你的模型是否支持原生函数调用。
+  在支持原生函数调用的模型上使用此中间件可能会导致意外的性能下降，因此在决定使用之前，请检查你的模型是否支持原生函数调用。
 </Note>
 
-此中间件通过将函数模式转换为提示指令，并将模型的响应解析为结构化的函数调用来启用函数调用功能。它的工作原理是将 JSON 函数定义转换为模型可以理解的自然语言指令，然后分析生成的文本以提取函数调用尝试。这种方法允许开发人员在不同的模型提供商之间使用相同的函数调用 API，即使是在本身不支持 OpenAI 风格函数调用格式的模型上，也能提供一致的函数调用体验，无论底层模型实现如何。
+此中间件通过将函数模式转换为提示词指令并将模型的响应解析为结构化函数调用来启用函数调用功能。它的工作原理是将 JSON 函数定义转换为模型可以理解的自然语言指令，然后分析生成的文本以提取函数调用尝试。这种方法允许开发人员在不同的模型提供商之间使用相同的函数调用 API，即使使用不原生支持 OpenAI 风格函数调用格式的模型，也能提供一致的函数调用体验，无论底层模型实现如何。
 
 `@ai-sdk-tool/parser` 包提供了三种中间件变体：
 
-- `createToolMiddleware`：一个灵活的函数，用于创建针对特定模型的自定义工具调用中间件
-- `hermesToolMiddleware`：即用型中间件，适用于 Hermes 和 Qwen 格式的函数调用
-- `gemmaToolMiddleware`：预配置的中间件，适用于 Gemma 3 模型系列的函数调用格式
+- `createToolMiddleware`：用于创建针对特定模型定制的自定义工具调用中间件的灵活函数
+- `hermesToolMiddleware`：适用于 Hermes 和 Qwen 格式函数调用的即用型中间件
+- `gemmaToolMiddleware`：为 Gemma 3 模型系列函数调用格式预配置的中间件
 
-以下是如何在本身不支持函数调用的 Gemma 模型上启用函数调用的方法：
+以下是你如何为不原生支持函数调用的 Gemma 模型启用函数调用：
 
 ```ts
 import { wrapLanguageModel } from 'ai';
@@ -249,17 +271,17 @@ const model = wrapLanguageModel({
 });
 ```
 
-在此[链接](https://github.com/minpeter/ai-sdk-tool-call-middleware/tree/main/examples/core/src)查找更多示例。
+在此[链接](https://github.com/minpeter/ai-sdk-tool-call-middleware/tree/main/examples/core/src)中查找更多示例。
 
 ## 实现语言模型中间件
 
 <Note>
-  实现语言模型中间件属于高级功能，需要扎实理解[语言模型规范](https://github.com/vercel/ai/blob/main/packages/provider/src/language-model/v4/language-model-v4.ts)。
+  实现语言模型中间件是高级功能，需要对[语言模型规范](https://github.com/vercel/ai/blob/main/packages/provider/src/language-model/v4/language-model-v4.ts)有扎实的理解。
 </Note>
 
 你可以实现以下三个函数中的任何一个来修改语言模型的行为：
 
-1. `transformParams`：在参数传递给语言模型之前对其进行转换，适用于 `doGenerate` 和 `doStream`。
+1. `transformParams`：在参数传递给语言模型之前转换参数，适用于 `doGenerate` 和 `doStream`。
 2. `wrapGenerate`：包装[语言模型](https://github.com/vercel/ai/blob/main/packages/provider/src/language-model/v4/language-model-v4.ts)的 `doGenerate` 方法。你可以修改参数、调用语言模型并修改结果。
 3. `wrapStream`：包装[语言模型](https://github.com/vercel/ai/blob/main/packages/provider/src/language-model/v4/language-model-v4.ts)的 `doStream` 方法。你可以修改参数、调用语言模型并修改结果。
 
@@ -273,7 +295,7 @@ const model = wrapLanguageModel({
 
 ### 日志记录
 
-此示例展示了如何记录语言模型调用的参数和生成的文本。
+此示例展示如何记录语言模型调用的参数和生成的文本。
 
 ```ts
 import type {
@@ -351,7 +373,7 @@ export const yourLogMiddleware: LanguageModelV4Middleware = {
 
 ### 缓存
 
-此示例展示了如何为语言模型调用生成的文本构建一个简单的缓存。
+此示例展示如何为语言模型调用生成的文本构建一个简单的缓存。
 
 ```ts
 import type { LanguageModelV4Middleware } from '@ai-sdk/provider';
@@ -373,13 +395,13 @@ export const yourCacheMiddleware: LanguageModelV4Middleware = {
     return result;
   },
 
-  // 在此处实现流式传输的缓存逻辑
+  // 在这里你将实现流式传输的缓存逻辑
 };
 ```
 
-### 检索增强生成 (RAG)
+### 检索增强生成（RAG）
 
-此示例展示了如何将 RAG 用作中间件。
+此示例展示如何将 RAG 用作中间件。
 
 <Note>
   像 `getLastUserMessageText` 和 `findSources` 这样的辅助函数不属于 AI SDK。它们仅在此示例中用于说明 RAG 的概念。
@@ -399,7 +421,7 @@ export const yourRagMiddleware: LanguageModelV4Middleware = {
     }
 
     const instruction =
-      'Use the following information to answer the question:\n' +
+      '使用以下信息回答问题：\n' +
       findSources({ text: lastUserMessageText })
         .map(chunk => JSON.stringify(chunk))
         .join('\n');
@@ -409,9 +431,9 @@ export const yourRagMiddleware: LanguageModelV4Middleware = {
 };
 ```
 
-### 防护栏
+### 护栏
 
-防护栏是一种确保语言模型调用生成的文本安全且适当的方式。此示例展示了如何将防护栏用作中间件。
+护栏是确保语言模型调用生成的文本安全且适当的一种方式。此示例展示如何将护栏用作中间件。
 
 ```ts
 import type { LanguageModelV4Middleware } from '@ai-sdk/provider';
@@ -430,15 +452,15 @@ export const yourGuardrailMiddleware: LanguageModelV4Middleware = {
     return { ...result, content };
   },
 
-  // 在此处实现流式传输的防护栏逻辑
-  // 注意：流式传输的防护栏难以实现，因为
-  // 在流完成之前你不知道流的完整内容。
+  // 在这里你将实现流式传输的护栏逻辑
+  // 注意：流式传输护栏难以实现，因为
+  // 在流结束之前你不知道流的完整内容。
 };
 ```
 
 ## 配置每请求自定义元数据
 
-为了在中间件中发送和访问自定义元数据，你可以使用 `providerOptions`。这在构建日志记录中间件时非常有用，因为你希望传递额外的上下文，如用户 ID、时间戳或其他有助于跟踪和调试的上下文数据。
+要在中间件中发送和访问自定义元数据，你可以使用 `providerOptions`。这在构建日志记录中间件时非常有用，因为你希望传递额外的上下文，如用户 ID、时间戳或其他有助于跟踪和调试的上下文数据。
 
 ```ts
 import { generateText, wrapLanguageModel } from 'ai';
@@ -458,7 +480,7 @@ const { text } = await generateText({
     model: __MODEL__,
     middleware: yourLogMiddleware,
   }),
-  prompt: 'Invent a new holiday and describe its traditions.',
+  prompt: '发明一个新的节日并描述其传统。',
   providerOptions: {
     yourLogMiddleware: {
       hello: 'world',

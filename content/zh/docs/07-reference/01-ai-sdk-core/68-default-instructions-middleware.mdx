@@ -1,0 +1,98 @@
+---
+title: "defaultInstructionsMiddleware"
+description: "将默认指令应用于语言模型调用的中间件"
+---
+
+# `defaultInstructionsMiddleware()`
+
+`defaultInstructionsMiddleware` 将默认指令应用于尚未包含系统消息的语言模型调用。这对于配置可复用的模型行为非常有用，同时允许调用级别的 `instructions` 优先。
+
+## 导入
+
+<Snippet
+  text={`import { defaultInstructionsMiddleware } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+```ts
+function defaultInstructionsMiddleware(options: {
+  instructions: Instructions;
+}): LanguageModelMiddleware;
+```
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'instructions',
+      type: 'string | SystemModelMessage | Array<SystemModelMessage>',
+      isOptional: false,
+      description:
+        '当调用尚未包含系统消息时，要前置的默认指令。',
+    },
+  ]}
+/>
+
+### 返回值
+
+返回一个
+[LanguageModelMiddleware](/docs/ai-sdk-core/middleware)，其行为如下：
+
+- 为没有系统消息的调用前置配置的指令。
+- 保留指令级别的 `providerOptions`。
+- 保持包含任何系统消息的调用不变，因此调用级别的指令优先。
+- 同时适用于非流式传输和流式传输的语言模型调用。
+
+## 使用示例
+
+```ts
+import {
+  defaultInstructionsMiddleware,
+  generateText,
+  wrapLanguageModel,
+} from 'ai';
+
+const model = wrapLanguageModel({
+  model: __MODEL__,
+  middleware: defaultInstructionsMiddleware({
+    instructions: 'You are a concise technical assistant.',
+  }),
+});
+
+const defaultResult = await generateText({
+  model,
+  prompt: 'Explain HTTP caching.',
+});
+
+const overriddenResult = await generateText({
+  model,
+  instructions: 'Explain concepts for a complete beginner.',
+  prompt: 'Explain HTTP caching.',
+});
+```
+
+你可以通过使用 `SystemModelMessage` 将提供商选项附加到默认指令：
+
+```ts
+const model = wrapLanguageModel({
+  model: __MODEL__,
+  middleware: defaultInstructionsMiddleware({
+    instructions: {
+      role: 'system',
+      content: 'You are a concise technical assistant.',
+      providerOptions: {
+        anthropic: {
+          cacheControl: { type: 'ephemeral' },
+        },
+      },
+    },
+  }),
+});
+```
+
+<Note>
+  此中间件提供默认值，而非强制指令。规范化提示词中的任何系统消息都会抑制默认值。仅对可信的消息历史使用 `allowSystemInMessages`，因为不可信的系统消息可能会覆盖配置的默认值。
+</Note>
