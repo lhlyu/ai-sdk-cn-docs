@@ -5,23 +5,23 @@ description: "在 generateText、streamText、embed、embedMany 和 rerank 调�
 
 # 生命周期回调
 
-事件回调允许您在 AI SDK 调用的关键节点运行自己的代码。
-您可以直接将它们附加到 `generateText`、`streamText`、`embed`、`embedMany` 和 `rerank` 调用上，以观察发生了什么、记录使用情况、调试多步骤生成以及监控工具执行。
+事件回调让你可以在 AI SDK 调用的关键节点运行自己的代码。
+你可以直接将它们附加到 `generateText`、`streamText`、`embed`、`embedMany` 和 `rerank` 调用上，以观察发生了什么、记录用量、调试多步骤生成，并监控工具执行。
 
-当您希望在调用位置附近实现特定于应用程序的逻辑时，它们尤其有用：
+当你希望在调用位置附近实现特定于应用的逻辑时，它们尤其有用：
 
 - 记录请求使用了哪个模型、提示词结构和设置。
-- 记录令牌使用量、延迟、完成原因和警告，用于分析或计费。
-- 了解多步骤工具调用如何从模型响应到工具执行再到最终答案。
+- 记录令牌用量、延迟、结束原因和警告，用于分析或计费。
+- 理解多步骤工具调用如何从模型响应到工具执行再到最终答案。
 - 跟踪工具输入、工具输出、执行时间和错误。
-- 通过 `runtimeContext` 和 `toolsContext` 附加您自己的请求、用户、租户或工作流标识符。
+- 通过 `runtimeContext` 和 `toolsContext` 附加你自己的请求、用户、租户或工作流标识符。
 
-如需在应用程序中自动进行 OpenTelemetry 检测，请使用 [遥测](/docs/ai-sdk-core/telemetry)。
-当您想为特定的 AI SDK 调用运行自定义代码时，请使用事件回调。
+如需在整个应用中自动进行 OpenTelemetry 检测，请使用 [遥测](/docs/ai-sdk-core/telemetry)。
+当你希望为特定的 AI SDK 调用运行自定义代码时，请使用事件回调。
 
 ## 基本用法
 
-将回调作为选项传递给您正在调用的 AI SDK 函数：
+将回调作为选项传递给正在调用的 AI SDK 函数：
 
 ```tsx highlight="8-18"
 import { generateText } from 'ai';
@@ -45,15 +45,15 @@ const result = await generateText({
 });
 ```
 
-回调可以是同步的，也可以是异步的。如果回调抛出异常，错误会在内部被捕获，AI SDK 调用会继续执行。
-由于回调作为生命周期的一部分运行，请保持它们快速运行，或将耗时的工作排入后台系统。
+回调可以是同步的，也可以是异步的。如果回调抛出错误，该错误会在内部被捕获，AI SDK 调用会继续执行。
+由于回调是生命周期的一部分，请保持它们快速执行，或将耗时操作放入后台系统处理。
 
 ## 使用场景
 
 ### 请求日志记录
 
-使用 `onStart` 和 `onEnd` 记录调用开始和结束时的应用程序日志。
-`callId` 在所有生命周期事件中均可用，因此您可以关联来自同一请求的日志。
+使用 `onStart` 和 `onEnd` 为调用的开始和结束各记录一条应用日志。
+`callId` 在生命周期事件中均可用，因此你可以关联来自同一请求的日志。
 
 ```tsx highlight="8-23"
 import { generateText } from 'ai';
@@ -82,12 +82,12 @@ const result = await generateText({
 });
 ```
 
-这种模式非常适合审计日志、内部仪表板以及跟踪特定功能的使用情况。
+这种模式非常适合审计日志、内部仪表板，以及跟踪特定功能的用量。
 
 ### 衡量模型性能
 
 `onLanguageModelCallEnd` 在提供商响应被规范化并解析后运行。
-对于 `streamText`，该事件还包括流式传输特有的计时数据，例如首次输出时间和输出块之间的间隔。
+对于 `streamText`，该事件还包含流式传输特有的计时数据，例如首次输出时间和输出块之间的间隔。
 
 ```tsx highlight="8-19"
 import { streamText } from 'ai';
@@ -97,7 +97,13 @@ const result = streamText({
   model: __MODEL__,
   prompt: 'Explain partial prerendering in two paragraphs.',
 
-  onLanguageModelCallEnd({ callId, modelId, usage, performance }) {
+  onLanguageModelCallEnd({
+    callId,
+    modelId,
+    usage,
+    performance,
+    providerMetadata,
+  }) {
     metrics.histogram('ai.model.response_time_ms', performance.responseTimeMs, {
       callId,
       modelId,
@@ -108,6 +114,11 @@ const result = streamText({
       total: performance.effectiveTotalTokensPerSecond,
       tokens: usage.totalTokens,
     });
+
+    logger.info('ai.model.provider_metadata', {
+      callId,
+      providerMetadata,
+    });
   },
 });
 
@@ -116,13 +127,13 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-当您想专门衡量提供商的工作时，请使用模型调用事件。
-当您想要包含 SDK 管理工作（如本地工具执行）的计时时，请使用步骤事件。
+当你想要专门衡量提供商的工作时，请使用模型调用事件。
+当你想要包含 SDK 管理工作（如本地工具执行）的计时时，请使用步骤事件。
 
 ### 调试多步骤工具调用
 
-当您将工具与 `generateText` 或 `streamText` 一起使用时，单个用户请求可能涉及多个模型调用。
-每个模型调用都是一个步骤。模型可能在一个步骤中调用工具，接收工具结果，然后在下一步中生成最终答案。
+当你将工具与 `generateText` 或 `streamText` 一起使用时，单个用户请求可能涉及多次模型调用。
+每次模型调用就是一个步骤。模型可能在一个步骤中调用工具，接收工具结果，然后在下一步骤中生成最终答案。
 
 ```tsx highlight="17-31"
 import { generateText, isStepCount, tool } from 'ai';
@@ -161,8 +172,8 @@ const result = await generateText({
 
 这有助于回答以下问题：
 
-- 模型是调用了工具还是直接回答？
-- 请求经历了多少个步骤？
+- 模型是调用了工具还是直接回答了？
+- 请求经历了多少步骤？
 - 哪个步骤使用了最多的令牌？
 - 时间花在了模型响应上还是本地工具执行上？
 
@@ -216,7 +227,7 @@ const result = await generateText({
 ### 观察嵌入和重排序
 
 嵌入和重排序回调更简单：它们在操作周围暴露 `onStart` 和 `onEnd`。
-这对于检索管道非常有用，您可以在其中了解嵌入的频率、嵌入的值数量以及重排序如何改变结果集。
+这对于检索管道非常有用，你可以了解嵌入的频率、嵌入的值的数量，以及重排序如何改变结果集。
 
 ```tsx highlight="10-24,32-37"
 import { embedMany, rerank } from 'ai';
@@ -286,12 +297,12 @@ const { ranking } = await rerank({
 
 `onStepStart` 和 `onStepEnd` 描述完整的步骤。
 `onLanguageModelCallStart` 和 `onLanguageModelCallEnd` 仅描述该步骤内的模型调用。
-当步骤包含本地工具执行时，这种区别很重要：步骤持续时间可能比模型响应持续时间更长。
+当步骤包含本地工具执行时，这种区别很重要：步骤的持续时间可能比模型响应的持续时间更长。
 
 ## 运行时和工具上下文
 
-生命周期回调接收贯穿调用的完整 `runtimeContext` 和 `toolsContext` 值。
-这使得回调对于附加应用程序上下文而无需更改提示词或工具输入非常有用。
+生命周期回调会接收流经调用的完整 `runtimeContext` 和 `toolsContext` 值。
+这使得回调在附加应用上下文时非常有用，而无需更改提示词或工具输入。
 
 ```tsx highlight="8-24,26-39"
 import { generateText, tool } from 'ai';
@@ -337,8 +348,7 @@ const result = await generateText({
 ```
 
 <Note>
-  遥测集成可以在导出前过滤 `runtimeContext` 和 `toolsContext`。
-  生命周期回调接收完整的上下文对象。请注意不要从回调中记录机密或敏感的用户数据。
+  遥测集成可以在导出前过滤 `runtimeContext` 和 `toolsContext`。生命周期回调会接收完整的上下文对象。注意不要从回调中记录机密或敏感的用户数据。
 </Note>
 
 ## 可用回调
@@ -357,13 +367,13 @@ const result = await generateText({
       name: 'onStepStart',
       type: '(event: GenerateTextStepStartEvent) => void | Promise<void>',
       description:
-        '在每个生成步骤之前调用。每个步骤代表一次模型调用以及围绕它的任何 SDK 管理工作。',
+        '在每个生成步骤之前调用。每个步骤代表一次模型调用及其周围的 SDK 管理工作。',
     },
     {
       name: 'onLanguageModelCallStart',
       type: '(event: LanguageModelCallStartEvent) => void | Promise<void>',
       description:
-        '在提供商模型调用开始之前立即调用。仅限定于模型工作。',
+        '在提供商模型调用开始前立即调用。仅限定于模型工作。',
     },
     {
       name: 'onLanguageModelCallEnd',
@@ -386,13 +396,13 @@ const result = await generateText({
       name: 'onStepEnd',
       type: '(event: GenerateTextStepEndEvent) => void | Promise<void>',
       description:
-        '在每个生成步骤完成后调用。接收步骤结果，包括使用情况和性能。',
+        '在每个生成步骤完成后调用。接收步骤结果，包括用量和性能。',
     },
     {
       name: 'onEnd',
       type: '(event: GenerateTextEndEvent) => void | Promise<void>',
       description:
-        '在整个生成完成时调用一次。接收最终输出和所有步骤的汇总使用情况。',
+        '在完整生成完成时调用一次。接收最终输出和所有步骤的汇总用量。',
     },
   ]}
 />
@@ -439,7 +449,7 @@ const result = await generateText({
 
 ## 事件数据参考
 
-确切的事件数据取决于回调。下表总结了您最常使用的字段。
+确切的事件数据取决于回调。下表总结了你最常使用的字段。
 
 ### 文本生成事件
 
@@ -457,7 +467,8 @@ const result = await generateText({
     {
       name: 'operationId',
       type: 'string',
-      description: "操作类型，例如 'ai.generateText' 或 'ai.streamText'。",
+      description:
+        "操作类型，例如 'ai.generateText' 或 'ai.streamText'。",
     },
     {
       name: 'provider',
@@ -492,7 +503,7 @@ const result = await generateText({
     {
       name: 'activeTools',
       type: 'ActiveTools<TOOLS>',
-      description: '限制模型可以调用的工具。',
+      description: '限制模型可调用的工具。',
     },
     {
       name: 'maxRetries',
@@ -522,7 +533,7 @@ const result = await generateText({
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
-      description: '通过 `toolsContext` 传递的每个工具上下文映射。',
+      description: '通过 `toolsContext` 传递的按工具上下文映射。',
     },
   ]}
 />
@@ -556,7 +567,7 @@ const result = await generateText({
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
-      description: '将为此步骤发送给模型的消息。',
+      description: '将在此步骤中发送给模型的消息。',
     },
     {
       name: 'tools',
@@ -571,7 +582,7 @@ const result = await generateText({
     {
       name: 'steps',
       type: 'ReadonlyArray<StepResult>',
-      description: '先前步骤的结果。对于第一步为空。',
+      description: '先前步骤的结果。第一步为空。',
     },
     {
       name: 'providerOptions',
@@ -582,20 +593,20 @@ const result = await generateText({
       name: 'runtimeContext',
       type: 'CONTEXT',
       description:
-        '此步骤的运行时上下文。可能在步骤之间从 `prepareStep` 更新。',
+        '此步骤的运行时上下文。可能在步骤之间由 `prepareStep` 更新。',
     },
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
       description:
-        '此步骤的每个工具上下文映射。可能在步骤之间从 `prepareStep` 更新。',
+        '此步骤的按工具上下文映射。可能在步骤之间由 `prepareStep` 更新。',
     },
   ]}
 />
 
 #### onLanguageModelCallStart
 
-在提供商模型调用开始之前立即调用。
+在提供商模型调用开始前立即调用。
 
 <PropertiesTable
   content={[
@@ -651,7 +662,7 @@ const result = await generateText({
     {
       name: 'modelId',
       type: 'string',
-      description: '此模型调用的提供商返回的模型标识符。',
+      description: '提供商返回的此模型调用的模型标识符。',
     },
     {
       name: 'finishReason',
@@ -661,7 +672,7 @@ const result = await generateText({
     {
       name: 'usage',
       type: 'LanguageModelUsage',
-      description: '模型调用报告的令牌使用情况。',
+      description: '模型调用报告的令牌用量。',
     },
     {
       name: 'content',
@@ -671,13 +682,19 @@ const result = await generateText({
     {
       name: 'responseId',
       type: 'string',
-      description: '此模型调用的提供商返回的响应 ID。',
+      description: '提供商返回的此模型调用的响应 ID。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      description:
+        '提供商返回的此模型调用的提供商特定元数据（如果有）。',
     },
     {
       name: 'performance',
       type: 'LanguageModelCallPerformance',
       description:
-        '计时和吞吐量指标，包括响应时间、每秒令牌数以及可用的流式传输计时。',
+        '计时和吞吐量指标，包括响应时间、每秒令牌数，以及可用时的流式传输计时。',
     },
   ]}
 />
@@ -749,14 +766,14 @@ const result = await generateText({
       name: 'toolOutput',
       type: "{ type: 'tool-result'; output: unknown } | { type: 'tool-error'; error: unknown }",
       description:
-        '可判别联合，表示成功的工具结果或工具错误。',
+        '表示成功工具结果或工具错误的可判别联合。',
     },
   ]}
 />
 
 #### onStepEnd
 
-在每个步骤完成后调用。该事件是该步骤的完整 `StepResult`。
+在每个步骤完成后调用。事件是该步骤的完整 `StepResult`。
 
 <PropertiesTable
   content={[
@@ -778,12 +795,12 @@ const result = await generateText({
     {
       name: 'content',
       type: 'Array<ContentPart>',
-      description: '此步骤生成的内容。',
+      description: '此步骤中生成的内容。',
     },
     {
       name: 'text',
       type: 'string',
-      description: '此步骤生成的文本。',
+      description: '此步骤中生成的文本。',
     },
     {
       name: 'toolCalls',
@@ -803,7 +820,7 @@ const result = await generateText({
     {
       name: 'usage',
       type: 'LanguageModelUsage',
-      description: '此步骤的令牌使用情况。',
+      description: '此步骤的令牌用量。',
     },
     {
       name: 'performance',
@@ -826,7 +843,7 @@ const result = await generateText({
       name: 'response',
       type: 'LanguageModelResponseMetadata',
       description:
-        '响应元数据，包括响应头、响应体和消息（如果包含）。',
+        '响应元数据，包括响应头、响应体和响应消息（如果包含）。',
     },
     {
       name: 'runtimeContext',
@@ -836,14 +853,14 @@ const result = await generateText({
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
-      description: '此步骤的每个工具上下文映射。',
+      description: '此步骤的按工具上下文映射。',
     },
   ]}
 />
 
 #### onEnd
 
-在整个生成完成时调用一次。
+在完整生成完成时调用一次。
 
 <PropertiesTable
   content={[
@@ -860,7 +877,7 @@ const result = await generateText({
     {
       name: 'finalStep',
       type: 'StepResult',
-      description: '最后一步。这是 `steps.at(-1)` 的快捷方式。',
+      description: '最终步骤。这是 `steps.at(-1)` 的快捷方式。',
     },
     {
       name: 'responseMessages',
@@ -875,7 +892,7 @@ const result = await generateText({
     {
       name: 'text',
       type: 'string',
-      description: '最后一步生成的文本。',
+      description: '最终步骤中生成的文本。',
     },
     {
       name: 'toolCalls',
@@ -890,12 +907,12 @@ const result = await generateText({
     {
       name: 'finishReason',
       type: 'FinishReason',
-      description: '最后一步结束的统一原因。',
+      description: '最终步骤结束的统一原因。',
     },
     {
       name: 'usage',
       type: 'LanguageModelUsage',
-      description: '跨所有步骤的汇总令牌使用情况。',
+      description: '跨所有步骤的汇总令牌用量。',
     },
     {
       name: 'warnings',
@@ -938,7 +955,7 @@ const result = await generateText({
     {
       name: 'value',
       type: 'string | Array<string>',
-      description: '正在嵌入的值。',
+      description: '正在嵌入的值或值数组。',
     },
     {
       name: 'maxRetries',
@@ -985,17 +1002,17 @@ const result = await generateText({
     {
       name: 'value',
       type: 'string | Array<string>',
-      description: '已嵌入的值。',
+      description: '已嵌入的值或值数组。',
     },
     {
       name: 'embedding',
       type: 'Embedding | Array<Embedding>',
-      description: '生成的嵌入。',
+      description: '生成的嵌入或嵌入数组。',
     },
     {
       name: 'usage',
       type: 'EmbeddingModelUsage',
-      description: '嵌入操作的令牌使用情况。',
+      description: '嵌入操作的令牌用量。',
     },
     {
       name: 'warnings',
@@ -1107,7 +1124,7 @@ const result = await generateText({
     {
       name: 'query',
       type: 'string',
-      description: '用于对文档进行重排序的查询。',
+      description: '文档被重排序所依据的查询。',
     },
     {
       name: 'ranking',
