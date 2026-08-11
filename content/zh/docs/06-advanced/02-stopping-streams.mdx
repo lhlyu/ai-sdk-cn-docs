@@ -1,20 +1,20 @@
 ---
-title: 停止流式传输
-description: 了解如何使用 AI SDK 取消流式传输
+title: "停止流式传输"
+description: "了解如何使用 AI SDK 取消流式传输"
 ---
 
 # 停止流式传输
 
-取消正在进行的流式传输是常见需求。
-例如，当用户发现响应不符合预期时，可能希望停止流式传输。
+取消正在进行的流式传输通常是必要的。
+例如，当用户意识到响应不是他们想要的内容时，可能希望停止流式传输。
 
-AI SDK 的不同部分支持以不同方式取消流式传输。
+AI SDK 的不同部分以不同方式支持取消流式传输。
 
 ## AI SDK Core
 
-AI SDK 函数提供了 `abortSignal` 参数，可用于取消流式传输。
-当你希望从服务器端向 LLM API 取消流式传输时，可以使用此功能，例如
-通过转发请求中的 `abortSignal`。
+AI SDK 函数具有 `abortSignal` 参数，可用于取消流式传输。
+如果您想从服务器端取消到 LLM API 的流式传输，可以使用此参数，例如通过
+从请求中转发 `abortSignal`。
 
 ```tsx highlight="10,11,12-16"
 import { createTextStreamResponse, streamText, toTextStream } from 'ai';
@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     // 转发中止信号：
     abortSignal: req.signal,
     onAbort: ({ steps }) => {
-      // 处理流式传输中止时的清理工作
-      console.log('流式传输在', steps.length, '个步骤后中止');
+      // 当流被中止时处理清理工作
+      console.log('流在', steps.length, '个步骤后被中止');
       // 将部分结果持久化到数据库
     },
   });
@@ -43,11 +43,11 @@ export async function POST(req: Request) {
 
 ## AI SDK UI
 
-这些 Hook（例如 `useChat` 或 `useCompletion`）提供了 `stop` 辅助函数，可用于取消流式传输。
-这将从客户端向服务器取消流式传输。
+Hook，例如 `useChat` 或 `useCompletion`，提供了 `stop` 辅助函数，可用于取消流式传输。
+这会中止来自客户端的 HTTP 请求。要同时停止服务器上的模型请求，您的服务器运行时必须将客户端断开传播到请求的 `AbortSignal`，并且您的路由必须将该信号转发给 AI SDK Core 调用，如上所示。
 
 <Note type="warning">
-  流式传输中止功能与流式传输恢复不兼容。如果你在 `useChat` 中使用了 `resume: true`，中止功能会破坏恢复机制。请选择中止或恢复功能，但不要同时使用两者。
+  流中止功能与流恢复不兼容。如果您在 `useChat` 中使用 `resume: true`，中止功能将破坏恢复机制。请选择中止或恢复功能，但不要同时使用两者。
 </Note>
 
 ```tsx file="app/page.tsx" highlight="6,11-14"
@@ -75,14 +75,34 @@ export default function Chat() {
 }
 ```
 
-## 处理流式传输中止清理
+### Vercel
 
-当流式传输被中止时，你可能需要执行清理操作，例如持久化部分结果或清理资源。`onAbort` 回调提供了一种在服务器端处理这些场景的方法。
+在 Vercel 上，[请求取消](https://vercel.com/docs/functions/functions-api-reference#cancel-requests) 仅在 Node.js 运行时中受支持，并且必须为每个需要它的函数启用。在 `vercel.json` 的函数配置中添加 `supportsCancellation`：
 
-与在流式传输正常完成时调用的 `onEnd` 不同，`onAbort` 专门在通过 `AbortSignal` 中止流式传输时调用。这种区别允许你以不同方式处理正常完成和中止的流式传输。
+```json filename="vercel.json"
+{
+  "functions": {
+    "app/api/chat/route.ts": {
+      "supportsCancellation": true
+    }
+  }
+}
+```
+
+启用取消功能后，调用 `stop()` 会中止客户端请求，Vercel 会中止 `req.signal`，将 `req.signal` 作为 `abortSignal` 转发会取消模型请求。
+
+<Note type="warning">
+  如果没有 `supportsCancellation`，`stop()` 仍会停止客户端流，但服务器端的生成可能会继续。
+</Note>
+
+## 处理流中止清理
+
+当流被中止时，您可能需要进行清理操作，例如持久化部分结果或清理资源。`onAbort` 回调提供了一种在服务器端处理这些场景的方法。
+
+与在流正常完成时调用的 `onEnd` 不同，`onAbort` 专门在通过 `AbortSignal` 中止流时调用。这种区别允许您以不同方式处理正常完成和中止的流。
 
 <Note>
-  对于 UI 消息流（`toUIMessageStreamResponse`），`onEnd` 回调还会接收一个 `isAborted` 参数，指示流式传输是否被中止。这允许你在单个回调中处理完成和中止场景。
+  对于 UI 消息流（`toUIMessageStreamResponse`），`onEnd` 回调还会接收一个 `isAborted` 参数，指示流是否被中止。这允许您在单个回调中处理完成和中止两种场景。
 </Note>
 
 ```tsx highlight="8-12"
@@ -91,15 +111,15 @@ __PROVIDER_IMPORT__;
 
 const result = streamText({
   model: __MODEL__,
-  prompt: '写一个长故事...',
+  prompt: '写一个长篇故事...',
   abortSignal: controller.signal,
   onAbort: ({ steps }) => {
-    // 当流式传输被中止时调用 - 持久化部分结果
+    // 当流被中止时调用 - 持久化部分结果
     await savePartialResults(steps);
     await logAbortEvent(steps.length);
   },
   onEnd: ({ steps, totalUsage }) => {
-    // 当流式传输正常完成时调用
+    // 当流正常完成时调用
     await saveFinalResults(steps, totalUsage);
   },
 });
@@ -112,11 +132,11 @@ const result = streamText({
 这对于以下场景特别有用：
 
 - 将部分对话历史持久化到数据库
-- 保存部分进度以便后续继续
+- 保存部分进度以供后续继续
 - 清理服务器端资源或连接
-- 记录中止事件用于分析
+- 记录中止事件以用于分析
 
-你也可以直接在流式传输中使用 `abort` 流部分来处理中止事件：
+您还可以使用 `abort` 流部分直接在流中处理中止事件：
 
 ```tsx highlight="6-9"
 for await (const part of result.stream) {
@@ -126,7 +146,7 @@ for await (const part of result.stream) {
       break;
     case 'abort':
       // 直接在流中处理中止事件
-      console.log('流式传输已被中止');
+      console.log('流已被中止');
       break;
     // ... 其他情况
   }
@@ -135,7 +155,7 @@ for await (const part of result.stream) {
 
 ## UI 消息流
 
-使用 `toUIMessageStream` 时，你需要以略微不同的方式处理流式传输中止。`onEnd` 回调会接收一个 `isAborted` 参数，并且你应该将 `consumeStream` 传递给 `createUIMessageStreamResponse`，以确保正确处理中止：
+使用 `toUIMessageStream` 时，您需要以略微不同的方式处理流中止。`onEnd` 回调接收 `isAborted` 参数，您应该将 `consumeStream` 传递给 `createUIMessageStreamResponse` 以确保正确处理中止：
 
 ```tsx highlight="3,21,24-30,34"
 import { openai } from '@ai-sdk/openai';
@@ -163,10 +183,10 @@ export async function POST(req: Request) {
       stream: result.stream,
       onEnd: async ({ isAborted }) => {
         if (isAborted) {
-          console.log('流式传输已被中止');
+          console.log('流已被中止');
           // 处理中止特定的清理
         } else {
-          console.log('流式传输正常完成');
+          console.log('流正常完成');
           // 处理正常完成
         }
       },
@@ -176,7 +196,7 @@ export async function POST(req: Request) {
 }
 ```
 
-`consumeStream` 函数对于 UI 消息流中正确处理中止是必要的。它确保即使在中止时也能正确消费流，防止潜在的内存泄漏或连接挂起。
+`consumeStream` 函数对于 UI 消息流中正确处理中止是必要的。它确保即使在中止时流也能被正确消费，防止潜在的内存泄漏或挂起的连接。
 
 ## AI SDK RSC
 

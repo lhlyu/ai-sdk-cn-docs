@@ -9,7 +9,7 @@ description: "了解如何将 Moonshot AI 模型与 AI SDK 结合使用。"
 
 API 密钥可以从 [Moonshot 平台](https://platform.moonshot.ai) 获取。
 
-## 设置
+## 安装
 
 Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。您可以使用以下命令安装：
 
@@ -17,7 +17,7 @@ Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。您可以使�
 
 ## 提供商实例
 
-您可以从 `@ai-sdk/moonshotai` 导入默认的提供商实例 `moonshotai`：
+您可以从 `@ai-sdk/moonshotai` 导入默认提供商实例 `moonshotai`：
 
 ```ts
 import { moonshotai } from '@ai-sdk/moonshotai';
@@ -42,7 +42,7 @@ const moonshotai = createMoonshotAI({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认值为
+  通过 `Authorization` 标头发送的 API 密钥。默认为
   `MOONSHOT_API_KEY` 环境变量
 
 - **headers** _Record&lt;string,string&gt;_
@@ -63,7 +63,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: moonshotai('kimi-k3'),
-  prompt: '写一份供4人食用的素食千层面食谱。',
+  prompt: '写一份适合 4 人的素食千层面食谱。',
 });
 ```
 
@@ -82,13 +82,13 @@ Moonshot AI 语言模型可用于 `streamText` 函数
 
 对于模型 ID 以 `kimi-` 开头的 Moonshot 模型，原生结构化输出已启用。
 
-对于其他 Moonshot 模型，对象生成会回退到 JSON 模式，而不是模式约束解码。
+对于其他 Moonshot 模型，对象生成将回退到 JSON 模式，而不是受模式约束的解码。
 
 为了获得最佳可靠性，强烈建议在提示词中包含您的模式要求，同时通过 `Output` 传递模式。
 
 ### 推理模型
 
-Kimi K3 始终进行推理。它目前仅支持 `max` 推理努力，
+Kimi K3 始终进行推理。它目前仅支持 `max` 推理强度，
 您可以通过提供商选项进行配置：
 
 ```ts
@@ -105,14 +105,14 @@ const { text, reasoningText } = await generateText({
       reasoningEffort: 'max',
     } satisfies MoonshotAILanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  prompt: '单词 "strawberry" 中有多少个 "r"？',
 });
 
 console.log(reasoningText);
 console.log(text);
 ```
 
-Moonshot AI 提供思考模型，例如 `kimi-k2-thinking`，这些模型在生成最终响应之前会生成中间推理 token。推理输出通过标准的 AI SDK 推理部分进行流式传输。
+Moonshot AI 提供思考模型，如 `kimi-k2-thinking`，这些模型在最终响应之前生成中间推理令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
 
 ```ts
 import {
@@ -129,7 +129,7 @@ const { text, reasoningText } = await generateText({
       reasoningHistory: 'interleaved',
     } satisfies MoonshotAILanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  prompt: '单词 "strawberry" 中有多少个 "r"？',
 });
 
 console.log(reasoningText);
@@ -138,48 +138,92 @@ console.log(text);
 
 有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
+### 视频输入
+
+Kimi K3、Kimi K2.7 Code、Kimi K2.6 和 Kimi K2.5 支持视频输入。将视频作为带有视频媒体类型的 `file` 内容部分传递：
+
+```ts
+import { moonshotai } from '@ai-sdk/moonshotai';
+import { generateText } from 'ai';
+import fs from 'node:fs';
+
+const { text } = await generateText({
+  model: moonshotai('kimi-k3'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '总结这个视频中发生的事情。' },
+        {
+          type: 'file',
+          data: fs.readFileSync('./video.mp4'),
+          mediaType: 'video/mp4',
+        },
+      ],
+    },
+  ],
+});
+
+console.log(text);
+```
+
+您也可以传递 URL。由于 Moonshot AI 不获取外部 URL，AI SDK 会下载视频并在发送前将其内联为 base64：
+
+```ts
+{
+  type: 'file',
+  data: new URL('https://example.com/video.mp4'),
+  mediaType: 'video/mp4',
+}
+```
+
+<Note>
+  Moonshot AI 建议视频分辨率不超过 1080p。对于较大的视频，或您需要在多个请求中重复使用的视频，请改用 [Moonshot 文件 API](https://platform.moonshot.ai/docs/api/files) 上传。Moonshot AI 聊天补全不支持音频和 PDF 输入。
+</Note>
+
 ### 提供商选项
 
-Moonshot AI 语言模型提供以下可选提供商选项：
+以下可选的提供商选项可用于 Moonshot AI 语言模型：
 
 - **reasoningEffort** _'max'_
 
-  Kimi K3 的推理努力。目前仅支持 `'max'`。
+  Kimi K3 的推理强度。目前仅支持 `'max'`。
 
 - **thinking** _object_
 
-  用于思考/推理模型（如 Kimi K2 Thinking）的配置。
+  针对思考/推理模型（如 Kimi K2 Thinking）的配置。
   - **type** _'enabled' | 'disabled'_
 
     是否启用思考模式
 
   - **budgetTokens** _number_
 
-    思考的最大 token 数（最小 1024）
+    思考的最大令牌数（最小 1024）
 
 - **reasoningHistory** _'disabled' | 'interleaved' | 'preserved'_
 
   控制多轮对话中推理历史的处理方式：
   - `'disabled'`：从历史记录中移除推理
   - `'interleaved'`：在单轮对话中的工具调用之间包含推理
-  - `'preserved'`：保留历史记录中的所有推理
+  - `'preserved'`：在历史记录中保留所有推理。映射到 Moonshot 的
+    `thinking.keep: 'all'` 请求字段。
 
 ## 模型能力
 
-| 模型                       | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
-| -------------------------- | -------- | -------- | -------- | ------------ |
-| `moonshot-v1-8k`           | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `moonshot-v1-32k`          | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `moonshot-v1-128k`         | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `kimi-k2`                  | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `kimi-k2.5`                | <Check /> | <Check /> | <Check /> | <Check />    |
-| `kimi-k2-thinking`         | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `kimi-k2-thinking-turbo`   | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `kimi-k2-turbo`            | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `kimi-k3`                  | <Check /> | <Check /> | <Check /> | <Check />    |
+| 模型                      | 图像输入 | 视频输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| ------------------------ | ----------- | ----------- | ----------------- | ---------- | -------------- |
+| `moonshot-v1-8k`         | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `moonshot-v1-32k`        | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `moonshot-v1-128k`       | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2`                | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2.5`              | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2-thinking`       | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2-thinking-turbo` | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2-turbo`          | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2.6`              | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k2.7-code`         | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
+| `kimi-k3`                | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
 
 <Note>
-  请参阅 [Moonshot AI 文档](https://platform.moonshot.ai/docs/intro) 以获取
-  可用模型的完整列表。如果需要，您也可以将任何可用的提供商
-  模型 ID 作为字符串传递。
+  请参阅 [Moonshot AI 文档](https://platform.moonshot.ai/docs/intro) 获取可用模型的完整列表。如有需要，您也可以传递任何可用的提供商模型 ID 作为字符串。
 </Note>

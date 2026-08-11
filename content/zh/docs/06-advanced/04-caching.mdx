@@ -5,13 +5,15 @@ description: "使用 AI SDK 时如何处理缓存"
 
 # 缓存响应
 
-根据你构建的应用程序类型，你可能希望至少临时缓存从 AI 提供商收到的响应。
+根据你正在构建的应用程序类型，你可能希望缓存从 AI 提供商收到的响应，至少是临时缓存。
 
 ## 使用语言模型中间件（推荐）
 
-缓存响应的推荐方法是使用[语言模型中间件](/docs/ai-sdk-core/middleware)和 [`simulateReadableStream`](/docs/reference/ai-sdk-core/simulate-readable-stream) 函数。
+缓存响应的推荐方法是使用[语言模型中间件](/docs/ai-sdk-core/middleware)
+和 [`simulateReadableStream`](/docs/reference/ai-sdk-core/simulate-readable-stream) 函数。
 
-语言模型中间件是一种通过拦截和修改对语言模型的调用来增强语言模型行为的方式。让我们看看如何使用语言模型中间件来缓存响应。
+语言模型中间件是一种通过拦截和修改对语言模型的调用来增强语言模型行为的方式。
+让我们看看如何使用语言模型中间件来缓存响应。
 
 ```ts filename="ai/middleware.ts"
 import { Redis } from '@upstash/redis';
@@ -59,7 +61,7 @@ export const cacheMiddleware: LanguageModelV4Middleware = {
     // 检查结果是否在缓存中
     const cached = await redis.get(cacheKey);
 
-    // 如果已缓存，返回一个模拟的 ReadableStream，该流会输出缓存的结果
+    // 如果已缓存，返回一个模拟的 ReadableStream，产生缓存的结果
     if (cached !== null) {
       // 格式化缓存响应中的时间戳
       const formattedChunks = (cached as LanguageModelV4StreamPart[]).map(p => {
@@ -76,7 +78,7 @@ export const cacheMiddleware: LanguageModelV4Middleware = {
       };
     }
 
-    // 如果未缓存，继续流式传输
+    // 如果未缓存，继续进行流式传输
     const { stream, ...rest } = await doStream();
 
     const fullResponse: LanguageModelV4StreamPart[] = [];
@@ -90,7 +92,7 @@ export const cacheMiddleware: LanguageModelV4Middleware = {
         controller.enqueue(chunk);
       },
       flush() {
-        // 流式传输完成后，将完整响应存储到缓存中
+        // 流式传输完成后将完整响应存储到缓存中
         redis.set(cacheKey, fullResponse);
       },
     });
@@ -107,19 +109,17 @@ export const cacheMiddleware: LanguageModelV4Middleware = {
   此示例使用 `@upstash/redis` 来存储和检索助手的响应，但你可以使用任何你喜欢的 KV 存储提供商。
 </Note>
 
-`LanguageModelV4Middleware` 有两个方法：`wrapGenerate` 和 `wrapStream`。使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 时会调用 `wrapGenerate`，而使用 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 时会调用 `wrapStream`。
+`LanguageModelV4Middleware` 有两个方法：`wrapGenerate` 和 `wrapStream`。当使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 时调用 `wrapGenerate`，而当使用 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 时调用 `wrapStream`。
 
-对于 `wrapGenerate`，你可以直接缓存响应。而对于 `wrapStream`，你可以缓存流式部分的数组，然后使用 [`simulateReadableStream`](/docs/ai-sdk-core/testing#simulate-ui-message-stream-responses) 函数创建一个模拟的 `ReadableStream`，该流会返回缓存的响应。这样，缓存的响应会像模型生成时一样逐块返回。你可以通过调整 `simulateReadableStream` 的 `initialDelayInMs` 和 `chunkDelayInMs` 参数来控制初始延迟和块之间的延迟。
+对于 `wrapGenerate`，你可以直接缓存响应。而对于 `wrapStream`，你缓存流式传输部分的数组，然后可以与 [`simulateReadableStream`](/docs/ai-sdk-core/testing#simulate-ui-message-stream-responses) 函数一起使用，创建一个返回缓存响应的模拟 `ReadableStream`。这样，缓存响应会像模型正在生成一样逐块返回。你可以通过调整 `simulateReadableStream` 的 `initialDelayInMs` 和 `chunkDelayInMs` 参数来控制初始延迟和块之间的延迟。
 
 你可以在我们的[缓存中间件食谱](/cookbook/next/caching-middleware)中查看在 Next.js 应用程序中使用 Redis 进行缓存的完整示例。
 
 ## 使用生命周期回调
 
-另外，每个 AI SDK Core 函数都有特殊的生命周期回调可供使用。其中可能感兴趣的是 `onEnd`，它在生成完成时被调用。这是你可以缓存完整响应的地方。
+或者，每个 AI SDK Core 函数都有你可以使用的特殊生命周期回调。其中值得关注的是 `onEnd`，它在生成完成时被调用。这是你可以缓存完整响应的地方。
 
-以下是一个示例，展示如何使用 Vercel KV 和 Next.js 将 OpenAI 响应缓存 1 小时：
-
-此示例使用 [Upstash Redis](https://upstash.com/docs/redis/overall/getstarted) 和 Next.js 将响应缓存 1 小时。
+以下是如何使用 [Upstash Redis](https://upstash.com/redis) 和 Next.js 将 OpenAI 响应缓存 1 小时的示例：
 
 ```tsx filename="app/api/chat/route.ts"
 import {
@@ -166,7 +166,7 @@ export async function POST(req: Request) {
     },
   });
 
-  // 返回流式响应
+  // 使用流进行响应
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({ stream: result.stream }),
   });

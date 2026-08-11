@@ -1,18 +1,17 @@
 ---
-title: 速率限制
-description: 了解如何为应用程序实施速率限制。
+title: "速率限制"
+description: "了解如何为您的应用程序实施速率限制。"
 ---
 
 # 速率限制
 
-速率限制有助于保护 API 免受滥用。它涉及设置客户端在指定时间范围内可发出的最大请求数阈值。这一简单技术充当了守门员的角色，防止过度使用导致服务性能下降并产生不必要的成本。
+速率限制有助于保护您的 API 免受滥用。它涉及设置客户端在指定时间范围内可以发出的请求数量的最大阈值。这一简单技术充当守门员，防止过度使用导致服务性能下降并产生不必要的成本。
 
-## 使用 Vercel KV 和 Upstash Ratelimit 实现速率限制
+## 使用 Upstash Redis 和 Upstash Ratelimit 进行速率限制
 
-在此示例中，你将使用 [Vercel KV](https://vercel.com/storage/kv) 和 [Upstash Ratelimit](https://github.com/upstash/ratelimit) 保护一个 API 端点。
+在此示例中，您将使用 [Upstash Redis](https://upstash.com/redis) 和 [Upstash Ratelimit](https://github.com/upstash/ratelimit) 保护一个 API 端点。
 
 ```tsx filename='app/api/generate/route.ts'
-import kv from '@vercel/kv';
 import {
   createUIMessageStreamResponse,
   streamText,
@@ -20,14 +19,15 @@ import {
 } from 'ai';
 __PROVIDER_IMPORT__;
 import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { NextRequest } from 'next/server';
 
-// 允许流式传输响应最长 30 秒
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 // 创建速率限制
 const ratelimit = new Ratelimit({
-  redis: kv,
+  redis: Redis.fromEnv(),
   limiter: Ratelimit.fixedWindow(5, '30s'),
 });
 
@@ -56,4 +56,4 @@ export async function POST(req: NextRequest) {
 
 ## 简化 API 保护
 
-借助 Vercel KV 和 Upstash Ratelimit，可以轻松保护 API 免受此类攻击。要详细了解 Ratelimit 的工作原理以及如何根据需求进行配置，请参阅 [Ratelimit 文档](https://upstash.com/docs/oss/sdks/ts/ratelimit/overview)。
+借助 Upstash Redis 和 Upstash Ratelimit，您可以轻松保护 API 免受此类攻击。要了解更多关于 Ratelimit 的工作原理以及如何根据您的需求进行配置，请参阅 [Ratelimit 文档](https://upstash.com/docs/oss/sdks/ts/ratelimit/overview)。
