@@ -1,17 +1,17 @@
 ---
-title: "Completion"
+title: "完成"
 description: "了解如何使用 useCompletion Hook。"
 ---
 
-# Completion
+# 完成
 
-`useCompletion` Hook 允许你创建用户界面来处理应用程序中的文本补全。它能够从你的 AI 提供商流式传输文本补全，管理聊天输入的状态，并在接收到新消息时自动更新 UI。
+`useCompletion` Hook 允许你在应用中创建用户界面来处理文本补全。它支持从 AI 提供商流式传输文本补全，管理聊天输入的状态，并在收到新消息时自动更新 UI。
 
 <Note>
   `useCompletion` Hook 现在是 `@ai-sdk/react` 包的一部分。
 </Note>
 
-在本指南中，你将学习如何在应用程序中使用 `useCompletion` Hook 来生成文本补全，并实时流式传输给用户。
+在本指南中，你将学习如何在应用中使用 `useCompletion` Hook 来生成文本补全，并实时流式传输给用户。
 
 ## 示例
 
@@ -48,7 +48,7 @@ import {
 } from 'ai';
 __PROVIDER_IMPORT__;
 
-// 允许最长 30 秒的流式响应
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -65,13 +65,13 @@ export async function POST(req: Request) {
 }
 ```
 
-在 `Page` 组件中，每当用户提交消息时，`useCompletion` Hook 会向你的 AI 提供商端点发起请求。补全内容随后会实时流式传输回来并显示在 UI 中。
+在 `Page` 组件中，每当用户提交消息时，`useCompletion` Hook 都会向你的 AI 提供商端点发起请求。补全内容随后会实时流式返回并显示在 UI 中。
 
 这实现了无缝的文本补全体验，用户无需等待整个响应接收完毕，即可立即看到 AI 的回复。
 
 ## 自定义 UI
 
-`useCompletion` 还提供了通过代码管理提示词、显示加载和错误状态，以及在不触发用户交互的情况下更新消息的方法。
+`useCompletion` 还提供了通过代码管理提示词、显示加载和错误状态，以及在不依赖用户交互的情况下更新消息的方法。
 
 ### 加载和错误状态
 
@@ -87,7 +87,7 @@ return(
 )
 ```
 
-类似地，`error` 状态反映了 fetch 请求期间抛出的错误对象。它可以用来显示错误消息或展示 toast 通知：
+类似地，`error` 状态反映了 fetch 请求期间抛出的错误对象。它可以用来显示错误消息或弹出通知：
 
 ```tsx
 const { error, ... } = useCompletion()
@@ -110,7 +110,7 @@ return (
 
 在最初的示例中，我们有 `handleSubmit` 和 `handleInputChange` 回调来管理输入变化和表单提交。这些对于常见用例非常方便，但你也可以使用非受控 API 来处理更高级的场景，例如表单验证或自定义组件。
 
-以下示例演示了如何将更细粒度的 API（如 `setInput`）与自定义输入和提交按钮组件一起使用：
+以下示例演示了如何将 `setInput` 等更细粒度的 API 与自定义输入和提交按钮组件一起使用：
 
 ```tsx
 const { input, setInput } = useCompletion();
@@ -124,7 +124,7 @@ return (
 
 ### 取消
 
-另一个常见用例是在 AI 提供商仍在流式传输响应时中止响应消息。你可以通过调用 `useCompletion` Hook 返回的 `stop` 函数来实现这一点。
+在 AI 提供商仍在流式返回响应时中止响应消息也是一个常见的用例。你可以通过调用 `useCompletion` Hook 返回的 `stop` 函数来实现。
 
 ```tsx
 const { stop, isLoading, ... } = useCompletion()
@@ -136,13 +136,14 @@ return (
 )
 ```
 
-当用户点击“停止”按钮时，fetch 请求将被中止。这可以避免消耗不必要的资源，并改善应用程序的用户体验。
+当用户点击“停止”按钮时，fetch 请求将被中止。这避免了不必要的资源消耗，并改善了应用的 UX。
 
 ### 节流 UI 更新
 
 <Note>此功能目前仅适用于 React。</Note>
 
-默认情况下，`useCompletion` Hook 会在每次接收到新数据块时触发一次渲染。你可以使用 `throttle` 选项来节流 UI 更新。
+默认情况下，`useCompletion` Hook 会在每次收到新数据块时触发一次渲染。
+你可以使用 `throttle` 选项来节流 UI 更新。
 
 ```tsx filename="page.tsx" highlight="2-3"
 const { completion, ... } = useCompletion({
@@ -153,15 +154,15 @@ const { completion, ... } = useCompletion({
 
 ## 事件回调
 
-`useCompletion` 还提供了可选的事件回调，你可以用来处理聊天机器人生命周期的不同阶段。这些回调可用于触发额外操作，例如日志记录、分析或自定义 UI 更新。
+`useCompletion` 还提供了可选的事件回调，你可以用来处理聊天机器人生命周期的不同阶段。这些回调可以用来触发额外的操作，例如日志记录、分析或自定义 UI 更新。
 
 ```tsx
 const { ... } = useCompletion({
   onFinish: (prompt: string, completion: string) => {
-    console.log('完成流式传输补全:', completion)
+    console.log('完成流式补全：', completion)
   },
   onError: (error: Error) => {
-    console.error('发生错误:', error)
+    console.error('发生错误：', error)
   },
 })
 ```
@@ -183,4 +184,24 @@ const { messages, input, handleInputChange, handleSubmit } = useCompletion({
 });
 ```
 
-在此示例中，`useCompletion` Hook 会向 `/api/completion` 端点发送 POST 请求，并包含指定的标头、额外的请求体字段以及该 fetch 请求的凭据。在服务器端，你可以利用这些额外信息来处理请求。
+在此示例中，`useCompletion` Hook 会向 `/api/completion` 端点发送 POST 请求，并携带指定的 headers、额外的 body 字段以及该 fetch 请求的 credentials。在服务端，你可以利用这些额外信息来处理请求。
+
+你可以为额外的 body 字段提供类型。该类型同时适用于 Hook 上配置的 body 和传递给 `complete` 的 body：
+
+```tsx
+type CompletionBody = {
+  model: 'fast' | 'smart';
+};
+
+const { complete } = useCompletion<CompletionBody>({
+  body: {
+    model: 'fast',
+  },
+});
+
+await complete('什么是补全？', {
+  body: {
+    model: 'smart',
+  },
+});
+```

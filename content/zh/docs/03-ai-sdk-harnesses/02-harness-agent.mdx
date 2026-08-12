@@ -11,13 +11,13 @@ description: "创建并运行 AI SDK HarnessAgent 会话。"
 
 ## 安装
 
-安装核心 harness 包、一个 harness 适配器和一个沙箱提供商：
+安装核心 harness 包、harness 适配器和沙箱提供商：
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-claude-code @ai-sdk/sandbox-vercel" />
 
 基于桥接的 harness（如 Claude Code 和 Codex）需要使用真实的网络沙箱，
-例如 `@ai-sdk/sandbox-vercel`。宿主运行时 harness（如 Pi）也可以使用
-`@ai-sdk/sandbox-just-bash` 运行，因为它们不需要沙箱暴露端口。
+例如 `@ai-sdk/sandbox-vercel`。主机运行时 harness（如 Pi）也可以使用
+`@ai-sdk/sandbox-just-bash` 运行，因为它们不需要暴露沙箱端口。
 
 ## 创建智能体
 
@@ -37,12 +37,12 @@ export const agent = new HarnessAgent({
 });
 ```
 
-在模块作用域内构造智能体。它持有配置，而非实时会话。
+在模块作用域中构造智能体。它保存配置，而不是实时会话。
 实时状态属于 `HarnessAgentSession`。
 
 要使用此智能体，请确保设置了包含沙箱和 harness 凭据的环境变量。
 
-## 运行一轮对话
+## 运行一轮
 
 ```ts
 const session = await agent.createSession();
@@ -64,7 +64,7 @@ try {
 }
 ```
 
-`generate()` 消耗完本轮对话并返回一个 `GenerateTextResult`。
+`generate()` 会排空该轮并返回 `GenerateTextResult`。
 
 使用 `stream()` 获取增量输出：
 
@@ -92,16 +92,16 @@ try {
 }
 ```
 
-## 消息与历史记录
+## 消息与历史
 
-harness 会话拥有其原生的对话历史记录。当你传递 `messages`
+harness 会话拥有其原生对话历史。当你传入 `messages`
 或消息数组形式的 `prompt` 时，`HarnessAgent` 会将最新的用户消息作为
-本轮对话的新输入。它不会将完整的先前对话重放到 harness 中。
+该轮的新输入。它不会将完整的先前对话重放到 harness 中。
 
 末尾的工具消息处理方式不同：工具审批响应和
-客户端提供的工具结果会继续产生相应请求或工具调用的未完成 harness 轮次。
+客户端提供的工具结果会继续产生相应请求或工具调用的未完成 harness 轮。
 
-这与模型调用不同，在模型调用中，应用程序通常发送完整的消息历史。
+这与模型调用不同，模型调用中应用程序通常发送完整的消息历史。
 在聊天路由中，应持久化并恢复 harness 会话，而不是依赖消息重放。
 
 ## 会话生命周期
@@ -110,13 +110,13 @@ harness 会话拥有其原生的对话历史记录。当你传递 `messages`
 
 - `session.destroy()` 停止运行时并丢弃可恢复性。
 - `session.detach()` 暂停运行时和沙箱，返回恢复状态，并
-  保持沙箱温暖以供后续附加。如果本轮对话未完成，
-  恢复状态包含延续状态。
+  保持沙箱温暖以便稍后重新附加。如果该轮未完成，
+  恢复状态包含继续状态。
 - `session.stop()` 保存恢复状态，然后停止运行时和沙箱。如果
-  本轮对话未完成，恢复状态包含延续状态。
-- `session.suspendTurn()` 用于高级的跨进程边界活动轮次延续。
-- `session.hasUnfinishedTurn()` 报告当前轮次是否必须在会话接受新提示之前
-  继续或暂停。
+  该轮未完成，恢复状态包含继续状态。
+- `session.suspendTurn()` 用于跨进程边界的进阶活动轮继续。
+- `session.hasUnfinishedTurn()` 报告当前轮是否必须在会话接受新提示词之前
+  继续或挂起。
 
 对于一次性脚本和测试，使用 `destroy()`。对于需要多轮连续性的
 HTTP 路由，使用 `detach()` 或 `stop()`。
@@ -143,7 +143,7 @@ try {
 
 ## 恢复
 
-持久化不透明的恢复状态，并将其与原始的 `sessionId` 一起传回：
+持久化不透明的恢复状态，并将其与原始 `sessionId` 一起传回：
 
 ```ts
 const resumeState = await loadResumeState({ chatId });
@@ -155,13 +155,13 @@ const session = await agent.createSession(
 );
 ```
 
-`HarnessAgent` 会验证恢复状态是由同一个 harness 适配器生成的，
-然后再将其交给运行时。如果恢复状态包含未完成的轮次，
-请在发送新提示之前调用 `continueStream()` 或 `continueGenerate()`。
+`HarnessAgent` 在将恢复状态交给运行时之前，会验证该状态是由同一个 harness
+适配器生成的。如果恢复状态包含未完成的轮，请在发送新提示词之前调用
+`continueStream()` 或 `continueGenerate()`。
 
-## 继续已暂停的轮次
+## 继续挂起的轮
 
-对于必须跨进程边界移交活动轮次的高级工作流，请暂停轮次并持久化延续状态：
+对于必须将活动轮跨进程边界移交的进阶工作流，请挂起该轮并持久化继续状态：
 
 ```ts
 if (session.hasUnfinishedTurn()) {
@@ -170,8 +170,8 @@ if (session.hasUnfinishedTurn()) {
 }
 ```
 
-当你只有来自 `suspendTurn()` 的原始延续状态时，使用
-`continueFrom` 恢复，然后继续轮次而不发送新提示：
+当你只有来自 `suspendTurn()` 的原始继续状态时，使用
+`continueFrom` 恢复，然后在不发送新提示词的情况下继续该轮：
 
 ```ts
 const session = await agent.createSession({
@@ -182,15 +182,15 @@ const session = await agent.createSession({
 const result = await agent.continueStream({ session });
 ```
 
-使用 `continueStream()` 获取增量输出，或使用 `continueGenerate()` 消耗
-已继续的轮次并返回 `GenerateTextResult`。
+使用 `continueStream()` 获取增量输出，或使用 `continueGenerate()` 排空
+继续的轮并返回 `GenerateTextResult`。
 
-## 在 Harness 步骤后停止
+## 在 harness 步骤后停止
 
-使用 `stopWhen` 来选择语义步骤边界。谓词在真实的 harness 工具步骤之后运行，
+使用 `stopWhen` 选择语义步骤边界。谓词在真实的 harness 工具步骤之后运行，
 这些步骤可以继续进入另一个模型步骤，并接收当前调用中已完成的步骤。
-当谓词匹配时，返回的结果完成，而底层轮次保持未完成。一个终端纯文本步骤
-会消耗轮次的 `finish` 事件并自然结束。
+当谓词匹配时，返回的结果完成，而底层轮仍未完成。
+终端纯文本步骤则会消耗该轮的 `finish` 事件并自然完成。
 
 ```ts
 import { isStepCount } from 'ai';
@@ -217,22 +217,22 @@ if (session.hasUnfinishedTurn()) {
 ```
 
 `stopWhen` 没有默认值。省略时，`HarnessAgent` 会持续运行直到
-轮次自然结束或暂停等待宿主输入，从而保留没有步骤控制的智能体的行为。
-传递一个谓词或一个数组；匹配任何谓词都会完成当前的结果切片。
+该轮自然完成或暂停等待主机输入，从而保留没有步骤控制的智能体的行为。
+传入一个谓词或数组；匹配任何谓词都会完成当前结果切片。
 使用 `createSession({ continueFrom })` 和 `continueStream()` 或
-`continueGenerate()` 恢复已停止的轮次。
+`continueGenerate()` 恢复已停止的轮。
 
 ## 准备沙箱
 
 使用 `sandboxConfig` 在 harness 启动前准备沙箱。
 
 `sandboxConfig.onBootstrap` 在沙箱模板创建期间运行，在 harness 适配器自身的
-引导之后、快照能力提供商发布快照之前。用于应被未来会话重用的昂贵设置。
-当你提供 `onBootstrap` 时，也要提供 `bootstrapHash`；每当引导输出应使可重用快照
-失效时，更改哈希值。
+bootstrap 之后、支持快照的提供商发布快照之前。用于应由未来会话重用的
+昂贵设置。当你提供 `onBootstrap` 时，也要提供 `bootstrapHash`；
+每当 bootstrap 输出应使可重用快照失效时，更改该哈希。
 
 `sandboxConfig.onSession` 在每个沙箱会话被获取且其工作目录存在后运行，
-包括恢复的会话。用于每个会话的文件或轻量级配置。
+包括恢复的会话。用于每会话文件或轻量级配置。
 
 ```ts
 const agent = new HarnessAgent({
@@ -257,7 +257,7 @@ const agent = new HarnessAgent({
     onSession: async ({ session, sessionWorkDir, abortSignal }) => {
       await session.writeTextFile({
         path: `${sessionWorkDir}/README.md`,
-        content: 'Harness 的会话笔记。',
+        content: 'harness 的会话说明。',
         abortSignal,
       });
     },
@@ -266,8 +266,8 @@ const agent = new HarnessAgent({
 ```
 
 `workDir` 是可选的。提供时，它必须相对于沙箱的默认工作目录，
-并用作会话工作目录。省略时，常规会话使用默认的 `<harnessId>-<sessionId>` 目录，
-而 `onBootstrap` 接收沙箱的默认工作目录。
+并用作会话工作目录。省略时，常规会话使用默认的
+`<harnessId>-<sessionId>` 目录，而 `onBootstrap` 接收沙箱的默认工作目录。
 
 ## 准备可重用沙箱
 
@@ -297,7 +297,7 @@ await prepareHarnessSandboxTemplate({
 ```
 
 当你拥有原生沙箱生命周期并希望自己快照准备好的沙箱时，
-使用 `prepareSandboxForHarness()`。它应用选定的 harness 引导配方
+使用 `prepareSandboxForHarness()`。它应用选定的 harness bootstrap 配方
 和 `sandboxConfig.onBootstrap`，然后返回准备元数据。它不会停止或快照沙箱。
 
 ```ts
@@ -348,27 +348,28 @@ console.log(preparation.identity);
 `HarnessAgent` 接受以下主要设置：
 
 - `harness`：适配器实例。
-- `sandbox`：一个 `HarnessV1SandboxProvider`。
+- `sandbox`：`HarnessV1SandboxProvider`。
 - `id`：可选的稳定智能体标识符。
-- `instructions`：应用于新会话一次的指令。
-- `stopWhen`：在完成的 harness 工具步骤（可继续进入另一个模型步骤）后，
-  完成结果切片的条件。
-- `tools`：当 harness 调用时由宿主执行的 AI SDK 工具。
-- `activeTools`：harness 可以调用的内置和宿主执行工具的允许列表。
-- `inactiveTools`：harness 不能调用的内置和宿主执行工具的拒绝列表。
-- `skills`：由适配器提供的指令包。
+- `instructions`：在支持时附加到运行时的系统或开发者提示词中，
+  否则前置到第一个用户提示词前。
+- `stopWhen`：在完成的 harness 工具步骤之后完成结果切片的条件，
+  该步骤可以继续进入另一个模型步骤。
+- `tools`：当 harness 调用时由主机执行的 AI SDK 工具。
+- `activeTools`：harness 可以调用的内置和主机执行工具的允许列表。
+- `inactiveTools`：harness 不能调用的内置和主机执行工具的拒绝列表。
+- `skills`：由适配器呈现的指令包。
 - `permissionMode`：内置工具权限模式。
-- `toolApproval`：宿主执行工具的审批状态映射。
+- `toolApproval`：主机执行工具的审批状态映射。
 - `sandboxConfig`：沙箱工作目录和生命周期钩子配置。
 - `telemetry`、`debug` 和 `onLog`：可观测性和诊断。
 
-适配器特定的设置属于适配器工厂，例如
+适配器特定设置属于适配器工厂，例如
 `createCodex({ reasoningEffort: 'high' })`。
 
 ## 下一步
 
-- [工具](/docs/ai-sdk-harnesses/tools) 用于内置和宿主执行工具。
-- [技能](/docs/ai-sdk-harnesses/skills) 用于可重用的指令包。
-- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 用于适配器特定的设置。
-- [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 用于持久的长时间运行轮次。
-- [UI](/docs/ai-sdk-harnesses/ui) 用于 `useChat` 集成。
+- [工具](/docs/ai-sdk-harnesses/tools) 了解内置和主机执行工具。
+- [技能](/docs/ai-sdk-harnesses/skills) 了解可重用的指令包。
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 了解适配器特定设置。
+- [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 了解持久的长运行轮。
+- [UI](/docs/ai-sdk-harnesses/ui) 了解 `useChat` 集成。

@@ -86,5 +86,5 @@ bun run start
 ```
 
 <!-- sync-info:start -->
-最近同步：2026/08/11 16:07:54（上游 commit: `de38a47`）
+最近同步：2026/08/12 23:13:47（上游 commit: `8e90283`）
 <!-- sync-info:end -->

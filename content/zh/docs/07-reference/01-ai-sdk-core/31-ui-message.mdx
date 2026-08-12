@@ -1,23 +1,23 @@
 ---
-title: UIMessage
-description: UIMessage API 参考文档
+title: "UIMessage"
+description: "UIMessage 的 API 参考"
 ---
 
 # `UIMessage`
 
-`UIMessage` 作为应用程序状态的真实来源，代表完整的消息历史记录，包括元数据、数据部分和所有上下文信息。与表示传递给模型的状态或上下文的 `ModelMessage` 不同，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
+`UIMessage` 作为应用程序状态的唯一事实来源，表示完整的消息历史记录，包括元数据、数据部分以及所有上下文信息。与 `ModelMessage`（表示传递给模型的状态或上下文）相比，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
 
 ## 类型安全
 
-`UIMessage` 被设计为类型安全的，并接受三个泛型参数以确保整个应用程序的正确类型：
+`UIMessage` 被设计为类型安全的，并接受三个泛型参数，以确保整个应用程序中的正确类型：
 
 1. **`METADATA`** - 用于附加消息信息的自定义元数据类型
 2. **`DATA_PARTS`** - 用于结构化数据组件的自定义数据部分类型
 3. **`TOOLS`** - 用于类型安全工具交互的工具定义
 
-## 创建你自己的 UIMessage 类型
+## 创建您自己的 UIMessage 类型
 
-以下是如何为你的应用程序创建自定义类型化 UIMessage 的示例：
+以下是如何为您的应用程序创建自定义类型的 UIMessage 的示例：
 
 ```typescript
 import { InferUITools, ToolSet, UIMessage, tool } from 'ai';
@@ -69,7 +69,7 @@ interface UIMessage<
   metadata?: METADATA;
 
   /**
-   * 消息的各个部分。用于在 UI 中渲染消息。
+   * 消息的部分。使用此属性在 UI 中渲染消息。
    */
   parts: Array<UIMessagePart<DATA_PARTS, TOOLS>>;
 }
@@ -103,6 +103,10 @@ type TextUIPart = {
 type ReasoningUIPart = {
   type: 'reasoning';
   /**
+   * 推理部分的 ID。
+   */
+  id?: string;
+  /**
    * 推理文本。
    */
   text: string;
@@ -119,10 +123,11 @@ type ReasoningUIPart = {
 
 ### `ToolUIPart`
 
-消息的工具部分，表示工具调用及其结果。
+表示工具调用及其结果的消息工具部分。
 
 <Note>
-  类型基于工具的名称（例如，对于名为 `someTool` 的工具，类型为 `tool-someTool`）。
+  该类型基于工具的名称（例如，名为 `someTool` 的工具对应
+  `tool-someTool`）。
 </Note>
 
 ```typescript
@@ -183,7 +188,7 @@ type CustomContentUIPart = {
 
 ### `SourceUrlUIPart`
 
-消息的源 URL 部分。
+消息的来源 URL 部分。
 
 ```typescript
 type SourceUrlUIPart = {
@@ -197,7 +202,7 @@ type SourceUrlUIPart = {
 
 ### `SourceDocumentUIPart`
 
-消息的文档源部分。
+消息的文档来源部分。
 
 ```typescript
 type SourceDocumentUIPart = {
@@ -235,10 +240,11 @@ type FileUIPart = {
 
 ### `DataUIPart`
 
-消息的数据部分，用于自定义数据类型。
+用于自定义数据类型的数据部分。
 
 <Note>
-  类型基于数据部分的名称（例如，对于名为 `someDataPart` 的数据部分，类型为 `data-someDataPart`）。
+  该类型基于数据部分的名称（例如，名为 `someDataPart` 的数据部分对应
+  `data-someDataPart`）。
 </Note>
 
 ```typescript
