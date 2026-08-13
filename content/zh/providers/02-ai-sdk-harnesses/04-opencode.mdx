@@ -5,10 +5,10 @@ description: "了解如何使用 OpenCode 工具链适配器。"
 
 # OpenCode 工具链
 
-OpenCode 工具链适配器通过 `@opencode-ai/sdk` 将 `HarnessAgent` 连接到 OpenCode。该适配器在沙箱内运行一个桥接器，在该沙箱中启动 OpenCode 服务器，并通过沙箱暴露的 WebSocket 将会话事件流式传输回主机。
+OpenCode 工具链适配器通过 `@opencode-ai/sdk` 将 `HarnessAgent` 连接到 OpenCode。该适配器在沙箱内运行一个桥接器，在该沙箱中启动 OpenCode 服务器，并通过沙箱暴露的 WebSocket 将 OpenCode 会话事件流式传输回主机。
 
 <Note>
-  工具链包为**实验性**。随着这个早期 API 的进一步完善，版本之间可能会有破坏性变更。
+  工具链包为**实验性**。随着这一早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -23,7 +23,7 @@ OpenCode 工具链适配器通过 `@opencode-ai/sdk` 将 `HarnessAgent` 连接�
 import { openCode, createOpenCode } from '@ai-sdk/harness-opencode';
 ```
 
-`openCode` 等同于使用默认配置的 `createOpenCode()`。
+`openCode` 等同于使用默认配置调用 `createOpenCode()`。
 
 ## 基本用法
 
@@ -63,7 +63,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含 Vercel Sandbox 所需的 `VERCEL_OIDC_TOKEN`，以及 [认证](#认证) 下列出的 OpenCode 所需变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#authentication) 下列出的用于 OpenCode 的变量之一。
 
 ## 适配器设置
 
@@ -78,18 +78,23 @@ const harness = createOpenCode({
 
 设置：
 
-- `auth`：Anthropic、OpenAI、OpenAI 兼容或 AI Gateway 认证设置。
+- `auth`：身份验证模式：`auto`、`anthropic`、`openai` 或 `ai-gateway`。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
-- `model`：OpenCode 模型 ID。提供商前缀值（如 `anthropic/claude-sonnet-4-6`）会直接传递给 OpenCode。
-- `provider`：与无前缀 `model` 一起使用的提供商 ID。
+- `model`：OpenCode 模型 ID。带提供商前缀的值（如 `anthropic/claude-sonnet-4-6`）会直接传递给 OpenCode。
+- `provider`：与无前缀的 `model` 一起使用的提供商 ID。
 - `reasoningVariant`：受支持模型的 OpenCode 推理/思考变体，如 `low`、`medium` 或 `high`。
 - `port`：桥接器端口覆盖。
-- `startupTimeoutMs`：等待桥接器启动的最大时间。
-- `mintBridgeToken`：接收沙箱 ID 并返回桥接器认证令牌的同步函数。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回足够机密的令牌。
+- `startupTimeoutMs`：等待桥接器启动的最长时间。
+- `mintBridgeToken`：接收沙箱 ID 并返回桥接器身份验证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
-## 认证
+## 身份验证
 
-默认情况下，认证从主机环境解析并转发到沙箱桥接器。适配器会检查 AI Gateway、Anthropic 和 OpenAI 凭据。
+`auth` 设置选择如何从主机环境解析凭据：
+
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后使用所选模型提供商的凭据。
+- `anthropic`：使用 Anthropic 凭据。
+- `openai`：使用 OpenAI 凭据。
+- `ai-gateway`：使用 AI Gateway 凭据。
 
 支持的环境变量：
 
@@ -104,19 +109,15 @@ const harness = createOpenCode({
 - `OPENAI_ORGANIZATION`
 - `OPENAI_PROJECT`
 
-您也可以传递显式的认证设置：
+当您不希望自动检测时，请选择特定的身份验证模式：
 
 ```ts
-const harness = createOpenCode({
-  auth: {
-    gateway: {
-      apiKey: process.env.AI_GATEWAY_API_KEY,
-    },
-  },
-});
+const anthropicHarness = createOpenCode({ auth: 'anthropic' });
+const openAIHarness = createOpenCode({ auth: 'openai' });
+const gatewayHarness = createOpenCode({ auth: 'ai-gateway' });
 ```
 
-对于 OpenAI 兼容端点，请使用 `auth.openaiCompatible` 并将 `name` 设置为 OpenCode 提供商 ID。
+对于兼容 OpenAI 的端点，请选择 `openai` 并设置 `OPENAI_BASE_URL`。
 
 ## 沙箱
 
@@ -147,7 +148,7 @@ const sandbox = createVercelSandbox({
 
 当其他 OpenCode 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，OpenCode 支持内置工具审批请求。主机执行的 AI SDK 工具审批同样有效。
+当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，OpenCode 支持内置工具审批请求。主机执行的 AI SDK 工具审批也适用。
 
 ## 相关
 

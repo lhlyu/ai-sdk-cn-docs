@@ -1,14 +1,14 @@
 ---
-title: 为智能体添加技能
-description: 学习如何通过智能体技能，在运行时加载专门能力来扩展你的智能体。
+title: "为智能体添加技能"
+description: "了解如何通过智能体技能，在运行时加载专门能力来扩展您的智能体。"
 tags: ['agent', 'skills', 'tools', 'extensibility']
 ---
 
 # 为智能体添加技能
 
-在本指南中，你将学习如何使用 [Agent Skills](https://agentskills.io) 扩展你的智能体。这是一种轻量级、开放式的格式，用于添加从 Markdown 文件在运行时加载的专门知识和工作流程。
+在本指南中，您将学习如何通过 [Agent Skills](https://agentskills.io) 扩展您的智能体。这是一种轻量级、开放式的格式，用于从 Markdown 文件中加载专门知识和流程。
 
-技能的核心是一个包含 `SKILL.md` 文件的文件夹，该文件包含元数据和指令，用于告诉智能体如何执行特定任务。
+核心而言，技能是一个包含 `SKILL.md` 文件的文件夹，该文件包含元数据和指令，告诉智能体如何执行特定任务。
 
 ```
 my-skill/
@@ -22,15 +22,15 @@ my-skill/
 
 技能使用**渐进式披露**来高效管理上下文：
 
-1.  **发现**：启动时，智能体仅加载每个可用技能的名称和描述（足以知道何时可能相关）。
-2.  **激活**：当任务与技能描述匹配时，智能体将完整的 `SKILL.md` 指令读入上下文。
-3.  **执行**：智能体遵循指令，根据需要可选地加载引用的文件或执行捆绑的代码。
+1. **发现**：启动时，智能体仅加载每个可用技能的名称和描述（足以知道何时可能相关）
+2. **激活**：当任务匹配技能描述时，智能体将完整的 `SKILL.md` 指令读入上下文
+3. **执行**：智能体遵循指令，根据需要可选地加载引用文件或执行捆绑代码
 
-这种方法使智能体保持快速，同时按需访问更多上下文。
+这种方法使智能体保持快速，同时按需提供更多上下文。
 
 ## SKILL.md 文件
 
-每个技能都以包含 YAML 前置元数据和 Markdown 指令的 `SKILL.md` 文件开始：
+每个技能都以包含 YAML frontmatter 和 Markdown 指令的 `SKILL.md` 文件开始：
 
 ```yaml
 ---
@@ -50,28 +50,30 @@ description: 从 PDF 文件中提取文本和表格，填写表单，合并文�
 ...
 ```
 
-前置元数据需要：
+frontmatter 要求：
 
-- `name`：一个简短的标识符
-- `description`：关于何时使用此技能的说明
+- `name`：简短标识符
+- `description`：何时使用此技能的说明
 
-Markdown 正文包含实际的技能内容，对结构或内容没有限制。
+Markdown 正文包含实际技能内容，对结构或内容没有限制。
 
 ## 前提条件
 
-为了支持技能，你的智能体需要：
+要支持技能，您的智能体需要：
 
-1.  **文件系统访问权限**：用于发现和加载技能文件（读取文件、读取目录）
-2.  **一个加载技能工具**：用于将 `SKILL.md` 内容读入上下文
-3.  **命令执行**（可选）：如果技能捆绑了脚本（例如，一个完整的沙箱环境）
+1. **访问技能源**以发现技能并加载其内容。这可以是文件系统、捆绑的静态资源、API 或远程注册表。
+2. **加载技能工具**，将 `SKILL.md` 内容读入上下文
+3. **命令执行**（可选），如果技能捆绑脚本（例如完整的沙箱环境）
 
-## 步骤 1：定义沙箱抽象
+`loadSkill` 工具是标准的 AI SDK 工具，因此您可以使用任何数据源实现其 `execute` 函数。仅当您的实现从文件系统读取技能时才需要文件系统。如果技能包含引用、资源或脚本，请为智能体提供可以访问或运行这些资源的工具。
+
+## 第 1 步：定义沙箱抽象
 
 <Note>
-  本指南使用通用的沙箱抽象来跨环境提供灵活性。如果你是为 Node.js 构建，可以直接使用 `fs/promises` 和 `child_process`。
+  本指南使用通用沙箱抽象以在不同环境中保持灵活性。如果您为 Node.js 构建，可以直接使用 `fs/promises` 和 `child_process`。当您的智能体不需要文件系统时，您也可以用捆绑资源导入或网络请求替换此抽象。
 </Note>
 
-创建一个通用的沙箱接口，提供与文件系统交互的一致方式。此抽象允许你根据环境（Node.js fs、容器化沙箱、云存储等）以不同方式实现它：
+创建一个通用沙箱接口，提供与文件系统交互的一致方式。此抽象允许您根据环境（Node.js fs、容器化沙箱、云存储等）以不同方式实现：
 
 ```ts
 interface Sandbox {
@@ -84,7 +86,7 @@ interface Sandbox {
 }
 ```
 
-## 步骤 2：启动时发现技能
+## 第 2 步：启动时发现技能
 
 扫描技能目录并从每个 `SKILL.md` 中提取元数据：
 
@@ -120,7 +122,7 @@ async function discoverSkills(
         const content = await sandbox.readFile(skillFile, 'utf-8');
         const frontmatter = parseFrontmatter(content);
 
-        // 具有给定名称的第一个技能获胜（允许项目覆盖）
+        // 具有相同名称的第一个技能优先（允许项目覆盖）
         if (seenNames.has(frontmatter.name)) continue;
         seenNames.add(frontmatter.name);
 
@@ -139,15 +141,15 @@ async function discoverSkills(
 
 function parseFrontmatter(content: string) {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match?.[1]) throw new Error('未找到前置元数据');
-  // 使用你偏好的库解析 YAML
+  if (!match?.[1]) throw new Error('未找到 frontmatter');
+  // 使用您偏好的库解析 YAML
   return yaml.parse(match[1]);
 }
 ```
 
-## 步骤 3：构建系统提示词
+## 第 3 步：构建系统提示词
 
-在系统提示词中包含已发现的技能，以便智能体知道有哪些可用：
+在系统提示词中包含发现的技能，以便智能体知道可用的内容：
 
 ```ts
 function buildSkillsPrompt(skills: SkillMetadata[]): string {
@@ -158,7 +160,7 @@ function buildSkillsPrompt(skills: SkillMetadata[]): string {
   return `
 ## 技能
 
-当用户的请求受益于专门指令时，使用 \`loadSkill\` 工具加载技能。
+当用户的请求可以从专门指令中受益时，使用 \`loadSkill\` 工具加载技能。
 
 可用技能：
 ${skillsList}
@@ -166,11 +168,11 @@ ${skillsList}
 }
 ```
 
-智能体只看到名称和描述。完整的指令在加载之前不会进入上下文窗口。
+智能体仅看到名称和描述。完整指令在加载前不会进入上下文窗口。
 
-## 步骤 4：创建加载技能工具
+## 第 4 步：创建加载技能工具
 
-加载技能工具读取完整的 `SKILL.md` 并返回正文（不含前置元数据）：
+加载技能工具读取完整的 `SKILL.md` 并返回正文（不含 frontmatter）：
 
 ```ts
 function stripFrontmatter(content: string): string {
@@ -206,9 +208,9 @@ const loadSkillTool = tool({
 });
 ```
 
-该工具返回技能目录路径和内容，以便智能体可以构建捆绑资源的完整路径。
+该工具返回技能目录路径以及内容，以便智能体可以构建捆绑资源的完整路径。
 
-## 步骤 5：创建智能体
+## 第 5 步：创建智能体
 
 使用 `callOptionsSchema` 和 `prepareCall` 连接沙箱和技能：
 
@@ -261,10 +263,10 @@ const agent = new ToolLoopAgent({
 });
 ```
 
-## 步骤 6：运行智能体
+## 第 6 步：运行智能体
 
 ```ts
-// 创建沙箱（你的文件系统/执行抽象）
+// 创建沙箱（您的文件系统/执行抽象）
 const sandbox = createSandbox({ workingDirectory: process.cwd() });
 
 // 启动时发现技能
@@ -280,7 +282,7 @@ const result = await agent.run({
 });
 ```
 
-当用户提出与技能描述匹配的问题时，智能体会调用 `loadSkill`。完整的指令加载到上下文中，智能体使用 `bash` 和 `readFile` 访问捆绑资源来遵循这些指令。
+当用户提出与技能描述匹配的问题时，智能体会调用 `loadSkill`。完整指令加载到上下文中，智能体使用 `bash` 和 `readFile` 遵循指令访问捆绑资源。
 
 ## 访问捆绑资源
 
@@ -298,12 +300,12 @@ templates/config.json
 bash scripts/setup.sh
 ```
 
-智能体在工具结果中看到技能目录路径，并在访问 `templates/config.json` 或 `scripts/setup.sh` 时将其作为前缀。不需要特殊的资源加载机制——智能体使用与其他所有操作相同的工具。
+智能体在工具结果中看到技能目录路径，并在访问 `templates/config.json` 或 `scripts/setup.sh` 时将其前置。不需要特殊的资源加载机制——智能体使用与其他操作相同的工具。
 
 ## 了解更多
 
--   [Agent Skills 规范](https://agentskills.io/specification) 了解完整格式详情
--   GitHub 上的[示例技能](https://github.com/anthropics/skills)
--   编写有效技能的[创作最佳实践](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
--   用于验证技能和生成提示词 XML 的[参考库](https://github.com/agentskills/agentskills/tree/main/skills-ref)
--   浏览和发现社区技能的 [skills.sh](https://skills.sh)
+- [Agent Skills 规范](https://agentskills.io/specification) 了解完整格式详情
+- [示例技能](https://github.com/anthropics/skills) 在 GitHub 上
+- [编写最佳实践](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) 用于编写有效技能
+- [参考库](https://github.com/agentskills/agentskills/tree/main/skills-ref) 用于验证技能并生成提示词 XML
+- [skills.sh](https://skills.sh) 浏览和发现社区技能

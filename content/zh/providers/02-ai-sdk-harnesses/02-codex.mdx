@@ -1,17 +1,17 @@
 ---
 title: "Codex"
-description: "了解如何使用 Codex 工具链适配器。"
+description: "了解如何使用 Codex harness 适配器。"
 ---
 
-# Codex 工具链
+# Codex Harness
 
-Codex 工具链适配器通过 `@openai/codex-sdk` 将 `HarnessAgent` 连接到 Codex。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Codex 线程事件流式传输回主机。
+Codex harness 适配器通过 `@openai/codex-sdk` 将 `HarnessAgent` 连接到 Codex。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Codex 线程事件流式传输回主机。
 
 <Note>
-  工具链包目前为**实验性**。随着这一早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验性**阶段。随着这一早期 API 的进一步完善，不同版本之间可能会出现破坏性变更。
 </Note>
 
-## 安装
+## 设置
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-codex @ai-sdk/sandbox-vercel" />
 
@@ -23,7 +23,7 @@ Codex 工具链适配器通过 `@openai/codex-sdk` 将 `HarnessAgent` 连接到 
 import { codex, createCodex } from '@ai-sdk/harness-codex';
 ```
 
-`codex` 等同于使用默认配置调用 `createCodex()`。
+`codex` 等同于使用默认配置的 `createCodex()`。
 
 ## 基本用法
 
@@ -79,18 +79,22 @@ const harness = createCodex({
 
 设置项：
 
-- `auth`：OpenAI、OpenAI 兼容或 AI Gateway 身份验证设置。
+- `auth`：身份验证模式：`auto`、`direct` 或 `ai-gateway`。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
 - `model`：OpenAI 模型 ID。如果省略，适配器将使用其固定的默认值。
 - `reasoningEffort`：`low`、`medium` 或 `high`。
 - `webSearch`：允许实时网络搜索。
 - `port`：桥接器端口覆盖。
-- `startupTimeoutMs`：等待桥接器启动的最大时间。
-- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回桥接器身份验证令牌。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+- `startupTimeoutMs`：等待桥接器启动的最长时间。
+- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回桥接器身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
 ## 身份验证
 
-默认情况下，身份验证从主机环境解析并转发到沙箱桥接器。适配器会检查 AI Gateway 和 OpenAI 凭据。
+`auth` 设置决定了如何从主机环境中解析凭据：
+
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到直接使用 OpenAI 凭据。
+- `direct`：使用 OpenAI 凭据。
+- `ai-gateway`：使用 AI Gateway 凭据。
 
 支持的环境变量：
 
@@ -103,19 +107,14 @@ const harness = createCodex({
 - `OPENAI_ORGANIZATION`
 - `OPENAI_PROJECT`
 
-您也可以传递显式的身份验证设置：
+当您不希望自动检测时，请选择特定的身份验证模式：
 
 ```ts
-const harness = createCodex({
-  auth: {
-    openai: {
-      apiKey: process.env.OPENAI_API_KEY,
-    },
-  },
-});
+const directHarness = createCodex({ auth: 'direct' });
+const gatewayHarness = createCodex({ auth: 'ai-gateway' });
 ```
 
-对于 OpenAI 兼容端点，请使用 `auth.openaiCompatible`。
+对于兼容 OpenAI 的端点，请选择 `direct` 并设置 `OPENAI_BASE_URL`。
 
 ## 沙箱
 
@@ -137,16 +136,16 @@ const sandbox = createVercelSandbox({
 
 当其他 Codex 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-Codex 文件更改也可能以动态的 `fileChange` 工具部分出现，因为某些 Codex 文件变更并非源自可见的模型可调用工具。
+Codex 文件更改也可能以动态 `fileChange` 工具部分的形式出现，因为某些 Codex 文件变更并非源自可见的模型可调用工具。
 
 ## 已知限制
 
-Codex 目前不支持内置工具审批请求。请将此适配器与 `permissionMode: 'allow-all'` 一起使用。主机执行的 AI SDK 工具审批仍然有效。
+Codex 目前不支持内置工具审批请求。请在此适配器中使用 `permissionMode: 'allow-all'`。主机执行的 AI SDK 工具审批仍然有效。
 
-Codex 目前不支持内置工具过滤。您仍然可以使用 `activeTools` 和 `inactiveTools` 过滤主机执行的工具，但过滤 Codex 内置工具（如 `bash` 或 `webSearch`）将抛出异常。
+Codex 目前不支持内置工具过滤。您仍然可以使用 `activeTools` 和 `inactiveTools` 来过滤主机执行的工具，但过滤 Codex 内置工具（如 `bash` 或 `webSearch`）将会抛出错误。
 
-## 相关链接
+## 相关资源
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
-- [工具链工具](/docs/ai-sdk-harnesses/tools)
-- [工具链适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)

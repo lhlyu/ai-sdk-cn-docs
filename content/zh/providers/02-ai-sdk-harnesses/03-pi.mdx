@@ -10,10 +10,10 @@ Pi 工具链适配器将 `HarnessAgent` 连接到
 沙箱作为远程文件系统和 Shell。它不会在沙箱内部安装桥接。
 
 <Note>
-  工具链包是**实验性的**。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  工具链包是 **实验性** 的。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
-## 设置
+## 安装
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-pi @ai-sdk/sandbox-vercel" />
 
@@ -23,7 +23,7 @@ Pi 工具链适配器将 `HarnessAgent` 连接到
 import { pi, createPi } from '@ai-sdk/harness-pi';
 ```
 
-`pi` 等同于使用默认配置调用 `createPi()`。
+`pi` 等同于使用默认配置的 `createPi()`。
 
 ## 基本用法
 
@@ -62,7 +62,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [认证](#认证) 下列出的 Pi 变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [认证](#认证) 下列出的用于 Pi 的变量之一。
 
 ## 适配器设置
 
@@ -77,7 +77,8 @@ const harness = createPi({
 
 设置项：
 
-- `auth`：AI 网关或自定义提供商环境配置。
+- `auth`：认证模式：`auto`、`openai`、`anthropic`、`custom` 或
+  `ai-gateway`。
 - `extensionFactories`：在宿主 Node.js 进程中运行的可信内联 Pi 扩展工厂。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
 - `model`：Pi 模型 ID 或模型名称。
@@ -99,29 +100,34 @@ const harness = createPi({
 });
 ```
 
-轮次之间的常规资源刷新会复用活动的扩展运行时，不会重新初始化工厂。如果底层 Pi 会话被重建，工厂将针对新的 Pi 运行时再次初始化。
+回合之间的常规资源刷新会复用活动的扩展运行时，不会重新初始化工厂。如果底层 Pi 会话被重建，工厂将针对新的 Pi 运行时再次初始化。
 
-扩展工厂在宿主 Node.js 进程中执行，并可以访问宿主环境，因此只传递您信任的工厂。此设置仅启用您显式提供的工厂。文件系统扩展发现保持禁用，包括用户、项目和基于设置的扩展。主题和提示词模板也保持禁用。
+扩展工厂在宿主 Node.js 进程中执行，并可以访问宿主环境，因此只传入您信任的工厂。此设置仅启用您显式提供的工厂。文件系统扩展发现保持禁用，包括用户、项目和基于设置的扩展。主题和提示词模板也保持禁用。
 
 ## 认证
 
-Pi 可以使用 AI 网关凭据或自定义提供商环境变量。当未配置显式认证时，它会检查宿主环境中的 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN`。
+`auth` 设置选择 Pi 从宿主环境中读取的凭据：
+
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到环境中找到的所有提供商凭据。
+- `openai`：使用 `OPENAI_API_KEY` 和可选的 `OPENAI_BASE_URL`。
+- `anthropic`：使用 `ANTHROPIC_API_KEY` 以及可选的
+  `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`。
+- `custom`：注册通过环境变量配置的所有提供商。
+- `ai-gateway`：使用 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 以及
+  可选的 `AI_GATEWAY_BASE_URL`。
 
 ```ts
-const harness = createPi({
-  auth: {
-    gateway: {
-      apiKey: process.env.AI_GATEWAY_API_KEY,
-    },
-  },
-});
+const harness = createPi({ auth: 'ai-gateway' });
 ```
 
-对于多个提供商，请传递带有标准环境变量对的 `auth.customEnv`，例如 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`ANTHROPIC_API_KEY` 或 `ANTHROPIC_BASE_URL`。
+使用 `custom` 时，标准提供商使用环境变量，如
+`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`ANTHROPIC_API_KEY` 和
+`ANTHROPIC_BASE_URL`。其他提供商使用 `<PREFIX>_API_KEY` 和匹配的
+`<PREFIX>_BASE_URL` 对。
 
 ## 沙箱
 
-Pi 需要 `HarnessV1SandboxProvider`，但不需要暴露端口。您可以使用网络沙箱适配器（如 `@ai-sdk/sandbox-vercel`）或本地模拟（如 `@ai-sdk/sandbox-just-bash`）：
+Pi 需要 `HarnessV1SandboxProvider`，但不需要暴露端口。您可以使用网络沙箱适配器，如 `@ai-sdk/sandbox-vercel`，或本地模拟，如 `@ai-sdk/sandbox-just-bash`：
 
 ```ts
 const sandbox = createVercelSandbox({
@@ -131,7 +137,7 @@ const sandbox = createVercelSandbox({
 
 ## 内置工具
 
-适配器通过 `agent.tools` 暴露以下常见的 Pi 内置工具：
+适配器通过 `agent.tools` 暴露这些常见的 Pi 内置工具：
 
 - `read`
 - `write`
@@ -145,7 +151,7 @@ const sandbox = createVercelSandbox({
 
 当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，Pi 支持内置工具审批请求。
 
-## 相关
+## 相关链接
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [工具链工具](/docs/ai-sdk-harnesses/tools)

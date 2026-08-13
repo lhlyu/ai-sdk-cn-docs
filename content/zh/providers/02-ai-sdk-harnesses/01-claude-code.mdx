@@ -8,14 +8,14 @@ description: "了解如何使用 Claude Code 工具链适配器。"
 Claude Code 工具链适配器通过 `@anthropic-ai/claude-agent-sdk` 将 `HarnessAgent` 连接到 Claude Code。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Claude Code 事件流式传输回主机。
 
 <Note>
-  工具链包目前为**实验性**。随着这一早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  工具链包为**实验性**。随着这一早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
-## 安装
+## 设置
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-claude-code @ai-sdk/sandbox-vercel" />
 
-当第一个会话启动时，适配器会在沙箱内引导 Claude Code 桥接器的依赖。
+当第一个会话启动时，适配器会在沙箱内引导 Claude Code 桥接器依赖。
 
 ## 导入
 
@@ -46,7 +46,7 @@ let exitCode = 0;
 try {
   const result = await agent.stream({
     session,
-    prompt: '检查测试失败原因并修复生产代码。',
+    prompt: '检查测试失败并修复生产代码。',
   });
 
   for await (const part of result.stream) {
@@ -63,7 +63,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [认证](#认证) 下列出的用于 Claude Code 的变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#身份验证) 下列出的用于 Claude Code 的变量之一。
 
 ## 适配器设置
 
@@ -83,21 +83,25 @@ const harness = createClaudeCode({
 });
 ```
 
-设置项：
+设置：
 
-- `auth`：直接使用 Anthropic 或 AI Gateway 的认证设置。
-- `mcpServers`：以服务器名称作为键的 MCP 服务器定义。
+- `auth`：身份验证模式：`auto`、`direct` 或 `ai-gateway`。
+- `mcpServers`：按服务器名称键控的 MCP 服务器定义。
 - `model`：传递给底层 Claude Code 运行时的 Anthropic 模型 ID。
-- `maxTurns`：让出控制权之前的最大内部轮次。
-- `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接器进程环境中，并具有优先权。
+- `maxTurns`：让出前的最大内部轮次。
+- `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接器进程环境中并优先使用。
 - `thinking`：扩展思考配置。`type` 可以是 `enabled`、`disabled` 或 `adaptive`。对于启用或自适应思考，`display` 可以是 `summarized` 或 `omitted`。默认为 `{ type: 'adaptive', display: 'summarized' }`。
 - `port`：桥接器端口覆盖。
 - `startupTimeoutMs`：等待桥接器启动的最长时间。
-- `mintBridgeToken`：接收沙箱 ID 并返回桥接器认证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+- `mintBridgeToken`：接收沙箱 ID 并返回桥接器身份验证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
-## 认证
+## 身份验证
 
-默认情况下，认证信息从主机环境解析并转发到沙箱桥接器。适配器会检查 AI Gateway 和 Anthropic 的凭据。
+`auth` 设置选择如何从主机环境解析凭据：
+
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到直接使用 Anthropic 凭据。
+- `direct`：使用 Anthropic 凭据。
+- `ai-gateway`：使用 AI Gateway 凭据。
 
 支持的环境变量：
 
@@ -108,16 +112,11 @@ const harness = createClaudeCode({
 - `ANTHROPIC_AUTH_TOKEN`
 - `ANTHROPIC_BASE_URL`
 
-您也可以传递显式的认证设置：
+当您不希望自动检测时，请选择特定的身份验证模式：
 
 ```ts
-const harness = createClaudeCode({
-  auth: {
-    gateway: {
-      apiKey: process.env.AI_GATEWAY_API_KEY,
-    },
-  },
-});
+const directHarness = createClaudeCode({ auth: 'direct' });
+const gatewayHarness = createClaudeCode({ auth: 'ai-gateway' });
 ```
 
 ## 沙箱
@@ -147,7 +146,7 @@ const sandbox = createVercelSandbox({
 
 当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，Claude Code 支持内置工具审批请求。
 
-## 相关链接
+## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [工具链工具](/docs/ai-sdk-harnesses/tools)
