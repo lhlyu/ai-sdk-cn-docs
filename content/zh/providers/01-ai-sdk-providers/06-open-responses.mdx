@@ -1,23 +1,24 @@
 ---
 title: "Open Responses"
-description: "了解如何使用 AI SDK 的 Open Responses 提供商。"
+description: "了解如何将 Open Responses 提供商用于 AI SDK。"
 ---
 
 # Open Responses 提供商
 
-[Open Responses](https://www.openresponses.org/) 提供商将 AI SDK Core 连接到实现了兼容 Open Responses 的 `POST` 端点的语言模型服务器。Open Responses 是一个基于 OpenAI Responses API 的开放规范。
+[Open Responses](https://www.openresponses.org/) 提供商将 AI SDK
+核心连接到实现了兼容 Open Responses 的 `POST` 端点的语言模型服务器。Open Responses 是一个基于 OpenAI Responses API 的开放规范。
 
-对于实现了此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果您直接调用 OpenAI 并且需要 OpenAI 特定的提供商选项或内置工具，请改用 [`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
+对于实现此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果您直接调用 OpenAI 并且需要 OpenAI 特定的提供商选项或内置工具，请改用 [`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
 
-## 设置
+## 安装
 
-Open Responses 提供商位于 `@ai-sdk/open-responses` 模块中。您可以通过以下命令安装它：
+Open Responses 提供商在 `@ai-sdk/open-responses` 模块中可用。您可以通过以下方式安装它：
 
 <InstallPackages packages="@ai-sdk/open-responses" />
 
 ## 提供商实例
 
-使用 `createOpenResponses` 创建一个 Open Responses 提供商实例：
+使用 `createOpenResponses` 创建 Open Responses 提供商实例：
 
 ```ts
 import { createOpenResponses } from '@ai-sdk/open-responses';
@@ -42,7 +43,7 @@ const openResponses = createOpenResponses({
 
 - **apiKey** _string_
 
-  API 密钥，作为 Bearer 令牌在 `Authorization` 标头中发送。
+  作为 `Authorization` 标头中的 Bearer 令牌发送的 API 密钥。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -50,7 +51,8 @@ const openResponses = createOpenResponses({
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
+  默认为全局 `fetch` 函数。
 
 ### 端点示例
 
@@ -77,7 +79,7 @@ const openAIResponses = createOpenResponses({
 });
 ```
 
-您可以通过更改 `name`、`url`、身份验证和模型 ID，使用相同的设置连接到其他兼容服务。
+您可以通过更改 `name`、`url`、身份验证和模型 ID，将相同的设置用于其他兼容服务。
 
 ## 语言模型
 
@@ -104,7 +106,7 @@ const openResponses = createOpenResponses({
 
 const { text } = await generateText({
   model: openResponses('your-model-id'),
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
 });
 
 console.log(text);
@@ -123,7 +125,7 @@ const openResponses = createOpenResponses({
 
 const result = streamText({
   model: openResponses('your-model-id'),
-  prompt: '发明一个新节日并描述其传统。',
+  prompt: 'Invent a new holiday and describe its traditions.',
 });
 
 for await (const textPart of result.textStream) {
@@ -131,11 +133,11 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-## 推理与提供商选项
+## 推理和提供商选项
 
 使用顶层的 [`reasoning`](/docs/ai-sdk-core/reasoning) 设置来控制推理努力程度。提供商将支持的值映射到 Open Responses 的 `reasoning.effort` 字段。
 
-该提供商还通过 `providerOptions` 支持 `reasoningSummary`。提供商选项的键必须与传递给 `createOpenResponses` 的 `name` 匹配：
+该提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。提供商选项键必须与传递给 `createOpenResponses` 的 `name` 匹配：
 
 ```ts
 import {
@@ -154,23 +156,26 @@ const { text, reasoningText } = await generateText({
   reasoning: 'high',
   providerOptions: {
     lmstudio: {
+      reasoningEffort: 'max',
       reasoningSummary: 'detailed',
     } satisfies OpenResponsesLanguageModelOptions,
   },
-  prompt: '解释为什么天空看起来是蓝色的。',
+  prompt: 'Explain why the sky appears blue.',
 });
 
 console.log(reasoningText);
 console.log(text);
 ```
 
-`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`。推理支持和接受的值取决于端点和模型。
+`reasoningEffort` 接受任何字符串，并原样传递给端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的端点原生值（例如 `'max'`），请使用它。当两者都设置时，`providerOptions` 中的 `reasoningEffort` 优先于顶层的 `reasoning` 值。
+
+`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`，并且可以与任一推理努力程度设置结合使用。推理支持和接受的努力程度值取决于端点和模型；不支持的值可能会被端点拒绝或忽略。
 
 ## 文件输入
 
 该提供商支持用户消息中的图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（例如 PDF）则作为 `input_file` 部分发送。
 
-您可以将文件作为内联数据提供：
+您可以以内联数据的形式提供文件：
 
 ```ts
 import { createOpenResponses } from '@ai-sdk/open-responses';
@@ -190,7 +195,7 @@ const { text } = await generateText({
       content: [
         {
           type: 'text',
-          text: '总结此文档。',
+          text: 'Summarize this document.',
         },
         {
           type: 'file',
@@ -206,10 +211,10 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-您也可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。此提供商不支持提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据。
+您还可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据不受此提供商支持。
 
 ## 限制
 
-- 不支持停止序列、`topK` 和 `seed`，这些设置会被忽略并发出警告。
+- 停止序列、`topK` 和 `seed` 不受支持，并会在发出警告后被忽略。
 - 该提供商仅支持语言模型。它不提供嵌入或图像生成模型。
 - 支持 AI SDK 函数工具。提供商特定的内置工具和选项需要专门的提供商实现。
