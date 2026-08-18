@@ -8,7 +8,7 @@ description: "了解如何使用 Claude Code 工具链适配器。"
 Claude Code 工具链适配器通过 `@anthropic-ai/claude-agent-sdk` 将 `HarnessAgent` 连接到 Claude Code。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Claude Code 事件流式传输回主机。
 
 <Note>
-  工具链包目前为**实验性**。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  工具链包为**实验性**。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -63,7 +63,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#authentication) 下列出的用于 Claude Code 的变量之一。
+要使用此智能体，请确保环境变量包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#authentication) 下列出的用于 Claude Code 的变量之一。
 
 ## 适配器设置
 
@@ -89,21 +89,25 @@ const harness = createClaudeCode({
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
 - `model`：传递给底层 Claude Code 运行时的 Anthropic 模型 ID。
 - `maxTurns`：让出前的最大内部轮数。
-- `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接器进程环境中并优先使用。
+- `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接器进程环境中，并优先于后者。
 - `thinking`：扩展思考配置。`type` 可以是 `enabled`、`disabled` 或 `adaptive`。对于启用或自适应思考，`display` 可以是 `summarized` 或 `omitted`。默认为 `{ type: 'adaptive', display: 'summarized' }`。
 - `port`：桥接器端口覆盖。
 - `startupTimeoutMs`：等待桥接器启动的最长时间。
 - `mintBridgeToken`：接收沙箱 ID 并返回桥接器身份验证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
+## 结构化输出
+
+Claude Code 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。适配器通过 Agent SDK 的原生 `outputFormat` 选项传递 JSON Schema，并将其 `structured_output` 值作为 JSON 文本返回。
+
 ## 身份验证
 
-`auth` 设置选择如何从主机环境解析凭据：
+`auth` 设置决定如何从主机环境解析凭据：
 
-- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到直接的 Anthropic 凭据。
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到直接使用 Anthropic 凭据。
 - `direct`：使用 Anthropic 凭据。
 - `ai-gateway`：使用 AI Gateway 凭据。
 
-当沙箱支持附加请求转换时，桥接器会接收占位符，适配器会将凭据注入到匹配的出站请求中。不具备该能力的沙箱将保留直接的凭据转发。
+当沙箱支持附加请求转换时，桥接器会接收占位符，适配器会将凭据注入到匹配的出站请求中。不具备该能力的沙箱则保留直接凭据转发。
 
 支持的环境变量：
 
@@ -114,7 +118,7 @@ const harness = createClaudeCode({
 - `ANTHROPIC_AUTH_TOKEN`
 - `ANTHROPIC_BASE_URL`
 
-当您不希望自动检测时，可以选择特定的身份验证模式：
+当您不希望自动检测时，请选择特定的身份验证模式：
 
 ```ts
 const directHarness = createClaudeCode({ auth: 'direct' });
@@ -148,7 +152,7 @@ const sandbox = createVercelSandbox({
 
 当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，Claude Code 支持内置工具审批请求。
 
-## 相关资源
+## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [工具链工具](/docs/ai-sdk-harnesses/tools)

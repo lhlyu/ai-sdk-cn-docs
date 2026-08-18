@@ -1,0 +1,189 @@
+---
+title: "Cline"
+description: "了解如何使用 Cline harness 适配器。"
+---
+
+# Cline Harness
+
+Cline harness 适配器将 `HarnessAgent` 连接到
+[Cline SDK](https://docs.cline.bot/sdk/overview) 智能体运行时
+（`@cline/agents`）。该运行时作为主机上的进程内 Node 库运行
+——无需桥接——而其内置工具在会话沙箱中执行，
+因此模型所推理的工作区完全位于沙箱内部。
+
+<Note>
+  Harness 包为**实验性**。随着此早期 API 的进一步完善，
+  各版本之间可能会出现破坏性更改。
+</Note>
+
+## 设置
+
+<InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-cline @ai-sdk/sandbox-vercel" />
+
+Cline 运行时没有引导步骤：会话启动时不会在沙箱内安装任何内容。
+
+## 导入
+
+```ts
+import { cline, createCline } from '@ai-sdk/harness-cline';
+```
+
+`cline` 等同于使用默认配置调用 `createCline()`。
+
+## 基本用法
+
+```ts
+import { HarnessAgent } from '@ai-sdk/harness/agent';
+import { cline } from '@ai-sdk/harness-cline';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+
+const agent = new HarnessAgent({
+  harness: cline,
+  sandbox: createVercelSandbox({
+    runtime: 'node24',
+  }),
+});
+
+const session = await agent.createSession();
+
+let exitCode = 0;
+try {
+  const result = await agent.stream({
+    session,
+    prompt: '检查测试失败并修复生产代码。',
+  });
+
+  for await (const part of result.stream) {
+    if (part.type === 'text-delta') {
+      process.stdout.write(part.text);
+    }
+  }
+} catch (err) {
+  exitCode = 1;
+  console.error(err);
+} finally {
+  await session.destroy();
+  process.exit(exitCode);
+}
+```
+
+要使用此智能体，请确保环境变量中包含 `VERCEL_OIDC_TOKEN`
+用于 Vercel 沙箱。当使用默认的 `auto` 认证模式时，
+同一令牌通过 AI Gateway 对模型调用进行认证。
+
+## 适配器设置
+
+使用 `createCline()` 配置运行时：
+
+```ts
+const harness = createCline({
+  auth: 'direct',
+  modelId: 'anthropic/claude-opus-5',
+});
+```
+
+设置：
+
+- `auth`：认证模式：`auto`、`direct` 或 `ai-gateway`。
+- `mcpServers`：按服务器名称键控的 MCP 服务器定义。
+- `providerId`：Cline LLM 提供商 ID（例如 `anthropic`、`openai`、`gemini`）。
+  省略时，直接认证使用 Cline 后端。显式自定义提供商
+  仅适用于直接认证。
+- `modelId`：所配置提供商的模型 ID。省略时，Cline SDK
+  选择提供商的默认模型。
+- `apiKey`：提供商 API 密钥。省略时，Cline 网关回退到
+  所配置提供商的环境变量。
+- `baseUrl`：自定义提供商端点。
+- `headers`：发送给提供商的额外标头。
+- `reasoningEffort`：支持推理能力的模型的推理努力程度。支持
+  `none`、`minimal`、`low`、`medium`、`high`、`xhigh` 和 `max`。`none`
+  禁用推理；其他所有值均以该努力程度启用推理。
+  省略时，Cline SDK 选择推理行为。
+- `maxIterations`：每轮智能体循环迭代的安全上限。
+
+要提供额外的操作指导，请使用 `HarnessAgent` 上的 `instructions` 设置。
+适配器会将其附加到 Cline 的系统提示词中。
+
+## 结构化输出
+
+Cline 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)
+，要求终端工具的参数使用所请求的 JSON Schema。
+这需要具有外部工具支持的提供商/模型路由；
+`providerId: 'openai-codex-cli'` 会抛出 `HarnessCapabilityUnsupportedError`。
+
+## 认证
+
+`auth` 设置选择 Cline 从主机环境中读取的凭据：
+
+- `auto`（默认）：可用时使用 AI Gateway 凭据，否则使用
+  直接 Cline 凭据。
+- `direct`：使用 `CLINE_API_KEY` 和可选的 `CLINE_API_BASE_URL`。
+- `ai-gateway`：使用 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 以及
+  可选的 `AI_GATEWAY_BASE_URL`。
+
+```ts
+const harness = createCline({ auth: 'ai-gateway' });
+```
+
+`CLINE_API_BASE_URL` 是 Cline 的后端根 URL；SDK 的 `/api/v1` 提供商
+路径会附加到其后。对于 AI Gateway，适配器改为覆盖 Cline 的
+进程内提供商配置，使用 Gateway 凭据及其 `/v1`
+端点。在显式 Gateway 模式下，直接 Cline 凭据绝不会用作回退。
+
+## 沙箱
+
+Cline 运行时在主机上运行，不需要沙箱端口，因此任何
+网络沙箱都可以工作——包括无端口配置：
+
+```ts
+const sandbox = createVercelSandbox({
+  runtime: 'node24',
+});
+```
+
+所有内置工具都通过沙箱会话的文件和执行接口
+在沙箱文件系统上操作。
+
+## 内置工具
+
+适配器通过 `agent.tools` 暴露以下内置工具：
+
+- `read`
+- `write`
+- `edit`
+- `bash`
+- `grep`
+- `glob`
+- `ls`
+
+所有内置工具均以沙箱为后端：`bash` 在会话工作
+目录中运行，相对文件路径相对于该目录解析。
+
+Cline 支持在 `permissionMode` 为
+`allow-reads` 或 `allow-edits` 时的内置工具审批请求，通过
+`activeTools`/`inactiveTools` 进行原生内置工具过滤，以及主机执行的 AI SDK 工具审批。
+
+## 技能
+
+Harness 提供的技能被写入沙箱 HOME
+（`~/.agents/skills/<name>/SKILL.md`），并通过
+系统提示词部分向模型通告；当任务需要时，模型使用 `read` 工具加载技能的完整内容。
+
+## 会话生命周期
+
+对话状态存在于主机进程运行时中。在 `detach`/`stop` 时，
+适配器将对话历史持久化到沙箱工作区
+（会话工作目录中的 `.cline-harness/history.json`），因此未来的
+进程可以在沙箱提供商重新附加后恢复会话。由于
+运行时驻留在主机上，挂起的轮次会从持久化的历史记录中重新运行继续，
+而不是无损附加（与
+[Pi 适配器](/providers/ai-sdk-harnesses/pi) 相同的权衡）。
+
+独立 Cline 运行时不支持手动压缩（`doCompact`），
+会抛出 `HarnessCapabilityUnsupportedError`。
+
+## 相关
+
+- [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)

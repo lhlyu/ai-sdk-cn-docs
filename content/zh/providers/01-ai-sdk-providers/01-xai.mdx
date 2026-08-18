@@ -39,15 +39,15 @@ const xai = createXai({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认为 `XAI_API_KEY` 环境变量。
+  通过 `Authorization` 请求头发送的 API 密钥。默认为 `XAI_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作中间件来拦截请求，或提供自定义 fetch 实现（例如用于测试）。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。你可以将其用作中间件来拦截请求，或提供自定义的 fetch 实现，例如用于测试。
 
 ## 语言模型
 
@@ -74,7 +74,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: xai('grok-4.6'),
-  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  prompt: '写一份适合 4 人的素食千层面食谱。',
 });
 ```
 
@@ -90,7 +90,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: xai('grok-4.3'),
-  prompt: 'Explain quantum entanglement.',
+  prompt: '解释量子纠缠。',
   providerOptions: {
     xai: { reasoningEffort: 'medium' },
   },
@@ -119,7 +119,7 @@ AI SDK 选项接受以下值，但每个 xAI 模型支持其中一部分：
   当前详细信息。
 </Note>
 
-### 优先级处理
+### 优先处理
 
 `providerOptions.xai.serviceTier` 请求更高的调度优先级，这通常会降低首令牌时间并加快令牌间延迟。这适用于 Responses API（默认）和 Chat Completions API（`xai.chat()`）。
 
@@ -129,18 +129,18 @@ import { generateText } from 'ai';
 
 const { providerMetadata } = await generateText({
   model: xai('grok-4.6'),
-  prompt: 'Explain quantum entanglement.',
+  prompt: '解释量子纠缠。',
   providerOptions: {
     xai: { serviceTier: 'priority' },
   },
 });
 
-// 当请求在优先级层得到服务时为 'priority'，
-// 当优先级容量不可用时为 'default'。
+// 当请求在优先层级得到服务时为 'priority'，
+// 当优先容量不可用时为 'default'。
 console.log(providerMetadata?.xai?.serviceTier);
 ```
 
-优先级请求按每个令牌的溢价费率计费，xAI 仅在响应确认优先级层时才收取该费率——因此请从 `providerMetadata.xai.serviceTier` 读回实际应用的层，而不是假设你发送的请求就是你获得的层。省略该选项等同于 `'default'`。请参阅 xAI 的 [优先级处理文档](https://docs.x.ai/developers/advanced-api-usage/priority-processing)。
+优先请求按每个令牌的溢价费率计费，xAI 仅在响应确认优先层级时才收取该费率——因此请从 `providerMetadata.xai.serviceTier` 读回实际应用的层级，而不是假设你发送的请求就是你获得的层级。省略该选项等同于 `'default'`。请参阅 xAI 的[优先处理文档](https://docs.x.ai/developers/advanced-api-usage/priority-processing)。
 
 ## 实时模型
 
@@ -172,7 +172,7 @@ xAI Responses API 是使用 `xai(modelId)` 时的默认 API（自 AI SDK 7 起�
 const model = xai.responses('grok-4.6');
 ```
 
-Responses API 提供服务器端工具，模型可以在其推理过程中自主执行：
+Responses API 提供模型在其推理过程中可以自主执行的服务器端工具：
 
 - **web_search**：实时网络搜索和页面浏览
 - **x_search**：搜索 X（Twitter）帖子、用户和话题
@@ -196,7 +196,7 @@ const { text } = await generateText({
     {
       role: 'user',
       content: [
-        { type: 'text', text: 'What do you see in this image?' },
+        { type: 'text', text: '你在这张图片中看到了什么？' },
         {
           type: 'file',
           mediaType: 'image',
@@ -220,7 +220,7 @@ const { text } = await generateText({
     {
       role: 'user',
       content: [
-        { type: 'text', text: 'What do you see in this image?' },
+        { type: 'text', text: '你在这张图片中看到了什么？' },
         {
           type: 'file',
           mediaType: 'image/png',
@@ -241,7 +241,7 @@ const { text } = await generateText({
 - **high**：以全分辨率处理图像。
 - **auto**：让 xAI API 决定。
 
-未设置时，图像以全分辨率处理。
+未设置时，图像将以全分辨率处理。
 
 ### 网络搜索工具
 
@@ -253,7 +253,7 @@ import { generateText } from 'ai';
 
 const { text, sources } = await generateText({
   model: xai.responses('grok-4.6'),
-  prompt: 'What are the latest developments in AI?',
+  prompt: '人工智能的最新发展是什么？',
   tools: {
     web_search: xai.tools.webSearch({
       allowedDomains: ['arxiv.org', 'openai.com'],
@@ -263,18 +263,18 @@ const { text, sources } = await generateText({
 });
 
 console.log(text);
-console.log('Citations:', sources);
+console.log('引用：', sources);
 ```
 
 #### 网络搜索参数
 
 - **allowedDomains** _string[]_
 
-  仅在指定域名内搜索（最多 5 个）。不能与 `excludedDomains` 一起使用。
+  仅在指定域名内搜索（最多 5 个）。不能与 `excludedDomains` 同时使用。
 
 - **excludedDomains** _string[]_
 
-  从搜索中排除指定域名（最多 5 个）。不能与 `allowedDomains` 一起使用。
+  从搜索中排除指定域名（最多 5 个）。不能与 `allowedDomains` 同时使用。
 
 - **enableImageSearch** _boolean_
 
@@ -291,7 +291,7 @@ X 搜索工具支持搜索 X（Twitter）上的帖子，可按句柄和日期范
 ```ts
 const { text, sources } = await generateText({
   model: xai.responses('grok-4.6'),
-  prompt: 'What are people saying about AI on X this week?',
+  prompt: '本周人们在 X 上对 AI 有什么看法？',
   tools: {
     x_search: xai.tools.xSearch({
       allowedXHandles: ['elonmusk', 'xai'],
@@ -308,11 +308,11 @@ const { text, sources } = await generateText({
 
 - **allowedXHandles** _string[]_
 
-  仅搜索指定 X 句柄的帖子（最多 10 个）。不能与 `excludedXHandles` 一起使用。
+  仅搜索指定 X 句柄的帖子（最多 10 个）。不能与 `excludedXHandles` 同时使用。
 
 - **excludedXHandles** _string[]_
 
-  排除指定 X 句柄的帖子（最多 10 个）。不能与 `allowedXHandles` 一起使用。
+  排除指定 X 句柄的帖子（最多 10 个）。不能与 `allowedXHandles` 同时使用。
 
 - **fromDate** _string_
 
@@ -338,7 +338,7 @@ const { text, sources } = await generateText({
 const { text } = await generateText({
   model: xai.responses('grok-4.6'),
   prompt:
-    'Calculate the compound interest for $10,000 at 5% annually for 10 years',
+    '计算 10,000 美元按年利率 5% 复利 10 年的结果',
   tools: {
     code_execution: xai.tools.codeExecution(),
   },
@@ -352,7 +352,7 @@ const { text } = await generateText({
 ```ts
 const { text } = await generateText({
   model: xai.responses('grok-4.6'),
-  prompt: 'Describe what you see in the image',
+  prompt: '描述你在图像中看到的内容',
   tools: {
     view_image: xai.tools.viewImage(),
   },
@@ -366,7 +366,7 @@ const { text } = await generateText({
 ```ts
 const { text } = await generateText({
   model: xai.responses('grok-4.6'),
-  prompt: 'Summarize the content of this X video',
+  prompt: '总结这个 X 视频的内容',
   tools: {
     view_x_video: xai.tools.viewXVideo(),
   },
@@ -375,7 +375,7 @@ const { text } = await generateText({
 
 ### 图像生成工具
 
-图像生成工具让模型在对话中使用 Grok Imagine 创建和编辑图像。模型决定何时调用工具、编写图像提示词，并在其文本响应旁边返回完成的图像：
+图像生成工具让模型在对话中使用 Grok Imagine 创建和编辑图像。模型决定何时调用工具，编写图像提示词，并在文本响应旁边返回完成的图像：
 
 ```ts
 import { xai } from '@ai-sdk/xai';
@@ -384,7 +384,7 @@ import { generateText } from 'ai';
 const result = await generateText({
   model: xai.responses('grok-4.6'),
   prompt:
-    'Generate an image of a corgi surfing a big wave, in the style of a Japanese woodblock print',
+    '生成一张柯基冲浪大浪的图像，风格为日本木版画',
   tools: {
     image_generation: xai.tools.imageGeneration(),
   },
@@ -406,11 +406,11 @@ for (const toolResult of result.staticToolResults) {
   限制工具可以执行的操作。默认为 `'auto'`。
   - `'auto'`：模型可以生成和编辑图像。
   - `'generate'`：仅文本到图像生成。
-  - `'edit'`：仅图像编辑（编辑对话中已有的图像，包括模型之前生成的图像）。
+  - `'edit'`：仅图像编辑（编辑对话中已有的图像，包括模型先前生成的图像）。
 
 <Note>
   该工具不接受大小或格式参数；模型为每次调用选择宽高比。
-  要控制它，请在提示词中要求（例如“以 9:16 垂直宽高比”）。
+  要控制它，请在提示词中说明（例如“9:16 垂直宽高比”）。
 </Note>
 
 ### MCP 服务器工具
@@ -420,12 +420,12 @@ MCP 服务器工具使模型能够连接到远程 [Model Context Protocol (MCP)]
 ```ts
 const { text } = await generateText({
   model: xai.responses('grok-4.6'),
-  prompt: 'Use the weather tool to check conditions in San Francisco',
+  prompt: '使用天气工具检查旧金山的天气状况',
   tools: {
     weather_server: xai.tools.mcpServer({
       serverUrl: 'https://example.com/mcp',
       serverLabel: 'weather-service',
-      serverDescription: 'Weather data provider',
+      serverDescription: '天气数据提供商',
       allowedTools: ['get_weather', 'get_forecast'],
     }),
   },
@@ -434,7 +434,7 @@ const { text } = await generateText({
 
 #### MCP 服务器参数
 
-- **serverUrl** _string_（必填）
+- **serverUrl** _string_（必需）
 
   远程 MCP 服务器的 URL。
 
@@ -452,11 +452,11 @@ const { text } = await generateText({
 
 - **headers** _Record&lt;string, string&gt;_
 
-  连接到 MCP 服务器时要包含的自定义标头。
+  连接到 MCP 服务器时要包含的自定义请求头。
 
 - **authorization** _string_
 
-  用于与 MCP 服务器进行身份验证的 Authorization 标头值（例如 `'Bearer token123'`）。
+  用于与 MCP 服务器进行身份验证的 Authorization 请求头值（例如，`'Bearer token123'`）。
 
 ### 文件搜索工具
 
@@ -468,7 +468,7 @@ import { streamText } from 'ai';
 
 const result = streamText({
   model: xai.responses('grok-4.6'),
-  prompt: 'What documents do you have access to?',
+  prompt: '你可以访问哪些文档？',
   tools: {
     file_search: xai.tools.fileSearch({
       vectorStoreIds: ['collection_your-collection-id'],
@@ -485,7 +485,7 @@ const result = streamText({
 
 #### 文件搜索参数
 
-- **vectorStoreIds** _string[]_（必填）
+- **vectorStoreIds** _string[]_（必需）
 
   要搜索的向量存储（集合）的 ID。
 
@@ -515,7 +515,7 @@ import { streamText } from 'ai';
 
 const { stream } = streamText({
   model: xai.responses('grok-4.6'),
-  prompt: 'Research AI safety developments and calculate risk metrics',
+  prompt: '研究 AI 安全发展并计算风险指标',
   tools: {
     web_search: xai.tools.webSearch(),
     x_search: xai.tools.xSearch(),
@@ -534,7 +534,7 @@ for await (const part of stream) {
   if (part.type === 'text-delta') {
     process.stdout.write(part.text);
   } else if (part.type === 'source' && part.sourceType === 'url') {
-    console.log('\nSource:', part.url);
+    console.log('\n来源：', part.url);
   }
 }
 ```
@@ -570,11 +570,11 @@ const result = await generateText({
 
 - **topLogprobs** _number_
 
-  每个令牌位置返回的最可能令牌数（0-8）。设置时，`logprobs` 会自动启用。
+  每个令牌位置返回的最可能令牌数（0-8）。设置后，`logprobs` 会自动启用。
 
 - **include** _Array&lt;'file_search_call.results'&gt;_
 
-  指定要在模型响应中包含的额外输出数据。使用 `['file_search_call.results']` 包含带有分数和内容的文件搜索结果。
+  指定要包含在模型响应中的额外输出数据。使用 `['file_search_call.results']` 包含带有分数和内容的文件搜索结果。
 
 - **store** _boolean_
 
@@ -586,7 +586,7 @@ const result = await generateText({
 
 - **serviceTier** _'default' | 'priority'_
 
-  请求的调度优先级。`'priority'` 以每个令牌的溢价价格换取更低的首令牌时间和更快的令牌间延迟。xAI 实际应用的层会通过 `providerMetadata.xai.serviceTier` 返回，当优先级容量不可用时为 `'default'`。请参阅 [优先级处理](https://docs.x.ai/developers/advanced-api-usage/priority-processing)。
+  请求的调度优先级。`'priority'` 以每个令牌的溢价价格换取更低的首令牌时间和更快的令牌间延迟。xAI 实际应用的层级会通过 `providerMetadata.xai.serviceTier` 返回，当优先容量不可用时为 `'default'`。请参阅 [优先处理](https://docs.x.ai/developers/advanced-api-usage/priority-processing)。
 
 <Note>
   Responses API 仅支持服务器端工具。你不能在同一请求中混合使用服务器端
@@ -612,8 +612,8 @@ const result = await generateText({
 
 <Note>
   上表列出了常用模型。请参阅 [xAI
-  文档](https://docs.x.ai/docs#models) 获取可用模型的完整列表。如有需要，你也可以
-  将任何可用的提供商模型 ID 作为字符串传递。
+  文档](https://docs.x.ai/docs#models) 获取可用模型的完整列表。如有需要，
+  你也可以将任何可用的提供商模型 ID 作为字符串传递。
 </Note>
 
 ## 语音模型
@@ -632,7 +632,7 @@ import { generateSpeech } from 'ai';
 
 const result = await generateSpeech({
   model: xai.speech(),
-  text: 'Hello from the AI SDK!',
+  text: '来自 AI SDK 的问候！',
   voice: 'ara',
   language: 'en',
   outputFormat: 'mp3',
@@ -642,17 +642,20 @@ const result = await generateSpeech({
 
 ### 支持的参数
 
-- **text** _string_（必填）
+- **text** _string_（必需）
 
-  要合成的文本。你可以直接在文本中包含 xAI 语音标签，如 `[pause]`、`[laugh]` 或 `<whisper>...</whisper>`。
+  要合成的文本。你可以直接在文本中包含 xAI 语音标签，如 `[pause]`、
+  `[laugh]` 或 `<whisper>...</whisper>`。
 
 - **voice** _string_
 
-  xAI 语音 ID。默认为 `'eve'`。内置语音 ID 为 `'eve'`、`'ara'`、`'rex'`、`'sal'` 和 `'leo'`；也接受自定义语音 ID。
+  xAI 语音 ID。默认为 `'eve'`。内置语音 ID 为 `'eve'`、
+  `'ara'`、`'rex'`、`'sal'` 和 `'leo'`；也接受自定义语音 ID。
 
 - **language** _string_
 
-  BCP-47 语言代码或用于自动检测的 `'auto'`。省略时默认为 `'auto'`。
+  BCP-47 语言代码或 `'auto'` 用于自动检测。省略时默认为
+  `'auto'`。
 
 - **speed** _number_
 
@@ -660,11 +663,12 @@ const result = await generateSpeech({
 
 - **outputFormat** _string_
 
-  要生成的音频编解码器。支持的值有 `'mp3'`、`'wav'`、`'pcm'`、`'mulaw'` 和 `'alaw'`。默认为 `'mp3'`。
+  要生成的音频编解码器。支持的值有 `'mp3'`、`'wav'`、`'pcm'`、
+  `'mulaw'` 和 `'alaw'`。默认为 `'mp3'`。
 
 <Note>
-  xAI 不提供单独的 `instructions` 字段用于文本转语音。请在 `text` 中使用
-  语音标签来控制表达性输出。
+  xAI 不提供单独的 `instructions` 字段用于文本转语音。请使用
+  `text` 中的语音标签来控制表达方式。
 </Note>
 
 ### 提供商选项
@@ -677,7 +681,7 @@ import { generateSpeech } from 'ai';
 
 const result = await generateSpeech({
   model: xai.speech(),
-  text: 'A high fidelity narration sample.',
+  text: '一个高保真度的旁白示例。',
   outputFormat: 'mp3',
   providerOptions: {
     xai: {
@@ -692,11 +696,12 @@ const result = await generateSpeech({
 
 - **sampleRate** _8000 | 16000 | 22050 | 24000 | 44100 | 48000_
 
-  输出音频的采样率（Hz）。
+  输出音频的采样率，单位为 Hz。
 
 - **bitRate** _32000 | 64000 | 96000 | 128000 | 192000_
 
-  MP3 比特率（每秒位数）。仅当 `outputFormat` 为 `'mp3'` 时适用。
+  MP3 比特率，单位为比特每秒。仅在 `outputFormat` 为
+  `'mp3'` 时适用。
 
 - **optimizeStreamingLatency** _0 | 1 | 2_
 
@@ -704,11 +709,44 @@ const result = await generateSpeech({
 
 - **textNormalization** _boolean_
 
-  是否在合成语音之前对书面形式的输入文本进行归一化。
+  是否在合成语音之前对书面形式的输入文本进行规范化。
+
+- **withTimestamps** _boolean_
+
+  在音频旁边返回字符级时间元数据。时间数据和总时长通过 `providerMetadata.xai` 公开（见下文）。
+
+- **replace** _Record&lt;string, string&gt;_
+
+  在合成前应用的短语到口语替换的映射。值可以是重新拼写（`{ 'Acme Mobile': 'Acme Mobull' }`）或 IPA 音标（`{ nginx: '/ˈɛndʒɪn ˈɛks/' }`）。
+
+### 提供商元数据
+
+xAI 语音结果在 `providerMetadata.xai` 下包含提供商特定的元数据：
+
+- **traceId** _string_ — 请求的 xAI 跟踪 ID，用于与 xAI 支持团队调试。
+- **duration** _number_ — 总音频时长（秒）（仅在 `withTimestamps` 时）。
+- **contentType** _string_ — 解码音频的 MIME 类型，例如
+  `'audio/mpeg'`（仅在 `withTimestamps` 时）。
+- **audioTimestamps** `{ graphChars: string[]; graphTimes: [number, number][] }` —
+  逐字符对齐数据（仅在 `withTimestamps` 时）。`graphChars[i]`
+  是在 `graphTimes[i]` 的 `[start, end]` 间隔内说出的字符，
+  单位为秒。
+
+```ts
+const result = await generateSpeech({
+  model: xai.speech(),
+  text: '你好，世界。',
+  providerOptions: {
+    xai: { withTimestamps: true } satisfies XaiSpeechModelOptions,
+  },
+});
+
+const { traceId, duration, audioTimestamps } = result.providerMetadata.xai;
+```
 
 ### 模型能力
 
-| 模型      | 语言  | 速度     | 输出格式             |
+| 模型      | 语言  | 速度     | 输出格式                      |
 | --------- | --------- | --------- | -------------------------- |
 | `default` | <Check /> | <Check /> | mp3、wav、pcm、mulaw、alaw |
 
@@ -762,15 +800,15 @@ const result = await transcribe({
 
 - **sampleRate** _8000 | 16000 | 22050 | 24000 | 44100 | 48000_
 
-  输入音频的采样率（Hz）。
+  输入音频的采样率，单位为 Hz。
 
 - **language** _string_
 
-  用于反向文本归一化的语言代码。
+  用于反向文本规范化的语言代码。
 
 - **format** _boolean_
 
-  启用反向文本归一化。需要 `language`。
+  启用反向文本规范化。需要 `language`。
 
 - **multichannel** _boolean_
 
@@ -801,26 +839,26 @@ const result = await transcribe({
 
   - **endpointing** _number_
 
-    话语结束事件之前的静音持续时间（毫秒）。范围：0-5000。
+    话语结束事件之前的静音时长（毫秒）。范围：0-5000。
 
   - **smartTurn** _number_
 
-    话轮结束检测阈值。设置时，启用 Smart Turn。范围：0.0-1.0。
+    话轮结束检测阈值。设置后启用 Smart Turn。范围：0.0-1.0。
 
   - **smartTurnTimeout** _number_
 
-    强制 `speech_final` 之前的最大静音持续时间（毫秒）。范围：1-5000。
+    强制 `speech_final` 之前的最大静音时长（毫秒）。范围：1-5000。
 
 ### 模型能力
 
-| 模型      | 请求/响应 | 流式传输 | 词级时间戳 | 说话人分离 | 多声道 |
+| 模型      | 请求/响应 | 流式传输 | 单词时间戳 | 说话人分离 | 多声道 |
 | --------- | ---------------- | --------- | --------------- | ----------- | ------------ |
 | `default` | <Check />        | <Check /> | <Check />       | <Check />   | <Check />    |
 
 <Note>
-  词级时间戳、说话人分离结果和分段仅在请求/响应路径（`transcribe`）上返回。
+  单词时间戳、说话人分离结果和分段仅在请求/响应路径（`transcribe`）上返回。
   流式转录（`experimental_streamTranscribe`）会发出部分和最终转录文本以及
-  话语级时间信息，但不会提供逐词时间戳、说话人标签或分段。
+  话语级时间，但不会显示逐词时间戳、说话人标签或分段。
 </Note>
 
 ## 图像模型
@@ -833,23 +871,23 @@ import { generateImage } from 'ai';
 
 const { image } = await generateImage({
   model: xai.image('grok-imagine-image'),
-  prompt: 'A futuristic cityscape at sunset',
+  prompt: '日落时分的未来城市景观',
 });
 ```
 
 <Note>
-  xAI 图像模型不支持 `size` 参数。请改用 `aspectRatio`。支持的宽高比：
-  `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、`2:3`、`2:1`、`1:2`、`19.5:9`、
-  `9:19.5`、`20:9`、`9:20` 和 `auto`。
+  xAI 图像模型不支持 `size` 参数。请改用 `aspectRatio`。
+  支持的宽高比：`1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、
+  `2:3`、`2:1`、`1:2`、`19.5:9`、`9:19.5`、`20:9`、`9:20` 和 `auto`。
 </Note>
 
 ### 图像编辑
 
-xAI 通过 `grok-imagine-image` 模型支持图像编辑。通过 `prompt.images` 传递输入图像以转换或编辑现有图像。
+xAI 通过 `grok-imagine-image` 模型支持图像编辑。通过 `prompt.images` 传递输入图像来转换或编辑现有图像。
 
 <Note>
-  xAI 图像编辑不支持蒙版。编辑由提示词驱动——在文本提示词中描述你想要
-  更改的内容。
+  xAI 图像编辑不支持蒙版。编辑由提示词驱动——在文本提示词中描述
+  你想要更改的内容。
 </Note>
 
 #### 基本图像编辑
@@ -866,7 +904,7 @@ const imageBuffer = readFileSync('./input-image.png');
 const { images } = await generateImage({
   model: xai.image('grok-imagine-image'),
   prompt: {
-    text: 'Turn the cat into a golden retriever dog',
+    text: '把猫变成一只金毛寻回犬',
     images: [imageBuffer],
   },
 });
@@ -887,7 +925,7 @@ const dog = readFileSync('./dog.png');
 const { images } = await generateImage({
   model: xai.image('grok-imagine-image'),
   prompt: {
-    text: 'Combine these two animals into a group photo',
+    text: '把这两种动物合成一张合影',
     images: [cat, dog],
   },
 });
@@ -903,7 +941,7 @@ const imageBuffer = readFileSync('./input-image.png');
 const { images } = await generateImage({
   model: xai.image('grok-imagine-image'),
   prompt: {
-    text: 'Transform this into a watercolor painting style',
+    text: '将其转换为水彩画风格',
     images: [imageBuffer],
   },
   aspectRatio: '1:1',
@@ -925,7 +963,7 @@ import { generateImage } from 'ai';
 
 const { images } = await generateImage({
   model: xai.image('grok-imagine-image-pro'),
-  prompt: 'A futuristic cityscape at sunset',
+  prompt: '日落时分的未来城市景观',
   aspectRatio: '16:9',
   providerOptions: {
     xai: {
@@ -938,7 +976,9 @@ const { images } = await generateImage({
 
 - **resolution** _'1k' | '2k'_
 
-  输出分辨率。`1k` 生成约 1024×1024 的图像，`2k` 生成约 2048×2048 的图像（实际尺寸因宽高比而异）。适用于 `grok-imagine-image-pro`。
+  输出分辨率。`1k` 生成约 1024×1024 的图像，`2k` 生成约 2048×2048
+  的图像（实际尺寸因宽高比而异）。适用于
+  `grok-imagine-image-pro`。
 
 - **quality** _'low' | 'medium' | 'high'_
 
@@ -946,14 +986,15 @@ const { images } = await generateImage({
 
 ### 图像模型能力
 
-| 模型                     | 分辨率 | 宽高比                                                                                               | 图像编辑 |
+| 模型                       | 分辨率 | 宽高比                                                                                                | 图像编辑 |
 | ------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
 | `grok-imagine-image-pro` | `1k`、`2k` | `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、`2:3`、`2:1`、`1:2`、`19.5:9`、`9:19.5`、`20:9`、`9:20`、`auto` | <Check />     |
 | `grok-imagine-image`     | `1k`       | `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、`2:3`、`2:1`、`1:2`、`19.5:9`、`9:19.5`、`20:9`、`9:20`、`auto` | <Check />     |
 
 ## 视频模型
 
-你可以使用 `.video()` 工厂方法创建 xAI 视频模型。有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
+你可以使用 `.video()` 工厂方法创建 xAI 视频模型。
+有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
 
 该提供商支持从文本提示词或图像输入进行标准视频生成，以及显式视频编辑、视频扩展和参考到视频（R2V）操作。
 
@@ -967,13 +1008,13 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: xai.video('grok-imagine-video'),
-  prompt: 'A chicken flying into the sunset in the style of 90s anime.',
+  prompt: '一只鸡以 90 年代动漫风格飞向日落。',
   aspectRatio: '16:9',
   duration: 5,
   providerOptions: {
     xai: {
       user: 'user-123',
-      pollTimeoutMs: 600000, // 10 minutes
+      pollTimeoutMs: 600000, // 10 分钟
     } satisfies XaiVideoModelOptions,
   },
 });
@@ -981,7 +1022,7 @@ const { video } = await generateVideo({
 
 ### 带图像输入的生成
 
-使用图像作为起始帧并带有可选文本提示词生成视频。这使用标准生成路径，而不是单独的提供商模式：
+使用图像作为起始帧并附带可选文本提示词来生成视频。这使用标准生成路径，而不是单独的提供商模式：
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -991,18 +1032,18 @@ const { video } = await generateVideo({
   model: xai.video('grok-imagine-video'),
   prompt: {
     image: 'https://example.com/start-frame.png',
-    text: 'The cat slowly turns its head and blinks',
+    text: '猫慢慢转过头并眨眼',
   },
   duration: 5,
   providerOptions: {
     xai: {
-      pollTimeoutMs: 600000, // 10 minutes
+      pollTimeoutMs: 600000, // 10 分钟
     } satisfies XaiVideoModelOptions,
   },
 });
 ```
 
-你也可以通过顶层 `frameImages` 选项使用 `first_frame` 角色传递起始帧。这是提供商无关的，接受文件数据（例如 `Buffer`）或 `{ type: 'url', url }` 对象：
+你也可以通过顶层的 `frameImages` 选项使用 `first_frame` 角色传递起始帧。这是提供商无关的，接受文件数据（例如 `Buffer`）或 `{ type: 'url', url }` 对象：
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1011,7 +1052,7 @@ import fs from 'node:fs';
 
 const { video } = await generateVideo({
   model: xai.video('grok-imagine-video'),
-  prompt: 'The cat slowly turns its head and blinks',
+  prompt: '猫慢慢转过头并眨眼',
   frameImages: [
     {
       image: fs.readFileSync('./start-frame.png'),
@@ -1021,15 +1062,16 @@ const { video } = await generateVideo({
   duration: 5,
   providerOptions: {
     xai: {
-      pollTimeoutMs: 600000, // 10 minutes
+      pollTimeoutMs: 600000, // 10 分钟
     } satisfies XaiVideoModelOptions,
   },
 });
 ```
 
 <Note>
-  xAI 不支持首尾帧插值。`frameImages` 中的 `last_frame` 条目会被忽略并发出
-  警告——请改用 `extend-video` 模式从视频的最后一帧继续。
+  xAI 不支持首尾帧插值。`frameImages` 中的 `last_frame` 条目
+  会被忽略并发出警告——请使用 `extend-video` 模式从视频的
+  最后一帧继续。
 </Note>
 
 ### 视频编辑
@@ -1042,25 +1084,27 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: xai.video('grok-imagine-video'),
-  prompt: 'Give the person sunglasses and a hat',
+  prompt: '给这个人戴上太阳镜和帽子',
   providerOptions: {
     xai: {
       mode: 'edit-video',
       videoUrl: 'https://example.com/source-video.mp4',
-      pollTimeoutMs: 600000, // 10 minutes
+      pollTimeoutMs: 600000, // 10 分钟
     } satisfies XaiVideoModelOptions,
   },
 });
 ```
 
 <Note>
-  视频编辑接受最长 8.7 秒的输入视频。`duration`、`aspectRatio` 和
-  `resolution` 参数不支持编辑——输出与输入视频的属性匹配（上限为 720p）。
+  视频编辑接受最长 8.7 秒的输入视频。`duration`、
+  `aspectRatio` 和 `resolution` 参数不支持编辑——输出
+  与输入视频的属性匹配（上限为 720p）。
 </Note>
 
 ### 链式编辑和并发编辑
 
-xAI 托管的视频 URL 可在 `providerMetadata.xai.videoUrl` 中获取。你可以使用它来链式进行顺序编辑或使用 `Promise.all` 分支进行并发编辑：
+xAI 托管的视频 URL 可在 `providerMetadata.xai.videoUrl` 中获取。
+你可以使用它来链式执行顺序编辑，或使用 `Promise.all` 分支到并发编辑：
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1077,18 +1121,18 @@ const providerOptions = {
 // 步骤 1：应用初始编辑
 const step1 = await generateVideo({
   model: xai.video('grok-imagine-video'),
-  prompt: 'Add a party hat to the person',
+  prompt: '给这个人戴上派对帽',
   providerOptions,
 });
 
 // 从提供商元数据获取 xAI 托管的 URL
 const step1VideoUrl = step1.providerMetadata?.xai?.videoUrl as string;
 
-// 步骤 2：在步骤 1 的基础上并发应用两个更多编辑
+// 步骤 2：在步骤 1 的基础上并发应用两个编辑
 const [withSunglasses, withScarf] = await Promise.all([
   generateVideo({
     model: xai.video('grok-imagine-video'),
-    prompt: 'Add sunglasses',
+    prompt: '添加太阳镜',
     providerOptions: {
       xai: {
         mode: 'edit-video',
@@ -1099,7 +1143,7 @@ const [withSunglasses, withScarf] = await Promise.all([
   }),
   generateVideo({
     model: xai.video('grok-imagine-video'),
-    prompt: 'Add a scarf',
+    prompt: '添加围巾',
     providerOptions: {
       xai: {
         mode: 'edit-video',
@@ -1113,7 +1157,7 @@ const [withSunglasses, withScarf] = await Promise.all([
 
 ### 视频扩展
 
-从现有视频的最后一帧扩展视频。`duration` 仅控制扩展的长度，而不是总输出。输出继承源视频的 `aspectRatio` 和 `resolution`。
+从视频的最后一帧扩展现有视频。`duration` 仅控制扩展的长度，而不是总输出。输出继承源视频的 `aspectRatio` 和 `resolution`。
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1122,7 +1166,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 // 步骤 1：生成源视频
 const source = await generateVideo({
   model: xai.video('grok-imagine-video'),
-  prompt: 'A cat sitting on a sunlit windowsill, tail gently swishing.',
+  prompt: '一只猫坐在阳光照射的窗台上，尾巴轻轻摆动。',
   duration: 5,
   aspectRatio: '16:9',
   providerOptions: {
@@ -1134,10 +1178,10 @@ const source = await generateVideo({
 
 const sourceUrl = source.providerMetadata?.xai?.videoUrl as string;
 
-// 步骤 2：使用新场景扩展视频
+// 步骤 2：用新场景扩展视频
 const extended = await generateVideo({
   model: xai.video('grok-imagine-video'),
-  prompt: 'The cat turns its head, notices a butterfly, and leaps off.',
+  prompt: '猫转过头，注意到一只蝴蝶，然后跳了起来。',
   duration: 6,
   providerOptions: {
     xai: {
@@ -1150,13 +1194,14 @@ const extended = await generateVideo({
 ```
 
 <Note>
-  视频扩展不支持自定义 `aspectRatio` 或 `resolution`——输出继承源视频的
-  这些属性。支持 `duration`，它控制扩展的长度（不是总视频长度）。
+  视频扩展不支持自定义 `aspectRatio` 或 `resolution`——输出
+  继承源视频的这些属性。支持 `duration`，它控制扩展的
+  长度（不是总视频长度）。
 </Note>
 
 ### 参考到视频（R2V）
 
-提供参考图像以指导视频的风格和内容。与图像到视频不同，参考图像不用作第一帧——模型将其视觉元素融入生成的视频中。每个参考图像可以是公共 HTTPS URL 或 base64 数据 URI。
+提供参考图像来指导视频的风格和内容。与图像到视频不同，参考图像不用作第一帧——模型将其视觉元素融入生成的视频中。每个参考图像可以是公共 HTTPS URL 或 base64 数据 URI。
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1165,9 +1210,9 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 const { video } = await generateVideo({
   model: xai.video('grok-imagine-video'),
   prompt:
-    'The comic cat from <IMAGE_1> and the comic dog from <IMAGE_2> ' +
-    'are having a playful chase through a sunlit park. ' +
-    'Cinematic slow-motion, warm afternoon light.',
+    '来自 <IMAGE_1> 的漫画猫和来自 <IMAGE_2> 的漫画狗 ' +
+    '正在阳光明媚的公园里嬉戏追逐。' +
+    '电影级慢动作，温暖的午后光线。',
   duration: 8,
   aspectRatio: '16:9',
   providerOptions: {
@@ -1195,8 +1240,8 @@ import fs from 'node:fs';
 const { video } = await generateVideo({
   model: xai.video('grok-imagine-video'),
   prompt:
-    'The comic cat and the comic dog are having a playful chase ' +
-    'through a sunlit park. Cinematic slow-motion, warm afternoon light.',
+    '漫画猫和漫画狗正在阳光明媚的公园里嬉戏追逐。' +
+    '电影级慢动作，温暖的午后光线。',
   inputReferences: [
     fs.readFileSync('./comic-cat.png'),
     fs.readFileSync('./comic-dog.png'),
@@ -1211,11 +1256,11 @@ const { video } = await generateVideo({
 });
 ```
 
-`inputReferences` 仅接受图像引用。具有非图像媒体类型（例如视频或音频片段）的引用会被忽略并发出警告，而没有媒体类型的引用被视为图像。如果没有剩余的图像引用，则不会选择参考到视频，也不会发送参考图像。
+`inputReferences` 仅接受图像引用。具有非图像媒体类型（例如视频或音频剪辑）的引用会被忽略并发出警告，而没有媒体类型的引用被视为图像。如果没有图像引用保留，则不会选择参考到视频，也不会发送参考图像。
 
 #### 参考音频
 
-参考到视频还可以为对象提供声音。`referenceVoiceIds` 接受最多 3 个 xAI **预设** 语音 ID——你不能上传自己的音频片段。使用 `<AUDIO_0>`、`<AUDIO_1>` 和 `<AUDIO_2>` 在提示词中引用语音，顺序与传递语音的顺序一致。
+参考到视频还可以赋予主体声音。`referenceVoiceIds` 接受最多 3 个 xAI **预设** 语音 ID——你不能上传自己的音频剪辑。在提示词中使用 `<AUDIO_0>`、`<AUDIO_1>` 和 `<AUDIO_2>` 按传递语音的顺序引用它们。
 
 ```ts
 import { xai, type XaiVideoModelOptions } from '@ai-sdk/xai';
@@ -1224,8 +1269,8 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 const { video } = await generateVideo({
   model: xai.video('grok-imagine-video-1.5'),
   prompt:
-    'The person from <IMAGE_0> stands in the room from <IMAGE_1> and speaks ' +
-    'to the camera with the voice from <AUDIO_0>.',
+    '来自 <IMAGE_0> 的人站在来自 <IMAGE_1> 的房间里，' +
+    '用来自 <AUDIO_0> 的声音对着镜头说话。',
   aspectRatio: '9:16',
   duration: 10,
   providerOptions: {
@@ -1243,25 +1288,27 @@ const { video } = await generateVideo({
 });
 ```
 
-有效的语音 ID 来自 xAI [文本转语音语音名册](https://docs.x.ai/developers/model-capabilities/audio/text-to-speech#voices)。ID 不区分大小写，未知 ID 会返回列出可用语音的 `400` 响应。当解析的操作不是参考到视频时，`referenceVoiceIds` 会被忽略并发出警告。
+有效的语音 ID 来自 xAI 的[文本转语音语音名册](https://docs.x.ai/developers/model-capabilities/audio/text-to-speech#voices)。ID 不区分大小写，未知 ID 会返回 `400` 响应并列出可用语音。当解析的操作不是参考到视频时，`referenceVoiceIds` 会被忽略并发出警告。
 
 <Note>
-  xAI 文档说明参考音频仅在美国可用，且仅限受信任的合作伙伴。没有访问权限的
-  账户发出的请求会被 xAI API 拒绝。
+  xAI 文档说明参考音频仅在美国可用，且仅限受信任的合作伙伴。
+  没有访问权限的账户发出的请求会被 xAI API 拒绝。
 </Note>
 
 <Note>
-  参考到视频支持 `duration`、`aspectRatio` 和 `resolution`。使用 `mode`
-  选择操作——每种模式互斥。当同时提供时，`frameImages` 优先于
-  `inputReferences`，`inputReferences` 优先于旧的 `referenceImageUrls`
-  提供商选项。参考到视频由 `grok-imagine-video` 和
-  `grok-imagine-video-1.5` 模型支持；原生 1080p 需要
+  参考到视频支持 `duration`、`aspectRatio` 和 `resolution`。使用
+  `mode` 选择操作——每种模式互斥。当同时提供时，
+  `frameImages` 优先于 `inputReferences`，而
+  `inputReferences` 优先于旧的 `referenceImageUrls`
+  提供商选项。参考到视频由 `grok-imagine-video`
+  和 `grok-imagine-video-1.5` 模型支持；原生 1080p 需要
   `grok-imagine-video-1.5`。
 </Note>
 
 ### 视频提供商选项
 
-以下提供商选项可通过 `providerOptions.xai` 使用。你可以使用 `XaiVideoModelOptions` 类型验证提供商选项。
+以下提供商选项可通过 `providerOptions.xai` 使用。
+你可以使用 `XaiVideoModelOptions` 类型验证提供商选项。
 
 - **pollIntervalMs** _number_
 
@@ -1273,44 +1320,61 @@ const { video } = await generateVideo({
 
 - **resolution** _'480p' | '720p' | '1080p'_
 
-  视频分辨率。使用 SDK 的标准 `resolution` 参数时，`1920x1080` 映射到 `1080p`，`1280x720` 映射到 `720p`，`854x480` 映射到 `480p`。使用此提供商选项直接传递原生格式。`1080p` 需要 `grok-imagine-video-1.5` 模型，适用于文本到视频和图像到视频；参考到视频上限为 `720p`（`1080p` 请求会降级并发出警告）。
+  视频分辨率。使用 SDK 的标准 `resolution` 参数时，
+  `1920x1080` 映射到 `1080p`，`1280x720` 映射到 `720p`，`854x480` 映射
+  到 `480p`。使用此提供商选项直接传递原生格式。
+  `1080p` 需要 `grok-imagine-video-1.5` 模型，适用于
+  文本到视频和图像到视频；参考到视频上限为 `720p`
+  （`1080p` 请求会降级并发出警告）。
 
 - **user** _string_
 
-  负责请求的最终用户的可选标识符。xAI 使用此值进行滥用监控。它会原样发送用于视频生成（包括参考到视频）和视频编辑请求，未配置时省略。不会为视频扩展请求发送。请使用不透明的稳定标识符，避免发送不必要的个人信息。
+  负责请求的最终用户的可选标识符。xAI 使用
+  此值进行滥用监控。它会原样发送用于视频生成
+  （包括参考到视频）和视频编辑请求，未配置时省略。
+  它不会发送用于视频扩展请求。请使用不透明的稳定
+  标识符，避免发送不必要的个人信息。
 
 - **mode** _'edit-video' | 'extend-video' | 'reference-to-video'_
 
   选择显式视频操作。每种模式互斥：
   - `'edit-video'` — 编辑现有视频（需要 `videoUrl`）
-  - `'extend-video'` — 从最后一帧扩展视频（需要 `videoUrl`）
+  - `'extend-video'` — 从视频的最后一帧扩展视频（需要 `videoUrl`）
   - `'reference-to-video'` — 从参考图像生成（需要 `referenceImageUrls`）
 
-  省略时，使用标准生成。为向后兼容，旧输入仍会从字段自动检测。
+  省略时使用标准生成。为向后兼容，仍会从字段自动检测旧版输入。
 
 - **videoUrl** _string_
 
-  源视频的 URL。与 `mode: 'edit-video'` 一起用于视频编辑，与 `mode: 'extend-video'` 一起用于视频扩展。
+  源视频的 URL。与 `mode: 'edit-video'` 一起用于视频编辑，
+  与 `mode: 'extend-video'` 一起用于视频扩展。
 
 - **referenceImageUrls** _string[]_
 
-  用于参考到视频（R2V）生成的参考图像 URL 数组（1-7 张图像）或 base64 数据 URI。模型融入这些图像的视觉元素，而不将其用作第一帧。在提示词中使用 `<IMAGE_1>`、`<IMAGE_2>` 等引用特定图像。与 `mode: 'reference-to-video'` 一起使用。
+  参考图像 URL 数组（1-7 张图像）或 base64 数据 URI，用于
+  参考到视频（R2V）生成。模型会融入这些图像的视觉
+  元素，但不会将它们用作第一帧。在提示词中使用
+  `<IMAGE_1>`、`<IMAGE_2>` 等来引用特定图像。与
+  `mode: 'reference-to-video'` 一起使用。
 
 - **referenceVoiceIds** _string[]_
 
-  最多 3 个 xAI 预设语音 ID，在参考到视频（R2V）生成中为对象提供声音。仅限预设语音——不能上传音频片段。ID 不区分大小写，来自 [文本转语音语音名册](https://docs.x.ai/developers/model-capabilities/audio/text-to-speech#voices)；未知 ID 会返回列出可用语音的 `400`。在提示词中使用 `<AUDIO_0>`、`<AUDIO_1>` 和 `<AUDIO_2>` 标签引用语音。在参考到视频之外会被忽略并发出警告。参考音频文档说明仅限美国且限于受信任的合作伙伴。
+  最多 3 个 xAI 预设语音 ID，在参考到视频（R2V）生成中赋予主体声音。仅限预设语音——不能上传音频剪辑。ID 不区分大小写，来自[文本转语音语音名册](https://docs.x.ai/developers/model-capabilities/audio/text-to-speech#voices)；未知 ID 会返回 `400` 并列出可用语音。在提示词中使用 `<AUDIO_0>`、`<AUDIO_1>` 和 `<AUDIO_2>` 标签来引用语音。在参考到视频之外会被忽略并发出警告。参考音频文档说明仅限美国且限于受信任的合作伙伴。
 
 <Note>
-  视频生成是一个异步过程，可能需要几分钟。建议将 `pollTimeoutMs` 设置为
-  至少 10 分钟（600000 毫秒）以确保可靠运行。生成的视频 URL 是临时的，
-  应及时下载。
+  视频生成是一个异步过程，可能需要几分钟时间。
+  建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000 毫秒）以确保
+  可靠运行。生成的视频 URL 是临时的，应及时下载。
 </Note>
 
 ### 宽高比和分辨率
 
-对于**文本到视频**，你可以同时指定 `aspectRatio` 和 `resolution`。默认宽高比为 `16:9`，默认分辨率为 `480p`。`grok-imagine-video-1.5` 模型还支持文本到视频和图像到视频的原生 `1080p`。
+对于**文本到视频**，你可以同时指定 `aspectRatio` 和 `resolution`。
+默认宽高比为 `16:9`，默认分辨率为 `480p`。
+`grok-imagine-video-1.5` 模型还支持文本到视频和图像到视频的原生 `1080p`。
 
-对于**图像到视频**，输出默认为输入图像的宽高比。如果你指定 `aspectRatio`，它将覆盖此设置并将图像拉伸到所需比例。
+对于**图像到视频**，输出默认为输入图像的宽高比。
+如果你指定 `aspectRatio`，它将覆盖此设置并将图像拉伸到所需比例。
 
 对于**视频编辑**，输出与输入视频的宽高比和分辨率匹配。不支持自定义 `duration`、`aspectRatio` 和 `resolution`——输出分辨率上限为 720p（例如，1080p 输入将缩小到 720p）。
 
@@ -1320,7 +1384,7 @@ const { video } = await generateVideo({
 
 ### 视频模型能力
 
-| 模型                     | 时长 | 宽高比                                     | 分辨率                | 图像到视频 | 编辑   | 扩展 | R2V       |
+| 模型                       | 时长 | 宽高比                                        | 分辨率                 | 图像到视频 | 编辑    | 扩展    | R2V       |
 | ------------------------ | -------- | ------------------------------------------------- | ------------------------- | -------------- | --------- | --------- | --------- |
 | `grok-imagine-video`     | 1–15 秒  | `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、`2:3` | `480p`、`720p`            | <Check />      | <Check /> | <Check /> | <Check /> |
 | `grok-imagine-video-1.5` | 1–15 秒  | `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、`2:3` | `480p`、`720p`、`1080p`\* | <Check />      | <Check /> | <Check /> | <Check /> |

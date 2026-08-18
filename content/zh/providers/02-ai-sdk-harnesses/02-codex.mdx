@@ -1,21 +1,21 @@
 ---
 title: "Codex"
-description: "了解如何使用 Codex 工具链适配器。"
+description: "了解如何使用 Codex harness 适配器。"
 ---
 
-# Codex 工具链
+# Codex Harness
 
-Codex 工具链适配器通过 `@openai/codex-sdk` 将 `HarnessAgent` 连接到 Codex。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Codex 线程事件流式传输回主机。
+Codex harness 适配器通过 `@openai/codex-sdk` 将 `HarnessAgent` 连接到 Codex。该适配器在沙箱内运行一个桥接器，并通过沙箱暴露的 WebSocket 将 Codex 线程事件流式传输回主机。
 
 <Note>
-  工具链包为**实验性**。随着这一早期 API 的进一步完善，各版本之间可能会出现破坏性变更。
+  Harness 包是**实验性**的。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
 ## 安装
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-codex @ai-sdk/sandbox-vercel" />
 
-当第一个会话启动时，适配器会在沙箱内引导 Codex 桥接器依赖。
+当第一个会话启动时，适配器会在沙箱内引导 Codex 桥接器的依赖项。
 
 ## 导入
 
@@ -46,7 +46,7 @@ let exitCode = 0;
 try {
   const result = await agent.stream({
     session,
-    prompt: '检查测试失败原因并修复生产代码。',
+    prompt: '检查测试失败并修复生产代码。',
   });
 
   for await (const part of result.stream) {
@@ -63,7 +63,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#身份验证) 下列出的用于 Codex 的变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [认证](#认证) 下列出的用于 Codex 的变量之一。
 
 ## 适配器设置
 
@@ -74,21 +74,29 @@ const harness = createCodex({
   model: 'gpt-5.5',
   reasoningEffort: 'high',
   webSearch: true,
+  codexConfig: {
+    model_verbosity: 'low',
+  },
 });
 ```
 
-设置项：
+设置：
 
-- `auth`：身份验证模式：`auto`、`direct` 或 `ai-gateway`。
+- `auth`：认证模式：`auto`、`direct` 或 `ai-gateway`。
+- `codexConfig`：额外的原生 Codex 配置。值按原样传递，因此请使用 Codex `config.toml` 参考中的 snake_case 键。适配器管理的值优先于冲突的条目。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
 - `model`：OpenAI 模型 ID。如果省略，适配器将使用其固定的默认值。
 - `reasoningEffort`：`low`、`medium` 或 `high`。
 - `webSearch`：允许实时网络搜索。
-- `port`：桥接器端口覆盖。
+- `port`：桥接端口覆盖。
 - `startupTimeoutMs`：等待桥接器启动的最长时间。
-- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回桥接器身份验证令牌。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+- `mintBridgeToken`：接收沙箱 ID 并返回桥接认证令牌的同步函数。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
-## 身份验证
+## 结构化输出
+
+Codex 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。适配器通过 Codex SDK 的原生 `outputSchema` 回合选项传递 JSON Schema。
+
+## 认证
 
 `auth` 设置选择如何从主机环境解析凭据：
 
@@ -96,7 +104,7 @@ const harness = createCodex({
 - `direct`：使用 OpenAI 凭据。
 - `ai-gateway`：使用 AI Gateway 凭据。
 
-当沙箱支持附加请求转换时，桥接器会接收占位符，适配器会将凭据注入到匹配的出站请求中。不具备该能力的沙箱将保留直接凭据转发。
+当沙箱支持附加请求转换时，桥接器会接收占位符，适配器会将凭据注入到匹配的出站请求中。不具备该能力的沙箱保留直接凭据转发。
 
 支持的环境变量：
 
@@ -109,14 +117,14 @@ const harness = createCodex({
 - `OPENAI_ORGANIZATION`
 - `OPENAI_PROJECT`
 
-当您不希望自动检测时，可以选择特定的身份验证模式：
+当您不希望自动检测时，请选择特定的认证模式：
 
 ```ts
 const directHarness = createCodex({ auth: 'direct' });
 const gatewayHarness = createCodex({ auth: 'ai-gateway' });
 ```
 
-对于 OpenAI 兼容端点，请选择 `direct` 并设置 `OPENAI_BASE_URL`。
+对于兼容 OpenAI 的端点，请选择 `direct` 并设置 `OPENAI_BASE_URL`。
 
 ## 沙箱
 
@@ -136,18 +144,18 @@ const sandbox = createVercelSandbox({
 - `bash`
 - `webSearch`
 
-其他 Codex 内置工具也可能出现在 `agent.tools` 中，只要它们不符合常见工具形态。
+当其他 Codex 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-Codex 文件更改也可能以动态 `fileChange` 工具部分的形式出现，因为某些 Codex 文件变更并非源自可见的模型可调用工具。
+Codex 文件更改也可能作为动态的 `fileChange` 工具部分出现，因为某些 Codex 文件变更并非源自可见的模型可调用工具。
 
 ## 已知限制
 
 Codex 目前不支持内置工具审批请求。请将此适配器与 `permissionMode: 'allow-all'` 一起使用。主机执行的 AI SDK 工具审批仍然有效。
 
-Codex 目前不支持内置工具过滤。您仍然可以使用 `activeTools` 和 `inactiveTools` 过滤主机执行的工具，但过滤 Codex 内置工具（如 `bash` 或 `webSearch`）将抛出异常。
+Codex 目前不支持内置工具过滤。您仍然可以使用 `activeTools` 和 `inactiveTools` 过滤主机执行的工具，但过滤 Codex 内置工具（如 `bash` 或 `webSearch`）将抛出错误。
 
-## 相关链接
+## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
-- [工具链工具](/docs/ai-sdk-harnesses/tools)
-- [工具链适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)

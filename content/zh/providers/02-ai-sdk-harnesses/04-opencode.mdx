@@ -63,7 +63,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#authentication) 下列出的用于 OpenCode 的变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [认证](#authentication) 下列出的用于 OpenCode 的变量之一。
 
 ## 适配器设置
 
@@ -78,18 +78,22 @@ const harness = createOpenCode({
 
 设置项：
 
-- `auth`：身份验证模式：`auto`、`anthropic`、`openai` 或 `ai-gateway`。
+- `auth`：认证模式：`auto`、`anthropic`、`openai` 或 `ai-gateway`。
 - `mcpServers`：以服务器名称作为键的 MCP 服务器定义。
 - `model`：OpenCode 模型 ID。带提供商前缀的值（如 `anthropic/claude-sonnet-4-6`）会直接传递给 OpenCode。
 - `provider`：与不带前缀的 `model` 配合使用的提供商 ID。
-- `reasoningVariant`：OpenCode 对支持的模型的推理/思考变体，如 `low`、`medium` 或 `high`。
+- `reasoningVariant`：OpenCode 对受支持模型的推理/思考变体，例如 `low`、`medium` 或 `high`。
 - `port`：桥接器端口覆盖。
-- `startupTimeoutMs`：等待桥接器启动的最大时间。
-- `mintBridgeToken`：接收沙箱 ID 并返回桥接器身份验证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+- `startupTimeoutMs`：等待桥接器启动的最长时间。
+- `mintBridgeToken`：接收沙箱 ID 并返回桥接器认证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
-## 身份验证
+## 结构化输出
 
-`auth` 设置选择如何从主机环境解析凭据：
+OpenCode 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。适配器使用 OpenCode 的 `json_schema` 提示词格式，并将验证后的 `structured` 结果作为 JSON 文本返回。
+
+## 认证
+
+`auth` 设置决定了如何从主机环境解析凭据：
 
 - `auto`（默认）：优先使用 AI Gateway 凭据，然后使用所选模型提供商的凭据。
 - `anthropic`：使用 Anthropic 凭据。
@@ -111,7 +115,7 @@ const harness = createOpenCode({
 - `OPENAI_ORGANIZATION`
 - `OPENAI_PROJECT`
 
-当您不希望自动检测时，可以选择特定的身份验证模式：
+当您不希望自动检测时，可以选择特定的认证模式：
 
 ```ts
 const anthropicHarness = createOpenCode({ auth: 'anthropic' });
@@ -150,9 +154,9 @@ const sandbox = createVercelSandbox({
 
 当其他 OpenCode 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，OpenCode 支持内置工具审批请求。主机执行的 AI SDK 工具审批同样有效。
+当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，OpenCode 支持内置工具审批请求。主机执行的 AI SDK 工具审批同样适用。
 
-## 相关
+## 相关链接
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [Harness 工具](/docs/ai-sdk-harnesses/tools)

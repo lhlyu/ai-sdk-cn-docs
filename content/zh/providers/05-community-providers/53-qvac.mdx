@@ -1,0 +1,88 @@
+---
+title: "QVAC"
+description: "了解如何使用 QVAC 提供商。"
+---
+
+# QVAC 提供商
+
+[QVAC](https://qvac.tether.io) 是一个开源、跨平台的运行时，用于本地优先、点对点 AI——LLM、嵌入、转录、翻译、语音和图像生成，全部在用户自己的硬件上运行。
+
+[`@qvac/ai-sdk-provider`](https://www.npmjs.com/package/@qvac/ai-sdk-provider) 是 [`@ai-sdk/openai-compatible`](https://www.npmjs.com/package/@ai-sdk/openai-compatible) 的品牌包装器，指向本地 `qvac serve openai` HTTP 服务器，并重新导出 QVAC 的类型化模型元数据。
+
+<Note>
+  该提供商与本地 OpenAI 兼容服务器通信。使用提供商前，请安装
+  [`@qvac/cli`](https://www.npmjs.com/package/@qvac/cli) 并使用 `qvac
+  serve openai` 启动它。
+</Note>
+
+## 设置
+
+QVAC 提供商可在 `@qvac/ai-sdk-provider` 模块中使用。您可以通过以下方式安装：
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet
+      text="pnpm add @qvac/ai-sdk-provider ai @ai-sdk/openai-compatible"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="npm install @qvac/ai-sdk-provider ai @ai-sdk/openai-compatible"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="yarn add @qvac/ai-sdk-provider ai @ai-sdk/openai-compatible"
+      dark
+    />
+  </Tab>
+  <Tab>
+    <Snippet
+      text="bun add @qvac/ai-sdk-provider ai @ai-sdk/openai-compatible"
+      dark
+    />
+  </Tab>
+</Tabs>
+
+`ai` 和 `@ai-sdk/openai-compatible` 是同级依赖——请一并安装。
+
+## 提供商实例
+
+从 `@qvac/ai-sdk-provider` 导入 `createQvac`，并创建一个指向您正在运行的 `qvac serve openai` 的提供商实例：
+
+```ts
+import { createQvac } from '@qvac/ai-sdk-provider';
+
+const qvac = createQvac({
+  baseURL: 'http://127.0.0.1:11434/v1', // 匹配您的 `qvac serve` 端口
+  apiKey: 'qvac', // 任何非空值；serve 不进行验证
+});
+```
+
+## 语言模型
+
+您可以通过向提供商实例传递 `qvac serve` 别名来创建模型：
+
+```ts
+import { createQvac } from '@qvac/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const qvac = createQvac({
+  baseURL: 'http://127.0.0.1:11434/v1',
+  apiKey: 'qvac',
+});
+
+const { text } = await generateText({
+  model: qvac('qwen3.5-0.8b'),
+  prompt: '写一首关于本地优先 AI 的俳句。',
+});
+
+console.log(text);
+```
+
+## 其他资源
+
+- [QVAC](https://qvac.tether.io)
+- [npm 包](https://www.npmjs.com/package/@qvac/ai-sdk-provider)
