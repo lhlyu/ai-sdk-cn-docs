@@ -5,18 +5,18 @@ description: "创建并运行 AI SDK HarnessAgent 会话。"
 
 # HarnessAgent
 
-`HarnessAgent` 是一个由 harness 适配器支持的 AI SDK `Agent` 实现。
+`HarnessAgent` 是 AI SDK `Agent` 的一种实现，由 harness 适配器提供支持。
 它提供 `generate()` 和 `stream()` 方法，返回与 AI SDK 兼容的结果，
 同时由预配置的 harness 驱动这些结果。
 
 ## 安装
 
-安装核心 harness 包、harness 适配器和沙箱提供商：
+安装核心 harness 包、一个 harness 适配器和一个沙箱提供商：
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-claude-code @ai-sdk/sandbox-vercel" />
 
 基于桥接的 harness（如 Claude Code 和 Codex）需要使用真实的网络沙箱，
-例如 `@ai-sdk/sandbox-vercel`。主机运行时 harness（如 Pi）也可以使用
+例如 `@ai-sdk/sandbox-vercel`。基于宿主运行时的 harness（如 Pi）也可以使用
 `@ai-sdk/sandbox-just-bash` 运行，因为它们不需要沙箱暴露端口。
 
 ## 创建智能体
@@ -37,12 +37,12 @@ export const agent = new HarnessAgent({
 });
 ```
 
-在模块作用域构造智能体。它保存配置，而非实时会话。
+在模块作用域中构造智能体。它保存配置，而不是实时会话。
 实时状态属于 `HarnessAgentSession`。
 
 要使用此智能体，请确保设置了包含沙箱和 harness 凭据的环境变量。
 
-## 运行一轮
+## 运行一轮对话
 
 ```ts
 const session = await agent.createSession();
@@ -64,7 +64,7 @@ try {
 }
 ```
 
-`generate()` 排空整轮并返回 `GenerateTextResult`。
+`generate()` 会排空本轮对话并返回 `GenerateTextResult`。
 
 使用 `stream()` 获取增量输出：
 
@@ -94,9 +94,9 @@ try {
 
 ## 生成结构化输出
 
-在构造 `HarnessAgent` 时设置 `output`，以要求每轮返回相同的类型化输出。
-智能体将输出规范转换为 JSON Schema 供 harness 适配器使用，
-验证完成的响应，并通过 `result.output` 返回解析后的值。
+在构造 `HarnessAgent` 时设置 `output`，以要求每轮对话都返回相同的类型化输出。
+智能体会将输出规范转换为 JSON Schema 供 harness 适配器使用，验证完成的响应，
+并通过 `result.output` 返回解析后的值。
 
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
@@ -136,8 +136,8 @@ try {
 ```
 
 使用 `stream()` 时，读取 `partialOutputStream` 获取增量解析的值，
-并等待 `result.output` 获取验证后的最终值。结构化数据也以 JSON 形式
-保留在常规文本和流式表面中；适配器不会将其添加到 `finish` 部分。
+并等待 `result.output` 获取验证后的最终值。结构化数据也会以 JSON 形式
+保留在常规文本和流式输出中；适配器不会将其添加到 `finish` 部分。
 
 Harness 结构化输出需要 schema。无 schema 的 `Output.json()` 以及
 无法强制执行 schema 的适配器或运行时配置会抛出
@@ -146,14 +146,14 @@ Harness 结构化输出需要 schema。无 schema 的 `Output.json()` 以及
 
 ## 消息与历史记录
 
-Harness 会话拥有其原生对话历史。当你传入 `messages` 或消息数组形式的
-`prompt` 时，`HarnessAgent` 会将最新的用户消息作为该轮的新输入。
-它不会将完整的先前对话重放给 harness。
+Harness 会话拥有其原生的对话历史记录。当你传递 `messages`
+或消息数组形式的 `prompt` 时，`HarnessAgent` 会将最新的用户消息作为
+本轮对话的新输入。它不会将之前的完整对话重放给 harness。
 
-末尾的工具消息处理方式不同：工具审批响应和客户端提供的工具结果
+尾部的工具消息处理方式不同：工具审批响应和客户端提供的工具结果
 会继续产生相应请求或工具调用的未完成 harness 轮次。
 
-这与模型调用不同，模型调用通常由应用程序发送完整消息历史。
+这与模型调用不同，模型调用通常由应用程序发送完整的消息历史记录。
 在聊天路由中，应持久化并恢复 harness 会话，而不是依赖消息重放。
 
 ## 会话生命周期
@@ -165,12 +165,17 @@ Harness 会话拥有其原生对话历史。当你传入 `messages` 或消息数
   温暖以便稍后重新附加。如果轮次未完成，恢复状态包含继续状态。
 - `session.stop()` 保存恢复状态，然后停止运行时和沙箱。如果轮次
   未完成，恢复状态包含继续状态。
-- `session.suspendTurn()` 用于跨进程边界的进阶活动轮次继续。
-- `session.hasUnfinishedTurn()` 报告当前轮次是否必须在会话接受新提示词
-  之前继续或挂起。
+- `session.suspendTurn()` 用于跨进程边界的活动轮次高级继续。
+- `session.hasUnfinishedTurn()` 报告当前轮次是否必须在会话接受
+  新提示词之前继续或挂起。
 
 对于一次性脚本和测试，使用 `destroy()`。对于需要多轮连续性的
 HTTP 路由，使用 `detach()` 或 `stop()`。
+
+当你将 `sandboxSession` 传递给 `agent.createSession()` 时，调用方
+保留该沙箱的所有权。`session.stop()` 和 `session.destroy()` 仍会
+结束 harness 运行时，但不会停止或销毁提供的沙箱会话。
+在这种情况下，智能体的构造函数中不需要 `sandbox` 提供商。
 
 ```ts
 const session = await agent.createSession({ sessionId: chatId });
@@ -206,14 +211,14 @@ const session = await agent.createSession(
 );
 ```
 
-`HarnessAgent` 会验证恢复状态是由同一 harness 适配器生成的，
-然后才将其交给运行时。如果恢复状态包含未完成的轮次，
-请在发送新提示词之前调用 `continueStream()` 或 `continueGenerate()`。
+`HarnessAgent` 会验证恢复状态是由同一个 harness 适配器生成的，
+然后才将其交给运行时。如果恢复状态包含未完成的轮次，请在发送
+新提示词之前调用 `continueStream()` 或 `continueGenerate()`。
 
 ## 继续挂起的轮次
 
-对于必须跨进程边界交接活动轮次的进阶工作流，
-请挂起轮次并持久化继续状态：
+对于必须将活动轮次跨进程边界移交的高级工作流，请挂起轮次并
+持久化继续状态：
 
 ```ts
 if (session.hasUnfinishedTurn()) {
@@ -222,8 +227,8 @@ if (session.hasUnfinishedTurn()) {
 }
 ```
 
-当你只有来自 `suspendTurn()` 的原始继续状态时，
-使用 `continueFrom` 恢复，然后在不发送新提示词的情况下继续轮次：
+当你只有来自 `suspendTurn()` 的原始继续状态时，使用 `continueFrom`
+恢复，然后在不发送新提示词的情况下继续轮次：
 
 ```ts
 const session = await agent.createSession({
@@ -241,8 +246,8 @@ const result = await agent.continueStream({ session });
 
 使用 `stopWhen` 选择语义步骤边界。谓词在真实的 harness 工具步骤
 （可能继续进入另一个模型步骤）之后运行，并接收当前调用中已完成的步骤。
-当谓词匹配时，返回的结果完成，而底层轮次保持未完成。
-终端纯文本步骤则会消耗轮次的 `finish` 事件并自然完成。
+当谓词匹配时，返回的结果完成，而底层轮次仍未完成。终端纯文本步骤
+则会消耗轮次的 `finish` 事件并自然结束。
 
 ```ts
 import { isStepCount } from 'ai';
@@ -268,20 +273,20 @@ if (session.hasUnfinishedTurn()) {
 }
 ```
 
-`stopWhen` 没有默认值。省略时，`HarnessAgent` 会持续运行直到轮次
-自然完成或暂停等待主机输入，保持无步骤控制智能体的行为。
-传入一个谓词或数组；匹配任一谓词即完成当前结果片段。
-使用 `createSession({ continueFrom })` 和 `continueStream()` 或
+`stopWhen` 没有默认值。省略时，`HarnessAgent` 会继续运行，直到
+轮次自然结束或暂停等待宿主输入，从而保持无步骤控制智能体的行为。
+传递一个谓词或数组；匹配任何谓词都会完成当前结果片段。使用
+`createSession({ continueFrom })` 和 `continueStream()` 或
 `continueGenerate()` 恢复已停止的轮次。
 
 ## 准备沙箱
 
 使用 `sandboxConfig` 在 harness 启动前准备沙箱。
 
-`sandboxConfig.onBootstrap` 在沙箱模板创建期间运行，位于 harness 适配器
-自身的 bootstrap 之后、支持快照的提供商发布快照之前。用于应被未来会话
-复用的昂贵设置。提供 `onBootstrap` 时，同时提供 `bootstrapHash`；
-每当 bootstrap 输出应使可复用快照失效时，更改哈希值。
+`sandboxConfig.onBootstrap` 在沙箱模板创建期间运行，位于 harness
+适配器自身的引导之后、支持快照的提供商发布快照之前。用于应被
+未来会话复用的昂贵设置。提供 `onBootstrap` 时，同时提供
+`bootstrapHash`；每当引导输出应使可复用快照失效时，更改哈希。
 
 `sandboxConfig.onSession` 在每个沙箱会话获取且其工作目录存在后运行，
 包括恢复的会话。用于每会话文件或轻量配置。
@@ -303,13 +308,13 @@ const agent = new HarnessAgent({
         abortSignal,
       });
       if (result.exitCode !== 0) {
-        throw new Error(`安装 ripgrep 失败：${result.stderr}`);
+        throw new Error(`安装 ripgrep 失败: ${result.stderr}`);
       }
     },
     onSession: async ({ session, sessionWorkDir, abortSignal }) => {
       await session.writeTextFile({
         path: `${sessionWorkDir}/README.md`,
-        content: 'harness 的会话笔记。',
+        content: 'Harness 的会话笔记。',
         abortSignal,
       });
     },
@@ -319,7 +324,8 @@ const agent = new HarnessAgent({
 
 `workDir` 是可选的。提供时，它必须相对于沙箱的默认工作目录，
 并用作会话工作目录。省略时，常规会话使用默认的
-`<harnessId>-<sessionId>` 目录，而 `onBootstrap` 接收沙箱的默认工作目录。
+`<harnessId>-<sessionId>` 目录，而 `onBootstrap` 接收沙箱的
+默认工作目录。
 
 ## 准备可复用沙箱
 
@@ -348,10 +354,10 @@ await prepareHarnessSandboxTemplate({
 });
 ```
 
-当你拥有原生沙箱生命周期并希望自行快照准备好的沙箱时，
-使用 `prepareSandboxForHarness()`。它应用选定的 harness bootstrap 配方
-和 `sandboxConfig.onBootstrap`，然后返回准备元数据。
-它不会停止或快照沙箱。
+当你拥有原生沙箱生命周期并希望自己快照准备好的沙箱时，使用
+`prepareSandboxForHarness()`。它应用选定的 harness 引导配方和
+`sandboxConfig.onBootstrap`，然后返回准备元数据。它不会停止或
+快照沙箱。
 
 ```ts
 import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
@@ -386,10 +392,7 @@ const sandboxFromSnapshot = await Sandbox.create({
 
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    sandbox: sandboxFromSnapshot,
-    bridgePorts: [4000],
-  }),
+  sandbox: createVercelSandbox({ sandbox: sandboxFromSnapshot }),
   sandboxConfig,
 });
 
@@ -405,25 +408,125 @@ console.log(preparation.identity);
 - `id`：可选的稳定智能体标识符。
 - `instructions`：在支持时附加到运行时的系统或开发者提示词，
   否则前置到第一个用户提示词。
-- `output`：应用于每轮的类型化输出规范。
-- `stopWhen`：在完成的 harness 工具步骤（可继续进入另一个模型步骤）后
-  结束结果片段的条件。
-- `tools`：harness 调用时由主机执行的 AI SDK 工具。
-- `activeTools`：harness 可调用的内置和主机执行工具的允许列表。
-- `inactiveTools`：harness 不可调用的内置和主机执行工具的拒绝列表。
+- `output`：应用于每轮对话的类型化输出规范。
+- `stopWhen`：在完成的 harness 工具步骤（可继续进入另一个模型步骤）
+  之后结束结果片段的条件。
+- `tools`：当 harness 调用时由宿主执行的 AI SDK 工具。
+- `activeTools`：harness 可调用的内置和宿主执行工具的允许列表。
+- `inactiveTools`：harness 不能调用的内置和宿主执行工具的拒绝列表。
 - `skills`：由适配器呈现的指令包。
 - `permissionMode`：内置工具权限模式。
-- `toolApproval`：主机执行工具的审批状态映射。
+- `toolApproval`：宿主执行工具的审批状态映射。
 - `sandboxConfig`：沙箱工作目录和生命周期钩子配置。
 - `telemetry`、`debug` 和 `onLog`：可观测性和诊断。
 
 适配器特定设置属于适配器工厂，例如
 `createCodex({ reasoningEffort: 'high' })`。
 
-## 下一步
+## 自定义沙箱编排
 
-- [工具](/docs/ai-sdk-harnesses/tools) 了解内置和主机执行工具。
-- [技能](/docs/ai-sdk-harnesses/skills) 了解可复用指令包。
+当你的应用程序自行创建和管理沙箱时，首先准备网络沙箱会话，
+然后将同一会话传递给 `agent.createSession()`。智能体不需要
+沙箱提供商，也不会停止或销毁调用方拥有的沙箱。
+
+```ts
+import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
+import { claudeCode } from '@ai-sdk/harness-claude-code';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { Sandbox } from '@vercel/sandbox';
+
+const sandbox = await Sandbox.create({
+  runtime: 'node24',
+  ports: [4000],
+});
+const sandboxProvider = createVercelSandbox({ sandbox });
+const sandboxSession = await sandboxProvider.createSession();
+
+await prepareSandboxForHarness({
+  session: sandboxSession.restricted(),
+  harnesses: [claudeCode],
+});
+
+const agent = new HarnessAgent({ harness: claudeCode });
+const session = await agent.createSession({ sandboxSession });
+
+try {
+  const result = await agent.stream({
+    session,
+    prompt: '为此仓库创建一个简短的 TODO.md。',
+  });
+
+  for await (const part of result.stream) {
+    if (part.type === 'text-delta') {
+      process.stdout.write(part.text);
+    }
+  }
+} finally {
+  await session.destroy();
+  await sandbox.stop();
+}
+```
+
+### 无网络控制的基本沙箱会话
+
+以下示例演示了基本会话 API 的工作方式。如果你的项目可以暴露
+完整的网络沙箱会话，强烈建议传递该会话。仅当你的项目无法暴露
+完整网络会话时，才传递受限的基本会话。
+
+基本沙箱会话仅暴露文件系统和进程 API。智能体仍将沙箱生命周期
+留给调用方。对于基于桥接的 harness，请在适配器上配置桥接端口
+及其外部可达端点，因为基本会话无法解析它们。
+
+```ts
+import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
+import { createClaudeCode } from '@ai-sdk/harness-claude-code';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { Sandbox } from '@vercel/sandbox';
+
+const sandbox = await Sandbox.create({
+  runtime: 'node24',
+  ports: [4000],
+});
+const sandboxProvider = createVercelSandbox({ sandbox });
+const sandboxSession = await sandboxProvider.createSession();
+const portEndpoint = await sandboxSession.getPortEndpoint({
+  port: 4000,
+  protocol: 'ws',
+});
+const restrictedSandboxSession = sandboxSession.restricted();
+const claudeCode = createClaudeCode({ port: 4000, portEndpoint });
+
+await prepareSandboxForHarness({
+  session: restrictedSandboxSession,
+  harnesses: [claudeCode],
+});
+
+const agent = new HarnessAgent({ harness: claudeCode });
+const session = await agent.createSession({
+  sandboxSession: restrictedSandboxSession,
+});
+
+try {
+  const result = await agent.stream({
+    session,
+    prompt: '为此仓库创建一个简短的 TODO.md。',
+  });
+
+  for await (const part of result.stream) {
+    if (part.type === 'text-delta') {
+      process.stdout.write(part.text);
+    }
+  }
+} finally {
+  await session.destroy();
+  await sandbox.stop();
+}
+```
+
+## 后续步骤
+
+- [工具](/docs/ai-sdk-harnesses/tools) 了解内置和宿主执行的工具。
+- [技能](/docs/ai-sdk-harnesses/skills) 了解可复用的指令包。
 - [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 了解适配器特定设置。
 - [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 了解持久的长时运行轮次。
 - [UI](/docs/ai-sdk-harnesses/ui) 了解 `useChat` 集成。

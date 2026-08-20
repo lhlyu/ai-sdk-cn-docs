@@ -1,19 +1,19 @@
 ---
-title: 流协议
-description: 了解 AI SDK 中支持的流协议。
+title: "流式传输协议"
+description: "了解 AI SDK 中支持的流式传输协议。"
 ---
 
-# 流协议
+# 流式传输协议
 
-AI SDK 的 UI 函数（如 `useChat` 和 `useCompletion`）同时支持文本流和数据流。
-流协议定义了数据如何在 HTTP 协议之上流式传输到前端。
+AI SDK UI 函数（如 `useChat` 和 `useCompletion`）同时支持文本流和数据流。
+流式传输协议定义了数据在 HTTP 协议之上如何流式传输到前端。
 
-本页面介绍了这两种协议以及如何在后端和前端使用它们。
+本页介绍这两种协议以及如何在后端和前端使用它们。
 
 你可以利用这些信息为你的用例开发自定义后端和前端，例如，
 提供用其他语言（如 Python）实现的兼容 API 端点。
 
-例如，以下是一个使用 [FastAPI](https://github.com/vercel/ai/tree/main/examples/next-fastapi) 作为后端的示例。
+例如，这里有一个使用 [FastAPI](https://github.com/vercel/ai/tree/main/examples/next-fastapi) 作为后端的示例。
 
 ## 文本流协议
 
@@ -21,7 +21,7 @@ AI SDK 的 UI 函数（如 `useChat` 和 `useCompletion`）同时支持文本流
 每个块随后被拼接在一起，形成完整的文本响应。
 
 `useChat`、`useCompletion` 和 `useObject` 支持文本流。
-当你使用 `useChat` 或 `useCompletion` 时，需要通过将 `streamProtocol` 选项设置为 `text` 来启用文本流。
+当你使用 `useChat` 或 `useCompletion` 时，你需要通过将 `streamProtocol` 选项设置为 `text` 来启用文本流。
 
 你可以在后端使用 `streamText` 生成文本流。
 将结果的 `stream` 传递给 `toTextStream`，并使用 `createTextStreamResponse` 返回它，以创建流式 HTTP 响应。
@@ -90,7 +90,7 @@ import {
 } from 'ai';
 __PROVIDER_IMPORT__;
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -111,13 +111,13 @@ export async function POST(req: Request) {
 
 数据流遵循 AI SDK 提供的特殊协议，用于向前端发送信息。
 
-数据流协议使用服务器发送事件（SSE）格式，以实现更好的标准化、通过 ping 保持连接、重连能力以及更好的缓存处理。
+数据流协议使用服务器发送事件（SSE）格式，以实现更好的标准化、通过 ping 保持连接、支持重连以及更好的缓存处理。
 
 <Note>
-  当你从自定义后端提供数据流时，需要将 `x-vercel-ai-ui-message-stream` 头部设置为 `v1`。
+  当你从自定义后端提供数据流时，需要将 `x-vercel-ai-ui-message-stream` 头设置为 `v1`。
 </Note>
 
-目前支持以下流部分：
+目前支持以下流式传输部分：
 
 ### 消息开始部分
 
@@ -134,7 +134,7 @@ data: {"type":"start","messageId":"..."}
 
 ### 文本部分
 
-文本内容使用开始/增量/结束模式流式传输，每个文本块具有唯一 ID。
+文本内容使用开始/增量/结束模式进行流式传输，每个文本块具有唯一 ID。
 
 #### 文本开始部分
 
@@ -177,7 +177,7 @@ data: {"type":"text-end","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb72306c
 
 ### 推理部分
 
-推理内容使用开始/增量/结束模式流式传输，每个推理块具有唯一 ID。
+推理内容使用开始/增量/结束模式进行流式传输，每个推理块具有唯一 ID。
 
 #### 推理开始部分
 
@@ -220,7 +220,7 @@ data: {"type":"reasoning-end","id":"reasoning_123"}
 
 ### 推理文件部分
 
-推理文件部分包含对推理过程中生成的文件（如推理过程中产生的图像）的引用。
+推理文件部分包含对推理过程中生成的文件（例如推理过程中产生的图像）的引用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -263,7 +263,7 @@ data: {"type":"source-document","sourceId":"https://example.com","mediaType":"fi
 
 ### 文件部分
 
-文件部分包含对文件及其媒体类型的引用。
+文件部分包含对带有媒体类型的文件的引用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -276,7 +276,7 @@ data: {"type":"file","url":"https://example.com/file.png","mediaType":"image/png
 
 ### 自定义部分
 
-自定义部分表示提供商特定的内容，这些内容不属于标准部分类型。`kind` 字段以 `{provider}.{provider-type}` 格式标识特定的自定义内容类型。
+自定义部分表示不适合标准部分类型的提供商特定内容。`kind` 字段以 `{provider}.{provider-type}` 格式标识特定的自定义内容类型。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -289,7 +289,7 @@ data: {"type":"custom","kind":"openai.compaction","providerMetadata":{"openai":{
 
 ### 数据部分
 
-自定义数据部分允许流式传输任意结构化数据，并具有类型特定的处理。
+自定义数据部分允许流式传输带有类型特定处理的任意结构化数据。
 
 格式：包含 JSON 对象的服务器发送事件，其中类型包含自定义后缀
 
@@ -304,7 +304,7 @@ data: {"type":"data-weather","data":{"location":"SF","temperature":100}}
 
 ### 错误部分
 
-错误部分在接收时附加到消息中。
+错误部分在接收到时被附加到消息中。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -367,7 +367,7 @@ data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7A
 
 ```
 
-当省略 `isAutomatic` 时，请求期望客户端提供明确的审批响应。
+当省略 `isAutomatic` 时，请求期望客户端给出明确的审批响应。
 
 ### 工具审批响应部分
 
@@ -382,7 +382,7 @@ data: {"type":"tool-approval-response","approvalId":"approval_123","approved":fa
 
 ```
 
-对于由提供商执行的工具，响应还可以包含 `providerExecuted: true`。
+对于提供商执行的工具，响应还可以包含 `providerExecuted: true`。
 
 ### 工具输出可用部分
 
@@ -410,7 +410,7 @@ data: {"type":"tool-output-denied","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar"}
 
 ```
 
-### 开始步骤部分
+### 步骤开始部分
 
 指示步骤开始的部分。
 
@@ -423,11 +423,11 @@ data: {"type":"start-step"}
 
 ```
 
-### 完成步骤部分
+### 步骤结束部分
 
 指示步骤（即后端中的一次 LLM API 调用）已完成的部分。
 
-此部分对于正确处理多个拼接的助手调用是必要的，例如在后端调用工具时，同时使用 `useChat` 中的步骤。
+该部分对于正确处理多个拼接的助手调用是必要的，例如在后端调用工具，同时在 `useChat` 中使用步骤时。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -438,7 +438,21 @@ data: {"type":"finish-step"}
 
 ```
 
-### 完成消息部分
+### 步骤重置部分
+
+移除自最近的 `start-step` 部分以来接收到的所有消息部分。如果
+没有步骤边界，则移除当前消息中的所有部分。当流式传输的步骤被重试，并且必须使失败尝试的部分输出失效，然后再发送替换输出时，这很有用。
+
+格式：包含 JSON 对象的服务器发送事件
+
+示例：
+
+```
+data: {"type":"reset-step"}
+
+```
+
+### 消息结束部分
 
 指示消息完成的部分。
 
@@ -477,7 +491,7 @@ data: [DONE]
 
 ```
 
-数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并默认使用。
+数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并且是默认使用的。
 `useCompletion` 仅支持 `text` 和 `data` 流部分。
 
 在后端，你可以将 `streamText` 结果流传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它。
@@ -539,7 +553,7 @@ import {
 } from 'ai';
 __PROVIDER_IMPORT__;
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {

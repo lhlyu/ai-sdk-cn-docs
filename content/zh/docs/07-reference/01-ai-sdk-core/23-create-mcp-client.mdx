@@ -7,13 +7,13 @@ description: "创建用于连接 MCP 服务器的客户端"
 
 创建一个轻量级的模型上下文协议（MCP）客户端，用于连接 MCP 服务器。该客户端提供：
 
-- **工具**：自动在 MCP 工具和 AI SDK 工具之间进行转换
+- **工具**：在 MCP 工具和 AI SDK 工具之间自动转换
 - **资源**：从 MCP 服务器列出、读取和发现资源模板的方法
 - **提示词**：列出可用提示词和检索提示词消息的方法
 - **补全**：为提示词参数和资源模板变量请求自动补全建议的方法
-- **引导**：支持在工具执行期间处理服务器的额外输入请求
+- **引导**：支持在工具执行期间处理服务器请求额外输入
 
-目前不支持接收来自 MCP 服务器的通知，也不支持客户端的自定义配置。
+目前不支持接收来自 MCP 服务器的通知，以及客户端的自定义配置。
 
 ## 导入
 
@@ -78,7 +78,7 @@ description: "创建用于连接 MCP 服务器的客户端"
                       name: 'onmessage',
                       type: '(message: JSONRPCMessage) => void',
                       description:
-                        '传输收到消息时调用的方法',
+                        '传输接收消息时调用的方法',
                     },
                   ],
                 },
@@ -100,14 +100,14 @@ description: "创建用于连接 MCP 服务器的客户端"
                       type: 'Record<string, string>',
                       isOptional: true,
                       description:
-                        '随请求发送的附加 HTTP 头。',
+                        '随请求发送的额外 HTTP 头。',
                     },
                     {
                       name: 'authProvider',
                       type: 'OAuthClientProvider',
                       isOptional: true,
                       description:
-                        '可选的 OAuth 提供商，用于授权访问受保护的远程 MCP 服务器。在提供商上实现 `validateAuthorizationServerURL`，以便在获取元数据之前对发现的 OAuth 授权服务器 URL 进行白名单验证。',
+                        '可选的 OAuth 提供商，用于授权访问受保护的远程 MCP 服务器。在提供商上实现 `validateAuthorizationServerURL`，以便在获取元数据之前允许已发现的 OAuth 授权服务器 URL。',
                     },
                     {
                       name: 'redirect',
@@ -121,14 +121,14 @@ description: "创建用于连接 MCP 服务器的客户端"
                       type: 'string',
                       isOptional: true,
                       description:
-                        '初始化后用于恢复 Streamable HTTP 请求的初始 MCP 会话 ID。与 createMCPClient 中的 initialInitializeResult 配合使用。仅由 HTTP 传输使用。',
+                        '初始化后恢复 Streamable HTTP 请求时发送的初始旧版 MCP 会话 ID。使用 createMCPClient 时与 initialInitializeResult 配对使用。仅由 HTTP 传输和基于初始化的协议版本使用。',
                     },
                     {
                       name: 'initialProtocolVersion',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '在 initialize 协商协议版本之前发送的初始 MCP 协议版本。仅由 HTTP 传输使用。',
+                        '在 initialize 协商之前发送的初始旧版 MCP 协议版本。仅由 HTTP 传输使用。',
                     },
                     {
                       name: 'onSessionIdChange',
@@ -149,14 +149,14 @@ description: "创建用于连接 MCP 服务器的客户端"
                       type: 'boolean',
                       isOptional: true,
                       description:
-                        'close() 是否应为当前 MCP 会话 ID 发送 DELETE。当应用程序打算稍后重新附加到会话时，设置为 false。默认为 true。仅由 HTTP 传输使用。',
+                        'close() 是否应为当前 MCP 会话 ID 发送 DELETE。当应用程序打算稍后重新附加到会话时设置为 false。默认为 true。仅由 HTTP 传输使用。',
                     },
                     {
                       name: 'fetch',
                       type: 'FetchFunction',
                       isOptional: true,
                       description:
-                        '可选的用于 HTTP 请求的自定义 fetch 实现。对于需要请求本地 fetch 的运行时非常有用。',
+                        '可选的用于 HTTP 请求的自定义 fetch 实现。对于需要请求本地 fetch 的运行时很有用。',
                     },
                   ],
                 },
@@ -167,7 +167,7 @@ description: "创建用于连接 MCP 服务器的客户端"
               type: 'RequestOptions',
               isOptional: true,
               description:
-                '可选的信号和超时设置，用于限制传输启动和 initialize 请求。超时或中止将关闭传输并拒绝 createMCPClient。',
+                '可选的信号和超时设置，用于限制传输启动和协议协商。超时或中止会关闭传输并拒绝 createMCPClient。',
             },
             {
               name: 'clientName',
@@ -199,21 +199,21 @@ description: "创建用于连接 MCP 服务器的客户端"
               type: 'number',
               isOptional: true,
               description:
-                'MCP 工具调用瞬时失败的最大重试次数。设置为 0 以禁用重试。默认为 0。重试是选择加入的，适用于 tools/call 请求。',
+                '瞬时 MCP 工具调用失败的最大重试次数。设置为 0 以禁用重试。默认为 0。重试是选择加入的，适用于 tools/call 请求。',
             },
             {
               name: 'initialInitializeResult',
               type: 'InitializeResult',
               isOptional: true,
               description:
-                '先前 MCP 会话的初始化结果。提供时，客户端启动传输并重用此元数据，而无需发送新的 initialize 请求。',
+                '来自先前旧版 MCP 会话的初始化结果。提供时，客户端启动传输并重用此元数据，而无需发送新的 initialize 请求。',
             },
             {
               name: 'capabilities',
               type: 'ClientCapabilities',
               isOptional: true,
               description:
-                '可选的在初始化期间通告的客户端能力。例如，设置 { elicitation: {} } 以启用处理服务器的引导请求。',
+                '可选的客户端能力，用于在旧版初始化期间或每个无状态现代请求中通告。例如，设置 { elicitation: {} } 以启用处理来自服务器的引导请求。',
             },
           ],
         },
@@ -232,20 +232,20 @@ description: "创建用于连接 MCP 服务器的客户端"
       name: 'initializeResult',
       type: 'InitializeResult',
       description:
-        '此客户端使用的完整初始化结果，来自服务器初始化期间或来自 initialInitializeResult。',
+        '此客户端使用的连接元数据。对于旧版服务器，这是初始化结果；对于现代服务器，等效值从协议发现中派生。',
     },
     {
       name: 'serverInfo',
       type: 'Configuration',
       description:
-        '已连接的 MCP 服务器的信息（名称、版本、可选标题），在 initialize 握手期间报告。',
+        '已连接的 MCP 服务器的信息（名称、版本、可选标题），在初始化或协议发现期间报告。',
     },
     {
       name: 'instructions',
       type: 'string',
       isOptional: true,
       description:
-        '服务器在 initialize 握手期间提供的可选说明。描述如何使用服务器及其功能。适合包含在 LLM 系统提示词中。',
+        '服务器在初始化握手期间提供的可选说明。描述如何使用服务器及其功能。适用于包含在 LLM 系统提示词中。',
     },
     {
       name: 'tools',
@@ -323,7 +323,7 @@ description: "创建用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<CallToolResult>`,
       description:
-        '在 MCP 服务器上调用工具。这对于主机中介调用非常有用，例如 MCP 应用程序的 iframe 请求。',
+        '在 MCP 服务器上调用工具。这对于主机中介调用很有用，例如 MCP Apps iframe 请求。',
       properties: [
         {
           type: 'args',
@@ -461,7 +461,7 @@ description: "创建用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<CompleteResult>`,
       description:
-        '为提示词参数或资源模板变量请求自动补全建议。服务器必须通告 completions 能力。',
+        '为提示词参数或资源模板变量请求自动补全建议。服务器必须通告补全能力。',
       properties: [
         {
           type: 'args',
@@ -470,7 +470,7 @@ description: "创建用于连接 MCP 服务器的客户端"
               name: 'ref',
               type: "{ type: 'ref/prompt'; name: string } | { type: 'ref/resource'; uri: string }",
               description:
-                '对正在补全的提示词或资源模板的引用。',
+                '要补全的提示词或资源模板的引用。',
             },
             {
               name: 'argument',
@@ -503,7 +503,7 @@ description: "创建用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<ListPromptsResult>`,
       description:
-        '列出 MCP 服务器上可用的提示词。此方法是实验性的，将来可能会更改。',
+        '列出 MCP 服务器上可用的提示词。此方法是实验性的，未来可能会更改。',
       properties: [
         {
           type: 'options',
@@ -533,7 +533,7 @@ description: "创建用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<GetPromptResult>`,
       description:
-        '按名称检索提示词，可选地传递参数。此方法是实验性的，将来可能会更改。',
+        '按名称检索提示词，可选地传递参数。此方法是实验性的，未来可能会更改。',
       properties: [
         {
           type: 'args',
@@ -567,7 +567,7 @@ description: "创建用于连接 MCP 服务器的客户端"
         handler: (request: ElicitationRequest) => Promise<ElicitResult> | ElicitResult
       ) => void`,
       description:
-        '为 MCP 服务器的引导请求注册处理程序。当服务器在工具执行期间需要额外输入时，处理程序接收请求。',
+        '为来自 MCP 服务器的引导请求注册处理程序。当服务器在工具执行期间需要额外输入时，处理程序接收请求。',
       properties: [
         {
           type: 'parameters',
@@ -582,7 +582,7 @@ description: "创建用于连接 MCP 服务器的客户端"
               name: 'handler',
               type: '(request: ElicitationRequest) => Promise<ElicitResult> | ElicitResult',
               description:
-                '处理引导请求的函数。请求包含 message 和 requestedSchema。处理程序必须返回一个包含 action（"accept"、"decline" 或 "cancel"）的对象，并在接受时可选地包含 content。',
+                '处理引导请求的函数。请求包含消息和 requestedSchema。处理程序必须返回一个包含 action（"accept"、"decline" 或 "cancel"）以及接受时的可选 content 的对象。',
             },
           ],
         },
@@ -634,7 +634,7 @@ try {
 
 ## 错误处理
 
-客户端对以下情况抛出 `MCPClientError`：
+客户端在以下情况下抛出 `MCPClientError`：
 
 - 客户端初始化失败
 - 协议版本不匹配
@@ -643,4 +643,4 @@ try {
 
 对于工具执行，错误以 `CallToolError` 错误的形式传播。
 
-对于未知错误，客户端提供 `onUncaughtError` 回调，可用于手动记录或处理已知错误类型未涵盖的错误。
+对于未知错误，客户端暴露一个 `onUncaughtError` 回调，可用于手动记录或处理未被已知错误类型覆盖的错误。
