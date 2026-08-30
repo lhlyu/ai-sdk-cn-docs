@@ -1,16 +1,16 @@
 ---
-title: "Markdown Chatbot with Memoization"
-description: "使用 Next.js 和 AI SDK 构建一个渲染并记忆 Markdown 响应的聊天机器人。"
+title: "带记忆化的 Markdown 聊天机器人"
+description: "使用 Next.js 和 AI SDK 构建一个渲染并记忆化 Markdown 响应的聊天机器人。"
 tags: ['next', 'streaming', 'chatbot', 'markdown']
 ---
 
-# 带记忆功能的 Markdown 聊天机器人
+# 带记忆化的 Markdown 聊天机器人
 
-在使用 Next.js 和 AI SDK 构建聊天机器人时，你很可能希望使用 `react-markdown` 等库以 Markdown 格式渲染模型的响应。然而，这可能会对性能产生负面影响，因为每次从流式响应接收到新 token 时，Markdown 都会重新渲染。
+在使用 Next.js 和 AI SDK 构建聊天机器人时，您可能希望使用 `react-markdown` 之类的库以 Markdown 格式渲染模型的响应。然而，这可能会对性能产生负面影响，因为每次从流式响应中接收到新的 token 时，Markdown 都会被重新渲染。
 
-随着对话变得越来越长、越来越复杂，这种性能影响会呈指数级恶化，因为每次收到新 token 时，整个对话历史都会重新渲染。
+随着对话变得越来越长、越来越复杂，这种性能影响会呈指数级恶化，因为每次收到新的 token 时，整个对话历史都会被重新渲染。
 
-本方案使用记忆化——一种性能优化技术，将昂贵函数调用的结果缓存并复用，以避免不必要的重新计算。在此场景中，解析后的 Markdown 块会被记忆化，以防止它们在每次 token 更新时被重新解析和重新渲染。这意味着一旦某个块被完全解析，它就会被缓存并复用，而不是重新生成。这种方法通过消除冗余的解析和渲染操作，显著提升了长对话的渲染性能。
+本食谱使用记忆化——一种性能优化技术，将昂贵函数调用的结果缓存并复用，以避免不必要的重新计算。在这种情况下，解析后的 Markdown 块会被记忆化，以防止它们在每次 token 更新时被重新解析和重新渲染，这意味着一旦一个块被完全解析，它就会被缓存并复用，而不是重新生成。这种方法通过消除冗余的解析和渲染操作，显著提高了长对话的渲染性能。
 
 ## 安装
 
@@ -22,7 +22,7 @@ npm install react-markdown marked
 
 ## 服务端
 
-在服务端，使用一个简单的路由处理器来流式传输语言模型的响应。
+在服务端，您使用一个简单的路由处理器，从语言模型流式传输响应。
 
 ```tsx filename='app/api/chat/route.ts'
 import {
@@ -37,8 +37,8 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    system:
-      '你是一个乐于助人的助手。请以 Markdown 格式回应用户。',
+    instructions:
+      'You are a helpful assistant. Respond to the user in Markdown format.',
     model: 'openai/gpt-4o',
     messages: await convertToModelMessages(messages),
   });
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
 ## 记忆化 Markdown 组件
 
-接下来，创建一个记忆化的 Markdown 组件，它将原始 Markdown 文本分割成块，并且仅在内容实际发生变化时更新。该组件使用 `marked` 库将 Markdown 内容分割成块，以识别离散的 Markdown 元素，然后利用 React 的记忆化特性，通过仅更新实际发生变化的块来优化重新渲染。
+接下来，创建一个记忆化的 markdown 组件，该组件将原始 Markdown 文本拆分为块，并且仅在内容实际发生变化时更新。该组件使用 `marked` 库将 Markdown 内容拆分为块，以识别离散的 Markdown 元素，然后使用 React 的记忆化功能来优化重新渲染，仅更新实际发生变化的块。
 
 ```tsx filename='components/memoized-markdown.tsx'
 import { marked } from 'marked';
@@ -90,7 +90,7 @@ MemoizedMarkdown.displayName = 'MemoizedMarkdown';
 
 ## 客户端
 
-最后，在客户端，使用 `useChat` Hook 来管理聊天状态并渲染聊天界面。你可以使用 `MemoizedMarkdown` 组件以 Markdown 格式渲染消息内容，而不会影响性能。此外，你可以将表单渲染到其自身的组件中，以避免触发聊天消息的不必要重新渲染。你还可以使用 `throttle` 选项，该选项会将数据更新限制在指定的时间间隔内，有助于管理渲染性能。
+最后，在客户端，使用 `useChat` Hook 来管理聊天状态并渲染聊天界面。您可以使用 `MemoizedMarkdown` 组件以 Markdown 格式渲染消息内容，而不会影响性能。此外，您可以将表单渲染在单独的组件中，以避免触发聊天消息的不必要重新渲染。您还可以使用 `throttle` 选项，该选项会将数据更新限制在指定的时间间隔内，有助于管理渲染性能。
 
 ```typescript filename='app/page.tsx'
 "use client";
@@ -115,7 +115,7 @@ export default function Page() {
         {messages.map((message) => (
           <div key={message.id}>
             <div className="font-bold mb-2">
-              {message.role === "user" ? "你" : "助手"}
+              {message.role === "user" ? "You" : "Assistant"}
             </div>
             <div className="prose space-y-2">
               {message.parts.map((part) => {
@@ -155,7 +155,7 @@ const MessageInput = () => {
     >
       <input
         className="fixed bottom-0 w-full max-w-xl p-2 mb-8 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
-        placeholder="说点什么..."
+        placeholder="Say something..."
         value={input}
         onChange={(event) => {
           setInput(event.target.value);
@@ -167,5 +167,5 @@ const MessageInput = () => {
 ```
 
 <Note>
-  聊天状态通过使用相同的 `Chat` 实例在两个组件之间共享。这允许你将表单和聊天消息拆分为独立的组件，同时保持状态同步。
+  通过使用相同的 `Chat` 实例，两个组件之间共享聊天状态。这允许您将表单和聊天消息拆分为独立的组件，同时保持状态同步。
 </Note>

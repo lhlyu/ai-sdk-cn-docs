@@ -111,13 +111,13 @@ export async function POST(req: Request) {
 
 数据流遵循 AI SDK 提供的特殊协议，用于向前端发送信息。
 
-数据流协议使用服务器发送事件（SSE）格式，以实现更好的标准化、通过 ping 保持连接、支持重连以及更好的缓存处理。
+数据流协议使用服务器发送事件（SSE）格式，以提高标准化程度、通过 ping 保持连接、支持重连以及更好的缓存处理。
 
 <Note>
-  当你从自定义后端提供数据流时，需要将 `x-vercel-ai-ui-message-stream` 头设置为 `v1`。
+  当你从自定义后端提供数据流时，你需要将 `x-vercel-ai-ui-message-stream` 头设置为 `v1`。
 </Note>
 
-目前支持以下流式传输部分：
+目前支持以下流部分：
 
 ### 消息开始部分
 
@@ -134,7 +134,7 @@ data: {"type":"start","messageId":"..."}
 
 ### 文本部分
 
-文本内容使用开始/增量/结束模式进行流式传输，每个文本块具有唯一 ID。
+文本内容使用开始/增量/结束模式流式传输，每个文本块具有唯一 ID。
 
 #### 文本开始部分
 
@@ -177,7 +177,7 @@ data: {"type":"text-end","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb72306c
 
 ### 推理部分
 
-推理内容使用开始/增量/结束模式进行流式传输，每个推理块具有唯一 ID。
+推理内容使用开始/增量/结束模式流式传输，每个推理块具有唯一 ID。
 
 #### 推理开始部分
 
@@ -220,7 +220,7 @@ data: {"type":"reasoning-end","id":"reasoning_123"}
 
 ### 推理文件部分
 
-推理文件部分包含对推理过程中生成的文件（例如推理过程中产生的图像）的引用。
+推理文件部分包含对推理过程中生成文件的引用，例如推理过程中生成的图像。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -263,7 +263,7 @@ data: {"type":"source-document","sourceId":"https://example.com","mediaType":"fi
 
 ### 文件部分
 
-文件部分包含对带有媒体类型的文件的引用。
+文件部分包含对文件及其媒体类型的引用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -289,7 +289,7 @@ data: {"type":"custom","kind":"openai.compaction","providerMetadata":{"openai":{
 
 ### 数据部分
 
-自定义数据部分允许流式传输带有类型特定处理的任意结构化数据。
+自定义数据部分允许流式传输具有类型特定处理的任意结构化数据。
 
 格式：包含 JSON 对象的服务器发送事件，其中类型包含自定义后缀
 
@@ -304,7 +304,7 @@ data: {"type":"data-weather","data":{"location":"SF","temperature":100}}
 
 ### 错误部分
 
-错误部分在接收到时被附加到消息中。
+错误部分在收到时被附加到消息中。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -330,7 +330,7 @@ data: {"type":"tool-input-start","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","t
 
 ### 工具输入增量部分
 
-工具输入在生成过程中的增量块。
+工具输入生成时的增量块。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -363,11 +363,11 @@ data: {"type":"tool-input-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar
 示例：
 
 ```
-data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","approvalId":"approval_123","isAutomatic":true}
+data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","approvalId":"approval_123","reason":"Requires operator review"}
 
 ```
 
-当省略 `isAutomatic` 时，请求期望客户端给出明确的审批响应。
+当省略 `isAutomatic` 时，请求期望客户端给出明确的审批响应。`reason` 是可选的，解释为什么工具调用需要审批。
 
 ### 工具审批响应部分
 
@@ -410,7 +410,7 @@ data: {"type":"tool-output-denied","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar"}
 
 ```
 
-### 步骤开始部分
+### 开始步骤部分
 
 指示步骤开始的部分。
 
@@ -423,11 +423,11 @@ data: {"type":"start-step"}
 
 ```
 
-### 步骤结束部分
+### 结束步骤部分
 
 指示步骤（即后端中的一次 LLM API 调用）已完成的部分。
 
-该部分对于正确处理多个拼接的助手调用是必要的，例如在后端调用工具，同时在 `useChat` 中使用步骤时。
+此部分对于正确处理多个拼接的助手调用是必要的，例如在后端调用工具，同时在 `useChat` 中使用步骤时。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -438,10 +438,10 @@ data: {"type":"finish-step"}
 
 ```
 
-### 步骤重置部分
+### 重置步骤部分
 
-移除自最近的 `start-step` 部分以来接收到的所有消息部分。如果
-没有步骤边界，则移除当前消息中的所有部分。当流式传输的步骤被重试，并且必须使失败尝试的部分输出失效，然后再发送替换输出时，这很有用。
+移除自最近的 `start-step` 部分以来收到的所有消息部分。如果
+没有步骤边界，则移除当前消息中的所有部分。当流式步骤被重试，并且必须使失败尝试的部分输出失效后再发送替换输出时，这很有用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -452,7 +452,7 @@ data: {"type":"reset-step"}
 
 ```
 
-### 消息结束部分
+### 结束消息部分
 
 指示消息完成的部分。
 
@@ -491,7 +491,7 @@ data: [DONE]
 
 ```
 
-数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并且是默认使用的。
+数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并且默认使用。
 `useCompletion` 仅支持 `text` 和 `data` 流部分。
 
 在后端，你可以将 `streamText` 结果流传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它。

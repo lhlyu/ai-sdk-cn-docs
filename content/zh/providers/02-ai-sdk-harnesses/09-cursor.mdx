@@ -1,0 +1,146 @@
+---
+title: "Cursor"
+description: "了解如何使用 Cursor harness 适配器。"
+---
+
+# Cursor Harness
+
+Cursor harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` 连接到
+[Cursor CLI](https://cursor.com/cli)。
+该适配器将 ACP 会话、流式传输、工具和生命周期管理委托给 `@ai-sdk/harness-acp`。
+
+<Note>
+  Harness 包是**实验性的**。随着这个早期 API 的进一步完善，版本之间可能会有破坏性变更。
+</Note>
+
+## 设置
+
+<InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-cursor @ai-sdk/sandbox-vercel" />
+
+创建 Cursor 用户 API 密钥并设置 `CURSOR_API_KEY`。该密钥在沙箱中验证 Cursor CLI，无论 Cursor 如何向模型提供商进行身份验证。
+
+当第一个会话启动时，适配器会使用官方的 Cursor 安装命令在沙箱内安装 Cursor CLI。
+
+## 导入
+
+```ts
+import { createCursor, cursor } from '@ai-sdk/harness-cursor';
+```
+
+`cursor` 等同于使用默认配置的 `createCursor()`。
+
+## 基本用法
+
+```ts
+import { HarnessAgent } from '@ai-sdk/harness/agent';
+import { cursor } from '@ai-sdk/harness-cursor';
+import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+
+const agent = new HarnessAgent({
+  harness: cursor,
+  model: 'gpt-5.6-luna',
+  sandbox: createVercelSandbox({
+    runtime: 'node24',
+    ports: [4000],
+  }),
+});
+
+const session = await agent.createSession();
+
+try {
+  const result = await agent.generate({
+    session,
+    prompt: '检查这个项目并总结其用途。',
+  });
+  console.log(result.text);
+} finally {
+  await session.destroy();
+}
+```
+
+要将此智能体与 Vercel Sandbox 一起使用，请在宿主环境中提供 `VERCEL_OIDC_TOKEN` 和 `CURSOR_API_KEY`。
+
+## 适配器设置
+
+使用 `createCursor()` 配置运行时：
+
+```ts
+const harness = createCursor({
+  auth: 'ai-gateway',
+  port: 4001,
+  startupTimeoutMs: 180_000,
+});
+```
+
+设置：
+
+- `auth`：接受共享的 ACP 模式 `auto`、`direct` 或 `ai-gateway`，或为 `CURSOR_API_KEY` 提供隔离的身份验证环境。这不能更改 Cursor 的提供商身份验证路由。显式的 `direct` 和 `ai-gateway` 值会发出配置提醒；`auto` 不会，因为它不声明预期的路由。
+- `credentialForwarding`：可选的同步或异步回调，在 harness 适配器将每个凭据转发到沙箱进程之前自定义该凭据。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名称。此回调仅控制转发到沙箱进程的值。它不限制 harness 适配器在宿主进程中可以发现、读取或以其他方式访问哪些凭据。
+- `mcpServers`：按服务器名称键控的 MCP 服务器定义。
+- `port`：ACP 桥接端口覆盖。
+- `startupTimeoutMs`：等待 ACP 桥接启动的最长时间。
+- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回 ACP 桥接身份验证令牌。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+
+适配器固定了安装命令和 ACP 启动命令。这些实现细节不能通过 `createCursor()` 覆盖。
+
+## 身份验证
+
+Cursor 有两个独立的身份验证层：
+
+1. `CURSOR_API_KEY` 验证 Cursor CLI 到 Cursor 账户。harness 在每种 `auth` 模式下都需要此密钥。
+2. Cursor 的账户设置决定 Cursor 如何向模型提供商进行身份验证。harness 无法读取或更改此设置。
+
+对于直接路由，请在 Cursor 中配置模型提供商。对于 AI Gateway，请将 Cursor 的 OpenAI API 密钥配置为 AI Gateway API 密钥，并在 Cursor 设置中将 **Override OpenAI Base URL** 设置为
+`https://ai-gateway.vercel.sh/cursor/v1`。Cursor 从其账户配置中解析该凭据；harness 不使用 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 进行模型提供商身份验证。
+
+显式的 `direct` 和 `ai-gateway` 值会发出警告，提示所选路由必须在 Cursor 中配置。`auto` 被接受且不发出警告：
+
+```ts
+const automaticHarness = createCursor({ auth: 'auto' });
+const directHarness = createCursor({ auth: 'direct' });
+const gatewayHarness = createCursor({ auth: 'ai-gateway' });
+```
+
+提供程序化解析的 Cursor 账户凭据，而不修改或读取 `process.env`：
+
+```ts
+const harness = createCursor({
+  auth: { CURSOR_API_KEY: await resolveCursorToken() },
+});
+```
+
+此记录仅配置 Cursor CLI 身份验证。Cursor 的账户设置仍然控制模型提供商路由。
+
+## 沙箱
+
+Cursor 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少暴露一个端口的网络沙箱，例如 `@ai-sdk/sandbox-vercel`：
+
+```ts
+const sandbox = createVercelSandbox({
+  runtime: 'node24',
+  ports: [4000],
+});
+```
+
+第一个会话需要网络出口来运行 Cursor 的官方安装程序。
+
+## 内置工具
+
+适配器将 Cursor 的终端、glob 和 grep 工具映射到通用的 `bash`、`glob` 和 `grep` 工具。它还以稳定的名称暴露 Cursor 的其余内置工具，包括 `read`、`edit`、`ls`、`semanticSearch`、`webSearch`、`task` 以及 Cursor 的规划、MCP、浏览器和环境工具。
+
+Cursor 宿主工具调用使用 ACP MCP 传输。适配器识别 Cursor 的 MCP 负载，并将调用与宿主端工具执行相关联。
+
+## 已知限制
+
+- Cursor 的模型提供商身份验证路由必须在 Cursor 中配置。`auth` 适配器设置不能以编程方式切换它。
+- ACP v1 不暴露模型步骤边界或每步使用量。适配器推断边界，并在 Cursor 未提供总计时报告未知的每步使用量。
+- ACP v1 没有可移植的手动压缩或回合中转向 API。
+- ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 Cursor 内置工具会抛出不支持的能力错误。
+- Cursor ACP 不暴露结构化输出元数据映射，因此不支持基于模式的结构化输出。
+
+## 相关
+
+- [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [Agent Client Protocol](/providers/ai-sdk-harnesses/acp)

@@ -1,0 +1,40 @@
+---
+title: "AI_StreamProviderError"
+description: "了解如何处理 AI_StreamProviderError"
+---
+
+# AI_StreamProviderError
+
+此错误表示模型响应流开始后，提供商报告的格式良好的错误事件。AI SDK 在流式错误部分和回调（如 `streamText` 的 `onError` 回调）中公开此错误。
+
+## 属性
+
+- `message`：提供商错误消息
+- `type`：提供商定义的错误类型（可选）
+- `code`：提供商定义的错误代码，为字符串或数字（可选）
+- `statusCode`：当提供商元数据提供或可推断时，对应的 HTTP 状态码（可选）
+- `isRetryable`：重试模型调用是否可能成功
+- `data`：原始提供商错误负载（可选）
+- `cause`：导致失败的底层错误（可选）
+
+`isRetryable` 是重试分类，而非自动重试。流可能已包含部分输出，因此应用程序应决定在开始另一个模型调用之前是丢弃、替换还是保留该输出。
+
+## 检查此错误
+
+使用 `StreamProviderError.isInstance` 进行识别，这样即使在存在多个 AI SDK 版本时也能正常工作：
+
+```typescript
+import { StreamProviderError, streamText } from 'ai';
+
+const result = streamText({
+  model: __MODEL__,
+  prompt: '为 4 人写一份素食千层面食谱。',
+  onError: ({ error }) => {
+    if (StreamProviderError.isInstance(error) && error.isRetryable) {
+      // 安排应用程序管理的重试。
+    }
+  },
+});
+```
+
+提供商可能未包含足够的元数据来确定状态码。在这种情况下，`statusCode` 为 `undefined`，并且重试性会被保守分类。提供商特定的状态和重试映射由提供商适配器提供，而非从任意的提供商错误类型或代码子字符串推断。提供商的 `type` 和 `code` 值会独立保留，即使数字代码也用于确定 `statusCode`。已经是 `Error` 实例的错误以及格式错误或未知的提供商值将原样保留。

@@ -11,14 +11,14 @@ Deep Agents 工具框架适配器将 `HarnessAgent` 连接到
 `deepagents` 包，并通过沙箱暴露的 WebSocket 将其 `streamEvents` 输出流式传输回主机。
 
 <Note>
-  工具框架包是**实验性的**。随着这个早期 API 的进一步完善，版本之间可能会有破坏性变更。
+  工具框架包为**实验性**。随着早期 API 的进一步完善，版本之间可能会有破坏性变更。
 </Note>
 
 ## 设置
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-deepagents @ai-sdk/sandbox-vercel" />
 
-适配器在第一个会话启动时，通过 `pnpm` 在沙箱内引导桥接器的 Node 依赖（`deepagents` 包
+适配器在首个会话启动时，通过 `pnpm` 在沙箱内引导桥接器的 Node 依赖（`deepagents` 包
 和 LangChain）。
 
 ## 导入
@@ -38,6 +38,7 @@ import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
 
 const agent = new HarnessAgent({
   harness: deepAgents,
+  model: 'anthropic/claude-sonnet-4-6',
   sandbox: createVercelSandbox({
     runtime: 'node24',
     ports: [4000],
@@ -67,52 +68,49 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及
-[身份验证](#身份验证) 下列出的用于模型提供商的变量之一。
+要使用此智能体，请确保环境变量包含 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及
+[认证](#authentication) 下列出的模型提供商变量之一。
 
 ## 适配器设置
 
 使用 `createDeepAgents()` 配置运行时：
 
 ```ts
-const harness = createDeepAgents({
-  model: 'claude-sonnet-4',
-});
+const harness = createDeepAgents({ recursionLimit: 100 });
 ```
 
-设置：
+设置项：
 
-- `auth`：身份验证模式：`auto`、`anthropic` 或 `ai-gateway`。
+- `auth`：认证模式（`auto`、`anthropic` 或 `ai-gateway`）或隔离的认证环境。
+- `credentialForwarding`：可选的同步或异步回调，在适配器将每个凭据转发到沙箱进程之前
+  对其进行自定义。它接收原本将被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的
+  环境变量名。此回调仅控制转发到沙箱进程的值。它不限制适配器在主机进程中可以发现、
+  读取或以其他方式访问哪些凭据。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
-- `model`：传递给 Deep Agents (LangChain) 运行时的模型 ID。通过 AI
-  Gateway，使用 `creator/model` 格式（例如 `anthropic/claude-sonnet-4-6`、
-  `google/gemini-2.5-flash`、`openai/gpt-4.1-mini`）。
 - `port`：桥接器端口覆盖。
-- `recursionLimit`：每轮最大 LangGraph 超级步骤数。省略时，使用
-  Deep Agents 默认值。
+- `recursionLimit`：每轮最大 LangGraph 超级步骤数。省略时，使用 Deep Agents 默认值。
 - `startupTimeoutMs`：等待桥接器启动的最长时间。
-- `mintBridgeToken`：接收沙箱 ID 并返回桥接器身份验证令牌的同步函数。默认情况下，适配器生成一个
-  随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+- `mintBridgeToken`：接收沙箱 ID 并返回桥接器认证令牌的同步函数。默认情况下，适配器
+  生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
 ## 结构化输出
 
 Deep Agents 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。
 适配器应用每轮 LangChain 工具策略，并将图验证后的 `structuredResponse` 作为 JSON 文本返回。
 
-## 身份验证
+## 认证
 
-Deep Agents 始终驱动 Anthropic 客户端。非 Anthropic 模型通过 AI Gateway 的 Anthropic 兼容端点访问，
-该端点可转换为任何模型（Gemini、OpenAI 等），包括工具调用。
+Deep Agents 始终驱动 Anthropic 客户端。非 Anthropic 模型通过 AI Gateway 的
+Anthropic 兼容端点访问，该端点可转换到任何模型（Gemini、OpenAI 等），包括工具调用。
 
 `auth` 设置选择如何从主机环境解析凭据：
 
-- `auto`（默认）：优先使用 AI Gateway 凭据，然后回退到
-  Anthropic 凭据。
+- `auto`（默认）：优先使用 AI Gateway 凭据，然后回退到 Anthropic 凭据。
 - `anthropic`：使用 Anthropic 凭据。
 - `ai-gateway`：使用 AI Gateway 凭据。
 
-当沙箱支持附加请求转换时，桥接器接收占位符，适配器将凭据注入匹配的出站
-请求。不支持该功能的沙箱保留直接凭据转发。
+当沙箱支持附加请求转换时，桥接器接收占位符，适配器将凭据注入匹配的出站请求中。
+不具备该能力的沙箱保留直接凭据转发。
 
 支持的环境变量：
 
@@ -126,11 +124,23 @@ Deep Agents 始终驱动 Anthropic 客户端。非 Anthropic 模型通过 AI Gat
 要运行非 Anthropic 模型，请选择 `ai-gateway`：
 
 ```ts
-const harness = createDeepAgents({
+const harness = createDeepAgents({ auth: 'ai-gateway' });
+const agent = new HarnessAgent({
+  harness,
   model: 'google/gemini-2.5-flash',
-  auth: 'ai-gateway',
+  sandbox,
 });
 ```
+
+传入认证环境以使用编程方式解析的凭据，而无需读取 `process.env`：
+
+```ts
+const harness = createDeepAgents({
+  auth: { ANTHROPIC_API_KEY: await resolveAnthropicToken() },
+});
+```
+
+提供的记录将替换主机环境用于认证发现。仅转发已识别的认证变量。
 
 ## 沙箱
 
@@ -146,10 +156,10 @@ const sandbox = createVercelSandbox({
 
 ## 技能
 
-传递给会话的技能会物化为沙箱中 `$HOME/.agents/skills/` 下的原生 Deep Agents 技能文件夹
-（`<name>/SKILL.md` 加上任何附加文件）（位于工作目录之外，因此不会与克隆的代码冲突），
-并通过 Deep Agents 的 `skills` 选项加载——因此智能体按需加载它们，技能文件引用也能解析。
-`<workDir>/.agents/skills/` 下已有的技能（例如在克隆的仓库中）也会被发现。
+传递给会话的技能被物化为沙箱中 `$HOME/.agents/skills/` 下的原生 Deep Agents 技能文件夹
+（`<name>/SKILL.md` 及任何附加文件）（位于工作目录之外，因此不会与克隆的代码冲突），
+并通过 Deep Agents 的 `skills` 选项加载——因此智能体按需加载它们，技能文件引用可解析。
+`<workDir>/.agents/skills/` 下已存在的技能（例如在克隆的仓库中）也会被发现。
 
 ## 内置工具
 
@@ -167,10 +177,10 @@ const sandbox = createVercelSandbox({
 
 ## 已知限制
 
-- **不支持恢复已停止会话的对话**——在
-  `session.stop()` 之后，Deep Agents 的内存对话状态（LangGraph
-  `MemorySaver`）已消失；只有沙箱工作区通过其快照持久化。
-  使用 `session.detach()` 进行跨进程交接，或使用 `session.suspendTurn()` 在保持实时桥接器运行的同时继续轮次。
+- **不支持恢复已停止会话的对话**——在 `session.stop()` 之后，Deep Agents 的内存对话状态
+  （LangGraph `MemorySaver`）已消失；只有沙箱工作区通过其快照持久化。
+  使用 `session.detach()` 进行跨进程交接，或使用 `session.suspendTurn()` 在保持实时桥接器
+  运行的同时继续当前轮次。
 - **不支持手动压缩**。
 
 ## 相关

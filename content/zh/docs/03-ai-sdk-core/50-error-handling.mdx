@@ -16,18 +16,20 @@ __PROVIDER_IMPORT__;
 try {
   const { text } = await generateText({
     model: __MODEL__,
-    prompt: '为4人份编写一份素食千层面食谱。',
+    prompt: '为 4 人写一份素食千层面食谱。',
   });
 } catch (error) {
   // 处理错误
 }
 ```
 
-有关可能抛出的不同错误类型的更多信息，请参阅[错误类型](/docs/reference/ai-sdk-errors)。
+有关可能抛出的不同类型错误的更多信息，请参阅[错误类型](/docs/reference/ai-sdk-errors)。
 
-## 处理流式错误（简单流）
+## 处理流式传输错误（简单流）
 
-当在不支持错误块的流中发生错误时，错误会作为常规错误抛出。你可以使用 `try/catch` 块来处理这些错误。
+当不支持错误块的流在传输过程中发生错误时，
+错误会作为常规错误抛出。
+您可以使用 `try/catch` 块处理这些错误。
 
 ```ts highlight="4,13-15"
 import { streamText } from 'ai';
@@ -36,7 +38,7 @@ __PROVIDER_IMPORT__;
 try {
   const { textStream } = streamText({
     model: __MODEL__,
-    prompt: '为4人份编写一份素食千层面食谱。',
+    prompt: '为 4 人写一份素食千层面食谱。',
   });
 
   for await (const textPart of textStream) {
@@ -47,18 +49,21 @@ try {
 }
 ```
 
-## 处理流式错误（支持 `error` 的流式传输）
+## 处理流式传输错误（支持 `error` 的流）
 
-`stream` 结果支持错误部分。你可以像处理其他部分一样处理这些部分。建议同时添加 try-catch 块来处理流式传输之外发生的错误。
+`stream` 结果支持错误部分。
+您可以像处理其他部分一样处理这些部分。
+建议同时添加 try-catch 块，以处理
+流式传输之外发生的错误。
 
 ```ts highlight="14-22"
-import { streamText } from 'ai';
+import { StreamProviderError, streamText } from 'ai';
 __PROVIDER_IMPORT__;
 
 try {
   const { stream } = streamText({
     model: __MODEL__,
-    prompt: '为4人份编写一份素食千层面食谱。',
+    prompt: '为 4 人写一份素食千层面食谱。',
   });
 
   for await (const part of stream) {
@@ -67,7 +72,15 @@ try {
 
       case 'error': {
         const error = part.error;
-        // 处理错误
+
+        if (StreamProviderError.isInstance(error)) {
+          console.error(error.message, {
+            type: error.type,
+            code: error.code,
+            statusCode: error.statusCode,
+            isRetryable: error.isRetryable,
+          });
+        }
         break;
       }
 
@@ -88,11 +101,18 @@ try {
 }
 ```
 
+流式传输开始后到达的格式良好的提供商错误事件会被
+规范化为 [`StreamProviderError`](/docs/reference/ai-sdk-errors/ai-stream-provider-error)
+实例。相同的实例会提供给 `onError` 等回调以及
+完整流中的 `error` 部分。SDK 不会自动重启
+部分消费的流；请使用 `isRetryable` 实现应用管理的
+重试，并决定如何处理任何部分输出。
+
 ## 处理流中止
 
-当流被中止时（例如，通过聊天停止按钮），你可能希望执行清理操作，比如更新 UI 中存储的消息。使用 `onAbort` 回调来处理这些情况。
+当流被中止时（例如，通过聊天停止按钮），您可能希望执行清理操作，例如更新 UI 中存储的消息。使用 `onAbort` 回调来处理这些情况。
 
-当流通过 `AbortSignal` 中止时，会调用 `onAbort` 回调，但不会调用 `onEnd`。这确保你仍然可以适当地更新 UI 状态。
+当流通过 `AbortSignal` 中止时，会调用 `onAbort` 回调，但不会调用 `onEnd`。这确保您仍然可以适当地更新 UI 状态。
 
 ```ts highlight="6-10"
 import { streamText } from 'ai';
@@ -100,13 +120,13 @@ __PROVIDER_IMPORT__;
 
 const { textStream } = streamText({
   model: __MODEL__,
-  prompt: '为4人份编写一份素食千层面食谱。',
+  prompt: '为 4 人写一份素食千层面食谱。',
   onAbort: ({ steps }) => {
     // 更新存储的消息或执行清理
     console.log('流在', steps.length, '个步骤后被中止');
   },
   onEnd: ({ steps, totalUsage }) => {
-    // 正常完成时调用此函数
+    // 正常完成时调用
     console.log('流正常完成');
   },
 });
@@ -120,7 +140,7 @@ for await (const textPart of textStream) {
 
 - `steps`：中止前所有已完成步骤的数组
 
-你也可以直接在流中处理中止事件：
+您也可以直接在流中处理中止事件：
 
 ```ts highlight="11-14"
 import { streamText } from 'ai';
@@ -128,7 +148,7 @@ __PROVIDER_IMPORT__;
 
 const { stream } = streamText({
   model: __MODEL__,
-  prompt: '为4人份编写一份素食千层面食谱。',
+  prompt: '为 4 人写一份素食千层面食谱。',
 });
 
 for await (const chunk of stream) {

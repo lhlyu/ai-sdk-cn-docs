@@ -1,17 +1,16 @@
 ---
 title: "Pi"
-description: "了解如何使用 Pi harness 适配器。"
+description: "了解如何使用 Pi 工具链适配器。"
 ---
 
-# Pi Harness
+# Pi 工具链
 
-Pi harness 适配器将 `HarnessAgent` 连接到
+Pi 工具链适配器将 `HarnessAgent` 连接到
 `@earendil-works/pi-coding-agent`。Pi 在宿主 Node.js 进程中运行，并使用
-沙箱作为远程文件系统和 shell。它不会在沙箱内部安装桥接。
+沙箱作为远程文件系统和 Shell。它不会在沙箱内部安装桥接。
 
 <Note>
-  Harness 包是 **实验性** 的。随着这个早期 API 的进一步完善，
-  版本之间可能会出现破坏性变更。
+  工具链包为**实验性**。随着早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -24,7 +23,7 @@ Pi harness 适配器将 `HarnessAgent` 连接到
 import { pi, createPi } from '@ai-sdk/harness-pi';
 ```
 
-`pi` 等同于使用默认配置调用 `createPi()`。
+`pi` 等同于使用默认配置的 `createPi()`。
 
 ## 基本用法
 
@@ -35,6 +34,7 @@ import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
 
 const agent = new HarnessAgent({
   harness: pi,
+  model: 'anthropic/claude-sonnet-4.6',
   sandbox: createVercelSandbox({
     runtime: 'node24',
   }),
@@ -63,8 +63,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，
-以及 [认证](#authentication) 下列出的用于 Pi 的变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及 [认证](#authentication) 下列出的用于 Pi 的变量之一。
 
 ## 适配器设置
 
@@ -72,23 +71,22 @@ try {
 
 ```ts
 const harness = createPi({
-  model: 'anthropic/claude-sonnet-4.6',
   thinkingLevel: 'medium',
 });
 ```
 
 设置项：
 
-- `auth`：认证模式：`auto`、`openai`、`anthropic`、`custom` 或
-  `ai-gateway`。
+- `auth`：认证模式（`auto`、`openai`、`anthropic`、`custom` 或
+  `ai-gateway`）或隔离的认证环境。
 - `extensionFactories`：在宿主 Node.js 进程中运行的可信内联 Pi 扩展工厂。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
-- `model`：Pi 模型 ID 或模型名称。
-- `thinkingLevel`：Pi 思考预算级别。
+- `thinkingLevel`：Pi 思考级别（`off`、`minimal`、`low`、`medium`、
+  `high`、`xhigh` 或 `max`）。
 
 ## 内联扩展
 
-使用 `extensionFactories` 为每个 harness 会话加载可信的内联 Pi 扩展：
+使用 `extensionFactories` 为每个工具链会话加载可信的内联 Pi 扩展：
 
 ```ts
 const harness = createPi({
@@ -102,20 +100,15 @@ const harness = createPi({
 });
 ```
 
-轮次之间的常规资源刷新会复用活动的扩展运行时，不会重新初始化工厂。
-如果底层 Pi 会话被重建，工厂将针对新的 Pi 运行时重新初始化。
+轮次之间的常规资源刷新会复用活动的扩展运行时，不会重新初始化工厂。如果底层 Pi 会话被重建，工厂将针对新的 Pi 运行时重新初始化。
 
-扩展工厂在宿主 Node.js 进程中执行，并可以访问宿主环境，
-因此只传入您信任的工厂。此设置仅启用您显式提供的工厂。
-文件系统扩展发现保持禁用，包括用户、项目和基于设置的扩展。
-主题和提示词模板也保持禁用。
+扩展工厂在宿主 Node.js 进程中执行，并可访问宿主环境，因此只传递您信任的工厂。此设置仅启用您显式提供的工厂。文件系统扩展发现保持禁用，包括用户、项目和基于设置的扩展。主题和提示词模板也保持禁用。
 
 ## 认证
 
-`auth` 设置选择 Pi 从宿主环境中读取的凭据：
+`auth` 设置选择 Pi 从宿主环境读取的凭据：
 
-- `auto`（默认）：可用时使用 AI Gateway 凭据，然后回退到
-  环境中找到的所有提供商凭据。
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到环境中找到的所有提供商凭据。
 - `openai`：使用 `OPENAI_API_KEY` 和可选的 `OPENAI_BASE_URL`。
 - `anthropic`：使用 `ANTHROPIC_API_KEY` 以及可选的
   `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`。
@@ -127,16 +120,27 @@ const harness = createPi({
 const harness = createPi({ auth: 'ai-gateway' });
 ```
 
+传递认证环境以使用编程方式解析的凭据，而不读取 `process.env`：
+
+```ts
+const harness = createPi({
+  auth: {
+    MISTRAL_API_KEY: await resolveMistralToken(),
+    MISTRAL_BASE_URL: 'https://api.mistral.ai',
+  },
+});
+```
+
+提供的记录将替换用于认证发现的宿主环境。Pi 从该记录中解析提供商的 API 密钥和基础 URL。
+
 使用 `custom` 时，标准提供商使用环境变量，如
 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`ANTHROPIC_API_KEY` 和
-`ANTHROPIC_BASE_URL`。其他提供商使用 `<PREFIX>_API_KEY` 和对应的
+`ANTHROPIC_BASE_URL`。其他提供商使用 `<PREFIX>_API_KEY` 和匹配的
 `<PREFIX>_BASE_URL` 对。
 
 ## 沙箱
 
-Pi 需要 `HarnessV1SandboxProvider`，但不需要暴露端口。
-您可以使用网络沙箱适配器，如 `@ai-sdk/sandbox-vercel`，或
-本地模拟，如 `@ai-sdk/sandbox-just-bash`：
+Pi 需要 `HarnessV1SandboxProvider`，但不需要暴露端口。您可以使用网络沙箱适配器（如 `@ai-sdk/sandbox-vercel`），或本地模拟（如 `@ai-sdk/sandbox-just-bash`）：
 
 ```ts
 const sandbox = createVercelSandbox({
@@ -158,16 +162,14 @@ const sandbox = createVercelSandbox({
 
 当其他 Pi 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，
-Pi 支持内置工具审批请求。
+当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，Pi 支持内置工具审批请求。
 
 ## 已知限制
 
-Pi 不支持结构化输出。向 `HarnessAgent` 提供 `output` 会导致
-该轮次抛出 `HarnessCapabilityUnsupportedError`。
+Pi 不支持结构化输出。向 `HarnessAgent` 提供 `output` 会导致该轮抛出 `HarnessCapabilityUnsupportedError`。
 
 ## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
-- [Harness 工具](/docs/ai-sdk-harnesses/tools)
-- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [工具链工具](/docs/ai-sdk-harnesses/tools)
+- [工具链适配器](/docs/ai-sdk-harnesses/harness-adapters)

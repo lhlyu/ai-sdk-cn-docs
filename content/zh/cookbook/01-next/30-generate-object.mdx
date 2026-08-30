@@ -1,6 +1,6 @@
 ---
-title: 生成对象
-description: 了解如何使用 AI SDK 和 Next.js 生成对象
+title: "生成对象"
+description: "了解如何使用 AI SDK 和 Next.js 生成对象"
 tags: ['next', '结构化数据']
 ---
 
@@ -8,7 +8,7 @@ tags: ['next', '结构化数据']
 
 你可以使用 `generateText` 配合 `Output` 来生成 JSON 等结构化数据。通过提供描述所需对象结构的 schema，SDK 将验证生成的输出，并确保其符合指定的结构。
 
-`Output.object` 函数要求你使用 [zod](https://zod.dev) 提供 schema，这是一个用于定义 JavaScript 对象 schema 的库。
+`Output.object` 函数要求你使用 [zod](https://zod.dev) 提供 schema，zod 是一个用于定义 JavaScript 对象 schema 的库。
 
 <Browser>
   <ObjectGeneration
@@ -16,19 +16,19 @@ tags: ['next', '结构化数据']
       notifications: [
         {
           name: 'Jamie Roberts',
-          message: "Hey! How's the study grind going? Need a coffee boost?",
+          message: "嘿！学习进展如何？需要来杯咖啡提神吗？",
           minutesAgo: 15,
         },
         {
           name: 'Prof. Morgan',
           message:
-            'Reminder: Your term paper is due promptly at 8 AM tomorrow. Please ensure it meets the submission guidelines outlined.',
+            '提醒：你的学期论文需在明早 8 点前准时提交。请确保其符合规定的提交指南。',
           minutesAgo: 46,
         },
         {
           name: 'Alex Chen',
           message:
-            "Dude, urgent! Borrow your notes for tomorrow's exam? I swear mine got eaten by my dog!",
+            "兄弟，急事！能借你的笔记复习明天的考试吗？我发誓我的被狗吃了！",
           minutesAgo: 30,
         },
       ],
@@ -38,7 +38,7 @@ tags: ['next', '结构化数据']
 
 ## 客户端
 
-让我们创建一个简单的 React 组件，当点击按钮时，它会向 `/api/completion` 端点发送 POST 请求。该端点将根据输入提示词返回生成的对象，我们将显示它。
+让我们创建一个简单的 React 组件，当按钮被点击时，它会向 `/api/completion` 端点发送 POST 请求。该端点将根据输入的提示词返回生成的对象，我们将展示它。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -58,7 +58,7 @@ export default function Page() {
           await fetch('/api/completion', {
             method: 'POST',
             body: JSON.stringify({
-              prompt: 'Messages during finals week.',
+              prompt: '期末考试周期间的消息。',
             }),
           }).then(response => {
             response.json().then(json => {
@@ -68,11 +68,11 @@ export default function Page() {
           });
         }}
       >
-        Generate
+        生成
       </div>
 
       {isLoading ? (
-        'Loading...'
+        '加载中...'
       ) : (
         <pre>{JSON.stringify(generation, null, 2)}</pre>
       )}
@@ -83,7 +83,7 @@ export default function Page() {
 
 ## 服务端
 
-让我们为 `/api/completion` 创建一个路由处理程序，它将根据输入提示词生成一个对象。该路由将调用 `generateText` 函数，并使用 `ai` 模块中的 `Output.object`，然后根据输入提示词生成一个对象并返回。
+让我们为 `/api/completion` 创建一个路由处理器，它将根据输入的提示词生成一个对象。该路由将调用 `ai` 模块中的 `generateText` 函数并配合 `Output.object`，然后根据输入的提示词生成一个对象并返回它。
 
 ```typescript filename='app/api/completion/route.ts'
 import { generateText, Output } from 'ai';
@@ -94,14 +94,14 @@ export async function POST(req: Request) {
 
   const result = await generateText({
     model: 'openai/gpt-4o',
-    system: 'You generate three notifications for a messages app.',
+    instructions: '你为一个消息应用生成三条通知。',
     prompt,
     output: Output.object({
       schema: z.object({
         notifications: z.array(
           z.object({
-            name: z.string().describe('Name of a fictional person.'),
-            message: z.string().describe('Do not use emojis or links.'),
+            name: z.string().describe('虚构人物的姓名。'),
+            message: z.string().describe('不要使用表情符号或链接。'),
             minutesAgo: z.number(),
           }),
         ),

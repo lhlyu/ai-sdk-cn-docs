@@ -1,25 +1,25 @@
 ---
-title: 使用聊天提示词生成文本
-description: 了解如何通过 AI SDK 和 React 服务端组件使用聊天提示词生成文本。
+title: "使用聊天提示词生成文本"
+description: "了解如何使用 AI SDK 和 React 服务器组件通过聊天提示词生成文本。"
 tags: ['rsc', 'chat']
 ---
 
 # 使用聊天提示词生成文本
 
-之前，我们能够通过单条消息提示词、系统提示词或两者结合来生成文本和对象。但有时你可能希望基于一系列消息来生成文本。
+之前，我们可以使用单条消息提示词、系统提示词或两者的组合来生成文本和对象。然而，有时您可能希望基于一系列消息来生成文本。
 
-聊天补全功能允许你基于一系列消息生成文本。这一系列消息可以是任意数量系统之间的任意交互序列，但最流行且最易理解的用例是代表用户与模型之间对话的消息序列。
+聊天补全允许您基于一系列消息生成文本。这一系列消息可以是任意数量的系统之间的任意交互序列，但最流行且最贴近实际应用的场景是代表用户与模型之间对话的一系列消息。
 
 <Browser>
   <ChatGeneration
     history={[
-      { role: '用户', content: '最近怎么样？' },
-      { role: '助手', content: '一切都好，有什么可以帮你的吗？' },
+      { role: 'User', content: 'How is it going?' },
+      { role: 'Assistant', content: 'All good, how may I help you?' },
     ]}
-    inputMessage={{ role: '用户', content: '为什么天空是蓝色的？' }}
+    inputMessage={{ role: 'User', content: 'Why is the sky blue?' }}
     outputMessage={{
-      role: '助手',
-      content: '天空是蓝色的，这是因为瑞利散射。',
+      role: 'Assistant',
+      content: 'The sky is blue because of rayleigh scattering.',
     }}
   />
 </Browser>
@@ -34,7 +34,7 @@ tags: ['rsc', 'chat']
 import { useState } from 'react';
 import { Message, continueConversation } from './actions';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
@@ -69,7 +69,7 @@ export default function Home() {
             setConversation(messages);
           }}
         >
-          发送消息
+          Send Message
         </button>
       </div>
     </div>
@@ -77,9 +77,9 @@ export default function Home() {
 }
 ```
 
-## 服务端
+## 服务器
 
-现在，让我们实现 `continueConversation` 函数，该函数会将用户消息插入对话并生成响应。
+现在，让我们实现 `continueConversation` 函数，该函数将用户的消息插入对话中并生成响应。
 
 ```typescript filename='app/actions.ts'
 'use server';
@@ -96,7 +96,7 @@ export async function continueConversation(history: Message[]) {
 
   const { text } = await generateText({
     model: 'openai/gpt-5.4',
-    system: '你是一个友好的助手！',
+    instructions: 'You are a friendly assistant!',
     messages: history,
   });
 

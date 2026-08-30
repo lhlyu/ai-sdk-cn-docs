@@ -1,11 +1,11 @@
 ---
-title: 传输
-description: 了解如何将自定义传输与 useChat 结合使用。
+title: "传输"
+description: "了解如何将自定义传输与useChat一起使用。"
 ---
 
 # 传输
 
-`useChat` 传输系统提供了对消息如何发送到 API 端点以及如何处理响应的精细控制。这对于 WebSocket 等替代通信协议、自定义身份验证模式或专门的集成尤其有用。
+`useChat` 传输系统提供了对消息如何发送到 API 端点以及响应如何处理的细粒度控制。这对于 WebSocket 等替代通信协议、自定义身份验证模式或专门的集成后端特别有用。
 
 ## 默认传输
 
@@ -14,7 +14,7 @@ description: 了解如何将自定义传输与 useChat 结合使用。
 ```tsx
 import { useChat } from '@ai-sdk/react';
 
-// 使用默认的 HTTP 传输
+// 使用默认 HTTP 传输
 const { messages, sendMessage } = useChat();
 ```
 
@@ -98,9 +98,9 @@ const { messages, sendMessage } = useChat({
 
 ## 直接智能体传输
 
-对于希望直接与[智能体](/docs/reference/ai-sdk-core/agent)通信而无需通过 HTTP 的场景，您可以使用 `DirectChatTransport`。此传输直接在进程中调用智能体的 `stream()` 方法。
+对于希望直接与 [智能体](/docs/reference/ai-sdk-core/agent) 通信而无需通过 HTTP 的场景，可以使用 `DirectChatTransport`。此传输直接调用智能体的 `stream()` 方法在进程内执行。
 
-这在以下场景中非常有用：
+这适用于：
 
 - **服务端渲染**：在服务器上运行智能体，无需 API 端点
 - **测试**：无需网络请求即可测试聊天功能
@@ -149,14 +149,14 @@ const transport = new DirectChatTransport({
 ```
 
 <Note>
-  `DirectChatTransport` 不支持流重新连接，因为没有持久的服务端流。`reconnectToStream()` 方法始终返回 `null`。
+  `DirectChatTransport` 不支持流重连，因为没有持久的服务端流。`reconnectToStream()` 方法始终返回 `null`。
 </Note>
 
-有关完整的 API 详细信息，请参阅 [DirectChatTransport 参考](/docs/reference/ai-sdk-ui/direct-chat-transport)。
+有关完整的 API 详情，请参阅 [DirectChatTransport 参考](/docs/reference/ai-sdk-ui/direct-chat-transport)。
 
 ## 工作流传输
 
-对于基于[工作流 SDK](/docs/agents/workflow-agent) 构建的聊天应用，来自 `@ai-sdk/workflow` 的 `WorkflowChatTransport` 提供了自动流重新连接。它处理工作流函数在流传输过程中超时的常见场景——传输检测到缺失的 `finish` 事件并重新连接以从中断处恢复。
+对于基于 [Workflow SDK](/docs/agents/workflow-agent) 构建的聊天应用，`@ai-sdk/workflow` 中的 `WorkflowChatTransport` 提供了自动流重连功能。它处理了工作流函数在流传输中途超时的常见场景——传输检测到缺失的 `finish` 事件并重新连接以从中断处恢复。
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -169,7 +169,6 @@ export default function Chat() {
       new WorkflowChatTransport({
         api: '/api/chat',
         maxConsecutiveErrors: 5,
-        initialStartIndex: -50, // 页面刷新时，获取最后 50 个块
         onChatEnd: ({ chatId, chunkIndex }) => {
           console.log(`聊天完成：${chunkIndex} 个块`);
         },
@@ -185,10 +184,12 @@ export default function Chat() {
 
 主要特性：
 
-- **自动重新连接**：检测中断的流（无 `finish` 事件）并通过 GET 请求重新连接到 `{api}/{runId}/stream`
-- **页面刷新恢复**：`initialStartIndex` 使用负值（例如 `-50`）仅获取流的尾部，而不是重放所有内容
-- **可配置的重试次数**：`maxConsecutiveErrors` 控制允许的连续重新连接失败次数
+- **自动重连**：检测中断的流（没有 `finish` 事件）并通过 GET 请求重连到 `{api}/{runId}/stream`
+- **页面刷新恢复**：`initialStartIndex` 控制初始重连开始的位置
+- **可配置重试**：`maxConsecutiveErrors` 控制可容忍的连续重连失败次数
 - **生命周期回调**：`onChatSendMessage` 和 `onChatEnd` 用于跟踪聊天状态
+
+当持久化服务端流已经存储了 `UIMessageChunk` 对象时，负的 `initialStartIndex` 值可以仅获取尾部数据。对于原始 `WorkflowAgent` 流，请使用非负游标并遵循 WorkflowAgent 指南中的服务端转换。
 
 有关完整的 API 参考，请参阅 [`WorkflowChatTransport`](/docs/reference/ai-sdk-workflow/workflow-chat-transport)。有关服务端端点设置，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent#resumable-streaming-with-workflowchattransport)。
 
@@ -200,11 +201,11 @@ export default function Chat() {
 - **[HttpChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/http-chat-transport.ts)** - 具有请求处理功能的基础 HTTP 传输
 - **[ChatTransport 接口](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat-transport.ts)** - 您需要实现的传输接口
 
-这些实现精确地向您展示了如何：
+这些实现精确地展示了如何：
 
 - 处理 `sendMessages` 方法
 - 处理 UI 消息流
 - 转换请求和响应
 - 处理错误和连接管理
 
-传输系统让您完全控制聊天应用的通信方式，从而能够与任何后端协议或服务集成。
+传输系统为您提供了对聊天应用通信方式的完全控制，支持与任何后端协议或服务集成。

@@ -1,6 +1,6 @@
 ---
-title: convertToModelMessages
-description: 将 useChat 消息转换为 AI 函数可用的 ModelMessages（API 参考）
+title: "convertToModelMessages"
+description: "将 useChat 消息转换为适用于 AI 函数的 ModelMessages（API 参考）"
 ---
 
 # `convertToModelMessages()`
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       name: 'messages',
       type: 'Message[]',
       description:
-        '来自 useChat Hook 的 UI 消息数组，需要被转换',
+        '来自 useChat Hook 的待转换 UI 消息数组',
     },
     {
       name: 'options',
@@ -72,16 +72,16 @@ export async function POST(req: Request) {
 
 ## 工具审批状态
 
-`convertToModelMessages` 在将 UI 消息转换回 `ModelMessage` 以用于后续的 `generateText` 或 `streamText` 调用时，会保留工具审批状态。
+`convertToModelMessages` 在将 UI 消息转换回 `ModelMessage` 以进行后续的 `generateText` 或 `streamText` 调用时，会保留工具审批状态。
 
-- 处于 `approval-requested` 状态的工具部分变为 `tool-approval-request` 内容部分。
-- 处于 `approval-responded` 状态的工具部分变为 `tool-approval-response` 内容部分，包含 `reason`（如果存在）。
-- 自动审批元数据通过转发 `approval.isAutomatic` 到 `tool-approval-request` 部分来保留。
-- 被拒绝的工具审批也会生成一个合成的 `tool-result`，包含 `output: { type: 'execution-denied', reason?: string }`，以便模型获得完整的工具生命周期，并在下一步中对拒绝做出响应。
+- 带有审批元数据的工具部分会生成 `tool-approval-request` 内容部分。当存在 `approval.requestReason` 时，会将其作为请求的 `reason` 转发。
+- 处于 `approval-responded` 状态的工具部分也会生成 `tool-approval-response` 内容部分。当存在单独的响应 `reason` 时，会将其转发。
+- 自动审批元数据通过将 `approval.isAutomatic` 转发到 `tool-approval-request` 部分来保留。
+- 被拒绝的工具审批还会生成一个合成的 `tool-result`，其中包含 `output: { type: 'execution-denied', reason?: string }`，以便模型获得完整的工具生命周期，并能在下一步中响应拒绝。
 
 ## 多模态工具响应
 
-`convertToModelMessages` 函数支持可以返回多模态内容的工具。这在工具需要返回非文本内容（如图像）时非常有用。
+`convertToModelMessages` 函数支持可以返回多模态内容的工具。这对于工具需要返回图像等非文本内容时非常有用。
 
 ```ts
 import { tool } from 'ai';
@@ -106,11 +106,11 @@ const result = streamText({
 });
 ```
 
-工具可以实现可选的 `toModelOutput` 方法，将其结果转换为多模态内容。内容是一个内容部分数组，每个部分都有一个 `type`（例如 'text'、'image'）和相应的数据。
+工具可以实现可选的 `toModelOutput` 方法，将其结果转换为多模态内容。内容是一个内容部分数组，其中每个部分都有一个 `type`（例如，'text'、'image'）和相应的数据。
 
 ## 自定义数据部分转换
 
-`convertToModelMessages` 函数支持转换附加到用户消息的自定义数据部分。这在用户需要在其消息中包含额外上下文（URL、代码文件、JSON 配置）时非常有用。
+`convertToModelMessages` 函数支持转换附加到用户消息的自定义数据部分。这对于用户需要在消息中包含额外上下文（URL、代码文件、JSON 配置）时非常有用。
 
 ### 基本用法
 
@@ -143,11 +143,11 @@ export async function POST(req: Request) {
         if (part.type === 'data-url') {
           return {
             type: 'text',
-            text: `[参考: ${part.data.title}](${part.data.url})\n\n${part.data.content}`,
+            text: `[参考：${part.data.title}](${part.data.url})\n\n${part.data.content}`,
           };
         }
 
-        // 将代码文件附件转换为文本
+        // 转换代码文件附件
         if (part.type === 'data-code-file') {
           return {
             type: 'text',
@@ -169,7 +169,7 @@ export async function POST(req: Request) {
 ### 使用场景
 
 **附加 URL 内容**
-允许用户将 URL 附加到其消息中，内容被获取并格式化为模型可用的形式：
+允许用户将 URL 附加到消息中，内容会被获取并格式化为模型可用的形式：
 
 ```ts
 // 客户端
@@ -188,7 +188,7 @@ sendMessage({
 });
 ```
 
-**包含代码文件作为上下文**
+**将代码文件作为上下文包含**
 让用户在对话中引用代码文件：
 
 ```ts
@@ -203,7 +203,8 @@ convertDataPart: part => {
 ```
 
 **选择性包含**
-只有你返回文本或文件模型消息部分的数据部分才会被包含，其他所有数据部分都会被忽略。
+只有你返回文本或文件模型消息部分的数据部分才会被包含，
+所有其他数据部分都会被忽略。
 
 ```ts
 const result = convertToModelMessages<
@@ -231,7 +232,7 @@ const result = convertToModelMessages<
 
 ### 类型安全
 
-泛型参数确保自定义数据部分的完全类型安全：
+泛型参数确保自定义数据部分的完整类型安全：
 
 ```ts
 type MyUIMessage = UIMessage<
@@ -242,7 +243,7 @@ type MyUIMessage = UIMessage<
   }
 >;
 
-// TypeScript 知道 part.data 的确切形状
+// TypeScript 知道 part.data 的精确形状
 convertToModelMessages<MyUIMessage>(messages, {
   convertDataPart: part => {
     if (part.type === 'data-url') {

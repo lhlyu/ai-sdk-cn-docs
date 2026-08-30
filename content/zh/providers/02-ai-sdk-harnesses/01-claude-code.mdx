@@ -34,6 +34,7 @@ import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
 
 const agent = new HarnessAgent({
   harness: claudeCode,
+  model: 'claude-sonnet-4-6',
   sandbox: createVercelSandbox({
     runtime: 'node24',
     ports: [4000],
@@ -63,7 +64,7 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及 [身份验证](#authentication) 下列出的用于 Claude Code 的变量之一。
+要使用此智能体，请确保环境变量包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及[身份验证](#authentication)下列出的用于 Claude Code 的变量之一。
 
 ## 适配器设置
 
@@ -71,7 +72,6 @@ try {
 
 ```ts
 const harness = createClaudeCode({
-  model: 'claude-sonnet-4-6',
   maxTurns: 10,
   env: {
     DEPLOYMENT_ENV: 'staging',
@@ -85,15 +85,15 @@ const harness = createClaudeCode({
 
 设置：
 
-- `auth`：身份验证模式：`auto`、`direct` 或 `ai-gateway`。
-- `mcpServers`：按服务器名称键控的 MCP 服务器定义。
-- `model`：传递给底层 Claude Code 运行时的 Anthropic 模型 ID。
+- `auth`：身份验证模式（`auto`、`direct` 或 `ai-gateway`）或隔离的身份验证环境。
+- `credentialForwarding`：可选的同步或异步回调，在工具链适配器将每个凭据转发到沙箱进程之前立即自定义该凭据。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名称。此回调仅控制转发到沙箱进程的值。它不限制工具链适配器在主机进程中可以发现、读取或以其他方式访问的凭据。
+- `mcpServers`：以服务器名称作为键的 MCP 服务器定义。
 - `maxTurns`：让出前的最大内部轮数。
-- `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接器进程环境中，并优先于后者。
+- `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接器进程环境中并优先使用。
 - `thinking`：扩展思考配置。`type` 可以是 `enabled`、`disabled` 或 `adaptive`。对于启用或自适应思考，`display` 可以是 `summarized` 或 `omitted`。默认为 `{ type: 'adaptive', display: 'summarized' }`。
 - `port`：桥接器端口覆盖。
 - `startupTimeoutMs`：等待桥接器启动的最长时间。
-- `mintBridgeToken`：接收沙箱 ID 并返回桥接器身份验证令牌的同步函数。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
+- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回桥接器身份验证令牌。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回一个足够机密的令牌。
 
 ## 结构化输出
 
@@ -101,9 +101,9 @@ Claude Code 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-
 
 ## 身份验证
 
-`auth` 设置决定如何从主机环境解析凭据：
+`auth` 设置选择如何从主机环境解析凭据：
 
-- `auto`（默认）：在可用时使用 AI Gateway 凭据，然后回退到直接使用 Anthropic 凭据。
+- `auto`（默认）：优先使用 AI Gateway 凭据，然后回退到直接使用 Anthropic 凭据。
 - `direct`：使用 Anthropic 凭据。
 - `ai-gateway`：使用 AI Gateway 凭据。
 
@@ -124,6 +124,16 @@ Claude Code 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-
 const directHarness = createClaudeCode({ auth: 'direct' });
 const gatewayHarness = createClaudeCode({ auth: 'ai-gateway' });
 ```
+
+传入身份验证环境以使用编程方式解析的凭据，而不读取 `process.env`：
+
+```ts
+const harness = createClaudeCode({
+  auth: { ANTHROPIC_API_KEY: await resolveAnthropicToken() },
+});
+```
+
+提供的记录将替换主机环境以进行身份验证发现。仅转发已识别的身份验证变量。
 
 ## 沙箱
 

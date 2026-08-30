@@ -1,34 +1,34 @@
 ---
-title: 调用工具
-description: 学习如何使用 AI SDK 和 Next.js 调用工具
-tags: ['next', '工具使用']
+title: "调用工具"
+description: "了解如何使用 AI SDK 和 Next.js 调用工具"
+tags: ['next', 'tool use']
 ---
 
 # 调用工具
 
-部分模型允许开发者提供一组工具列表，这些工具可在生成过程中的任意时刻被调用。这对于扩展语言模型的能力非常有用，使其能够利用逻辑或数据与模型外部的系统进行交互。
+某些模型允许开发者提供一组工具，这些工具可以在生成过程中的任何时间被调用。这对于扩展语言模型的能力非常有用，使其能够利用逻辑或数据与模型外部的系统进行交互。
 
 <Browser>
   <ChatGeneration
     history={[
-      { role: 'User', content: '最近怎么样？' },
-      { role: 'Assistant', content: '一切都好，有什么可以帮你的吗？' },
+      { role: 'User', content: 'How is it going?' },
+      { role: 'Assistant', content: 'All good, how may I help you?' },
     ]}
     inputMessage={{
       role: 'User',
-      content: '巴黎和纽约的天气怎么样？',
+      content: 'What is the weather in Paris and New York?',
     }}
     outputMessage={{
       role: 'Assistant',
       content:
-        '纽约目前 24°C，巴黎 25°C。两个城市都是晴天。',
+        'The weather is 24°C in New York and 25°C in Paris. It is sunny in both cities.',
     }}
   />
 </Browser>
 
 ## 客户端
 
-让我们创建一个 React 组件，从 `@ai-sdk/react` 模块导入 `useChat` Hook。当用户发送消息时，`useChat` Hook 会调用 `/api/chat` 端点。该端点会根据对话历史生成助手的响应，并将其流式传输到客户端。如果助手响应中包含工具调用，Hook 也会自动显示它们。
+让我们创建一个 React 组件，从 `@ai-sdk/react` 模块导入 `useChat` Hook。当用户发送消息时，`useChat` Hook 将调用 `/api/chat` 端点。该端点将根据对话历史生成助手的响应，并将其流式传输到客户端。如果助手响应中包含工具调用，Hook 也会自动显示它们。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -88,11 +88,11 @@ export default function Page() {
 
 ## 服务端
 
-你将在 `/api/chat` 创建一个新路由，使用 `ai` 模块中的 `streamText` 函数根据对话历史生成助手的响应。
+你将在 `/api/chat` 创建一个新路由，使用 `ai` 模块中的 `streamText` 函数，根据对话历史生成助手的响应。
 
-你将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数指定一个名为 `celsiusToFahrenheit` 的工具，该工具会将用户提供的摄氏温度值转换为华氏温度。
+你将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数来指定一个名为 `celsiusToFahrenheit` 的工具，该工具将把用户给定的摄氏温度值转换为华氏温度。
 
-你还需要使用 zod 来指定 `celsiusToFahrenheit` 函数参数的 schema。
+你还需要使用 zod 来指定 `celsiusToFahrenheit` 函数参数的模式。
 
 ```tsx filename='app/api/chat/route.ts'
 import {
@@ -111,20 +111,20 @@ import { z } from 'zod';
 
 const tools = {
   getWeather: tool({
-    description: '获取某个地点的天气',
+    description: 'Get the weather for a location',
     inputSchema: z.object({
-      city: z.string().describe('要获取天气的城市'),
+      city: z.string().describe('The city to get the weather for'),
       unit: z
         .enum(['C', 'F'])
-        .describe('显示温度的单位'),
+        .describe('The unit to display the temperature in'),
     }),
     execute: async ({ city, unit }) => {
       const weather = {
         value: 24,
-        description: '晴天',
+        description: 'Sunny',
       };
 
-      return `当前 ${city} 天气为 ${weather.value}°${unit}，${weather.description}！`;
+      return `It is currently ${weather.value}°${unit} and ${weather.description} in ${city}!`;
     },
   }),
 } satisfies ToolSet;
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: 'openai/gpt-4o',
-    system: '你是一个乐于助人的助手。',
+    instructions: 'You are a helpful assistant.',
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
     tools,

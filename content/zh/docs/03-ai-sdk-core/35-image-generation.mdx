@@ -5,7 +5,8 @@ description: "了解如何使用 AI SDK 生成图像。"
 
 # 图像生成
 
-AI SDK 提供了 [`generateImage`](/docs/reference/ai-sdk-core/generate-image) 函数，用于根据给定的提示词使用图像模型生成图像。
+AI SDK 提供了 [`generateImage`](/docs/reference/ai-sdk-core/generate-image)
+函数，用于使用图像模型根据给定的提示词生成图像。
 
 ```tsx
 import { generateImage } from 'ai';
@@ -17,7 +18,7 @@ const { image } = await generateImage({
 });
 ```
 
-你可以使用 `base64` 或 `uint8Array` 属性访问图像数据：
+您可以使用 `base64` 或 `uint8Array` 属性访问图像数据：
 
 ```tsx
 const base64 = image.base64; // base64 图像数据
@@ -26,13 +27,14 @@ const uint8Array = image.uint8Array; // Uint8Array 图像数据
 
 ## 设置
 
-### 尺寸与宽高比
+### 尺寸和宽高比
 
-根据模型的不同，你可以指定尺寸或宽高比。
+根据模型的不同，您可以指定尺寸或宽高比。
 
 ##### 尺寸
 
-尺寸以 `{宽度}x{高度}` 格式的字符串指定。模型仅支持少数几种尺寸，且不同模型和提供商支持的尺寸各不相同。
+尺寸以 `{宽度}x{高度}` 格式的字符串指定。
+模型仅支持少数几种尺寸，且不同模型和提供商支持的尺寸各不相同。
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -47,7 +49,8 @@ const { image } = await generateImage({
 
 ##### 宽高比
 
-宽高比以 `{宽度}:{高度}` 格式的字符串指定。模型仅支持少数几种宽高比，且不同模型和提供商支持的宽高比各不相同。
+宽高比以 `{宽度}:{高度}` 格式的字符串指定。
+模型仅支持少数几种宽高比，且不同模型和提供商支持的宽高比各不相同。
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -62,7 +65,7 @@ const { image } = await generateImage({
 
 ### 生成多张图像
 
-`generateImage` 也支持一次生成多张图像：
+`generateImage` 还支持一次生成多张图像：
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -76,25 +79,26 @@ const { images } = await generateImage({
 ```
 
 <Note>
-  `generateImage` 会根据需要自动（并行）调用模型，以生成所请求数量的图像。
+  `generateImage` 将根据需要自动（并行）调用模型，以生成所请求数量的图像。
 </Note>
 
-每个图像模型在单次 API 调用中都有一个内部限制，限制其能生成的图像数量。AI SDK 通过在你使用 `n` 参数请求多张图像时，适当地对请求进行批处理，来自动管理此限制。默认情况下，SDK 使用提供商文档中说明的限制（例如，DALL-E 3 每次调用只能生成 1 张图像，而 DALL-E 2 支持最多 10 张）。
+每个图像模型在单次 API 调用中都有一个内部限制，限制其可以生成的图像数量。AI SDK 通过在您使用 `n` 参数请求多张图像时适当批处理请求来自动管理此限制。默认情况下，SDK 使用提供商文档中记录的限制（例如，DALL-E 3 每次调用只能生成 1 张图像，而 DALL-E 2 最多支持 10 张）。
 
-如果需要，你可以在生成图像时使用 `maxImagesPerCall` 设置覆盖此行为。当使用默认批处理大小可能不是最优的新模型或自定义模型时，这尤其有用：
+如有需要，您可以在生成图像时使用 `maxImagesPerCall` 设置覆盖此行为。这在处理新模型或自定义模型时特别有用，因为默认的批处理大小可能不是最优的：
 
 ```tsx
 const { images } = await generateImage({
   model: __IMAGE_MODEL__,
   prompt: 'Santa Claus driving a Cadillac',
   maxImagesPerCall: 5, // 覆盖默认批处理大小
-  n: 10, // 将进行 2 次调用，每次生成 5 张图像
+  n: 10, // 将进行 2 次调用，每次 5 张图像
 });
 ```
 
 ### 提供种子
 
-你可以向 `generateImage` 函数提供种子，以控制图像生成过程的输出。如果模型支持，相同的种子将始终生成相同的图像。
+您可以向 `generateImage` 函数提供种子来控制图像生成过程的输出。
+如果模型支持，相同的种子将始终生成相同的图像。
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -109,7 +113,8 @@ const { image } = await generateImage({
 
 ### 提供商特定设置
 
-图像模型通常具有提供商甚至模型特定的设置。你可以使用 `providerOptions` 参数将这些设置传递给 `generateImage` 函数。提供商的选项（如下例中的 `openai`）将成为请求体的属性。
+图像模型通常具有提供商甚至模型特定的设置。
+您可以使用 `providerOptions` 参数将这些设置传递给 `generateImage` 函数。提供商的选项（如下例中的 `openai`）将成为请求体属性。
 
 ```tsx highlight={"8-13"}
 import { generateImage } from 'ai';
@@ -128,9 +133,9 @@ const { image } = await generateImage({
 });
 ```
 
-### 中止信号与超时
+### 中止信号和超时
 
-`generateImage` 接受一个可选的 `abortSignal` 参数，类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，你可以用它来中止图像生成过程或设置超时。
+`generateImage` 接受一个可选的 `abortSignal` 参数，类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，您可以使用它来中止图像生成过程或设置超时。
 
 ```ts highlight={"7"}
 import { generateImage } from 'ai';
@@ -145,7 +150,7 @@ const { image } = await generateImage({
 
 ### 自定义请求头
 
-`generateImage` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，你可以用它向图像生成请求添加自定义请求头。
+`generateImage` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，您可以使用它为图像生成请求添加自定义请求头。
 
 ```ts highlight={"7"}
 import { generateImage } from 'ai';
@@ -160,7 +165,7 @@ const { image } = await generateImage({
 
 ### 警告
 
-如果模型返回警告（例如，针对不支持的参数），这些警告将在响应的 `warnings` 属性中提供。
+如果模型返回警告（例如针对不支持的参数），这些警告将出现在响应的 `warnings` 属性中。
 
 ```tsx
 const { image, warnings } = await generateImage({
@@ -169,19 +174,19 @@ const { image, warnings } = await generateImage({
 });
 ```
 
-### 额外的提供商特定元数据
+### 提供商元数据
 
-一些提供商为整体结果或每张图像公开额外的元数据。
+某些提供商会为单个图像公开元数据。这些元数据可直接在生成的图像上获取：
 
 ```tsx
 const prompt = 'Santa Claus driving a Cadillac';
 
-const { image, providerMetadata } = await generateImage({
+const { image } = await generateImage({
   model: openai.image('dall-e-3'),
   prompt,
 });
 
-const revisedPrompt = providerMetadata.openai.images[0]?.revisedPrompt;
+const revisedPrompt = image.providerMetadata?.openai?.revisedPrompt;
 
 console.log({
   prompt,
@@ -189,21 +194,38 @@ console.log({
 });
 ```
 
-返回的 `providerMetadata` 的外部键是提供商名称。内部值是元数据。元数据中始终存在一个 `images` 键，它是一个数组，长度与顶层 `images` 键相同。
+`image.providerMetadata` 的外层键是提供商名称。内层值是该图像的元数据。
+
+### 底层调用
+
+当请求被拆分为多个提供商调用时，`calls` 会保留每次调用的图像、提供商元数据、响应元数据、警告和使用情况。`images` 和 `usage` 分别保持便捷的扁平化视图和聚合视图。
+
+```ts
+const { calls } = await generateImage({
+  model,
+  prompt: 'Santa Claus driving a Cadillac',
+  n: 4,
+  maxImagesPerCall: 1,
+});
+
+for (const call of calls) {
+  console.log(call.providerMetadata, call.usage);
+}
+```
 
 ### 错误处理
 
-当 `generateImage` 无法生成有效图像时，它会抛出一个 [`AI_NoImageGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-image-generated-error) 错误。
+当 `generateImage` 无法生成有效图像时，它会抛出 [`AI_NoImageGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-image-generated-error)。
 
-当 AI 提供商未能生成图像时，会发生此错误。可能由以下原因引起：
+此错误在 AI 提供商无法生成图像时发生。可能由以下原因引起：
 
 - 模型未能生成响应
-- 模型生成了无法解析的响应
+- 模型生成的响应无法解析
 
-该错误保留了以下信息以帮助你记录问题：
+该错误保留了以下信息以帮助您记录问题：
 
 - `responses`：关于图像模型响应的元数据，包括时间戳、模型和请求头。
-- `cause`：错误的原因。你可以用它来进行更详细的错误处理。
+- `cause`：错误的原因。您可以使用它进行更详细的错误处理
 
 ```ts
 import { generateImage, NoImageGeneratedError } from 'ai';
@@ -221,7 +243,7 @@ try {
 
 ## 图像中间件
 
-你可以使用 `wrapImageModel` 和 `ImageModelV4Middleware` 来增强图像模型，例如设置默认值或实现日志记录。
+您可以使用 `wrapImageModel` 和 `ImageModelV4Middleware` 来增强图像模型，例如设置默认值或实现日志记录。
 
 以下是一个在未提供尺寸时设置默认尺寸的示例：
 
@@ -248,7 +270,8 @@ const { image } = await generateImage({
 
 ## 使用语言模型生成图像
 
-某些语言模型（例如 Google 的 `gemini-2.5-flash-image`）支持包括图像在内的多模态输出。使用此类模型，你可以通过响应的 `files` 属性访问生成的图像。
+某些语言模型（如 Google `gemini-2.5-flash-image`）支持包括图像在内的多模态输出。
+使用此类模型时，您可以通过响应的 `files` 属性访问生成的图像。
 
 ```ts
 import { google } from '@ai-sdk/google';
@@ -261,9 +284,9 @@ const result = await generateText({
 
 for (const file of result.files) {
   if (file.mediaType.startsWith('image/')) {
-    // file 对象提供多种数据格式：
+    // 文件对象提供多种数据格式：
     // 以 base64 字符串、Uint8Array 二进制数据访问图像，或检查类型
-    // - file.base64: string (data URL 格式)
+    // - file.base64: string (数据 URL 格式)
     // - file.uint8Array: Uint8Array (二进制数据)
     // - file.mediaType: string (例如 "image/png")
   }
@@ -272,13 +295,13 @@ for (const file of result.files) {
 
 ## 图像模型
 
-| 提供商                                                                          | 模型                                                          | 支持的尺寸 (`宽度 x 高度`) 或宽高比 (`宽度 : 高度`)                                                                                                                      |
+| 提供商                                                                        | 模型                                                        | 支持的尺寸（`宽度 x 高度`）或宽高比（`宽度 : 高度`）                                                                                                                    |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [xAI Grok](/providers/ai-sdk-providers/xai#image-models)                        | `grok-imagine-image`                                         | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `2:1`, `1:2`, `19.5:9`, `9:19.5`, `20:9`, `9:20`, `auto`                                                         |
 | [OpenAI](/providers/ai-sdk-providers/openai#image-models)                       | `gpt-image-2`                                                | 1024x1024, 1536x1024, 1024x1536                                                                                                                                     |
 | [OpenAI](/providers/ai-sdk-providers/openai#image-models)                       | `dall-e-3`                                                   | 1024x1024, 1792x1024, 1024x1792                                                                                                                                     |
 | [OpenAI](/providers/ai-sdk-providers/openai#image-models)                       | `dall-e-2`                                                   | 256x256, 512x512, 1024x1024                                                                                                                                         |
-| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#image-models)       | `amazon.nova-canvas-v1:0`                                    | 320-4096 (16 的倍数), 1:4 至 4:1, 最大 4.2M 像素                                                                                                             |
+| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#image-models)       | `amazon.nova-canvas-v1:0`                                    | 320-4096（16 的倍数），1:4 至 4:1，最大 4.2M 像素                                                                                                             |
 | [Fal](/providers/ai-sdk-providers/fal#image-models)                             | `fal-ai/flux/dev`                                            | 1:1, 3:4, 4:3, 9:16, 16:9, 9:21, 21:9                                                                                                                               |
 | [Fal](/providers/ai-sdk-providers/fal#image-models)                             | `fal-ai/flux-lora`                                           | 1:1, 3:4, 4:3, 9:16, 16:9, 9:21, 21:9                                                                                                                               |
 | [Fal](/providers/ai-sdk-providers/fal#image-models)                             | `fal-ai/fast-sdxl`                                           | 1:1, 3:4, 4:3, 9:16, 16:9, 9:21, 21:9                                                                                                                               |
@@ -288,21 +311,20 @@ for (const file of result.files) {
 | [Fal](/providers/ai-sdk-providers/fal#image-models)                             | `fal-ai/stable-diffusion-3.5-large`                          | 1:1, 3:4, 4:3, 9:16, 16:9, 9:21, 21:9                                                                                                                               |
 | [Fal](/providers/ai-sdk-providers/fal#image-models)                             | `fal-ai/hyper-sdxl`                                          | 1:1, 3:4, 4:3, 9:16, 16:9, 9:21, 21:9                                                                                                                               |
 | [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `stabilityai/sd3.5`                                          | 1:1, 16:9, 1:9, 3:2, 2:3, 4:5, 5:4, 9:16, 9:21                                                                                                                      |
-| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-1.1-pro`                             | 256-1440 (32 的倍数)                                                                                                                                          |
-| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-1-schnell`                           | 256-1440 (32 的倍数)                                                                                                                                          |
-| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-1-dev`                               | 256-1440 (32 的倍数)                                                                                                                                          |
-| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-pro`                                 | 256-1440 (32 的倍数)                                                                                                                                          |
+| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-1.1-pro`                             | 256-1440（32 的倍数）                                                                                                                                          |
+| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-1-schnell`                           | 256-1440（32 的倍数）                                                                                                                                          |
+| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-1-dev`                               | 256-1440（32 的倍数）                                                                                                                                          |
+| [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `black-forest-labs/FLUX-pro`                                 | 256-1440（32 的倍数）                                                                                                                                          |
 | [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `stabilityai/sd3.5-medium`                                   | 1:1, 16:9, 1:9, 3:2, 2:3, 4:5, 5:4, 9:16, 9:21                                                                                                                      |
 | [DeepInfra](/providers/ai-sdk-providers/deepinfra#image-models)                 | `stabilityai/sdxl-turbo`                                     | 1:1, 16:9, 1:9, 3:2, 2:3, 4:5, 5:4, 9:16, 9:21                                                                                                                      |
 | [Replicate](/providers/ai-sdk-providers/replicate)                              | `black-forest-labs/flux-schnell`                             | 1:1, 2:3, 3:2, 4:5, 5:4, 16:9, 9:16, 9:21, 21:9                                                                                                                     |
 | [Replicate](/providers/ai-sdk-providers/replicate)                              | `recraft-ai/recraft-v3`                                      | 1024x1024, 1365x1024, 1024x1365, 1536x1024, 1024x1536, 1820x1024, 1024x1820, 1024x2048, 2048x1024, 1434x1024, 1024x1434, 1024x1280, 1280x1024, 1024x1707, 1707x1024 |
-| [Google](/providers/ai-sdk-providers/google#image-models)                       | `imagen-4.0-generate-001`                                    | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
-| [Google](/providers/ai-sdk-providers/google#image-models)                       | `imagen-4.0-fast-generate-001`                               | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
-| [Google](/providers/ai-sdk-providers/google#image-models)                       | `imagen-4.0-ultra-generate-001`                              | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `imagen-4.0-generate-001`                                    | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `imagen-4.0-fast-generate-001`                               | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `imagen-4.0-ultra-generate-001`                              | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
-| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `imagen-3.0-fast-generate-001`                               | 1:1, 3:4, 4:3, 9:16, 16:9                                                                                                                                           |
+| [Google](/providers/ai-sdk-providers/google#image-models)                       | `gemini-2.5-flash-image`                                     | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9                                                                                                                 |
+| [Google](/providers/ai-sdk-providers/google#image-models)                       | `gemini-3-pro-image-preview`                                 | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9                                                                                                                 |
+| [Google](/providers/ai-sdk-providers/google#image-models)                       | `gemini-3.1-flash-image-preview`                             | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9                                                                                                                 |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `gemini-2.5-flash-image`                                     | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9                                                                                                                 |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `gemini-3-pro-image-preview`                                 | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9                                                                                                                 |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#image-models)         | `gemini-3.1-flash-image-preview`                             | 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9                                                                                                                 |
 | [Fireworks](/providers/ai-sdk-providers/fireworks#image-models)                 | `accounts/fireworks/models/flux-1-dev-fp8`                   | 1:1, 2:3, 3:2, 4:5, 5:4, 16:9, 9:16, 9:21, 21:9                                                                                                                     |
 | [Fireworks](/providers/ai-sdk-providers/fireworks#image-models)                 | `accounts/fireworks/models/flux-1-schnell-fp8`               | 1:1, 2:3, 3:2, 4:5, 5:4, 16:9, 9:16, 9:21, 21:9                                                                                                                     |
 | [Fireworks](/providers/ai-sdk-providers/fireworks#image-models)                 | `accounts/fireworks/models/playground-v2-5-1024px-aesthetic` | 640x1536, 768x1344, 832x1216, 896x1152, 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640                                                                           |
@@ -322,10 +344,10 @@ for (const file of result.files) {
 | [Together.ai](/providers/ai-sdk-providers/togetherai#image-models)              | `black-forest-labs/FLUX.1.1-pro`                             | 512x512, 768x768, 1024x1024                                                                                                                                         |
 | [Together.ai](/providers/ai-sdk-providers/togetherai#image-models)              | `black-forest-labs/FLUX.1-pro`                               | 512x512, 768x768, 1024x1024                                                                                                                                         |
 | [Together.ai](/providers/ai-sdk-providers/togetherai#image-models)              | `black-forest-labs/FLUX.1-schnell-Free`                      | 512x512, 768x768, 1024x1024                                                                                                                                         |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-pro`                                           | 从 3:7 (竖屏) 到 7:3 (横屏)                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-max`                                           | 从 3:7 (竖屏) 到 7:3 (横屏)                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1-ultra`                                         | 从 3:7 (竖屏) 到 7:3 (横屏)                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1`                                               | 从 3:7 (竖屏) 到 7:3 (横屏)                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.0-fill`                                          | 从 3:7 (竖屏) 到 7:3 (横屏)                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-pro`                                           | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-max`                                           | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1-ultra`                                         | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1`                                               | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.0-fill`                                          | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
 
-以上是 AI SDK 提供商支持的图像模型的一小部分。更多信息，请参阅相应提供商的文档。
+以上是 AI SDK 提供商支持的图像模型的一小部分。更多信息，请参阅相应的提供商文档。

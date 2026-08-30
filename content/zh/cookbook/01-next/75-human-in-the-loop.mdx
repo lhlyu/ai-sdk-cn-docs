@@ -1,20 +1,20 @@
 ---
-title: "Human-in-the-Loop with Next.js"
-description: "使用 Next.js 和 AI SDK 为智能体系统添加人工审批步骤"
+title: "使用 Next.js 实现人在回路"
+description: "使用 Next.js 和 AI SDK 为您的智能体系统添加人工审批步骤"
 tags: ['next', 'agents', 'tool use']
 ---
 
-# 使用 Next.js 实现人工介入
+# 使用 Next.js 实现人在回路
 
-在构建智能体系统时，添加人工介入（HITL）功能至关重要，以确保用户在系统执行操作前能够审批这些操作。AI SDK 通过工具的 `needsApproval` 属性为工具执行审批提供原生支持。
+在构建智能体系统时，添加人在回路（HITL）功能非常重要，以确保用户可以在系统执行操作之前批准这些操作。AI SDK 通过工具上的 `needsApproval` 属性为工具执行审批提供了内置支持。
 
-本指南演示如何使用 AI SDK 的原生工具执行审批功能，为 Next.js 聊天机器人添加人工审批步骤。
+本教程演示如何使用 AI SDK 的原生工具执行审批功能，为 Next.js 聊天机器人添加人工审批步骤。
 
 ## 背景
 
-要理解如何实现此功能，我们先看看在 Next.js 聊天机器人应用中，AI SDK 的工具调用是如何工作的。
+为了理解如何实现此功能，让我们看看在 Next.js 聊天机器人应用中，工具调用是如何与 AI SDK 配合工作的。
 
-在前端，使用 `useChat` Hook 管理消息状态和用户交互。
+在前端，使用 `useChat` Hook 来管理消息状态和用户交互。
 
 ```tsx filename="app/page.tsx"
 'use client';
@@ -68,7 +68,7 @@ export default function Chat() {
 }
 ```
 
-在后端，创建一个使用 `streamText` 并返回 `UIMessageStreamResponse` 的路由处理器。工具包含一个 `execute` 函数，当模型调用该工具时会自动执行。
+在后端，创建一个使用 `streamText` 并返回 `UIMessageStreamResponse` 的路由处理器。该工具具有一个 `execute` 函数，当模型调用它时会自动运行。
 
 ```ts filename="app/api/chat/route.ts"
 import {
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         description: '向用户展示指定城市的天气',
         inputSchema: z.object({ city: z.string() }),
         execute: async ({ city }) => {
-          const weatherOptions = ['sunny', 'cloudy', 'rainy', 'snowy'];
+          const weatherOptions = ['晴天', '多云', '下雨', '下雪'];
           return weatherOptions[
             Math.floor(Math.random() * weatherOptions.length)
           ];
@@ -106,15 +106,15 @@ export async function POST(req: Request) {
 }
 ```
 
-当用户向 LLM 询问纽约的天气时，模型会生成一个包含城市参数的工具调用。AI SDK 随后自动执行 `execute` 函数并返回结果。
+当用户向 LLM 询问纽约的天气时，模型会生成带有城市参数的调用。AI SDK 随后自动运行 `execute` 函数并返回结果。
 
-要添加人工介入步骤，你需要在工具调用和工具执行之间，通过 `needsApproval` 添加一个审批关卡。
+要添加 HITL 步骤，您可以使用 `needsApproval` 在工具调用和工具执行之间添加审批门控。
 
 ## 添加工具执行审批
 
-### 服务端设置
+### 服务器端设置
 
-在工具定义中添加 `needsApproval: true`。工具保留其 `execute` 函数，但 SDK 会暂停执行，直到用户批准。
+在工具定义中添加 `needsApproval: true`。该工具保留其 `execute` 函数，但 SDK 会暂停执行，直到用户批准。
 
 ```ts filename="app/api/chat/route.ts" highlight="20"
 import {
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
         inputSchema: z.object({ city: z.string() }),
         needsApproval: true,
         execute: async ({ city }) => {
-          const weatherOptions = ['sunny', 'cloudy', 'rainy', 'snowy'];
+          const weatherOptions = ['晴天', '多云', '下雨', '下雪'];
           return weatherOptions[
             Math.floor(Math.random() * weatherOptions.length)
           ];
@@ -153,11 +153,11 @@ export async function POST(req: Request) {
 }
 ```
 
-当模型调用此工具时，SDK 不会运行 `execute` 函数，而是向客户端发送一个状态为 `approval-requested` 的工具部分。工具仅在用户响应后执行。
+当模型调用此工具时，SDK 不会运行 `execute` 函数，而是向客户端发送一个处于 `approval-requested` 状态的工具部分。只有在用户响应后，该工具才会执行。
 
 ### 客户端审批界面
 
-在前端，检查 `approval-requested` 状态并渲染批准/拒绝按钮。使用 `useChat` Hook 中的 `addToolApprovalResponse` 发送用户的决定。
+在前端，检查 `approval-requested` 状态并渲染批准/拒绝按钮。使用 `useChat` Hook 中的 `addToolApprovalResponse` 来发送用户的决定。
 
 ```tsx filename="app/page.tsx"
 'use client';
@@ -227,7 +227,7 @@ export default function Chat() {
                   case 'output-denied':
                     return (
                       <div key={part.toolCallId}>
-                        对 {part.input.city} 的天气请求已被拒绝。
+                        {part.input.city} 的天气请求已被拒绝。
                       </div>
                     );
                 }
@@ -258,18 +258,18 @@ export default function Chat() {
 }
 ```
 
-审批流程的工作原理如下：
+以下是审批流程的工作原理：
 
-1. 模型使用城市参数调用 `getWeatherInformation`
-2. 工具部分进入 `approval-requested` 状态，并附带一个 `approval.id`
+1. 模型调用 `getWeatherInformation` 并传入城市
+2. 工具部分进入 `approval-requested` 状态，并带有 `approval.id`
 3. UI 渲染批准/拒绝按钮
-4. 用户点击按钮时，`addToolApprovalResponse` 记录决定
-5. `sendAutomaticallyWhen` 检测到所有审批都已响应，并发送消息
-6. 在服务端，如果批准，则执行 `execute` 函数并返回结果。如果拒绝，模型会收到拒绝通知并相应回应。
+4. 当用户点击按钮时，`addToolApprovalResponse` 记录决定
+5. `sendAutomaticallyWhen` 检测到所有审批都已响应并发送消息
+6. 在服务器端，如果批准，`execute` 函数运行并返回结果。如果拒绝，模型会收到拒绝通知并相应回应。
 
 ### 审批后自动提交
 
-`sendAutomaticallyWhen` 选项配合 `lastAssistantMessageIsCompleteWithApprovalResponses` 会在上一步骤中所有工具审批都已响应后自动发送消息。如果没有这个选项，你需要在每次审批后手动调用 `sendMessage()`。
+`sendAutomaticallyWhen` 选项配合 `lastAssistantMessageIsCompleteWithApprovalResponses` 会在最后一步中的所有工具审批都已响应后自动发送消息。如果没有此选项，您需要在每次审批后手动调用 `sendMessage()`。
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -281,12 +281,13 @@ const { messages, addToolApprovalResponse } = useChat({
 ```
 
 <Note>
-  如果批准工具执行后没有任何反应，请确保你手动调用了 `sendMessage`，或者在 `useChat` Hook 上配置了 `sendAutomaticallyWhen`。
+  如果您在批准工具执行后没有任何反应，请确保您手动调用了
+  `sendMessage` 或在 `useChat` Hook 上配置了 `sendAutomaticallyWhen`。
 </Note>
 
 ### 动态审批
 
-你可以通过为 `needsApproval` 提供一个异步函数，使审批条件基于工具的输入：
+您可以通过向 `needsApproval` 提供异步函数，根据工具的输入来条件化审批：
 
 ```ts filename="app/api/chat/route.ts" highlight="23"
 import {
@@ -313,7 +314,7 @@ export async function POST(req: Request) {
         }),
         needsApproval: async ({ amount }) => amount > 1000,
         execute: async ({ amount, recipient }) => {
-          return `已处理向 ${recipient} 支付 $${amount} 的付款。`;
+          return `已向 ${recipient} 处理 $${amount} 的付款。`;
         },
       }),
     },
@@ -329,13 +330,13 @@ export async function POST(req: Request) {
 
 ### 处理拒绝
 
-当用户拒绝工具执行时，模型会收到拒绝通知并可以相应回应。为防止模型重试相同的工具调用，请添加一条指令：
+当用户拒绝工具执行时，模型会收到拒绝通知并可以相应回应。为了防止模型重试相同的工具调用，请添加一条指令：
 
 ```ts highlight="5-6"
 const result = streamText({
   model: openai('gpt-4o'),
   messages,
-  system:
+  instructions:
     '当工具执行未被用户批准时，不要重试。' +
     '告知用户该操作未被执行。',
   tools: {

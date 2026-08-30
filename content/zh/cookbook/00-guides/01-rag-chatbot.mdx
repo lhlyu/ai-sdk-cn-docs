@@ -16,7 +16,7 @@ tags:
 
 # RAG 智能体指南
 
-在本指南中，你将学习如何构建一个检索增强生成（RAG）智能体。
+在本指南中，您将学习如何构建一个检索增强生成（RAG）智能体。
 
 <video
   src="/images/rag-guide-demo.mp4"
@@ -27,62 +27,64 @@ tags:
   playsinline
 />
 
-在深入之前，我们先了解什么是 RAG，以及为什么要使用它。
+在深入之前，让我们先了解什么是 RAG，以及为什么要使用它。
 
 ### 什么是 RAG？
 
-RAG 代表检索增强生成。简单来说，RAG 是为大语言模型（LLM）提供与提示词相关的特定信息的过程。
+RAG 代表检索增强生成。简单来说，RAG 是向大型语言模型（LLM）提供与提示词相关的特定信息的过程。
 
 ### 为什么 RAG 很重要？
 
-虽然 LLM 很强大，但它们能推理的信息仅限于训练数据。当向 LLM 询问训练数据之外的信息时，比如专有数据或模型训练截止日期之后发生的常识，这个问题就变得很明显。RAG 通过获取与提示词相关的信息，然后将其作为上下文传递给模型来解决这个问题。
+虽然 LLM 功能强大，但它们能够推理的信息仅限于训练数据。当向 LLM 询问训练数据之外的信息时，这个问题就变得很明显，比如专有数据或模型训练截止日期之后发生的常识。RAG 通过获取与提示词相关的信息并将其作为上下文传递给模型来解决这个问题。
 
-用一个基本例子来说明，假设你问模型你最喜欢的食物：
+用一个基本示例来说明，想象一下询问模型您最喜欢的食物：
 
 ```txt
 **输入**
 我最喜欢的食物是什么？
 
 **生成**
-我无法获取个人相关信息，包括你最喜欢的食物。
+我无法访问个人的私人信息，包括他们最喜欢的食物。
 ```
 
-不出所料，模型不知道。但想象一下，在你的提示词旁边，模型还收到了一些额外的上下文：
+毫不奇怪，模型不知道。但想象一下，除了您的提示词之外，模型还收到了一些额外的上下文：
 
 ```txt
 **输入**
 仅使用提供的上下文回应用户的提示词。
 用户提示词：'我最喜欢的食物是什么？'
-上下文：用户喜欢鸡块
+上下文：用户喜欢吃鸡块
 
 **生成**
-你最喜欢的食物是鸡块！
+您最喜欢的食物是鸡块！
 ```
 
-就这样，你通过提供与查询相关的信息增强了模型的生成能力。假设模型有适当的信息，它现在很可能会对用户的查询返回准确的响应。但它如何检索相关信息呢？答案依赖于一个叫做嵌入的概念。
+就这样，您通过向查询提供相关信息，增强了模型的生成能力。假设模型拥有适当的信息，它现在极有可能对用户的查询返回准确的响应。但它如何检索相关信息呢？答案依赖于一种称为嵌入的概念。
 
 <Note>
-  你可以为 RAG 应用获取任何上下文（例如 Google 搜索）。嵌入和向量数据库只是实现语义搜索的一种特定检索方法。
+  您可以为 RAG 应用获取任何上下文（例如 Google 搜索）。
+  嵌入和向量数据库只是实现语义搜索的一种特定检索方法。
 </Note>
 
 ### 嵌入
 
 [嵌入](/docs/ai-sdk-core/embeddings) 是一种将单词、短语或图像表示为高维空间中向量的方法。在这个空间中，相似的单词彼此靠近，单词之间的距离可以用来衡量它们的相似性。
 
-实际上，这意味着如果你嵌入单词 `cat` 和 `dog`，你会期望它们在向量空间中彼此靠近。计算两个向量之间相似性的过程称为“余弦相似度”，其中值为 1 表示高度相似，值为 -1 表示高度对立。
+实际上，这意味着如果您嵌入 `cat` 和 `dog` 这两个词，您会期望它们在向量空间中被绘制在彼此附近。计算两个向量之间相似度的过程称为“余弦相似度”，值为 1 表示高度相似，值为 -1 表示高度对立。
 
 <Note>
-  如果这看起来很复杂，不用担心。你只需要高层次的理解就可以开始了！要更深入地了解嵌入，请查看
+  如果这看起来很复杂，不用担心。只需高层次的理解就可以开始了！
+  有关嵌入的更深入介绍，请查看
   [本指南](https://jalammar.github.io/illustrated-word2vec/)。
 </Note>
 
-如上所述，嵌入是一种表示**单词和短语**语义含义的方法。这意味着嵌入的输入越大，嵌入的质量就越低。那么，你如何处理比简单短语更长的内容呢？
+如上所述，嵌入是一种表示**单词和短语**语义含义的方式。这意味着嵌入的输入越大，嵌入的质量就越低。那么，您如何处理比简单短语更长的内容的嵌入呢？
 
 ### 分块
 
-分块是指将特定源材料分解成更小片段的过程。有许多不同的分块方法，值得尝试，因为最有效的方法可能因用例而异。一种简单且常见的分块方法（也是本指南中将使用的）是按句子分隔书面内容。
+分块是指将特定源材料分解成更小片段的过程。有许多不同的分块方法，值得尝试，因为最有效的方法可能因用例而异。一种简单且常见的分块方法（也是您将在本指南中使用的方法）是按句子分隔书面内容。
 
-一旦源材料被适当地分块，你可以嵌入每个块，然后将嵌入和块一起存储在数据库中。嵌入可以存储在任何支持向量的数据库中。在本教程中，你将使用 [Postgres](https://www.postgresql.org/) 以及 [pgvector](https://github.com/pgvector/pgvector) 插件。
+一旦您的源材料被适当地分块，您就可以嵌入每个块，然后将嵌入和块一起存储在数据库中。嵌入可以存储在任何支持向量的数据库中。在本教程中，您将使用 [Postgres](https://www.postgresql.org/) 以及 [pgvector](https://github.com/pgvector/pgvector) 插件。
 
 <MDXImage
   srcLight="/images/rag-guide-1.png"
@@ -93,7 +95,7 @@ RAG 代表检索增强生成。简单来说，RAG 是为大语言模型（LLM）
 
 ### 整合在一起
 
-综合所有这些，RAG 是通过嵌入用户查询、检索具有最高语义相似度的相关源材料（块），然后将它们与初始查询一起作为上下文传递给模型，从而使模型能够使用训练数据之外的信息进行响应的过程。回到你问模型最喜欢的食物的例子，提示词准备过程如下所示。
+将所有内容结合起来，RAG 是通过嵌入用户查询、检索具有最高语义相似度的相关源材料（块），然后将它们作为上下文与初始查询一起传递，从而使模型能够使用训练数据之外的信息进行响应的过程。回到您询问模型最喜欢的食物的示例，提示词准备过程如下所示。
 
 <MDXImage
   srcLight="/images/rag-guide-2.png"
@@ -102,32 +104,32 @@ RAG 代表检索增强生成。简单来说，RAG 是为大语言模型（LLM）
   height={800}
 />
 
-通过传递适当的上下文并细化模型的目标，你能够充分利用其作为推理机器的优势。
+通过传递适当的上下文并细化模型的目标，您能够充分利用其作为推理机器的优势。
 
-开始项目吧！
+进入项目！
 
 ## 项目设置
 
-在这个项目中，你将构建一个仅使用其知识库中的信息进行响应的智能体。该智能体将能够存储和检索信息。这个项目有许多有趣的用例，从客户支持到构建你自己的第二大脑！
+在这个项目中，您将构建一个只使用其知识库中的信息进行响应的智能体。该智能体将能够存储和检索信息。这个项目有许多有趣的用例，从客户支持到构建您自己的第二大脑！
 
-该项目将使用以下技术栈：
+本项目将使用以下技术栈：
 
 - [Next.js](https://nextjs.org) 14（App Router）
-- [AI SDK](/docs)
-- [Vercel AI Gateway](/providers/ai-sdk-providers/ai-gateway)
-- [Drizzle ORM](https://orm.drizzle.team)
-- [Postgres](https://www.postgresql.org/) 与 [pgvector](https://github.com/pgvector/pgvector)
-- [shadcn-ui](https://ui.shadcn.com) 和 [TailwindCSS](https://tailwindcss.com) 用于样式
+- [ AI SDK ](/docs)
+- [ Vercel AI Gateway ](/providers/ai-sdk-providers/ai-gateway)
+- [ Drizzle ORM ](https://orm.drizzle.team)
+- [ Postgres ](https://www.postgresql.org/) 与 [ pgvector ](https://github.com/pgvector/pgvector)
+- [ shadcn-ui ](https://ui.shadcn.com) 和 [ TailwindCSS ](https://tailwindcss.com) 用于样式
 
 ### 克隆仓库
 
-为了缩小本指南的范围，你将从一个[仓库](https://github.com/vercel/ai-sdk-rag-starter)开始，该仓库已经为你设置了一些东西：
+为了缩小本指南的范围，您将从 [仓库](https://github.com/vercel/ai-sdk-rag-starter) 开始，该仓库已经为您设置了一些内容：
 
 - Drizzle ORM（`lib/db`），包括初始迁移和迁移脚本（`db:migrate`）
-- `resources` 表的基本模式（用于源材料）
-- 用于创建资源的 Server Action
+- `resources` 表的基本模式（这将用于源材料）
+- 用于创建 `resource` 的服务器操作
 
-首先，使用以下命令克隆起始仓库：
+要开始，请使用以下命令克隆起始仓库：
 
 <Snippet
   text={[
@@ -136,87 +138,87 @@ RAG 代表检索增强生成。简单来说，RAG 是为大语言模型（LLM）
   ]}
 />
 
-首先，运行以下命令安装项目依赖：
+首先，运行以下命令安装项目的依赖项：
 
 <Snippet text="pnpm install" />
 
 ### 创建数据库
 
-你需要一个 Postgres 数据库来完成本教程。如果你没有在本地机器上设置 Postgres，你可以：
+您需要一个 Postgres 数据库来完成本教程。如果您本地没有设置 Postgres，您可以：
 
 - 使用 Vercel 创建一个免费的 Postgres 数据库（推荐 - 请参阅下面的说明）；或
-- 按照[本指南](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database)在本地设置
+- 按照 [本指南](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database) 在本地设置
 
 #### 使用 Vercel 设置 Postgres
 
-要在你的 Vercel 账户上设置 Postgres 实例：
+要在您的 Vercel 账户上设置 Postgres 实例：
 
-1. 前往 [Vercel.com](https://vercel.com) 并确保你已登录
-1. 导航到你的团队主页
-1. 点击 **Integrations** 选项卡
-1. 点击 **Browse Marketplace**
-1. 在侧边栏中查找 **Storage** 选项
-1. 选择 **Neon** 选项（推荐，但其他任何 PostgreSQL 数据库提供商也应该可以）
-1. 点击 **Install**，然后再次点击右上角的 **Install**
-1. 在“Get Started with Neon”页面上，点击右侧的 **Create Database**
-1. 选择你的区域（例如，Washington, D.C., U.S. East）
-1. 关闭 **Auth**
-1. 点击 **Continue**
-1. 命名你的数据库（你可以使用默认名称或将其重命名为类似“RagTutorial”的名称）
-1. 点击右下角的 **Create**
-1. 看到“Database created successfully”后，点击 **Done**
-1. 你将被重定向到你的数据库实例
-1. 在 Quick Start 部分，点击 **Show secrets**
+1. 前往 [Vercel.com](https://vercel.com) 并确保您已登录
+1. 导航到您的团队主页
+1. 点击 **集成** 选项卡
+1. 点击 **浏览市场**
+1. 在侧边栏中查找 **存储** 选项
+1. 选择 **Neon** 选项（推荐，但任何其他 PostgreSQL 数据库提供商也应该可以）
+1. 点击 **安装**，然后点击右上角的 **安装** 再次确认
+1. 在“开始使用 Neon”页面上，点击右侧的 **创建数据库**
+1. 选择您的区域（例如，华盛顿特区，美国东部）
+1. 关闭 **认证**
+1. 点击 **继续**
+1. 为您的数据库命名（您可以使用默认名称或将其重命名为类似“RagTutorial”的名称）
+1. 点击右下角的 **创建**
+1. 看到“数据库创建成功”后，点击 **完成**
+1. 您将被重定向到您的数据库实例
+1. 在快速入门部分，点击 **显示密钥**
 1. 复制完整的 `DATABASE_URL` 环境变量
 
 ### 迁移数据库
 
-一旦你有了 Postgres 数据库，你需要将连接字符串添加为环境密钥。
+一旦您有了 Postgres 数据库，您需要将连接字符串添加为环境密钥。
 
 复制 `.env.example` 文件并将其重命名为 `.env`。
 
 <Snippet text="cp .env.example .env" />
 
-打开新的 `.env` 文件。你应该会看到一个名为 `DATABASE_URL` 的项。在等号后面复制你的数据库连接字符串。
+打开新的 `.env` 文件。您应该看到一个名为 `DATABASE_URL` 的项目。在等号后面复制您的数据库连接字符串。
 
-设置完成后，你现在可以运行你的第一个数据库迁移。运行以下命令：
+设置完成后，您现在可以运行第一次数据库迁移。运行以下命令：
 
 <Snippet text="pnpm db:migrate" />
 
-这将首先将 `pgvector` 扩展添加到你的数据库。然后它将为 `lib/db/schema/resources.ts` 中定义的 `resources` 模式创建一个新表。该模式有四列：`id`、`content`、`createdAt` 和 `updatedAt`。
+这将首先向您的数据库添加 `pgvector` 扩展。然后它将为 `lib/db/schema/resources.ts` 中定义的 `resources` 模式创建一个新表。该模式有四列：`id`、`content`、`createdAt` 和 `updatedAt`。
 
 <Note>
-  如果迁移时遇到错误，请参阅下面的[故障排除部分](#troubleshooting-migration-error)。
+  如果您在迁移时遇到错误，请参阅下面的 [故障排除部分](#troubleshooting-migration-error)。
 </Note>
 
 ### Vercel AI Gateway 密钥
 
-对于本指南，你需要一个 Vercel AI Gateway API 密钥，它允许你使用一个 API 密钥访问来自不同提供商的数百个模型。如果你还没有获得 Vercel AI Gateway API 密钥，你可以通过 [注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway) Vercel 网站来获取。
+对于本指南，您需要一个 Vercel AI Gateway API 密钥，它可以让您使用一个 API 密钥访问来自不同提供商的数百个模型。如果您还没有获得 Vercel AI Gateway API 密钥，您可以通过在 Vercel 网站上 [注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway) 来获取。
 
 <Note>
-  AI SDK 的 Vercel AI Gateway Provider 是默认的全局提供商，因此你可以使用模型配置中的简单字符串来访问模型。如果你希望直接使用特定的提供商（如 OpenAI），请参阅[提供商管理](/docs/ai-sdk-core/provider-management)文档。
+  AI SDK 的 Vercel AI Gateway 提供商是默认的全局提供商，因此您可以在模型配置中使用简单的字符串访问模型。如果您更愿意直接使用特定的提供商（如 OpenAI），请参阅 [提供商管理](/docs/ai-sdk-core/provider-management) 文档。
 </Note>
 
-现在，打开你的 `.env` 文件并添加你的 API Gateway 密钥：
+现在，打开您的 `.env` 文件并添加您的 API Gateway 密钥：
 
 ```env filename=".env"
 AI_GATEWAY_API_KEY=your-api-key
 ```
 
-将 `your-api-key` 替换为你的实际 Vercel AI Gateway API 密钥。
+将 `your-api-key` 替换为您实际的 Vercel AI Gateway API 密钥。
 
 ## 构建
 
-让我们快速列出需要完成的任务：
+让我们快速列出需要完成的任务列表：
 
 1. 在数据库中创建一个表来存储嵌入
-2. 添加逻辑以在创建资源时分块和创建嵌入
+2. 添加逻辑，在创建资源时进行分块和创建嵌入
 3. 创建一个智能体
-4. 为智能体提供查询/创建知识库资源的工具
+4. 为智能体提供工具来查询/创建其知识库的资源
 
 ### 创建嵌入表
 
-目前，你的应用程序有一个表（`resources`），它有一个用于存储内容的列（`content`）。请记住，每个 `resource`（源材料）都必须被分块、嵌入，然后存储。让我们创建一个名为 `embeddings` 的表来存储这些块。
+目前，您的应用程序有一个表（`resources`），其中有一个列（`content`）用于存储内容。请记住，每个 `resource`（源材料）都必须被分块、嵌入，然后存储。让我们创建一个名为 `embeddings` 的表来存储这些块。
 
 创建一个新文件（`lib/db/schema/embeddings.ts`）并添加以下代码：
 
@@ -250,11 +252,11 @@ export const embeddings = pgTable(
 该表有四列：
 
 - `id` - 唯一标识符
-- `resourceId` - 指向完整源材料的外键关系
+- `resourceId` - 与完整源材料的外键关系
 - `content` - 纯文本块
 - `embedding` - 纯文本块的向量表示
 
-为了执行相似性搜索，你还需要在此列上包含一个索引（[HNSW](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw) 或 [IVFFlat](https://github.com/pgvector/pgvector?tab=readme-ov-file#ivfflat)）以获得更好的性能。
+为了执行相似性搜索，您还需要在此列上包含一个索引（[HNSW](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw) 或 [IVFFlat](https://github.com/pgvector/pgvector?tab=readme-ov-file#ivfflat)）以获得更好的性能。
 
 要将此更改推送到数据库，请运行以下命令：
 
@@ -262,7 +264,7 @@ export const embeddings = pgTable(
 
 ### 添加嵌入逻辑
 
-现在你有了一个表来存储嵌入，是时候编写创建嵌入的逻辑了。
+现在您有了一个存储嵌入的表，是时候编写创建嵌入的逻辑了。
 
 使用以下命令创建一个文件：
 
@@ -270,7 +272,7 @@ export const embeddings = pgTable(
 
 ### 生成块
 
-请记住，要创建嵌入，你将从一个源材料（长度未知）开始，将其分解为更小的块，嵌入每个块，然后将块保存到数据库。让我们从创建一个将源材料分解为小块的函数开始。
+请记住，要创建嵌入，您将从一段源材料（长度未知）开始，将其分解为更小的块，嵌入每个块，然后将块保存到数据库中。让我们首先创建一个函数来将源材料分解为小块。
 
 ```tsx filename="lib/ai/embedding.ts"
 const generateChunks = (input: string): string[] => {
@@ -281,23 +283,23 @@ const generateChunks = (input: string): string[] => {
 };
 ```
 
-此函数将接受一个输入字符串，并按句点分割，过滤掉任何空项。这将返回一个字符串数组。在你的项目中尝试不同的分块技术是值得的，因为最佳技术会有所不同。
+此函数将接受一个输入字符串，并按句点分割，过滤掉任何空项。这将返回一个字符串数组。值得在您的项目中尝试不同的分块技术，因为最佳技术会有所不同。
 
 ### 安装 AI SDK
 
-你将使用 AI SDK 来创建嵌入。这需要另外两个依赖项，你可以通过运行以下命令来安装：
+您将使用 AI SDK 来创建嵌入。这需要两个额外的依赖项，您可以通过运行以下命令来安装：
 
 <Snippet text="pnpm add ai @ai-sdk/react" />
 
-这将安装 [AI SDK](/docs) 和 AI SDK 的 React Hooks。
+这将安装 [AI SDK](/docs) 和 AI SDK 的 React hooks。
 
 <Note>
-  AI SDK 被设计为与任何大语言模型交互的统一接口。这意味着你可以用一行代码更改模型和提供商！在[提供商](/providers)部分了解更多关于[可用提供商](/providers)和[构建自定义提供商](/providers/community-providers/custom-providers)的信息。
+  AI SDK 被设计为与任何大型语言模型交互的统一接口。这意味着您只需一行代码就可以更改模型和提供商！在 [提供商](/providers) 部分了解更多关于 [可用提供商](/providers) 和 [构建自定义提供商](/providers/community-providers/custom-providers) 的信息。
 </Note>
 
 ### 生成嵌入
 
-让我们添加一个生成嵌入的函数。将以下代码复制到你的 `lib/ai/embedding.ts` 文件中。
+让我们添加一个生成嵌入的函数。将以下代码复制到您的 `lib/ai/embedding.ts` 文件中。
 
 ```tsx filename="lib/ai/embedding.ts" highlight="1,3,12-21"
 import { embedMany } from 'ai';
@@ -323,13 +325,13 @@ export const generateEmbeddings = async (
 };
 ```
 
-在这段代码中，你首先定义了要用于嵌入的模型。在这个例子中，你使用的是 OpenAI 的 `text-embedding-ada-002` 嵌入模型。
+在这段代码中，您首先定义要用于嵌入的模型。在此示例中，您使用的是 OpenAI 的 `text-embedding-ada-002` 嵌入模型。
 
-接下来，你创建了一个名为 `generateEmbeddings` 的异步函数。此函数将接受源材料（`value`）作为输入，并返回一个包含嵌入和内容的对象数组的 Promise。在函数内部，你首先为输入生成块。然后，你将那些块传递给从 AI SDK 导入的 [`embedMany`](/docs/reference/ai-sdk-core/embed-many) 函数，该函数将返回你传入的块的嵌入。最后，你以准备保存到数据库的格式映射并返回嵌入。
+接下来，您创建一个名为 `generateEmbeddings` 的异步函数。此函数将源材料（`value`）作为输入，并返回一个对象数组的 Promise，每个对象包含一个嵌入和内容。在函数内部，您首先为输入生成块。然后，您将这些块传递给从 AI SDK 导入的 [`embedMany`](/docs/reference/ai-sdk-core/embed-many) 函数，该函数将返回您传入的块的嵌入。最后，您以准备保存到数据库的格式映射并返回嵌入。
 
-### 更新 Server Action
+### 更新服务器操作
 
-打开 `lib/actions/resources.ts` 文件。该文件有一个函数 `createResource`，顾名思义，它允许你创建资源。
+打开 `lib/actions/resources.ts` 文件。此文件有一个函数 `createResource`，顾名思义，它允许您创建资源。
 
 ```tsx filename="lib/actions/resources.ts"
 'use server';
@@ -358,7 +360,7 @@ export const createResource = async (input: NewResourceParams) => {
 };
 ```
 
-此函数是一个 [Server Action](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations#with-client-components)，如文件顶部的 `“use server”;` 指令所示。这意味着它可以在你的 Next.js 应用程序中的任何位置调用。此函数将接受输入，通过 [Zod](https://zod.dev) 模式运行以确保其符合正确的模式，然后在数据库中创建一个新资源。这是生成和存储新创建资源的嵌入的理想位置。
+此函数是一个 [服务器操作](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations#with-client-components)，由文件顶部的 `“use server”;` 指令表示。这意味着它可以在您的 Next.js 应用程序中的任何地方调用。此函数将接受输入，通过 [Zod](https://zod.dev) 模式运行以确保其符合正确的模式，然后在数据库中创建新资源。这是生成和存储新创建资源的嵌入的理想位置。
 
 使用以下代码更新文件：
 
@@ -400,13 +402,13 @@ export const createResource = async (input: NewResourceParams) => {
 };
 ```
 
-首先，你调用上一步中创建的 `generateEmbeddings` 函数，传入源材料（`content`）。一旦你有了源材料的嵌入（`e`），你就可以将它们保存到数据库，并将 `resourceId` 与每个嵌入一起传递。
+首先，您调用上一步中创建的 `generateEmbeddings` 函数，传入源材料（`content`）。一旦您有了源材料的嵌入（`e`），您就可以将它们保存到数据库中，将 `resourceId` 与每个嵌入一起传递。
 
 ### 创建根页面
 
-太好了！让我们构建前端。AI SDK 的 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) Hook 允许你轻松地为你的智能体创建一个对话式用户界面。
+太好了！让我们构建前端。AI SDK 的 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) hook 允许您轻松地为您的智能体创建对话式用户界面。
 
-用以下代码替换你的根页面（`app/page.tsx`）。
+用以下代码替换您的根页面（`app/page.tsx`）。
 
 ```tsx filename="app/page.tsx"
 'use client';
@@ -454,21 +456,21 @@ export default function Chat() {
 }
 ```
 
-`useChat` Hook 支持从你的 AI 提供商（你将通过 Vercel AI Gateway 使用 OpenAI）流式传输聊天消息，管理聊天输入的状态，并在收到新消息时自动更新 UI。
+`useChat` hook 支持从您的 AI 提供商（您将通过 Vercel AI Gateway 使用 OpenAI）流式传输聊天消息，管理聊天输入的状态，并在收到新消息时自动更新 UI。
 
 运行以下命令启动 Next.js 开发服务器：
 
 <Snippet text="pnpm run dev" />
 
-前往 [http://localhost:3000](http://localhost:3000/)。你应该会看到一个空白屏幕，底部有一个浮动输入栏。尝试发送一条消息。消息在 UI 中显示一瞬间然后消失。这是因为你还没有设置相应的 API 路由来调用模型！默认情况下，`useChat` 会向 `/api/chat` 端点发送一个 POST 请求，并将 `messages` 作为请求体。
+前往 [http://localhost:3000](http://localhost:3000/)。您应该看到一个空屏幕，底部有一个浮动输入栏。尝试发送一条消息。消息在 UI 中显示一小段时间然后消失。这是因为您还没有设置相应的 API 路由来调用模型！默认情况下，`useChat` 将向 `/api/chat` 端点发送 POST 请求，请求体为 `messages`。
 
-<Note>你可以在 useChat 配置对象中自定义端点</Note>
+<Note>您可以在 useChat 配置对象中自定义端点</Note>
 
 ### 创建 API 路由
 
-在 Next.js 中，你可以使用 [Route Handlers](https://nextjs.org/docs/app/building-your-application/routing/route-handlers) 为给定路由创建自定义请求处理程序。Route Handlers 在 `route.ts` 文件中定义，并且可以导出 HTTP 方法，如 `GET`、`POST`、`PUT`、`PATCH` 等。
+在 Next.js 中，您可以使用 [路由处理器](https://nextjs.org/docs/app/building-your-application/routing/route-handlers) 为给定路由创建自定义请求处理器。路由处理器在 `route.ts` 文件中定义，可以导出 `GET`、`POST`、`PUT`、`PATCH` 等 HTTP 方法。
 
-通过运行以下命令在 `app/api/chat/route.ts` 创建一个文件：
+使用以下命令在 `app/api/chat/route.ts` 创建一个文件：
 
 <Snippet text="mkdir -p app/api/chat && touch app/api/chat/route.ts" />
 
@@ -483,7 +485,7 @@ import {
   UIMessage,
 } from 'ai';
 
-// 允许流式响应最多 30 秒
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -500,15 +502,15 @@ export async function POST(req: Request) {
 }
 ```
 
-在这段代码中，你声明并导出了一个名为 POST 的异步函数。你从请求体中检索 `messages`，然后将它们传递给从 AI SDK 导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数，以及你想要使用的模型。最后，你以 `UIMessageStreamResponse` 格式返回模型的响应。
+在这段代码中，您声明并导出了一个名为 POST 的异步函数。您从请求体中获取 `messages`，然后将它们与您想要使用的模型一起传递给从 AI SDK 导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数。最后，您以 `UIMessageStreamResponse` 格式返回模型的响应。
 
-返回浏览器并再次尝试发送消息。你应该会看到模型的响应直接流式传输过来！
+回到浏览器，再次尝试发送消息。您应该看到模型的响应直接流式传输进来！
 
-### 优化提示词
+### 优化您的提示词
 
-虽然你现在有了一个可工作的智能体，但它并没有做任何特别的事情。
+虽然您现在有一个可用的智能体，但它并没有做任何特别的事情。
 
-让我们添加系统指令来优化和限制模型的行为。在这种情况下，你希望模型只使用它检索到的信息来生成响应。使用以下代码更新你的路由处理程序：
+让我们添加系统指令来优化和限制模型的行为。在这种情况下，您希望模型只使用它检索到的信息来生成响应。使用以下代码更新您的路由处理器：
 
 ```tsx filename="app/api/chat/route.ts" highlight="18-20"
 import {
@@ -519,7 +521,7 @@ import {
   UIMessage,
 } from 'ai';
 
-// 允许流式响应最多 30 秒
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -527,9 +529,9 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: 'openai/gpt-4o',
-    system: `你是一个有用的助手。在回答任何问题之前，请检查你的知识库。
-    仅使用工具调用中的信息来回答问题。
-    如果在工具调用中未找到相关信息，请回答“抱歉，我不知道。”`,
+    instructions: `You are a helpful assistant. Check your knowledge base before answering any questions.
+    Only respond to questions using information from tool calls.
+    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."`,
     messages: await convertToModelMessages(messages),
   });
 
@@ -539,19 +541,19 @@ export async function POST(req: Request) {
 }
 ```
 
-返回浏览器并尝试问模型你最喜欢的食物是什么。模型现在应该完全按照你上面的指示回答（“抱歉，我不知道”），因为它没有任何相关信息。
+回到浏览器，尝试询问模型您最喜欢的食物是什么。模型现在应该按照您上面的指示准确响应（“抱歉，我不知道”），因为它没有任何相关信息。
 
-目前，你的智能体实际上是无用的。你如何让模型能够添加和查询信息呢？
+目前，您的智能体现在，嗯，没用了。您如何让模型能够添加和查询信息？
 
 ### 使用工具
 
-[工具](/docs/foundations/tools) 是一个可以由模型调用来执行特定任务的函数。你可以把工具想象成一个你给模型的程序，它可以在认为必要时运行。
+[工具](/docs/foundations/tools) 是模型可以调用来执行特定任务的函数。您可以将工具视为您提供给模型的程序，它可以在认为必要时运行。
 
-让我们看看如何创建一个工具，让模型能够创建、嵌入和保存资源到你的智能体的知识库中。
+让我们看看如何创建一个工具，让模型能够创建、嵌入和保存资源到您的智能体的知识库中。
 
 ### 添加资源工具
 
-使用以下代码更新你的路由处理程序：
+使用以下代码更新您的路由处理器：
 
 ```tsx filename="app/api/chat/route.ts" highlight="25-36"
 import { createResource } from '@/lib/actions/resources';
@@ -565,7 +567,7 @@ import {
 } from 'ai';
 import { z } from 'zod';
 
-// 允许流式响应最多 30 秒
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -573,18 +575,18 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: 'openai/gpt-4o',
-    system: `你是一个有用的助手。在回答任何问题之前，请检查你的知识库。
-    仅使用工具调用中的信息来回答问题。
-    如果在工具调用中未找到相关信息，请回答“抱歉，我不知道。”`,
+    instructions: `You are a helpful assistant. Check your knowledge base before answering any questions.
+    Only respond to questions using information from tool calls.
+    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."`,
     messages: await convertToModelMessages(messages),
     tools: {
       addResource: tool({
-        description: `向你的知识库添加资源。
-          如果用户未经提示提供了随机的知识片段，请使用此工具，无需请求确认。`,
+        description: `add a resource to your knowledge base.
+          If the user provides a random piece of knowledge unprompted, use this tool without asking for confirmation.`,
         inputSchema: z.object({
           content: z
             .string()
-            .describe('要添加到知识库的内容或资源'),
+            .describe('the content or resource to add to the knowledge base'),
         }),
         execute: async ({ content }) => createResource({ content }),
       }),
@@ -597,21 +599,21 @@ export async function POST(req: Request) {
 }
 ```
 
-在这段代码中，你定义了一个名为 `addResource` 的工具。这个工具有三个元素：
+在这段代码中，您定义了一个名为 `addResource` 的工具。该工具有三个元素：
 
-- **description**：工具的描述，将影响工具何时被选中。
-- **inputSchema**：[Zod 模式](/docs/foundations/tools#schema-specification-and-validation-with-zod)，定义了工具运行所需的输入。
+- **description**：工具的描述，将影响何时选择该工具。
+- **inputSchema**：[Zod 模式](/docs/foundations/tools#schema-specification-and-validation-with-zod)，定义工具运行所需的输入。
 - **execute**：一个异步函数，使用工具调用的参数调用。
 
-简单来说，在每次生成时，模型将决定是否应该调用该工具。如果它认为应该调用该工具，它将提取输入，然后将一条类型为 `tool-call` 的新 `message` 追加到 `messages` 数组中。AI SDK 然后将使用 `tool-call` 消息提供的参数运行 `execute` 函数。
+简单来说，在每次生成时，模型将决定是否应该调用该工具。如果它认为应该调用该工具，它将提取输入，然后将类型为 `tool-call` 的新 `message` 追加到 `messages` 数组中。然后 AI SDK 将使用 `tool-call` 消息提供的参数运行 `execute` 函数。
 
-返回浏览器并告诉模型你最喜欢的食物。你应该会在 UI 中看到一个空响应。发生了什么吗？让我们看看。在一个新的终端窗口中运行以下命令。
+回到浏览器，告诉模型您最喜欢的食物。您应该在 UI 中看到一个空响应。发生了什么吗？让我们看看。在新的终端窗口中运行以下命令。
 
 <Snippet text="pnpm db:studio" />
 
-这将启动 Drizzle Studio，我们可以在其中查看数据库中的行。你应该会在 `embeddings` 和 `resources` 表中看到一个新行，其中包含你最喜欢的食物！
+这将启动 Drizzle Studio，我们可以在其中查看数据库中的行。您应该在 `embeddings` 和 `resources` 表中都看到一个新行，其中包含您最喜欢的食物！
 
-让我们在 UI 中做一些更改，以便在调用工具时通知用户。返回你的根页面（`app/page.tsx`）并添加以下代码：
+让我们在 UI 中做一些更改，以便在调用工具时向用户传达信息。回到您的根页面（`app/page.tsx`）并添加以下代码：
 
 ```tsx filename="app/page.tsx" highlight="14-32"
 'use client';
@@ -637,7 +639,8 @@ export default function Chat() {
                   case 'tool-getInformation':
                     return (
                       <p>
-                        已{part.state === 'output-available' ? '调用' : '正在调用'} 工具: {part.type}
+                        call{part.state === 'output-available' ? 'ed' : 'ing'}{' '}
+                        tool: {part.type}
                         <pre className="my-4 bg-zinc-100 p-2 rounded-sm">
                           {JSON.stringify(part.input, null, 2)}
                         </pre>
@@ -669,19 +672,19 @@ export default function Chat() {
 }
 ```
 
-通过此更改，你现在可以在 UI 中有条件地渲染已调用的工具。保存文件并返回浏览器。告诉模型你最喜欢的电影。你应该会看到在模型通常的文本响应位置显示了哪个工具被调用。
+通过此更改，您现在可以在 UI 中有条件地渲染已调用的工具。保存文件并回到浏览器。告诉模型您最喜欢的电影。您应该看到在模型通常的文本响应位置显示了哪个工具被调用。
 
 <Note>
-  不要担心 switch 语句中的 `tool-getInformation` 工具 case - 我们将在后面的部分添加该工具。
+  不用担心 switch 语句中的 `tool-getInformation` 工具情况 - 我们将在后面的部分中添加该工具。
 </Note>
 
 ### 使用多步调用改善用户体验
 
-如果模型也能总结操作就好了。然而，从技术上讲，一旦模型调用了一个工具，它就完成了生成，因为它“生成”了一个工具调用。你如何实现这种期望的行为呢？
+如果模型也能总结操作，那就太好了。然而，从技术上讲，一旦模型调用了一个工具，它就完成了生成，因为它“生成”了一个工具调用。您如何实现这种期望的行为？
 
 AI SDK 有一个名为 [`stopWhen`](/docs/ai-sdk-core/tools-and-tool-calling#multi-step-calls) 的功能，它允许在模型生成工具调用时设置停止条件。如果这些停止条件没有被触发，AI SDK 将自动将工具调用结果发送回模型！
 
-打开你的根页面（`api/chat/route.ts`）并将以下键添加到 `streamText` 配置对象中：
+打开您的根页面（`api/chat/route.ts`）并向 `streamText` 配置对象添加以下键：
 
 ```tsx filename="api/chat/route.ts" highlight="9,25"
 import { createResource } from '@/lib/actions/resources';
@@ -696,7 +699,7 @@ import {
 } from 'ai';
 import { z } from 'zod';
 
-// 允许流式响应最多 30 秒
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -704,19 +707,19 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: 'openai/gpt-4o',
-    system: `你是一个有用的助手。在回答任何问题之前，请检查你的知识库。
-    仅使用工具调用中的信息来回答问题。
-    如果在工具调用中未找到相关信息，请回答“抱歉，我不知道。”`,
+    instructions: `You are a helpful assistant. Check your knowledge base before answering any questions.
+    Only respond to questions using information from tool calls.
+    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."`,
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
     tools: {
       addResource: tool({
-        description: `向你的知识库添加资源。
-          如果用户未经提示提供了随机的知识片段，请使用此工具，无需请求确认。`,
+        description: `add a resource to your knowledge base.
+          If the user provides a random piece of knowledge unprompted, use this tool without asking for confirmation.`,
         inputSchema: z.object({
           content: z
             .string()
-            .describe('要添加到知识库的内容或资源'),
+            .describe('the content or resource to add to the knowledge base'),
         }),
         execute: async ({ content }) => createResource({ content }),
       }),
@@ -729,13 +732,13 @@ export async function POST(req: Request) {
 }
 ```
 
-返回浏览器并告诉模型你最喜欢的披萨配料（注意：菠萝不是选项）。你应该会看到模型随后确认操作的响应。
+回到浏览器，告诉模型您最喜欢的披萨配料（注意：菠萝不是一个选项）。您应该看到模型确认操作的后续响应。
 
 ### 检索资源工具
 
-模型现在可以添加和嵌入任意信息到你的知识库中。然而，它仍然无法查询它。让我们创建一个新工具，允许模型通过在你的知识库中查找相关信息来回答问题。
+模型现在可以向您的知识库添加和嵌入任意信息。然而，它仍然无法查询它。让我们创建一个新工具，让模型能够通过在知识库中查找相关信息来回答问题。
 
-为了找到相似的内容，你需要嵌入用户的查询，在数据库中搜索语义相似性，然后将这些项作为上下文与查询一起传递给模型。为了实现这一点，让我们更新你的嵌入逻辑文件（`lib/ai/embedding.ts`）：
+要找到相似的内容，您需要嵌入用户的查询，在数据库中搜索语义相似性，然后将这些项目作为上下文与查询一起传递给模型。为了实现这一点，让我们更新您的嵌入逻辑文件（`lib/ai/embedding.ts`）：
 
 ```tsx filename="lib/ai/embedding.ts" highlight="1-3,26-48"
 import { embed, embedMany } from 'ai';
@@ -788,14 +791,14 @@ export const findRelevantContent = async (userQuery: string) => {
 };
 ```
 
-在这段代码中，你添加了两个函数：
+在这段代码中，您添加了两个函数：
 
 - `generateEmbedding`：从输入字符串生成单个嵌入
-- `findRelevantContent`：嵌入用户的查询，在数据库中搜索相似项，然后返回相关项
+- `findRelevantContent`：嵌入用户的查询，在数据库中搜索相似项目，然后返回相关项目
 
-完成之后，进入最后一步：创建工具。
+完成这些后，进入最后一步：创建工具。
 
-返回你的路由处理程序（`api/chat/route.ts`）并添加一个名为 `getInformation` 的新工具：
+回到您的路由处理器（`api/chat/route.ts`）并添加一个名为 `getInformation` 的新工具：
 
 ```ts filename="api/chat/route.ts" highlight="12,38-45"
 import { createResource } from '@/lib/actions/resources';
@@ -811,7 +814,7 @@ import {
 import { z } from 'zod';
 import { findRelevantContent } from '@/lib/ai/embedding';
 
-// 允许流式响应最多 30 秒
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -821,24 +824,24 @@ export async function POST(req: Request) {
     model: 'openai/gpt-4o',
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
-    system: `你是一个有用的助手。在回答任何问题之前，请检查你的知识库。
-    仅使用工具调用中的信息来回答问题。
-    如果在工具调用中未找到相关信息，请回答“抱歉，我不知道。”`,
+    instructions: `You are a helpful assistant. Check your knowledge base before answering any questions.
+    Only respond to questions using information from tool calls.
+    if no relevant information is found in the tool calls, respond, "Sorry, I don't know."`,
     tools: {
       addResource: tool({
-        description: `向你的知识库添加资源。
-          如果用户未经提示提供了随机的知识片段，请使用此工具，无需请求确认。`,
+        description: `add a resource to your knowledge base.
+          If the user provides a random piece of knowledge unprompted, use this tool without asking for confirmation.`,
         inputSchema: z.object({
           content: z
             .string()
-            .describe('要添加到知识库的内容或资源'),
+            .describe('the content or resource to add to the knowledge base'),
         }),
         execute: async ({ content }) => createResource({ content }),
       }),
       getInformation: tool({
-        description: `从你的知识库中获取信息来回答问题。`,
+        description: `get information from your knowledge base to answer questions.`,
         inputSchema: z.object({
-          question: z.string().describe('用户的问题'),
+          question: z.string().describe('the users question'),
         }),
         execute: async ({ question }) => findRelevantContent(question),
       }),
@@ -851,19 +854,19 @@ export async function POST(req: Request) {
 }
 ```
 
-返回浏览器，刷新页面，并询问你最喜欢的食物。你应该会看到模型调用 `getInformation` 工具，然后使用相关信息来制定响应！
+回到浏览器，刷新页面，并询问您最喜欢的食物。您应该看到模型调用 `getInformation` 工具，然后使用相关信息来制定响应！
 
 ## 结论
 
-恭喜，你已经成功构建了一个可以动态添加和检索知识库信息的 AI 智能体。在本指南中，你学习了如何创建和存储嵌入、设置 Server Action 来管理资源，以及使用工具来扩展智能体的能力。
+恭喜，您已经成功构建了一个可以动态向知识库添加和检索信息的 AI 智能体。在本指南中，您学习了如何创建和存储嵌入、设置服务器操作来管理资源，以及使用工具来扩展智能体的能力。
 
 ## 迁移错误故障排除
 
-如果迁移时遇到错误，请打开你的迁移文件（`lib/db/migrations/0000_yielding_bloodaxe.sql`），剪切（复制并删除）第一行，然后直接在 postgres 实例上运行它。你现在应该能够运行更新后的迁移。
+如果您在迁移时遇到错误，请打开您的迁移文件（`lib/db/migrations/0000_yielding_bloodaxe.sql`），剪切（复制并删除）第一行，然后直接在您的 postgres 实例上运行它。您现在应该能够运行更新后的迁移。
 
-如果你使用上面的 Vercel 设置，你可以通过以下方式直接运行命令：
+如果您使用上面的 Vercel 设置，您可以通过以下任一方式直接运行命令：
 
 - 前往 Neon 控制台并在那里输入命令，或
-- 返回 Vercel 平台，导航到数据库的 Quick Start 部分，找到 PSQL 连接命令（第二个选项卡）。这将在终端中连接到你的实例，你可以在那里直接运行命令。
+- 回到 Vercel 平台，导航到数据库的快速入门部分，找到 PSQL 连接命令（第二个选项卡）。这将在终端中连接到您的实例，您可以在那里直接运行命令。
 
 [更多信息](https://github.com/vercel/ai-sdk-rag-starter/issues/1)。

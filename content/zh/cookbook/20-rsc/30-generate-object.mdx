@@ -1,18 +1,18 @@
 ---
-title: 生成对象
-description: 了解如何使用 AI SDK 和 React 服务器组件生成对象。
+title: "生成对象"
+description: "了解如何使用 AI SDK 和 React 服务器组件生成对象。"
 tags: ['rsc', '结构化数据']
 ---
 
 # 生成对象
 
 <Note>
-  此示例使用 React 服务器组件（RSC）。如果你希望使用客户端渲染和 Hook，请查看[使用 useState 的"生成对象"示例](/examples/next-pages/basics/generating-object)。
+  此示例使用 React 服务器组件（RSC）。如果您希望使用客户端渲染和 Hook，请查看[“生成对象”示例（使用 useState）](/examples/next-pages/basics/generating-object)。
 </Note>
 
-你可以使用带有 `Output` 的 `generateText` 来生成 JSON 等结构化数据。通过提供描述目标对象结构的模式，SDK 将验证生成的输出，并确保其符合指定的结构。
+您可以将 `generateText` 与 `Output` 结合使用，以生成 JSON 等结构化数据。通过提供描述所需对象结构的模式，SDK 将验证生成的输出，并确保其符合指定的结构。
 
-`Output.object` 函数要求你使用 [zod](https://zod.dev)（一个用于定义 JavaScript 对象模式的库）提供模式。
+`Output.object` 函数要求您使用 [zod](https://zod.dev) 提供模式，zod 是一个用于定义 JavaScript 对象模式的库。
 
 <Browser>
   <ObjectGeneration
@@ -20,19 +20,17 @@ tags: ['rsc', '结构化数据']
       notifications: [
         {
           name: 'Jamie Roberts',
-          message: "Hey! How's the study grind going? Need a coffee boost?",
+          message: "嘿！学习进展如何？需要来杯咖啡提神吗？",
           minutesAgo: 15,
         },
         {
           name: 'Prof. Morgan',
-          message:
-            'Reminder: Your term paper is due promptly at 8 AM tomorrow. Please ensure it meets the submission guidelines outlined.',
+          message: '提醒：您的学期论文必须在明早 8 点前准时提交。请确保其符合规定的提交指南。',
           minutesAgo: 46,
         },
         {
           name: 'Alex Chen',
-          message:
-            "Dude, urgent! Borrow your notes for tomorrow's exam? I swear mine got eaten by my dog!",
+          message: '兄弟，紧急！借一下你明天考试笔记？我发誓我的被狗吃了！',
           minutesAgo: 30,
         },
       ],
@@ -42,7 +40,7 @@ tags: ['rsc', '结构化数据']
 
 ## 客户端
 
-让我们创建一个简单的 React 组件，当点击按钮时调用 `getNotifications` 函数。该函数将根据模式生成通知列表。
+让我们创建一个简单的 React 组件，在点击按钮时调用 `getNotifications` 函数。该函数将根据模式生成通知列表。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -61,7 +59,7 @@ export default function Home() {
       <button
         onClick={async () => {
           const { notifications } = await getNotifications(
-            '期末考试周期间的消息。',
+            '期末考试周的消息。',
           );
 
           setGeneration(JSON.stringify(notifications, null, 2));
@@ -76,9 +74,9 @@ export default function Home() {
 }
 ```
 
-## 服务器端
+## 服务器
 
-现在让我们实现 `getNotifications` 函数。我们将使用带有 `Output.object` 的 `generateText` 函数，根据之前定义的模式生成通知列表。
+现在让我们实现 `getNotifications` 函数。我们将使用 `generateText` 函数和 `Output.object`，根据我们之前定义的模式生成通知列表。
 
 ```typescript filename='app/actions.ts'
 'use server';
@@ -91,14 +89,14 @@ export async function getNotifications(input: string) {
 
   const { output: notifications } = await generateText({
     model: 'openai/gpt-5.4',
-    system: '你为一个消息应用生成三条通知。',
+    instructions: '您为消息应用生成三条通知。',
     prompt: input,
     output: Output.object({
       schema: z.object({
         notifications: z.array(
           z.object({
             name: z.string().describe('虚构人物的姓名。'),
-            message: z.string().describe('不要使用表情符号或链接。'),
+            message: z.string().describe('请勿使用表情符号或链接。'),
             minutesAgo: z.number(),
           }),
         ),

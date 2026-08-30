@@ -6,24 +6,24 @@ tags: ['agents', 'chatbot']
 
 # 使用 AI SDK 在 Slack 中构建 AI 智能体
 
-在本指南中，您将学习如何使用 AI SDK 构建一个由 AI 驱动的 Slackbot。该机器人将能够利用线程的完整上下文，响应私信和频道中的提及。
+在本指南中，您将学习如何使用 AI SDK 构建一个 Slackbot。该机器人将能够利用线程的完整上下文来响应私信和频道中的提及。
 
 ## Slack 应用设置
 
 在开始构建之前，您需要创建并配置一个 Slack 应用：
 
 1. 前往 [api.slack.com/apps](https://api.slack.com/apps)
-2. 点击“创建新应用”并选择“从头开始”
+2. 点击“创建新应用”并选择“从零开始”
 3. 为您的应用命名并选择您的工作区
-4. 在“OAuth 与权限”下，添加以下机器人令牌作用域：
+4. 在“OAuth 与权限”下，添加以下机器人令牌范围：
    - `app_mentions:read`
    - `chat:write`
    - `im:history`
    - `im:write`
    - `assistant:write`
-5. 将应用安装到您的工作区（“OAuth 令牌”部分下的按钮）
+5. 将应用安装到您的工作区（“OAuth 令牌”子部分下的按钮）
 6. 复制机器人用户 OAuth 令牌和签名密钥，供下一步使用
-7. 在 App Home -> 显示选项卡 -> 聊天选项卡下，勾选“允许用户从聊天选项卡发送斜杠命令和消息”
+7. 在“应用主页”->“显示标签页”->“聊天标签页”下，勾选“允许用户从聊天标签页发送斜杠命令和消息”
 
 ## 项目设置
 
@@ -34,7 +34,7 @@ tags: ['agents', 'chatbot']
 - [Vercel](https://vercel.com)
 - [OpenAI](https://openai.com)
 
-## 快速开始
+## 开始使用
 
 1. 克隆[该仓库](https://github.com/vercel-labs/ai-sdk-slackbot)并检出 `starter` 分支
 
@@ -54,7 +54,7 @@ tags: ['agents', 'chatbot']
 
 starter 仓库已包含：
 
-- Slack 工具函数（`lib/slack-utils.ts`），包括验证传入请求、将 Slack 线程转换为 AI SDK 兼容的消息格式，以及获取 Slackbot 的用户 ID
+- Slack 工具函数（`lib/slack-utils.ts`），包括验证传入请求、将 Slack 线程转换为 AI SDK 兼容的消息格式以及获取 Slackbot 用户 ID 的函数
 - 通用工具函数（`lib/utils.ts`），包括初始 Exa 设置
 - 处理不同类型 Slack 事件的文件（`lib/handle-messages.ts` 和 `lib/handle-app-mention.ts`）
 - 用于 Slack 事件的 API 端点（`POST`）（`api/events.ts`）
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 }
 ```
 
-该文件定义了一个 `POST` 函数，用于处理来自 Slack 的传入请求。首先，您检查请求类型，看它是否是 URL 验证请求。如果是，您使用 Slack 提供的挑战字符串进行响应。如果是事件回调，您验证请求，然后即可访问事件数据。这就是您可以实现事件处理逻辑的地方。
+该文件定义了一个 `POST` 函数，用于处理来自 Slack 的传入请求。首先，您检查请求类型以确定是否为 URL 验证请求。如果是，则使用 Slack 提供的挑战字符串进行响应。如果是事件回调，您将验证请求，然后访问事件数据。这就是您可以实现事件处理逻辑的地方。
 
 然后，您处理三种类型的事件：`app_mention`、`assistant_thread_started` 和 `message`：
 
@@ -129,25 +129,25 @@ export async function POST(request: Request) {
 
 ### waitUntil 函数
 
-Slack 期望在 3 秒内收到响应，以确认请求正在被处理。然而，生成 AI 响应可能需要更长时间。如果您未在 3 秒内响应 Slack 请求，Slack 将发送另一个请求，导致您的 API 路由再次被调用，再次调用 LLM，并最终再次向用户发送响应。为了解决这个问题，您可以使用 `waitUntil` 函数，它允许您在响应发送后运行 AI 逻辑，而不会阻塞响应本身。
+Slack 期望在 3 秒内收到响应以确认请求正在被处理。然而，生成 AI 响应可能需要更长时间。如果您未在 3 秒内响应 Slack 请求，Slack 将发送另一个请求，导致您的 API 路由再次被调用，再次调用 LLM，并最终再次向用户发送响应。为了解决这个问题，您可以使用 `waitUntil` 函数，它允许您在响应发送后运行 AI 逻辑，而不会阻塞响应本身。
 
 这意味着，您的 API 端点将：
 
 1. 立即响应 Slack（3 秒内）
 2. 异步继续处理消息
-3. 在 AI 响应准备好时发送它
+3. 在准备好时发送 AI 响应
 
 ## 事件处理器
 
-让我们看看每种事件类型当前是如何处理的。
+让我们看看当前如何处理每种事件类型。
 
 ### 应用提及
 
 当用户在频道中提及您的机器人时，会触发 `app_mention` 事件。`handle-app-mention.ts` 中的 `handleNewAppMention` 函数处理这些提及：
 
 1. 检查消息是否来自机器人，以避免无限响应循环
-2. 创建一个状态更新器，显示机器人正在“思考”
-3. 如果提及在线程中，则检索线程历史
+2. 创建状态更新器以显示机器人正在“思考”
+3. 如果提及发生在线程中，则检索线程历史
 4. 使用消息内容调用 LLM（使用您将在下一节中实现的 `generateResponse` 函数）
 5. 使用 AI 响应更新初始的“思考”消息
 
@@ -208,14 +208,14 @@ export async function handleNewAppMention(
 }
 ```
 
-现在让我们看看新的助手线程和消息是如何处理的。
+现在让我们看看如何处理新的助手线程和消息。
 
 ### 助手线程消息
 
-当用户与您的助手开始一个线程时，会触发 `assistant_thread_started` 事件。`handle-messages.ts` 中的 `assistantThreadMessage` 函数处理此事件：
+当用户与您的助手开始线程时，会触发 `assistant_thread_started` 事件。`handle-messages.ts` 中的 `assistantThreadMessage` 函数处理此事件：
 
-1. 向线程发布欢迎消息
-2. 设置建议提示词，帮助用户入门
+1. 在线程中发布欢迎消息
+2. 设置建议提示以帮助用户入门
 
 以下是 `assistantThreadMessage` 函数的代码：
 
@@ -261,7 +261,7 @@ export async function assistantThreadMessage(
 2. 更新状态以显示正在生成响应
 3. 检索对话历史
 4. 使用对话上下文调用 LLM
-5. 将 LLM 的响应发布到线程
+5. 将 LLM 的响应发布到线程中
 
 以下是 `handleNewAssistantMessage` 函数的代码：
 
@@ -309,7 +309,7 @@ export async function handleNewAssistantMessage(
 }
 ```
 
-事件处理器就绪后，让我们现在实现 AI 逻辑。
+事件处理器就位后，让我们现在实现 AI 逻辑。
 
 ## 实现 AI 逻辑
 
@@ -327,13 +327,13 @@ export const generateResponse = async (
 ) => {
   const { text } = await generateText({
     model: __MODEL__,
-    system: `You are a Slack bot assistant. Keep your responses concise and to the point.
+    instructions: `You are a Slack bot assistant. Keep your responses concise and to the point.
     - Do not tag users.
     - Current date is: ${new Date().toISOString().split('T')[0]}`,
     messages,
   });
 
-  // Convert markdown to Slack mrkdwn format
+  // 将 Markdown 转换为 Slack mrkdwn 格式
   return text.replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>').replace(/\*\*/g, '*');
 };
 ```
@@ -341,12 +341,12 @@ export const generateResponse = async (
 这个基本实现：
 
 1. 使用 AI SDK 的 `generateText` 函数调用 Anthropic 的 `claude-sonnet-4.5` 模型
-2. 提供系统提示词来引导模型的行为
-3. 将响应格式化为 Slack 的 markdown 格式
+2. 提供系统提示词以指导模型的行为
+3. 为 Slack 的 markdown 格式格式化响应
 
 ## 使用工具增强
 
-AI SDK 的真正强大之处在于工具，它们使您的机器人能够执行操作。让我们添加两个有用的工具：
+AI SDK 的真正强大之处在于工具，这些工具使您的机器人能够执行操作。让我们添加两个有用的工具：
 
 ```typescript filename="lib/generate-response.ts"
 import { generateText, tool, ModelMessage, isStepCount } from 'ai';
@@ -360,7 +360,7 @@ export const generateResponse = async (
 ) => {
   const { text } = await generateText({
     model: __MODEL__,
-    system: `You are a Slack bot assistant. Keep your responses concise and to the point.
+    instructions: `You are a Slack bot assistant. Keep your responses concise and to the point.
     - Do not tag users.
     - Current date is: ${new Date().toISOString().split('T')[0]}
     - Always include sources in your final response if you use web search.`,
@@ -421,7 +421,7 @@ export const generateResponse = async (
     },
   });
 
-  // Convert markdown to Slack mrkdwn format
+  // 将 Markdown 转换为 Slack mrkdwn 格式
   return text.replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>').replace(/\*\*/g, '*');
 };
 ```
@@ -460,7 +460,7 @@ export const generateResponse = async (
 
 <Snippet text={['vercel deploy']} />
 
-3. 复制部署 URL，并更新 Slack 应用的事件订阅，指向您的 Vercel URL
+3. 复制部署 URL 并更新 Slack 应用的事件订阅，指向您的 Vercel URL
 4. 前往您项目的部署设置（您的项目 -> 设置 -> 环境变量）并添加您的环境变量
 
 ```bash
@@ -471,7 +471,7 @@ EXA_API_KEY=your_exa_api_key
 ```
 
 <Note>
-  更新环境变量后，请确保重新部署您的应用。
+  更新环境变量后，请务必重新部署您的应用。
 </Note>
 
 5. 返回 [https://api.slack.com/](https://api.slack.com/) 并导航到“事件订阅”页面。启用事件并添加您的部署 URL。

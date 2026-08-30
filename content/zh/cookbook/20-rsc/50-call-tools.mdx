@@ -1,18 +1,18 @@
 ---
-title: 调用工具
-description: 了解如何使用 AI SDK 和 React 服务端组件调用工具。
+title: "调用工具"
+description: "了解如何使用 AI SDK 和 React 服务器组件调用工具。"
 tags: ['rsc', 'tool use']
 ---
 
 # 调用工具
 
-部分模型允许开发者提供一组可在生成过程中随时调用的工具。这对于扩展语言模型的能力非常有用，使其能够利用逻辑或数据与模型外部的系统进行交互。
+某些模型允许开发者提供一组工具，这些工具可以在生成过程中的任何时间被调用。这对于扩展语言模型的能力非常有用，使其能够利用逻辑或数据与模型外部的系统进行交互。
 
 <Browser>
   <ChatGeneration
     history={[
       { role: 'User', content: '最近怎么样？' },
-      { role: 'Assistant', content: '一切都好，有什么可以帮你的吗？' },
+      { role: 'Assistant', content: '一切都好，有什么可以帮您的吗？' },
     ]}
     inputMessage={{
       role: 'User',
@@ -78,11 +78,11 @@ export default function Home() {
 }
 ```
 
-## 服务端
+## 服务器
 
-现在，让我们实现 `continueConversation` 操作，它使用 `generateText` 来生成对用户问题的回复。我们将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数来指定我们自己的函数 `celsiusToFahrenheit`，该函数会将用户提供的摄氏温度值转换为华氏温度。
+现在，让我们实现 `continueConversation` 操作，使用 `generateText` 来生成对用户问题的响应。我们将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数来指定我们自己的函数 `celsiusToFahrenheit`，该函数将把用户给定的摄氏温度值转换为华氏温度。
 
-我们将使用 zod 来指定 `celsiusToFahrenheit` 函数参数的 schema。
+我们将使用 zod 来指定 `celsiusToFahrenheit` 函数参数的架构。
 
 ```tsx filename='app/actions.ts'
 'use server';
@@ -100,18 +100,18 @@ export async function continueConversation(history: Message[]) {
 
   const { text, toolResults } = await generateText({
     model: 'openai/gpt-5.4',
-    system: '你是一个友好的助手！',
+    instructions: '你是一位友好的助手！',
     messages: history,
     tools: {
       celsiusToFahrenheit: {
-        description: '将摄氏度转换为华氏度',
+        description: '将摄氏温度转换为华氏温度',
         inputSchema: z.object({
           value: z.string().describe('摄氏温度值'),
         }),
         execute: async ({ value }) => {
           const celsius = parseFloat(value);
           const fahrenheit = celsius * (9 / 5) + 32;
-          return `${celsius}°C 等于 ${fahrenheit.toFixed(2)}°F`;
+          return `${celsius}°C 是 ${fahrenheit.toFixed(2)}°F`;
         },
       },
     },

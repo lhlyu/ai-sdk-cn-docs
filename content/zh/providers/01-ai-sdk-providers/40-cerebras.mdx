@@ -7,7 +7,7 @@ description: "了解如何将 Cerebras 的模型与 AI SDK 结合使用。"
 
 [Cerebras](https://cerebras.ai) 提供商通过 Cerebras API 提供对强大语言模型的访问，包括由 Wafer-Scale 引擎和 CS-3 系统支持的高速推理能力。
 
-API 密钥可以从 [Cerebras 平台](https://cloud.cerebras.ai) 获取。
+API 密钥可从 [Cerebras 平台](https://cloud.cerebras.ai) 获取。
 
 ## 安装
 
@@ -23,7 +23,7 @@ Cerebras 提供商可通过 `@ai-sdk/cerebras` 模块获得。你可以使用以
 import { cerebras } from '@ai-sdk/cerebras';
 ```
 
-对于自定义配置，你可以导入 `createCerebras` 并使用你的设置创建提供商实例：
+如需自定义配置，你可以导入 `createCerebras` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createCerebras } from '@ai-sdk/cerebras';
@@ -63,11 +63,11 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: cerebras('gpt-oss-120b'),
-  prompt: '写一份适合 4 人的素食千层面食谱。',
+  prompt: '写一份供 4 人食用的素食千层面食谱。',
 });
 ```
 
-Cerebras 语言模型可以在 `streamText` 函数中使用
+Cerebras 语言模型可用于 `streamText` 函数
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 你可以使用提供商实例创建 Cerebras 语言模型。第一个参数是模型 ID，例如 `gpt-oss-120b`：
@@ -85,7 +85,7 @@ const model = cerebras.chat('gpt-oss-120b');
 
 ### 推理模型
 
-Cerebras 提供推理模型，包括 `gpt-oss-120b`、`zai-glm-4.7` 和 `gemma-4-31b`，这些模型在生成最终响应之前会生成中间思考令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
+Cerebras 提供推理模型，包括 `gpt-oss-120b` 和 `gemma-4-31b`，这些模型在生成最终响应之前会生成中间思考令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
 
 对于 `gpt-oss-120b`，你可以使用 `reasoningEffort` 提供商选项来控制推理深度：
 
@@ -118,9 +118,41 @@ for await (const part of result.stream) {
 
 以下可选的提供商选项可用于 Cerebras 语言模型：
 
-- **reasoningEffort** _'low' | 'medium' | 'high'_
+- **parallelToolCalls** _boolean_
 
-  控制 GPT-OSS 模型的推理深度。默认为 `'medium'`。
+  是否在工具使用期间启用并行函数调用。默认为 `true`。
+
+- **logprobs** _boolean_
+
+  是否为生成的令牌返回对数概率。默认为 `false`。
+
+- **topLogprobs** _number_
+
+  在每个令牌位置返回的最可能令牌数量。接受 `0` 到 `20` 之间的值。需要 `logprobs` 为 `true`。
+
+- **logitBias** _Record&lt;string, number&gt;_
+
+  将令牌 ID 映射到 `-100` 到 `100` 之间的偏置值。
+
+- **serviceTier** _'auto' | 'default' | 'flex' | 'priority'_
+
+  控制请求优先级。可用性取决于你的账户和端点。
+
+- **reasoningEffort** _'none' | 'low' | 'medium' | 'high'_
+
+  控制受支持模型执行的推理量。支持的值和默认值取决于模型。
+
+- **reasoningFormat** _'none' | 'parsed' | 'text_parsed' | 'raw' | 'hidden'_
+
+  控制推理内容在响应中的呈现方式。格式支持取决于模型。
+
+- **prediction** _&#123; type: 'content'; content: string | Array&lt;&#123; type: 'text'; text: string &#125;&gt; &#125;_
+
+  提供预测输出，可加速大多数响应内容已知的请求。
+
+- **promptCacheKey** _string_
+
+  将相关请求路由到相同的提示词缓存。该值最多可包含 1024 个字符，并且需要账户级启用。
 
 - **user** _string_
 
@@ -128,12 +160,33 @@ for await (const part of result.stream) {
 
 - **strictJsonSchema** _boolean_
 
-  是否使用严格的 JSON 模式验证。当为 `true` 时，模型使用约束解码来保证模式合规性。默认为 `true`。
+  是否使用严格的 JSON 架构验证。当为 `true` 时，模型使用约束解码来保证架构合规性。默认为 `true`。
+
+例如：
+
+```ts
+import {
+  cerebras,
+  type CerebrasLanguageModelChatOptions,
+} from '@ai-sdk/cerebras';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: cerebras('gpt-oss-120b'),
+  prompt: '解释为什么天空是蓝色的。',
+  providerOptions: {
+    cerebras: {
+      reasoningEffort: 'low',
+      reasoningFormat: 'parsed',
+      promptCacheKey: 'conversation-123',
+    } satisfies CerebrasLanguageModelChatOptions,
+  },
+});
+```
 
 ## 模型能力
 
-| 模型            | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 | 推理 |
+| 模型           | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 | 推理 |
 | -------------- | ----------- | ----------------- | ---------- | -------------- | --------- |
 | `gpt-oss-120b` | <Cross />   | <Check />         | <Check />  | <Check />      | <Check /> |
-| `zai-glm-4.7`  | <Cross />   | <Check />         | <Check />  | <Check />      | <Check /> |
 | `gemma-4-31b`  | <Check />   | <Check />         | <Check />  | <Check />      | <Check /> |

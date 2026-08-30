@@ -1,19 +1,19 @@
 ---
-title: streamText 多步骤指南
-description: 了解如何使用不同设置创建多个 streamText 步骤
+title: "streamText 多步骤操作手册"
+description: "了解如何创建具有不同设置的多个 streamText 步骤"
 tags: ['next', 'streaming']
 ---
 
 # streamText 多步骤智能体
 
-你可能希望在流的不同步骤中使用不同的设置，
+您可能希望在流中设置不同的步骤，每个步骤具有不同的设置，
 例如模型、工具或系统提示词。
 
 通过 `createUIMessageStream` 以及合并到 `UIMessageStream` 时的 `sendFinish` / `sendStart` 选项，
-你可以控制何时向客户端发送完成和开始事件，
-从而在单个助手 UI 消息中实现不同步骤。
+您可以控制何时将完成和开始事件发送到客户端，
+从而在单个助手 UI 消息中实现不同的步骤。
 
-## 服务端
+## 服务器端
 
 ```typescript filename='app/api/chat/route.ts'
 import {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       // 步骤 1 示例：强制工具调用
       const result1 = streamText({
         model: 'openai/gpt-4o-mini',
-        system: '从对话中提取用户目标。',
+        instructions: '从对话中提取用户目标。',
         messages,
         toolChoice: 'required', // 强制模型调用工具
         tools: {
@@ -50,15 +50,15 @@ export async function POST(req: Request) {
         toUIMessageStream({ stream: result1.stream, sendFinish: false }),
       );
 
-      // 注意：你可以在此处使用任何编程结构，例如 if-else、循环等。
-      // 使用这种方法，工作流编程就是常规编程。
+      // 注意：您可以在此处使用任何编程结构，例如 if-else、循环等。
+      // 使用这种方法，工作流编程就是普通的编程。
 
       // 示例：使用上一步的强制工具调用继续流
       const result2 = streamText({
-        // 不同的系统提示词、不同的模型，无工具：
+        // 不同的系统提示词、不同的模型、无工具：
         model: 'openai/gpt-4o',
-        system:
-          '你是一个具有不同系统提示词的有用助手。请在回答中重复提取的用户目标。',
+        instructions:
+          '您是一个具有不同系统提示词的乐于助人的助手。请在回答中重复提取的用户目标。',
         // 使用上一步的消息继续工作流流：
         messages: [
           ...convertToModelMessages(messages),

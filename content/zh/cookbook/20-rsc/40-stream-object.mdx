@@ -1,17 +1,17 @@
 ---
-title: 流式对象
-description: 学习如何使用 AI SDK 和 React 服务端组件进行流式对象生成。
+title: "流式传输对象"
+description: "了解如何使用 AI SDK 和 React 服务器组件进行对象流式传输。"
 tags: ['rsc', 'streaming', 'structured data']
 ---
 
-# 流式对象
+# 流式传输对象
 
 <Note>
-  此示例使用 React 服务端组件（RSC）。如果你更倾向于客户端渲染和 Hook，请查看
+  此示例使用 React 服务器组件（RSC）。如果您希望使用客户端渲染和 Hook，请查看
   ["使用 useObject 进行流式对象生成" 示例](/examples/next-pages/basics/streaming-object-generation)。
 </Note>
 
-对象生成有时需要较长时间才能完成，尤其是在生成大型 schema 时。在这种情况下，实时将对象生成过程流式传输到客户端非常有用。这允许客户端在生成过程中显示生成的对象，而不是让用户等待完成后再显示结果。
+对象生成有时可能需要很长时间才能完成，尤其是在生成大型模式时。在这种情况下，将对象生成过程实时流式传输到客户端非常有用。这允许客户端在生成过程中显示生成的对象，而不是让用户等待其完成后再显示结果。
 
 <Browser>
   <ObjectGeneration
@@ -20,19 +20,19 @@ tags: ['rsc', 'streaming', 'structured data']
       notifications: [
         {
           name: 'Jamie Roberts',
-          message: "Hey! How's the study grind going? Need a coffee boost?",
+          message: "嘿！学习进展如何？需要来杯咖啡提神吗？",
           minutesAgo: 15,
         },
         {
           name: 'Prof. Morgan',
           message:
-            'Reminder: Your term paper is due promptly at 8 AM tomorrow. Please ensure it meets the submission guidelines outlined.',
+            '提醒：您的学期论文必须在明天早上 8 点前提交。请确保其符合概述中列出的提交指南。',
           minutesAgo: 46,
         },
         {
           name: 'Alex Chen',
           message:
-            "Dude, urgent! Borrow your notes for tomorrow's exam? I swear mine got eaten by my dog!",
+            "兄弟，紧急！能借一下你明天考试用的笔记吗？我发誓我的被我的狗吃掉了！",
           minutesAgo: 30,
         },
       ],
@@ -42,7 +42,7 @@ tags: ['rsc', 'streaming', 'structured data']
 
 ## 客户端
 
-让我们创建一个简单的 React 组件，当点击按钮时调用 `getNotifications` 函数。该函数将根据 schema 生成一个通知列表。
+让我们创建一个简单的 React 组件，当按钮被点击时调用 `getNotifications` 函数。该函数将根据我们定义的模式生成一个通知列表。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -72,7 +72,7 @@ export default function Home() {
           }
         }}
       >
-        询问
+        提问
       </button>
 
       <pre>{generation}</pre>
@@ -81,9 +81,9 @@ export default function Home() {
 }
 ```
 
-## 服务端
+## 服务器
 
-现在让我们实现 `generate` 函数。我们将使用带有 `Output.object` 的 `streamText` 函数，根据之前定义的 schema 流式生成虚构通知列表。
+现在让我们实现 `generate` 函数。我们将使用带有 `Output.object` 的 `streamText` 函数，根据我们之前定义的模式流式传输虚构通知列表。
 
 ```typescript filename='app/actions.ts'
 'use server';
@@ -100,7 +100,7 @@ export async function generate(input: string) {
   (async () => {
     const { partialOutputStream } = streamText({
       model: 'openai/gpt-5.4',
-      system: '你为一个消息应用生成三条通知。',
+      instructions: '您为消息应用生成三条通知。',
       prompt: input,
       output: Output.object({
         schema: z.object({

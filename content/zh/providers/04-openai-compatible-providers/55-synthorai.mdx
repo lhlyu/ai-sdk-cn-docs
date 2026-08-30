@@ -1,0 +1,86 @@
+---
+title: "Synthorai"
+description: "使用 AI SDK 与 Synthorai 的 OpenAI 兼容 API。"
+---
+
+# Synthorai 提供商
+
+[Synthorai](https://synthorai.io) 是一个 AI 网关，通过 OpenAI 兼容 API 提供来自多个提供商的模型访问。您可以通过 `@ai-sdk/openai-compatible` 模块，将其 Chat Completions 端点与 AI SDK 一起使用。
+
+## 设置
+
+Synthorai 提供商可通过 `@ai-sdk/openai-compatible` 模块获得，因为它与 OpenAI API 兼容。您可以使用以下命令安装：
+
+<InstallPackages packages="@ai-sdk/openai-compatible" />
+
+## 提供商实例
+
+要使用 Synthorai，请使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const synthorai = createOpenAICompatible({
+  name: 'synthorai',
+  baseURL: 'https://synthorai.io/v1',
+  apiKey: process.env.SYNTHORAI_API_KEY,
+});
+```
+
+<Note>
+  请按照 [Synthorai 快速入门](https://synthorai.io/docs/quickstart/) 创建 API 密钥。确保使用您的 API 密钥设置 `SYNTHORAI_API_KEY` 环境变量。
+</Note>
+
+## 语言模型
+
+您可以使用提供商实例创建 Synthorai 模型。第一个参数是 [模型目录](https://synthorai.io/models/) 中的模型 ID，例如 `claude-fable-5`。
+
+```ts
+const model = synthorai('claude-fable-5');
+```
+
+### 示例
+
+您可以使用 `generateText` 函数，通过 Synthorai 语言模型生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const synthorai = createOpenAICompatible({
+  name: 'synthorai',
+  baseURL: 'https://synthorai.io/v1',
+  apiKey: process.env.SYNTHORAI_API_KEY,
+});
+
+const { text } = await generateText({
+  model: synthorai('claude-fable-5'),
+  prompt: '用一句话介绍一下你自己。',
+});
+
+console.log(text);
+```
+
+Synthorai 语言模型还可以使用 `streamText` 函数以流式方式生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { streamText } from 'ai';
+
+const synthorai = createOpenAICompatible({
+  name: 'synthorai',
+  baseURL: 'https://synthorai.io/v1',
+  apiKey: process.env.SYNTHORAI_API_KEY,
+});
+
+const result = streamText({
+  model: synthorai('claude-fable-5'),
+  prompt: '写一首关于路由的短俳句。',
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+有关端点详情和模型特定功能，请参阅 [Synthorai 文档](https://synthorai.io/docs/)。

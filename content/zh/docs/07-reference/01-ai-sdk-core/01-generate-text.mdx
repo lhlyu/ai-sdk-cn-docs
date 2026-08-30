@@ -5,7 +5,7 @@ description: "generateText 的 API 参考。"
 
 # `generateText()`
 
-使用语言模型根据给定的提示词生成文本并调用工具。
+使用语言模型根据给定提示词生成文本并调用工具。
 
 它非常适合非交互式用例，例如需要编写文本的自动化任务（例如起草电子邮件或总结网页），以及使用工具的智能体。
 
@@ -21,7 +21,7 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-有关 `runtimeContext`、`toolsContext`、工具 `context` 和敏感上下文过滤的指导，请参阅 [运行时和工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
+有关 `runtimeContext`、`toolsContext`、工具 `context` 以及敏感上下文过滤的指导，请参阅 [运行时和工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
 
 要查看 `generateText` 的实际应用，请查看 [这些示例](#examples)。
 
@@ -329,7 +329,7 @@ console.log(text);
       type: 'boolean',
       isOptional: true,
       description:
-        '是否允许在 `prompt` 或 `messages` 字段中使用系统消息。默认为 false。`instructions` 选项中的系统消息始终允许。为受用户控制的消息启用此选项可能会造成提示词注入风险。',
+        '是否允许在 `prompt` 或 `messages` 字段中使用系统消息。默认为 false。`instructions` 选项中的系统消息始终允许。对用户控制的消息启用此选项可能会造成提示词注入风险。',
     },
     {
       name: 'tools',
@@ -345,7 +345,7 @@ console.log(text);
               isOptional: true,
               type: 'string | ((options: { context: CONTEXT; experimental_sandbox?: Experimental_SandboxSession }) => string)',
               description:
-                '关于工具用途的信息，包括模型如何以及何时可以使用它的详细信息。提供字符串作为固定描述，或提供函数以在每次模型调用前根据工具特定的上下文和可选的实验性沙箱来生成描述。',
+                '关于工具用途的信息，包括模型如何以及何时可以使用它的详细信息。提供字符串作为固定描述，或提供函数以在每次模型调用前根据工具特定的上下文和可选的实验性沙箱环境推导描述。',
             },
             {
               name: 'inputSchema',
@@ -358,7 +358,7 @@ console.log(text);
               isOptional: true,
               type: 'async (parameters: T, options: ToolExecutionOptions) => RESULT',
               description:
-                '一个异步函数，使用工具调用的参数调用并产生结果。如果未提供，工具将不会自动执行。',
+                '一个异步函数，使用工具调用的参数调用并产生结果。如果未提供，则不会自动执行该工具。',
               properties: [
                 {
                   type: 'ToolExecutionOptions',
@@ -367,13 +367,13 @@ console.log(text);
                       name: 'toolCallId',
                       type: 'string',
                       description:
-                        '工具调用的 ID。例如，在通过流式数据发送与工具调用相关的信息时可以使用它。',
+                        '工具调用的 ID。例如，您可以在使用流式数据发送与工具调用相关的信息时使用它。',
                     },
                     {
                       name: 'messages',
                       type: 'ModelMessage[]',
                       description:
-                        '发送给语言模型以发起包含工具调用的响应的消息。这些消息不包括系统提示词，也不包括包含工具调用的助手响应。',
+                        '发送给语言模型以启动包含工具调用的响应的消息。这些消息不包括系统提示词，也不包括包含工具调用的助手响应。',
                     },
                     {
                       name: 'abortSignal',
@@ -400,28 +400,28 @@ console.log(text);
       name: 'maxOutputTokens',
       type: 'number',
       isOptional: true,
-      description: '要生成的最大令牌数。',
+      description: '要生成的最大 token 数。',
     },
     {
       name: 'temperature',
       type: 'number',
       isOptional: true,
       description:
-        '温度设置。该值会传递给提供商。范围取决于提供商和模型。建议设置 `temperature` 或 `topP`，但不要同时设置两者。',
+        '温度设置。该值会传递给提供商。范围取决于提供商和模型。建议设置 `temperature` 或 `topP` 之一，但不要同时设置。',
     },
     {
       name: 'topP',
       type: 'number',
       isOptional: true,
       description:
-        '核采样。该值会传递给提供商。范围取决于提供商和模型。建议设置 `temperature` 或 `topP`，但不要同时设置两者。',
+        '核采样。该值会传递给提供商。范围取决于提供商和模型。建议设置 `temperature` 或 `topP` 之一，但不要同时设置。',
     },
     {
       name: 'topK',
       type: 'number',
       isOptional: true,
       description:
-        '仅从每个后续令牌的前 K 个选项中采样。用于移除“长尾”低概率响应。仅推荐用于高级用例。您通常只需要使用 temperature。',
+        '仅从每个后续 token 的前 K 个选项中采样。用于移除“长尾”低概率响应。仅推荐用于高级用例。您通常只需要使用 temperature。',
     },
     {
       name: 'presencePenalty',
@@ -456,7 +456,7 @@ console.log(text);
       type: "'provider-default' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'",
       isOptional: true,
       description:
-        "控制模型在生成响应之前执行多少推理。省略时，使用提供商的默认行为。`'provider-default'` 明确请求提供商的默认值。不支持推理的提供商将发出警告。如果还设置了与推理相关的 `providerOptions`，则它们优先，此参数将被忽略。有关提供商特定的映射详细信息，请参阅 [推理指南](/docs/ai-sdk-core/reasoning)。",
+        "控制模型在生成响应之前执行多少推理。省略时，使用提供商的默认行为。`'provider-default'` 显式请求提供商的默认值。不支持推理的提供商将发出警告。如果还设置了与推理相关的 `providerOptions`，则它们优先，此参数将被忽略。有关提供商特定的映射详细信息，请参阅 [推理指南](/docs/ai-sdk-core/reasoning)。",
     },
     {
       name: 'maxRetries',
@@ -567,28 +567,28 @@ console.log(text);
       type: 'ToolOrder<TOOLS>',
       isOptional: true,
       description:
-        '控制工具发送给提供商的顺序。列表可以是部分的。未在 `toolOrder` 中列出的工具在列出的工具之后发送，按字母顺序排序。工具名称限制为工具集的字符串键。',
+        '控制工具发送给提供商的顺序。列表可以是部分的。未在 `toolOrder` 中列出的工具在列出的工具之后按字母顺序发送。工具名称限制为工具集的字符串键。',
     },
     {
       name: 'toolApproval',
       type: 'ToolApprovalConfiguration<TOOLS, RUNTIME_CONTEXT>',
       isOptional: true,
       description:
-        "此调用的审批配置。传递 `GenericToolApprovalFunction` 以在单个回调中处理所有工具调用，包含 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`，或传递一个按工具的对象，其中每个键可以是状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、对象形式如 `{ type: 'denied', reason: 'blocked by policy' }`，或接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext` 的 `SingleToolApprovalFunction`（与工具执行选项相同，但没有 `abortSignal`，`context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与调用的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined` 以达到与 `'not-applicable'` 相同的效果。`'not-applicable'` 是默认执行路径，运行工具时不带审批元数据。当您希望在输出中显式包含自动审批请求/响应部分时，使用 `'approved'`、`'denied'` 或其对象形式。自动批准和拒绝可以包含 `reason`，该原因会转发到发出的审批响应。此设置优先于工具的 `needsApproval` 默认值。",
+        "此调用的审批配置。传递 `GenericToolApprovalFunction` 以在单个回调中处理所有工具调用，包含 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`，或传递一个按工具的对象，其中每个键可以是状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、对象形式（如 `{ type: 'denied', reason: 'blocked by policy' }`）或接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext` 的 `SingleToolApprovalFunction`（与工具执行选项相同，但没有 `abortSignal`，`context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与调用的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined` 以达到与 `'not-applicable'` 相同的效果。`'not-applicable'` 是默认执行路径，运行工具时不带审批元数据。当您希望在输出中显式包含自动审批请求/响应部分时，请使用 `'approved'`、`'denied'` 或其对象形式。对象状态可以包含 `reason`：自动批准和拒绝会将其转发到审批响应，而手动用户批准会将其转发给人工审批者的审批请求。此设置优先于工具的 `needsApproval` 默认值。",
     },
     {
       name: 'experimental_toolCallers',
       type: 'Experimental_ToolCallers<TOOLS>',
       isOptional: true,
       description:
-        "配置哪些调用者工具可以调用每个工具。回调接收 `tools` 集中支持调用者能力的工具的键入引用，并返回一个以被调用者工具名称键控的对象。包含 `'direct'` 以保持配置的工具可由模型直接调用。仅限本地的被调用者对直接模型调用隐藏，并在每个生成步骤中绑定到其本地调用者。提供商调用者引用被转换为提供商原生的允许调用者选项。没有条目的工具保持其现有的直接工具调用行为。",
+        "配置哪些调用者工具可以调用每个工具。回调接收 `tools` 集中支持调用者能力的工具的带类型引用，并返回一个以被调用者工具名称为键的对象。包含 `'direct'` 以保持配置的工具可直接由模型调用。仅限本地的被调用者对直接模型调用隐藏，并在每个生成步骤中绑定到其本地调用者。提供商调用者引用被转换为提供商原生的允许调用者选项。没有条目的工具保持其现有的直接工具调用行为。",
     },
     {
       name: 'experimental_refineToolInput',
       type: 'ToolInputRefinement<TOOLS>',
       isOptional: true,
       description:
-        '工具名称到函数的可选映射，用于优化解析后的工具输入。每个函数接收其工具的键入输入，并且必须返回相同的输入类型形状。优化后的输入用于工具执行、输出部分、生命周期回调和遥测。',
+        '可选地将工具名称映射到细化解析后的工具输入的函数。每个函数接收其工具的带类型输入，并且必须返回相同的输入类型形状。细化后的输入用于工具执行、输出部分、生命周期回调和遥测。',
     },
     {
       name: 'stopWhen',
@@ -602,7 +602,7 @@ console.log(text);
       type: '(options: PrepareStepOptions) => PrepareStepResult<TOOLS> | Promise<PrepareStepResult<TOOLS>>',
       isOptional: true,
       description:
-        '可选函数，可用于为步骤提供不同的设置。您可以为每个步骤修改模型、模型调用设置、工具选择、活动工具、指令、输入消息和实验性沙箱。',
+        '可选函数，可用于为步骤提供不同的设置。您可以为每个步骤修改模型、模型调用设置、工具选择、活动工具、指令、输入消息和实验性沙箱环境。',
       properties: [
         {
           type: 'PrepareStepFunction<TOOLS>',
@@ -692,63 +692,63 @@ console.log(text);
               type: 'number',
               isOptional: true,
               description:
-                '此步骤要生成的最大令牌数。省略或为 undefined 时使用顶级值。',
+                '此步骤要生成的最大 token 数。省略或未定义时使用顶级值。',
             },
             {
               name: 'temperature',
               type: 'number',
               isOptional: true,
               description:
-                '此步骤的温度。省略或为 undefined 时使用顶级值。',
+                '此步骤的温度。省略或未定义时使用顶级值。',
             },
             {
               name: 'topP',
               type: 'number',
               isOptional: true,
               description:
-                '此步骤的核采样值。省略或为 undefined 时使用顶级值。',
+                '此步骤的核采样值。省略或未定义时使用顶级值。',
             },
             {
               name: 'topK',
               type: 'number',
               isOptional: true,
               description:
-                '此步骤的 Top-K 采样值。省略或为 undefined 时使用顶级值。',
+                '此步骤的 Top-K 采样值。省略或未定义时使用顶级值。',
             },
             {
               name: 'presencePenalty',
               type: 'number',
               isOptional: true,
               description:
-                '此步骤的存在惩罚。省略或为 undefined 时使用顶级值。',
+                '此步骤的存在惩罚。省略或未定义时使用顶级值。',
             },
             {
               name: 'frequencyPenalty',
               type: 'number',
               isOptional: true,
               description:
-                '此步骤的频率惩罚。省略或为 undefined 时使用顶级值。',
+                '此步骤的频率惩罚。省略或未定义时使用顶级值。',
             },
             {
               name: 'stopSequences',
               type: 'string[]',
               isOptional: true,
               description:
-                '此步骤的停止序列。省略或为 undefined 时使用顶级值。',
+                '此步骤的停止序列。省略或未定义时使用顶级值。',
             },
             {
               name: 'seed',
               type: 'number',
               isOptional: true,
               description:
-                '此步骤的随机采样种子。省略或为 undefined 时使用顶级值。',
+                '此步骤的随机采样种子。省略或未定义时使用顶级值。',
             },
             {
               name: 'reasoning',
               type: 'LanguageModelV4CallOptions["reasoning"]',
               isOptional: true,
               description:
-                '此步骤的推理努力。省略或为 undefined 时使用顶级值。',
+                '此步骤的推理努力。省略或未定义时使用顶级值。',
             },
             {
               name: 'toolChoice',
@@ -769,7 +769,7 @@ console.log(text);
               type: 'ToolOrder<TOOLS>',
               isOptional: true,
               description:
-                '如果提供，则覆盖此步骤中工具发送给提供商的顺序。未列出的工具按字母顺序附加。',
+                '如果提供，则覆盖此步骤中工具发送给提供商的顺序。未列出的工具按字母顺序追加。',
             },
             {
               name: 'instructions',
@@ -790,13 +790,13 @@ console.log(text);
               type: 'CONTEXT',
               isOptional: true,
               description:
-                '共享运行时上下文。更改它会影响此步骤及所有后续步骤。',
+                '共享运行时上下文。更改它将影响此步骤及所有后续步骤。',
             },
             {
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '按工具上下文映射。更改它会影响此步骤及所有后续步骤中的工具特定上下文。',
+                '按工具上下文映射。更改它将影响此步骤及所有后续步骤中的工具特定上下文。',
             },
             {
               name: 'experimental_sandbox',
@@ -821,27 +821,27 @@ console.log(text);
       type: 'CONTEXT',
       isOptional: true,
       description:
-        '传递给 `prepareStep` 和生命周期回调的用户定义的共享运行时上下文对象。',
+        '用户定义的共享运行时上下文对象，传递给 `prepareStep` 和生命周期回调。',
     },
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
       description:
-        '按工具名称键控的按工具上下文映射。当至少一个工具定义了 `contextSchema` 时为必需；当没有工具需要上下文时不接受。',
+        '按工具名称键控的按工具上下文映射。当至少一个工具定义了 `contextSchema` 时必填；当没有工具需要上下文时不可接受。',
     },
     {
       name: 'experimental_sandbox',
       type: 'Experimental_SandboxSession',
       isOptional: true,
       description:
-        '传递给 `prepareStep`、工具描述函数和工具执行的实验性沙箱环境。工具可以从其描述函数选项和执行选项中访问它。',
+        '实验性沙箱环境，传递给 `prepareStep`、工具描述函数和工具执行。工具可以从其描述函数选项和执行选项中访问它。',
     },
     {
       name: 'experimental_download',
       type: '(requestedDownloads: Array<{ url: URL; isUrlSupportedByModel: boolean }>) => Promise<Array<null | { data: Uint8Array; mediaType?: string }>>',
       isOptional: true,
       description:
-        '自定义下载函数，用于控制提示词中出现 URL 时如何获取。默认情况下，如果模型不支持给定媒体类型的 URL，则会下载文件。实验性功能。返回 null 以将 URL 直接传递给模型（如果支持），或返回包含数据和媒体类型的下载内容。',
+        '自定义下载函数，用于控制提示词中出现 URL 时如何获取。默认情况下，如果模型不支持给定媒体类型的 URL，则会下载文件。实验性功能。返回 null 以将 URL 直接传递给模型（受支持时），或返回包含数据和媒体类型的下载内容。',
     },
     {
       name: 'include',
@@ -919,7 +919,7 @@ console.log(text);
               name: 'inputSchema',
               type: '(options: { toolName: string }) => JSONSchema7',
               description:
-                '返回工具 JSON 模式的函数。',
+                '返回工具 JSON Schema 的函数。',
             },
             {
               name: 'error',
@@ -936,7 +936,7 @@ console.log(text);
       type: 'Output',
       isOptional: true,
       description:
-        '用于从 LLM 响应中解析结构化输出的规范。',
+        '用于解析 LLM 响应中结构化输出的规范。',
       properties: [
         {
           type: 'Output',
@@ -1131,7 +1131,7 @@ console.log(text);
             {
               name: 'maxOutputTokens',
               type: 'number | undefined',
-              description: '要生成的最大令牌数。',
+              description: '要生成的最大 token 数。',
             },
             {
               name: 'temperature',
@@ -1210,13 +1210,13 @@ console.log(text);
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '贯穿生成生命周期的用户定义的共享运行时上下文对象。',
+                '用户定义的共享运行时上下文对象，贯穿生成生命周期。',
             },
             {
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '通过 `toolsContext` 传递的按工具上下文映射，按工具名称键控。',
+                '通过 `toolsContext` 传递的按工具上下文映射，以工具名称为键。',
             },
           ],
         },
@@ -1331,13 +1331,13 @@ console.log(text);
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '用户定义的共享运行时上下文对象。可能在步骤之间从 prepareStep 更新。',
+                '用户定义的共享运行时上下文对象。可能在步骤之间由 prepareStep 更新。',
             },
             {
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '按工具上下文映射。可能在步骤之间从 prepareStep 更新。',
+                '按工具上下文映射。可能在步骤之间由 prepareStep 更新。',
             },
           ],
         },
@@ -1422,7 +1422,7 @@ console.log(text);
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '模型调用报告的令牌使用情况。',
+              description: '模型调用报告的 token 使用量。',
             },
             {
               name: 'content',
@@ -1440,7 +1440,7 @@ console.log(text);
               name: 'providerMetadata',
               type: 'ProviderMetadata | undefined',
               description:
-                '此模型调用的提供商特定元数据（如果提供商返回）。',
+                '提供商返回时，此模型调用的提供商特定元数据。',
             },
             {
               name: 'performance',
@@ -1460,25 +1460,25 @@ console.log(text);
                       name: 'effectiveOutputTokensPerSecond',
                       type: 'number',
                       description:
-                        '整个语言模型响应期间每秒的有效输出令牌数。',
+                        '整个语言模型响应期间每秒的有效输出 token 数。',
                     },
                     {
                       name: 'outputTokensPerSecond',
                       type: 'number | undefined',
                       description:
-                        '收到第一个生成的输出块后每秒的输出令牌数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
+                        '收到第一个生成的输出块后每秒的输出 token 数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
                     },
                     {
                       name: 'inputTokensPerSecond',
                       type: 'number | undefined',
                       description:
-                        '在收到第一个生成的输出块之前每秒处理的输入令牌数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
+                        '在收到第一个生成的输出块之前每秒处理的输入 token 数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
                     },
                     {
                       name: 'effectiveTotalTokensPerSecond',
                       type: 'number',
                       description:
-                        '整个语言模型响应期间每秒的有效输入和输出令牌数。',
+                        '整个语言模型响应期间每秒的有效输入和输出 token 数。',
                     },
                     {
                       name: 'timeToFirstOutputMs',
@@ -1490,7 +1490,7 @@ console.log(text);
                       name: 'timeBetweenOutputChunksMs',
                       type: 'OutputChunkTimingStats | undefined',
                       description:
-                        '生成的输出块之间间隔的时间统计（毫秒）。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
+                        '生成的输出块之间间隔的时序统计（毫秒）。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
                     },
                   ],
                 },
@@ -1505,7 +1505,7 @@ console.log(text);
       type: '(event: ToolExecutionStartEvent) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        "在工具的执行函数运行之前立即调用的回调。此回调中抛出的错误会被静默捕获，不会中断生成流程。",
+        "在工具的 execute 函数运行之前调用的回调。此回调中抛出的错误会被静默捕获，不会中断生成流程。",
       properties: [
         {
           type: 'ToolExecutionStartEvent',
@@ -1526,13 +1526,13 @@ console.log(text);
               name: 'messages',
               type: 'Array<ModelMessage>',
               description:
-                '发送给语言模型以发起包含工具调用的响应的消息。不包括系统提示词，也不包括包含工具调用的助手响应。',
+                '发送给语言模型以启动包含工具调用的响应的消息。不包括系统提示词，也不包括包含工具调用的助手响应。',
             },
             {
               name: 'toolContext',
               type: 'InferToolContext<TOOLS[toolName]>',
               description:
-                '即将执行的工具调用的工具特定上下文对象。缩小到单个工具（而非整个工具集）的上下文类型。',
+                '即将执行的工具调用的工具特定上下文对象。限定为单个工具的上下文类型，而不是整个工具集。',
             },
           ],
         },
@@ -1543,7 +1543,7 @@ console.log(text);
       type: '(event: ToolExecutionEndEvent) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        "在工具的执行函数完成（或出错）后立即调用的回调。`toolOutput` 字段是一个判别联合：当 `toolOutput.type` 为 `'tool-result'` 时，`output` 字段包含工具结果；当 `toolOutput.type` 为 `'tool-error'` 时，`error` 字段包含错误。此回调中抛出的错误会被静默捕获，不会中断生成流程。",
+        "在工具的 execute 函数完成（或出错）后立即调用的回调。`toolOutput` 字段是一个可判别联合：当 `toolOutput.type` 为 `'tool-result'` 时，`output` 字段包含工具结果；当 `toolOutput.type` 为 `'tool-error'` 时，`error` 字段包含错误。此回调中抛出的错误会被静默捕获，不会中断生成流程。",
       properties: [
         {
           type: 'ToolExecutionEndEvent',
@@ -1564,25 +1564,25 @@ console.log(text);
               name: 'toolExecutionMs',
               type: 'number',
               description:
-                '工具执行的墙钟持续时间（毫秒）。',
+                '工具执行的挂钟持续时间（毫秒）。',
             },
             {
               name: 'messages',
               type: 'Array<ModelMessage>',
               description:
-                '发送给语言模型以发起包含工具调用的响应的消息。不包括系统提示词，也不包括包含工具调用的助手响应。',
+                '发送给语言模型以启动包含工具调用的响应的消息。不包括系统提示词，也不包括包含工具调用的助手响应。',
             },
             {
               name: 'toolContext',
               type: 'InferToolContext<TOOLS[toolName]>',
               description:
-                '刚刚完成的工具调用的工具特定上下文对象。缩小到单个工具（而非整个工具集）的上下文类型。',
+                '刚刚完成的工具调用的工具特定上下文对象。限定为单个工具的上下文类型，而不是整个工具集。',
             },
             {
               name: 'toolOutput',
               type: 'ToolOutput<TOOLS>',
               description:
-                "表示工具执行结果的判别联合。当 `type` 为 `'tool-result'` 时，`output` 字段包含工具的返回值。当 `type` 为 `'tool-error'` 时，`error` 字段包含错误。",
+                "表示工具执行结果的可判别联合。当 `type` 为 `'tool-result'` 时，`output` 字段包含工具的返回值。当 `type` 为 `'tool-error'` 时，`error` 字段包含错误。",
             },
           ],
         },
@@ -1627,7 +1627,7 @@ console.log(text);
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '贯穿生成过程的用户定义的共享运行时上下文对象。',
+                '用户定义的共享运行时上下文对象，贯穿生成过程。',
             },
             {
               name: 'toolsContext',
@@ -1648,19 +1648,19 @@ console.log(text);
               name: 'reasoning',
               type: 'Array<ReasoningPart | ReasoningFilePart>',
               description:
-                '生成期间生成的推理。',
+                '生成过程中生成的推理。',
             },
             {
               name: 'reasoningText',
               type: 'string | undefined',
               description:
-                '生成期间生成的推理文本。',
+                '生成过程中生成的推理文本。',
             },
             {
               name: 'files',
               type: 'Array<GeneratedFile>',
               description:
-                '生成期间生成的文件。',
+                '生成过程中生成的文件。',
             },
             {
               name: 'sources',
@@ -1671,7 +1671,7 @@ console.log(text);
               name: 'toolCalls',
               type: 'Array<TypedToolCall<TOOLS>>',
               description:
-                '生成期间进行的工具调用。',
+                '生成过程中进行的工具调用。',
             },
             {
               name: 'staticToolCalls',
@@ -1715,7 +1715,7 @@ console.log(text);
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '生成文本的令牌使用情况。',
+              description: '生成文本的 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -1724,13 +1724,13 @@ console.log(text);
                       name: 'inputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输入（提示词）令牌总数。',
+                        '使用的输入（提示词）token 总数。',
                     },
                     {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）令牌的详细信息。',
+                        '关于输入（提示词）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -1739,19 +1739,19 @@ console.log(text);
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）令牌数。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）令牌数。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）令牌数。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -1761,13 +1761,13 @@ console.log(text);
                       name: 'outputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输出（完成）令牌总数。',
+                        '使用的输出（完成）token 总数。',
                     },
                     {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（完成）令牌的详细信息。',
+                        '关于输出（完成）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -1775,12 +1775,12 @@ console.log(text);
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本令牌数。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理令牌数。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -1789,7 +1789,7 @@ console.log(text);
                     {
                       name: 'totalTokens',
                       type: 'number | undefined',
-                      description: '使用的令牌总数。',
+                      description: '使用的 token 总数。',
                     },
                     {
                       name: 'raw',
@@ -1806,7 +1806,7 @@ console.log(text);
               name: 'performance',
               type: 'StepResultPerformance',
               description:
-                '步骤的计时和吞吐量指标。对于 `generateText`，仅流式传输的指标为 undefined。',
+                '步骤的时序和吞吐量指标。对于 `generateText`，仅流式传输的指标为 undefined。',
               properties: [
                 {
                   type: 'StepResultPerformance',
@@ -1815,25 +1815,25 @@ console.log(text);
                       name: 'effectiveOutputTokensPerSecond',
                       type: 'number',
                       description:
-                        '整个语言模型响应期间每秒的有效输出令牌数。',
+                        '整个语言模型响应期间每秒的有效输出 token 数。',
                     },
                     {
                       name: 'outputTokensPerSecond',
                       type: 'number | undefined',
                       description:
-                        '收到第一个生成的输出块后每秒的输出令牌数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
+                        '收到第一个生成的输出块后每秒的输出 token 数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
                     },
                     {
                       name: 'inputTokensPerSecond',
                       type: 'number | undefined',
                       description:
-                        '在收到第一个生成的输出块之前每秒处理的输入令牌数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
+                        '在收到第一个生成的输出块之前每秒处理的输入 token 数。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
                     },
                     {
                       name: 'effectiveTotalTokensPerSecond',
                       type: 'number',
                       description:
-                        '整个语言模型响应期间每秒的有效输入和输出令牌数。',
+                        '整个语言模型响应期间每秒的有效输入和输出 token 数。',
                     },
                     {
                       name: 'stepTimeMs',
@@ -1851,7 +1851,7 @@ console.log(text);
                       name: 'toolExecutionMs',
                       type: 'Readonly<Record<string, number>>',
                       description:
-                        '步骤中执行每个客户端工具调用所花费的时间（毫秒），按工具调用 ID 键控。',
+                        '步骤中执行每个客户端工具调用所花费的时间（毫秒），以工具调用 ID 为键。',
                     },
                     {
                       name: 'timeToFirstOutputMs',
@@ -1863,7 +1863,7 @@ console.log(text);
                       name: 'timeBetweenOutputChunksMs',
                       type: 'OutputChunkTimingStats | undefined',
                       description:
-                        '生成的输出块之间间隔的时间统计（毫秒）。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
+                        '生成的输出块之间间隔的时序统计（毫秒）。对于 `generateText`，这是 `undefined`，因为响应不是流式传输的。',
                     },
                   ],
                 },
@@ -1888,7 +1888,7 @@ console.log(text);
                       type: 'Array<ModelMessage>',
                       isOptional: true,
                       description:
-                        '为此步骤发送给模型的输入消息。默认情况下为 undefined，除非 requestMessages 设置为 true。',
+                        '为此步骤发送给模型的输入消息。默认未定义，除非 requestMessages 设置为 true。',
                     },
                     {
                       name: 'body',
@@ -1936,14 +1936,14 @@ console.log(text);
                       name: 'messages',
                       type: 'Array<ResponseMessage>',
                       description:
-                        '此步骤期间生成的响应消息。',
+                        '此步骤中生成的响应消息。',
                     },
                     {
                       name: 'body',
                       isOptional: true,
                       type: 'unknown',
                       description:
-                        '响应体（仅适用于使用 HTTP 请求的提供商）。',
+                        '响应体（仅对使用 HTTP 请求的提供商可用）。',
                     },
                   ],
                 },
@@ -1978,7 +1978,7 @@ console.log(text);
       type: '(event: GenerateTextEndEvent<TOOLS>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '整个生成完成（所有步骤结束）时调用的回调。事件包含最终步骤结果属性（不包括直接的 `performance`），以及来自所有步骤的聚合数据。使用 `event.steps` 获取每步性能指标。',
+        '整个生成完成（所有步骤结束）时调用的回调。事件包含最终步骤结果属性（不包括直接的 `performance`）以及所有步骤的聚合数据。使用 `event.steps` 获取每个步骤的性能指标。',
       properties: [
         {
           type: 'GenerateTextEndEvent',
@@ -2009,7 +2009,7 @@ console.log(text);
               name: 'usage',
               type: 'LanguageModelUsage',
               description:
-                '仅最终步骤的令牌使用情况（非聚合）。',
+                '仅最终步骤的 token 使用量（非聚合）。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -2018,13 +2018,13 @@ console.log(text);
                       name: 'inputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输入（提示词）令牌总数。',
+                        '使用的输入（提示词）token 总数。',
                     },
                     {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）令牌的详细信息。',
+                        '关于输入（提示词）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -2033,19 +2033,19 @@ console.log(text);
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）令牌数。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）令牌数。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）令牌数。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -2055,13 +2055,13 @@ console.log(text);
                       name: 'outputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输出（完成）令牌总数。',
+                        '使用的输出（完成）token 总数。',
                     },
                     {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（完成）令牌的详细信息。',
+                        '关于输出（完成）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -2069,12 +2069,12 @@ console.log(text);
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本令牌数。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理令牌数。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -2083,7 +2083,7 @@ console.log(text);
                     {
                       name: 'totalTokens',
                       type: 'number | undefined',
-                      description: '使用的令牌总数。',
+                      description: '使用的 token 总数。',
                     },
                     {
                       name: 'raw',
@@ -2100,7 +2100,7 @@ console.log(text);
               name: 'totalUsage',
               type: 'LanguageModelUsage',
               description:
-                '所有步骤的聚合令牌使用情况。这是每个单独步骤使用情况的总和。',
+                '所有步骤的聚合 token 使用量。这是每个单独步骤使用量的总和。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -2109,19 +2109,19 @@ console.log(text);
                       name: 'inputTokens',
                       type: 'number | undefined',
                       description:
-                        '所有步骤中使用的输入（提示词）令牌总数。',
+                        '所有步骤中使用的输入（提示词）token 总数。',
                     },
                     {
                       name: 'outputTokens',
                       type: 'number | undefined',
                       description:
-                        '所有步骤中使用的输出（完成）令牌总数。',
+                        '所有步骤中使用的输出（完成）token 总数。',
                     },
                     {
                       name: 'totalTokens',
                       type: 'number | undefined',
                       description:
-                        '所有步骤中使用的令牌总数。',
+                        '所有步骤中使用的 token 总数。',
                     },
                   ],
                 },
@@ -2246,12 +2246,12 @@ console.log(text);
                     {
                       name: 'base64',
                       type: 'string',
-                      description: '作为 base64 编码字符串的文件。',
+                      description: '文件作为 base64 编码字符串。',
                     },
                     {
                       name: 'uint8Array',
                       type: 'Uint8Array',
-                      description: '作为 Uint8Array 的文件。',
+                      description: '文件作为 Uint8Array。',
                     },
                     {
                       name: 'mediaType',
@@ -2266,7 +2266,7 @@ console.log(text);
               name: 'toolCalls',
               type: 'Array<TypedToolCall<TOOLS>>',
               description:
-                '生成期间进行的工具调用。',
+                '生成过程中进行的工具调用。',
             },
             {
               name: 'staticToolCalls',
@@ -2317,7 +2317,7 @@ console.log(text);
                       type: 'Array<ModelMessage>',
                       isOptional: true,
                       description:
-                        '为此步骤发送给模型的输入消息。默认情况下为 undefined，除非 requestMessages 设置为 true。',
+                        '为此步骤发送给模型的输入消息。默认未定义，除非 requestMessages 设置为 true。',
                     },
                     {
                       name: 'body',
@@ -2355,7 +2355,7 @@ console.log(text);
                       name: 'timestamp',
                       type: 'Date',
                       description:
-                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
+                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建时间戳。',
                     },
                     {
                       name: 'headers',
@@ -2368,13 +2368,13 @@ console.log(text);
                       isOptional: true,
                       type: 'unknown',
                       description:
-                        '响应体（仅适用于使用 HTTP 请求的提供商）。',
+                        '响应体（仅对使用 HTTP 请求的提供商可用）。',
                     },
                     {
                       name: 'messages',
                       type: 'Array<ResponseMessage>',
                       description:
-                        '此步骤期间生成的响应消息。它由一个助手消息组成，可能包含工具调用。当此步骤中有工具结果时，会有一个额外的工具消息包含可用的工具结果。如果有不带执行函数的工具，它们不包含在工具结果中，需要单独添加。',
+                        '此步骤中生成的响应消息。它由一条助手消息组成，可能包含工具调用。当此步骤中有工具结果时，会有一条额外的工具消息包含可用的工具结果。如果有工具没有 execute 函数，它们不会包含在工具结果中，需要单独添加。',
                     },
                   ],
                 },
@@ -2461,7 +2461,7 @@ console.log(text);
               name: 'providerMetadata',
               type: 'SharedV2ProviderMetadata',
               isOptional: true,
-              description: '附加的提供商元数据。',
+              description: '附加提供商元数据。',
             },
           ],
         },
@@ -2482,7 +2482,7 @@ console.log(text);
               name: 'providerMetadata',
               type: 'SharedV2ProviderMetadata',
               isOptional: true,
-              description: '附加的提供商元数据。',
+              description: '附加提供商元数据。',
             },
           ],
         },
@@ -2546,12 +2546,12 @@ console.log(text);
             {
               name: 'base64',
               type: 'string',
-              description: '作为 base64 编码字符串的文件。',
+              description: '文件作为 base64 编码字符串。',
             },
             {
               name: 'uint8Array',
               type: 'Uint8Array',
-              description: '作为 Uint8Array 的文件。',
+              description: '文件作为 Uint8Array。',
             },
             {
               name: 'mediaType',
@@ -2599,7 +2599,7 @@ console.log(text);
     {
       name: 'finishReason',
       type: "'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other'",
-      description: '模型完成文本生成的原因。',
+      description: '模型停止生成文本的原因。',
     },
     {
       name: 'rawFinishReason',
@@ -2611,7 +2611,7 @@ console.log(text);
       name: 'usage',
       type: 'LanguageModelUsage',
       description:
-        '所有步骤的总令牌使用情况。当有多个步骤时，使用情况是所有步骤使用情况的总和。',
+        '所有步骤的总 token 使用量。当有多个步骤时，使用量是所有步骤使用量的总和。',
       properties: [
         {
           type: 'LanguageModelUsage',
@@ -2619,13 +2619,13 @@ console.log(text);
             {
               name: 'inputTokens',
               type: 'number | undefined',
-              description: '使用的输入（提示词）令牌总数。',
+              description: '使用的输入（提示词）token 总数。',
             },
             {
               name: 'inputTokenDetails',
               type: 'LanguageModelInputTokenDetails',
               description:
-                '关于输入（提示词）令牌的详细信息。另请参阅：缓存令牌和非缓存令牌。',
+                '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
               properties: [
                 {
                   type: 'LanguageModelInputTokenDetails',
@@ -2634,19 +2634,19 @@ console.log(text);
                       name: 'noCacheTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的非缓存输入（提示词）令牌数。',
+                        '使用的非缓存输入（提示词）token 数。',
                     },
                     {
                       name: 'cacheReadTokens',
                       type: 'number | undefined',
                       description:
-                        '读取的缓存输入（提示词）令牌数。',
+                        '读取的缓存输入（提示词）token 数。',
                     },
                     {
                       name: 'cacheWriteTokens',
                       type: 'number | undefined',
                       description:
-                        '写入的缓存输入（提示词）令牌数。',
+                        '写入的缓存输入（提示词）token 数。',
                     },
                   ],
                 },
@@ -2656,13 +2656,13 @@ console.log(text);
               name: 'outputTokens',
               type: 'number | undefined',
               description:
-                '使用的输出（完成）令牌总数。',
+                '使用的输出（完成）token 总数。',
             },
             {
               name: 'outputTokenDetails',
               type: 'LanguageModelOutputTokenDetails',
               description:
-                '关于输出（完成）令牌的详细信息。',
+                '关于输出（完成）token 的详细信息。',
               properties: [
                 {
                   type: 'LanguageModelOutputTokenDetails',
@@ -2670,12 +2670,12 @@ console.log(text);
                     {
                       name: 'textTokens',
                       type: 'number | undefined',
-                      description: '使用的文本令牌数。',
+                      description: '使用的文本 token 数。',
                     },
                     {
                       name: 'reasoningTokens',
                       type: 'number | undefined',
-                      description: '使用的推理令牌数。',
+                      description: '使用的推理 token 数。',
                     },
                   ],
                 },
@@ -2684,7 +2684,7 @@ console.log(text);
             {
               name: 'totalTokens',
               type: 'number | undefined',
-              description: '使用的令牌总数。',
+              description: '使用的 token 总数。',
             },
             {
               name: 'raw',
@@ -2701,7 +2701,7 @@ console.log(text);
       name: 'totalUsage',
       type: 'LanguageModelUsage',
       description:
-        '已弃用。请改用 usage。所有步骤的总令牌使用情况。当有多个步骤时，使用情况是所有步骤使用情况的总和。',
+        '已弃用。请改用 usage。所有步骤的总 token 使用量。当有多个步骤时，使用量是所有步骤使用量的总和。',
       properties: [
         {
           type: 'LanguageModelUsage',
@@ -2709,18 +2709,18 @@ console.log(text);
             {
               name: 'inputTokens',
               type: 'number | undefined',
-              description: '使用的输入（提示词）令牌数。',
+              description: '使用的输入（提示词）token 数。',
             },
             {
               name: 'outputTokens',
               type: 'number | undefined',
-              description: '使用的输出（完成）令牌数。',
+              description: '使用的输出（完成）token 数。',
             },
             {
               name: 'totalTokens',
               type: 'number | undefined',
               description:
-                '提供商报告的令牌总数。此数字可能与 inputTokens 和 outputTokens 的总和不同，例如可能包括推理令牌或其他开销。',
+                '提供商报告的 token 总数。此数字可能与 inputTokens 和 outputTokens 的总和不同，例如可能包括推理 token 或其他开销。',
             },
           ],
         },
@@ -2741,7 +2741,7 @@ console.log(text);
               type: 'Array<ModelMessage>',
               isOptional: true,
               description:
-                '为此步骤发送给模型的输入消息。默认情况下为 undefined，除非 requestMessages 设置为 true。',
+                '为此步骤发送给模型的输入消息。默认未定义，除非 requestMessages 设置为 true。',
             },
             {
               name: 'body',
@@ -2780,7 +2780,7 @@ console.log(text);
               name: 'timestamp',
               type: 'Date',
               description:
-                '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
+                '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建时间戳。',
             },
             {
               name: 'headers',
@@ -2798,7 +2798,7 @@ console.log(text);
               name: 'messages',
               type: 'Array<ResponseMessage>',
               description:
-                '最终步骤期间生成的响应消息。它由一个助手消息组成，可能包含工具调用。当最终步骤中有工具结果时，会有一个额外的工具消息包含可用的工具结果。如果有不带执行函数的工具，它们不包含在工具结果中，需要单独添加。',
+                '最终步骤中生成的响应消息。它由一条助手消息组成，可能包含工具调用。当最终步骤中有工具结果时，会有一条额外的工具消息包含可用的工具结果。如果有工具没有 execute 函数，它们不会包含在工具结果中，需要单独添加。',
             },
           ],
         },
@@ -2826,7 +2826,7 @@ console.log(text);
       name: 'output',
       type: 'InferCompleteOutput<OUTPUT>',
       description:
-        '根据 `output` 规范生成的输出。当没有可用输出时（例如最终步骤不以 `stop` 原因结束时），访问此属性会抛出 `NoOutputGeneratedError`。',
+        '根据 `output` 规范生成的输出。当没有可用输出时（例如最终步骤未以 `stop` 原因结束时），访问此属性会抛出 `NoOutputGeneratedError`。',
     },
     {
       name: 'steps',
@@ -2852,7 +2852,7 @@ console.log(text);
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '贯穿生成过程的用户定义的共享运行时上下文对象。',
+                '用户定义的共享运行时上下文对象，贯穿生成过程。',
             },
             {
               name: 'toolsContext',
@@ -2875,7 +2875,7 @@ console.log(text);
               name: 'reasoning',
               type: 'Array<ReasoningPart | ReasoningFilePart>',
               description:
-                '生成期间生成的推理。',
+                '生成过程中生成的推理。',
               properties: [
                 {
                   type: 'ReasoningPart',
@@ -2919,13 +2919,13 @@ console.log(text);
               name: 'reasoningText',
               type: 'string | undefined',
               description:
-                '生成期间生成的推理文本。',
+                '生成过程中生成的推理文本。',
             },
             {
               name: 'files',
               type: 'Array<GeneratedFile>',
               description:
-                '生成期间生成的文件。',
+                '生成过程中生成的文件。',
               properties: [
                 {
                   type: 'GeneratedFile',
@@ -2933,12 +2933,12 @@ console.log(text);
                     {
                       name: 'base64',
                       type: 'string',
-                      description: '作为 base64 编码字符串的文件。',
+                      description: '文件作为 base64 编码字符串。',
                     },
                     {
                       name: 'uint8Array',
                       type: 'Uint8Array',
-                      description: '作为 Uint8Array 的文件。',
+                      description: '文件作为 Uint8Array。',
                     },
                     {
                       name: 'mediaType',
@@ -2994,7 +2994,7 @@ console.log(text);
               name: 'toolCalls',
               type: 'ToolCallArray<TOOLS>',
               description:
-                '生成期间进行的工具调用。',
+                '生成过程中进行的工具调用。',
             },
             {
               name: 'toolResults',
@@ -3015,7 +3015,7 @@ console.log(text);
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '生成文本的令牌使用情况。',
+              description: '生成文本的 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -3024,13 +3024,13 @@ console.log(text);
                       name: 'inputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输入（提示词）令牌总数。',
+                        '使用的输入（提示词）token 总数。',
                     },
                     {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）令牌的详细信息。另请参阅：缓存令牌和非缓存令牌。',
+                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -3039,19 +3039,19 @@ console.log(text);
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）令牌数。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）令牌数。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）令牌数。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -3061,13 +3061,13 @@ console.log(text);
                       name: 'outputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输出（完成）令牌总数。',
+                        '使用的输出（完成）token 总数。',
                     },
                     {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（完成）令牌的详细信息。',
+                        '关于输出（完成）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -3075,12 +3075,12 @@ console.log(text);
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本令牌数。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理令牌数。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -3089,7 +3089,7 @@ console.log(text);
                     {
                       name: 'totalTokens',
                       type: 'number | undefined',
-                      description: '使用的令牌总数。',
+                      description: '使用的 token 总数。',
                     },
                     {
                       name: 'raw',
@@ -3121,7 +3121,7 @@ console.log(text);
                       type: 'Array<ModelMessage>',
                       isOptional: true,
                       description:
-                        '为此步骤发送给模型的输入消息。默认情况下为 undefined，除非 requestMessages 设置为 true。',
+                        '为此步骤发送给模型的输入消息。默认未定义，除非 requestMessages 设置为 true。',
                     },
                     {
                       name: 'body',
@@ -3158,7 +3158,7 @@ console.log(text);
                       name: 'timestamp',
                       type: 'Date',
                       description:
-                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
+                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建时间戳。',
                     },
                     {
                       name: 'headers',
@@ -3171,13 +3171,13 @@ console.log(text);
                       isOptional: true,
                       type: 'unknown',
                       description:
-                        '响应体（仅适用于使用 HTTP 请求的提供商）。',
+                        '响应体（仅对使用 HTTP 请求的提供商可用）。',
                     },
                     {
                       name: 'messages',
                       type: 'Array<ResponseMessage>',
                       description:
-                        '此步骤期间生成的响应消息。响应消息可以是助手消息或工具消息。它们包含一个生成的 id。',
+                        '此步骤中生成的响应消息。响应消息可以是助手消息或工具消息。它们包含一个生成的 ID。',
                     },
                   ],
                 },
@@ -3218,30 +3218,30 @@ type ActiveTools<TOOLS extends ToolSet> =
 <ExampleLinks
   examples={[
     {
-      title: '学习在 Next.js 中使用语言模型生成文本',
+      title: '了解如何在 Next.js 中使用语言模型生成文本',
       link: '/examples/next-app/basics/generating-text',
     },
     {
       title:
-        '学习在 Next.js 中使用语言模型生成聊天补全',
+        '了解如何在 Next.js 中使用语言模型生成聊天补全',
       link: '/examples/next-app/basics/generating-text',
     },
     {
-      title: '学习在 Next.js 中使用语言模型调用工具',
+      title: '了解如何在 Next.js 中使用语言模型调用工具',
       link: '/examples/next-app/tools/call-tool',
     },
     {
       title:
-        '学习在 Next.js 中使用语言模型将 React 组件渲染为工具调用',
+        '了解如何在 Next.js 中使用语言模型将 React 组件渲染为工具调用',
       link: '/examples/next-app/tools/render-interface-during-tool-call',
     },
     {
-      title: '学习在 Node.js 中使用语言模型生成文本',
+      title: '了解如何在 Node.js 中使用语言模型生成文本',
       link: '/examples/node/generating-text/generate-text',
     },
     {
       title:
-        '学习在 Node.js 中使用语言模型生成聊天补全',
+        '了解如何在 Node.js 中使用语言模型生成聊天补全',
       link: '/examples/node/generating-text/generate-text-with-chat-prompt',
     },
   ]}

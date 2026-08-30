@@ -1,16 +1,16 @@
 ---
-title: 多步骤工具调用
-description: 学习如何使用 AI SDK 和 Next.js 进行多步骤工具调用
-tags: ['next', '流式传输', '工具使用']
+title: "多步骤工具调用"
+description: "了解如何使用 AI SDK 和 Next.js 进行多步骤工具调用"
+tags: ['next', 'streaming', 'tool use']
 ---
 
 # 多步骤工具调用
 
-某些语言模型擅长通过多步骤工具调用来完成更复杂的任务。当工具之间存在依赖关系，需要在同一生成步骤中按顺序执行时，这一特性尤为实用。
+某些语言模型擅长通过多步骤工具调用来完成更复杂的任务。当工具之间存在依赖关系，并且需要在同一生成步骤中按顺序执行时，这一点尤其有用。
 
 ## 客户端
 
-让我们创建一个 React 组件，从 `@ai-sdk/react` 模块导入 `useChat` Hook。当用户发送消息时，`useChat` Hook 会调用 `/api/chat` 端点。该端点将基于对话历史生成助手的响应，并将其流式传输到客户端。如果助手响应中包含工具调用，Hook 也会自动显示这些调用。
+让我们创建一个 React 组件，从 `@ai-sdk/react` 模块导入 `useChat` Hook。当用户发送消息时，`useChat` Hook 将调用 `/api/chat` 端点。该端点将根据对话历史生成助手的响应，并将其流式传输到客户端。如果助手响应中包含工具调用，Hook 也会自动显示它们。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -71,13 +71,13 @@ export default function Page() {
 
 ## 服务端
 
-你需要在 `/api/chat` 创建一个新路由，使用 `ai` 模块中的 `streamText` 函数，基于对话历史生成助手的响应。
+你将在 `/api/chat` 创建一个新路由，使用 `ai` 模块中的 `streamText` 函数根据对话历史生成助手的响应。
 
-你将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数指定两个工具：`getLocation` 和 `getWeather`。这两个工具会先获取用户位置，然后利用该位置获取天气信息。
+你将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数指定两个工具，分别名为 `getLocation` 和 `getWeather`，它们将首先获取用户的位置，然后使用该位置获取天气。
 
-你需要添加前面提到的两个函数，并使用 zod 指定其参数的模式。
+你将添加前面提到的两个函数，并使用 zod 指定其参数的 schema。
 
-要实现多步骤工具调用，可以使用 `stopWhen` 选项来指定模型生成工具调用时的停止条件。在此示例中，你将设置为 `isStepCount(5)`，以允许多次连续的工具调用（步骤）。
+要执行多步骤工具调用，你可以使用 `stopWhen` 选项来指定模型生成工具调用时的停止条件。在此示例中，你将将其设置为 `isStepCount(5)`，以允许多次连续的工具调用（步骤）。
 
 ```ts filename='app/api/chat/route.ts'
 import {
@@ -96,28 +96,28 @@ import { z } from 'zod';
 
 const tools = {
   getLocation: tool({
-    description: '获取用户的位置',
+    description: 'Get the location of the user',
     inputSchema: z.object({}),
     execute: async () => {
       const location = { lat: 37.7749, lon: -122.4194 };
-      return `你的位置位于纬度 ${location.lat}，经度 ${location.lon}`;
+      return `Your location is at latitude ${location.lat} and longitude ${location.lon}`;
     },
   }),
   getWeather: tool({
-    description: '获取某个位置的天气',
+    description: 'Get the weather for a location',
     inputSchema: z.object({
-      city: z.string().describe('要获取天气的城市'),
+      city: z.string().describe('The city to get the weather for'),
       unit: z
         .enum(['C', 'F'])
-        .describe('显示温度的单位'),
+        .describe('The unit to display the temperature in'),
     }),
     execute: async ({ city, unit }) => {
       const weather = {
         value: 24,
-        description: '晴朗',
+        description: 'Sunny',
       };
 
-      return `当前 ${city} 的天气为 ${weather.value}°${unit}，${weather.description}！`;
+      return `It is currently ${weather.value}°${unit} and ${weather.description} in ${city}!`;
     },
   }),
 } satisfies ToolSet;
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: 'openai/gpt-4o',
-    system: '你是一个乐于助人的助手。',
+    instructions: 'You are a helpful assistant.',
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
     tools,

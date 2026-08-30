@@ -1,13 +1,13 @@
 ---
-title: WorkflowChatTransport
-description: WorkflowChatTransport 类的 API 参考文档。
+title: "WorkflowChatTransport"
+description: "WorkflowChatTransport 类的 API 参考文档。"
 ---
 
 # `WorkflowChatTransport`
 
-一个用于 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 的 [`ChatTransport`](/docs/ai-sdk-ui/transport) 实现，可为基于工作流的聊天应用启用自动流重连。它向聊天端点发送消息，提取 `x-workflow-run-id` 响应头，并在发生中断（网络故障、页面刷新、函数超时）时重新连接到 `/{runId}/stream` 端点。
+一个用于 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 的 [`ChatTransport`](/docs/ai-sdk-ui/transport) 实现，可为基于工作流的聊天应用启用自动流重连。它将消息发送到聊天端点，提取 `x-workflow-run-id` 响应头，并在中断（网络故障、页面刷新、函数超时）时重新连接到 `/{runId}/stream` 端点。
 
-与假设完整响应通过单个 HTTP 请求到达的 [`DefaultChatTransport`](/docs/ai-sdk-ui/transport) 不同，`WorkflowChatTransport` 专为 [Workflow SDK](https://vercel.com/docs/workflow) 设计，在该 SDK 中，初始响应流可能因函数超时而中断。该传输层会自动检测缺失的 `finish` 事件并重新连接，以从流中断处恢复。
+与假设完整响应在单个 HTTP 请求中到达的 [`DefaultChatTransport`](/docs/ai-sdk-ui/transport) 不同，`WorkflowChatTransport` 专为 [Workflow SDK](https://vercel.com/docs/workflow) 设计，在该 SDK 中，初始响应流可能会因函数超时而中断。该传输层会自动检测缺失的 `finish` 事件，并重新连接以从流中断处恢复。
 
 ```tsx
 'use client';
@@ -20,7 +20,6 @@ export default function Chat() {
     transport: new WorkflowChatTransport({
       api: '/api/chat',
       maxConsecutiveErrors: 5,
-      initialStartIndex: -50,
     }),
   });
 
@@ -46,7 +45,7 @@ export default function Chat() {
       type: 'string',
       isOptional: true,
       description:
-        "聊天请求的 API 端点。重连端点由此派生为 `{api}/{runId}/stream`。默认值：'/api/chat'。",
+        "用于聊天请求的 API 端点。重连端点由此派生为 `{api}/{runId}/stream`。默认值：'/api/chat'。",
     },
     {
       name: 'fetch',
@@ -60,42 +59,42 @@ export default function Chat() {
       type: 'number',
       isOptional: true,
       description:
-        '重连尝试期间允许的最大连续错误次数，超过后放弃。默认值：3。',
+        '在放弃之前，重连尝试期间允许的最大连续错误次数。默认值：3。',
     },
     {
       name: 'initialStartIndex',
       type: 'number',
       isOptional: true,
       description:
-        '重连时默认的起始块索引。负值从流的末尾读取（例如，-50 获取最后 50 个块），适用于页面刷新后恢复，无需重放整个对话。可通过 reconnectToStream 选项按调用覆盖。默认值：0。',
+        '重连时默认的起始块索引。负值从持久化 UIMessageChunk 流的末尾读取（例如，-50 获取最后 50 个块），适用于页面刷新后恢复而无需重放完整对话。原始 ModelCallStreamPart 流不支持负 UI 块索引。可通过 reconnectToStream 选项按调用覆盖。默认值：0。',
     },
     {
       name: 'onChatSendMessage',
       type: '(response: Response, options: SendMessagesOptions) => void | Promise<void>',
       isOptional: true,
       description:
-        '初始 POST 请求成功后调用的回调。适用于检查响应头（例如，提取工作流运行 ID）或在客户端跟踪聊天历史。',
+        '初始 POST 请求成功后调用的回调。可用于检查响应头（例如，提取工作流运行 ID）或在客户端跟踪聊天历史。',
     },
     {
       name: 'onChatEnd',
       type: '({ chatId, chunkIndex }) => void | Promise<void>',
       isOptional: true,
       description:
-        '流结束时（收到 finish 块）调用的回调。接收聊天 ID 和总块数。适用于清理或状态更新。',
+        '流结束时（收到 finish 块）调用的回调。接收聊天 ID 和总块数。可用于清理或状态更新。',
     },
     {
       name: 'prepareSendMessagesRequest',
       type: 'PrepareSendMessagesRequest',
       isOptional: true,
       description:
-        '发送前自定义 POST 请求的函数。可以覆盖 API 端点、请求头、凭据和请求体。',
+        '在发送前自定义 POST 请求的函数。可覆盖 API 端点、请求头、凭据和请求体。',
     },
     {
       name: 'prepareReconnectToStreamRequest',
       type: 'PrepareReconnectToStreamRequest',
       isOptional: true,
       description:
-        '自定义重连 GET 请求的函数。可以覆盖 API 端点、请求头和凭据。',
+        '自定义重连 GET 请求的函数。可覆盖 API 端点、请求头和凭据。',
     },
   ]}
 />
@@ -104,9 +103,9 @@ export default function Chat() {
 
 ### `sendMessages()`
 
-通过 POST 向聊天端点发送消息并返回流式响应。如果流被中断（未收到 `finish` 事件），传输层会自动通过 GET 请求重新连接到 `{api}/{runId}/stream?startIndex={chunkIndex}`，以从中断处恢复。
+通过 POST 将消息发送到聊天端点并返回流式响应。如果流被中断（未收到 `finish` 事件），传输层会自动通过 GET 重新连接到 `{api}/{runId}/stream?startIndex={chunkIndex}`，以从上次中断处恢复。
 
-POST 请求将消息作为 JSON 发送，并期望响应包含标识工作流运行的 `x-workflow-run-id` 头。
+POST 请求将消息作为 JSON 包含在内，并期望响应包含标识工作流运行的 `x-workflow-run-id` 头。
 
 ```ts
 const stream = await transport.sendMessages({
@@ -145,18 +144,18 @@ const stream = await transport.sendMessages({
       name: 'abortSignal',
       type: 'AbortSignal | undefined',
       description:
-        '用于中止请求的信号。会传播到初始 POST 请求和任何重连 GET 请求。',
+        '用于中止请求的信号。会传播到初始 POST 和任何重连 GET 请求。',
     },
   ]}
 />
 
 #### 返回值
 
-返回一个 `Promise<ReadableStream<UIMessageChunk>>`，包含来自初始 POST 响应和任何自动重连的块。
+返回一个 `Promise<ReadableStream<UIMessageChunk>>`，其中包含来自初始 POST 响应和任何自动重连的块。
 
 ### `reconnectToStream()`
 
-重新连接到之前中断的现有聊天流。适用于页面刷新后恢复，或客户端需要重新建立连接时。
+重新连接到先前中断的现有聊天流。适用于页面刷新后恢复或客户端需要重新建立连接时。
 
 ```ts
 const stream = await transport.reconnectToStream({
@@ -183,7 +182,7 @@ const stream = await transport.reconnectToStream({
       type: 'number',
       isOptional: true,
       description:
-        "覆盖此次重连的起始索引。负值从流的末尾读取。省略时，回退到构造函数的 initialStartIndex。",
+        "覆盖此次重连的起始索引。当服务器的持久化流和 tail-index 头使用相同的 UIMessageChunk 索引空间时，负值从末尾读取。省略时，回退到构造函数的 initialStartIndex。",
     },
   ]}
 />
@@ -192,22 +191,24 @@ const stream = await transport.reconnectToStream({
 
 返回一个 `Promise<ReadableStream<UIMessageChunk> | null>`。
 
-## 重连机制
+## 重连工作原理
 
 传输层遵循以下流程：
 
 1. **POST** 到 `{api}` 并携带消息。响应必须包含 `x-workflow-run-id` 头。
-2. **流式传输** SSE 响应，计数到达的块。
+2. **流式传输** SSE 响应，在块到达时计数。
 3. **检测中断**：如果流在没有 `finish` 事件的情况下关闭（例如，函数超时、网络错误），传输层会知道响应不完整。
-4. **重连**：通过 GET 请求到 `{api}/{runId}/stream?startIndex={chunkIndex}`，从最后接收的块恢复。
-5. **重试**：如果重连流也中断，最多重试 `maxConsecutiveErrors` 次。
+4. **重连** 通过 GET 到 `{api}/{runId}/stream?startIndex={chunkIndex}`，从最后接收的块恢复。
+5. **重试**：如果重连流也中断，则重试最多 `maxConsecutiveErrors` 次。
 6. **完成**：一旦收到 `finish` 事件，调用 `onChatEnd` 并关闭流。
 
 ### 负起始索引
 
-当 `initialStartIndex` 为负值时（例如，`-50`），传输层会原样发送到第一个重连请求。服务器应将其解析为绝对位置，并返回 `x-workflow-stream-tail-index` 响应头，以便传输层为后续重试计算正确位置。
+当 `initialStartIndex` 为负值（例如，`-50`）时，传输层会在第一次重连请求中按原样发送。服务器应将其解析为绝对位置，并返回 `x-workflow-stream-tail-index` 响应头，以便传输层为后续重试计算正确的位置。
 
-如果该头缺失或无效，传输层会回退到从头开始重放（`startIndex=0`）。
+如果该头缺失或无效，传输层会回退到从头重放（`startIndex=0`）。
+
+负索引需要持久化的服务器流，其存储的对象已经是 `UIMessageChunk` 对象。下面显示的原始 `WorkflowAgent` 转换仅支持非负索引。
 
 ## 服务器要求
 
@@ -223,7 +224,7 @@ const stream = await transport.reconnectToStream({
 
 - 接受 `startIndex` 查询参数
 - 返回从给定块索引开始的 SSE 流
-- 对于负的 `startIndex`，解析为尾部并包含 `x-workflow-stream-tail-index` 响应头
+- 对于负 `startIndex`，解析到尾部并包含 `x-workflow-stream-tail-index` 响应头
 
 有关完整的端点示例，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent)。
 
@@ -250,7 +251,7 @@ export default function Chat() {
     <div>
       {messages.map(message => (
         <div key={message.id}>
-          {message.role === 'user' ? '用户: ' : 'AI: '}
+          {message.role === 'user' ? '用户：' : 'AI：'}
           {message.parts.map((part, index) =>
             part.type === 'text' ? <span key={index}>{part.text}</span> : null,
           )}
@@ -262,7 +263,7 @@ export default function Chat() {
 }
 ```
 
-### 带回调与页面刷新恢复
+### 带回调
 
 ```tsx
 'use client';
@@ -277,13 +278,12 @@ export default function Chat() {
       new WorkflowChatTransport({
         api: '/api/chat',
         maxConsecutiveErrors: 5,
-        initialStartIndex: -50, // 页面刷新后从最后 50 个块恢复
         onChatSendMessage: response => {
           const runId = response.headers.get('x-workflow-run-id');
-          console.log('工作流运行已启动:', runId);
+          console.log('工作流运行已开始：', runId);
         },
         onChatEnd: ({ chatId, chunkIndex }) => {
-          console.log(`聊天 ${chatId} 完成，共 ${chunkIndex} 个块`);
+          console.log(`聊天 ${chatId} 已完成，共 ${chunkIndex} 个块`);
         },
       }),
     [],
@@ -295,7 +295,7 @@ export default function Chat() {
 }
 ```
 
-### 服务端端点 (Next.js)
+### 服务器端端点（Next.js）
 
 ```ts filename="app/api/chat/route.ts"
 import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow';
@@ -318,6 +318,7 @@ export async function POST(request: Request) {
 
 ```ts filename="app/api/chat/[runId]/stream/route.ts"
 import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow';
+import { createUIMessageStreamResponse } from 'ai';
 import type { NextRequest } from 'next/server';
 import { getRun } from 'workflow/api';
 
@@ -329,19 +330,27 @@ export async function GET(
   const startIndex = Number(
     new URL(request.url).searchParams.get('startIndex') ?? '0',
   );
+  if (!Number.isSafeInteger(startIndex) || startIndex < 0) {
+    return Response.json(
+      { error: 'startIndex 必须是非负安全整数' },
+      { status: 400 },
+    );
+  }
 
   const run = await getRun(runId);
   const readable = run
-    .getReadable({ startIndex })
-    .pipeThrough(createModelCallToUIChunkTransform());
+    .getReadable({ startIndex: 0 })
+    .pipeThrough(
+      createModelCallToUIChunkTransform({ uiStartIndex: startIndex }),
+    );
 
-  return new Response(readable, {
+  return createUIMessageStreamResponse({
+    stream: readable,
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
       'x-workflow-run-id': runId,
     },
   });
 }
 ```
+
+此 `WorkflowAgent` 端点从索引 `0` 开始重放原始 `ModelCallStreamPart` 对象，然后在将它们转换为 `UIMessageChunk` 对象后应用传输层的非负游标。负起始索引需要持久化的流，其存储的对象已经是 `UIMessageChunk` 对象。

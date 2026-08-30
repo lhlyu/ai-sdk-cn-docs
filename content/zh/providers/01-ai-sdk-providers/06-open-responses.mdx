@@ -1,6 +1,6 @@
 ---
 title: "Open Responses"
-description: "了解如何将 Open Responses 提供商用于 AI SDK。"
+description: "了解如何将 Open Responses 提供商与 AI SDK 结合使用。"
 ---
 
 # Open Responses 提供商
@@ -8,11 +8,11 @@ description: "了解如何将 Open Responses 提供商用于 AI SDK。"
 [Open Responses](https://www.openresponses.org/) 提供商将 AI SDK
 核心连接到实现了兼容 Open Responses 的 `POST` 端点的语言模型服务器。Open Responses 是一个基于 OpenAI Responses API 的开放规范。
 
-对于实现此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果您直接调用 OpenAI 并且需要 OpenAI 特定的提供商选项或内置工具，请改用 [`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
+对于实现此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果你直接调用 OpenAI 并且需要 OpenAI 特定的提供商选项或内置工具，请改用 [`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
 
 ## 安装
 
-Open Responses 提供商在 `@ai-sdk/open-responses` 模块中可用。您可以通过以下方式安装它：
+Open Responses 提供商可在 `@ai-sdk/open-responses` 模块中使用。你可以通过以下命令安装它：
 
 <InstallPackages packages="@ai-sdk/open-responses" />
 
@@ -39,7 +39,7 @@ const openResponses = createOpenResponses({
 
   Open Responses API `POST` 端点的完整 URL。请传入端点 URL，例如 `http://localhost:1234/v1/responses`，而不仅仅是其基础 URL。
 
-您可以使用以下可选设置来自定义 Open Responses 提供商实例：
+你可以使用以下可选设置来自定义 Open Responses 提供商实例：
 
 - **apiKey** _string_
 
@@ -51,8 +51,7 @@ const openResponses = createOpenResponses({
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
-  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  默认为全局 `fetch` 函数。
+  自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。
 
 ### 端点示例
 
@@ -79,11 +78,11 @@ const openAIResponses = createOpenResponses({
 });
 ```
 
-您可以通过更改 `name`、`url`、身份验证和模型 ID，将相同的设置用于其他兼容服务。
+你可以通过更改 `name`、`url`、身份验证和模型 ID，使用相同的设置连接到其他兼容服务。
 
 ## 语言模型
 
-Open Responses 提供商实例是一个函数，您可以调用它来创建语言模型：
+Open Responses 提供商实例是一个函数，你可以调用它来创建语言模型：
 
 ```ts
 const model = openResponses('your-model-id');
@@ -91,7 +90,7 @@ const model = openResponses('your-model-id');
 
 模型 ID 将原样传递给端点。
 
-您可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，并且它们支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
+你可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，并且它们支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ### 生成文本
 
@@ -133,11 +132,11 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-## 推理和提供商选项
+## 推理与提供商选项
 
 使用顶层的 [`reasoning`](/docs/ai-sdk-core/reasoning) 设置来控制推理努力程度。提供商将支持的值映射到 Open Responses 的 `reasoning.effort` 字段。
 
-该提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。提供商选项键必须与传递给 `createOpenResponses` 的 `name` 匹配：
+该提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。提供商选项的键必须与传递给 `createOpenResponses` 的 `name` 匹配：
 
 ```ts
 import {
@@ -167,15 +166,15 @@ console.log(reasoningText);
 console.log(text);
 ```
 
-`reasoningEffort` 接受任何字符串，并原样传递给端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的端点原生值（例如 `'max'`），请使用它。当两者都设置时，`providerOptions` 中的 `reasoningEffort` 优先于顶层的 `reasoning` 值。
+`reasoningEffort` 接受任何字符串，并将原样传递给端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的端点原生值（例如 `'max'`），请使用此选项。当两者都设置时，`providerOptions` 中的 `reasoningEffort` 优先于顶层的 `reasoning` 值。
 
-`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`，并且可以与任一推理努力程度设置结合使用。推理支持和接受的努力程度值取决于端点和模型；不支持的值可能会被端点拒绝或忽略。
+`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`，并且可以与任一推理努力设置结合使用。推理支持和接受的努力值取决于端点和模型；不支持的值可能会被端点拒绝或忽略。
 
 ## 文件输入
 
-该提供商支持用户消息中的图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（例如 PDF）则作为 `input_file` 部分发送。
+该提供商支持在用户消息中包含图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（如 PDF）则作为 `input_file` 部分发送。
 
-您可以以内联数据的形式提供文件：
+你可以将文件作为内联数据提供：
 
 ```ts
 import { createOpenResponses } from '@ai-sdk/open-responses';
@@ -211,10 +210,99 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-您还可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据不受此提供商支持。
+你也可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。此提供商不支持提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据。
+
+## 实验性扩展
+
+Open Responses 实现可以添加带命名空间的工具、项目和流式事件。使用 `Experimental_OpenResponsesExtension` 来编码和解码实现的扩展线上格式。未注册的提供商工具会从请求中省略，并发出 `unsupported` 警告。
+
+此 API 是实验性的，在未来的版本中可能会更改。
+
+AI SDK 提供商工具 ID 使用点号表示法（`acme.document_search`），而 Open Responses 线上类型使用冒号表示法（`acme:document_search`）。`id` 中的命名空间必须与每个注册的线上类型中的命名空间匹配。
+
+```ts
+import {
+  createOpenResponses,
+  type Experimental_OpenResponsesExtension,
+} from '@ai-sdk/open-responses';
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const documentSearchExtension: Experimental_OpenResponsesExtension = {
+  id: 'acme.document_search',
+  toolType: 'acme:document_search',
+  itemTypes: ['acme:document_search_receipt'],
+  encodeTool: ({ name, args }) => ({
+    name,
+    index: args.index as string,
+  }),
+
+  decodeItem: ({ item }) => [
+    {
+      type: 'tool-call',
+      toolCallId: item.call_id as string,
+      toolName: item.name as string,
+      input: JSON.stringify(item.query),
+      providerExecuted: true,
+    },
+    {
+      type: 'tool-result',
+      toolCallId: item.call_id as string,
+      toolName: item.name as string,
+      result: item.result!,
+    },
+  ],
+};
+
+const acme = createOpenResponses({
+  name: 'acme',
+  url: 'https://api.acme.example/v1/responses',
+  experimental_extensions: [documentSearchExtension],
+});
+
+const documentSearch = tool({
+  type: 'provider',
+  id: 'acme.document_search',
+  args: { index: 'documentation' },
+  isProviderExecuted: true,
+  inputSchema: z.object({ text: z.string() }),
+  outputSchema: z.object({
+    documents: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+      }),
+    ),
+  }),
+});
+
+const result = await generateText({
+  model: acme('your-model-id'),
+  prompt: 'Find the extension documentation.',
+  tools: { documentSearch },
+});
+```
+
+在每个解码的 `tool-call` 或 `tool-input-start` 部分上设置 `providerExecuted`。它可以因项目或事件而异。
+
+扩展编解码器可以定义：
+
+- `encodeTool`：编码提供商工具。返回 `undefined` 会省略该工具并发出 `unsupported` 警告。选择被省略工具的 `toolChoice` 也会被省略。
+- `encodeToolChoice`：编码特定的 `toolChoice`。默认为 `{ type: toolType }`。
+- `decodeItem`：将已完成的项目映射到 AI SDK 内容部分。`mode` 为 `'generate'` 或 `'stream'`。
+- `encodeInputItem`：在原始线上项目不可用时，编码工具调用或工具结果历史记录。返回的项目必须包含 `id`、`status` 和已注册的带命名空间的 `type`。
+- `decodeEvent`：将流式事件映射到 AI SDK 流部分。其 `state` 映射在一次响应流期间有效。
+
+工具、项目和事件能力是独立的。例如，仅项目的扩展定义 `itemTypes` 和 `decodeItem`，而不定义 `toolType` 或 `encodeTool`。能力字段必须成对提供。
+
+每个解码的项目都会添加一个 `open-responses.extension-replay` 自定义部分，该部分将原始 JSON 存储在提供商元数据中。其他解码的部分引用该自定义部分，而不是复制项目。将 `result.response.messages` 传递给后续调用会重放一次原始项目，包括不透明字段。这也会保留那些仅解码为仅响应源部分的项目。
+
+适配器仅验证扩展判别器字段。在返回 AI SDK 部分之前，请在编解码器中验证其他项目和事件字段。原始项目存储在提供商元数据中，并可能出现在持久化消息、遥测、日志或 UI 负载中。
+
+扩展回调无法跨工作流步骤边界序列化。请在工作流步骤内部创建提供商。使用扩展配置的模型进行序列化会抛出 `SerializationError`。
 
 ## 限制
 
-- 停止序列、`topK` 和 `seed` 不受支持，并会在发出警告后被忽略。
+- 不支持停止序列、`topK` 和 `seed`，并且会发出警告并忽略它们。
 - 该提供商仅支持语言模型。它不提供嵌入或图像生成模型。
-- 支持 AI SDK 函数工具。提供商特定的内置工具和选项需要专门的提供商实现。
+- 支持 AI SDK 函数工具和已注册的 Open Responses 扩展。其他提供商特定的工具和选项需要专门的提供商实现。
