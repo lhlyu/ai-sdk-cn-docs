@@ -1,11 +1,11 @@
 ---
-title: uploadFile
-description: uploadFile 的 API 参考文档。
+title: "uploadFile"
+description: "uploadFile 的 API 参考。"
 ---
 
 # `uploadFile()`
 
-将文件上传到提供商，并返回一个 `ProviderReference`，该引用可用于后续的 API 调用，例如在传递给 `generateText` 或 `streamText` 的消息内容部分中。
+将文件上传到提供商，并返回一个 `ProviderReference`，该引用可在后续 API 调用中使用，例如在传递给 `generateText` 或 `streamText` 的消息内容部分中。
 
 ```ts
 import { uploadFile } from 'ai';
@@ -33,33 +33,46 @@ const { providerReference } = await uploadFile({
       name: 'api',
       type: 'FilesV4 | ProviderV4',
       description:
-        '用于上传的文件 API 接口。可以是 `FilesV4` 实例（例如 `openai.files()`），也可以是提供商实例本身（例如 `openai`），此时会自动调用 `.files()`。',
+        '用于上传的文件 API 接口。可以是 `FilesV4` 实例（例如 `openai.files()`），也可以是提供商实例（例如 `openai`），此时会自动调用 `.files()`。',
     },
     {
       name: 'data',
-      type: 'DataContent',
+      type: 'DataContent | { type: "stream"; stream: ReadableStream<Uint8Array> }',
       description:
-        '要上传的文件数据。可以是 `Uint8Array`、base64 编码的字符串、`ArrayBuffer` 或 `Buffer`。不支持 URL——请先获取内容再传入字节。',
+        '要上传的文件数据。可以是 `Uint8Array`、base64 编码的字符串、`ArrayBuffer`、`Buffer`，或带有 `{ type: "stream", stream }` 标签的形状（适用于支持流式上传的提供商；其他提供商会以 `UnsupportedFunctionalityError` 拒绝）。提供商将消费该流——任何失败的上传（包括在发出请求之前的验证失败）都会取消它，并且不得重复使用。不支持 URL——请先获取内容并传递字节。',
     },
     {
       name: 'mediaType',
       type: 'string',
       isOptional: true,
       description:
-        '文件的 IANA 媒体类型（例如 `image/png`、`application/pdf`）。如果未提供，则从文件字节自动检测。',
+        '文件的 IANA 媒体类型（例如 `image/png`、`application/pdf`）。如果未提供，则从文件字节自动检测；流数据无法嗅探，默认为 `application/octet-stream`。',
     },
     {
       name: 'filename',
       type: 'string',
       isOptional: true,
-      description: '上传文件的文件名。',
+      description:
+        '上传文件的文件名。基于 multipart 的提供商在省略时默认为 `"blob"`。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '用于取消上传的信号。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description: '随请求发送的附加 HTTP 头。',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions',
       isOptional: true,
       description:
-        '额外的提供商特定选项。例如，OpenAI 需要 `purpose` 字段。',
+        '附加的提供商特定选项。例如，OpenAI 需要 `purpose` 字段。',
     },
   ]}
 />
@@ -75,16 +88,36 @@ const { providerReference } = await uploadFile({
         '一个 `Record<string, string>`，将提供商名称映射到提供商特定的文件标识符。将其作为消息内容部分中的 `data` 或 `image` 字段传递。',
     },
     {
+      name: 'byteSize',
+      type: 'number',
+      isOptional: true,
+      description:
+        '上传文件的大小（以字节为单位），如果提供商报告了该值。',
+    },
+    {
+      name: 'createdAt',
+      type: 'Date',
+      isOptional: true,
+      description: '文件创建的时间，如果提供商报告了该值。',
+    },
+    {
+      name: 'expiresAt',
+      type: 'Date',
+      isOptional: true,
+      description:
+        '提供商将删除文件的时间（保留期限到期，例如来自请求的上传 TTL），如果提供商报告了该值。',
+    },
+    {
       name: 'providerMetadata',
       type: 'ProviderMetadata',
       isOptional: true,
       description:
-        '上传返回的额外提供商特定元数据。',
+        '上传返回的附加提供商特定元数据。',
     },
     {
       name: 'warnings',
       type: 'Warning[]',
-      description: '来自提供商的警告（例如不支持的设置）。',
+      description: '来自提供商的警告（例如不支持设置）。',
     },
   ]}
 />

@@ -5,12 +5,12 @@ description: "了解如何通过 AI SDK 框架适配器使用智能体客户端�
 
 # 智能体客户端协议框架
 
-智能体客户端协议（ACP）框架适配器将 `HarnessAgent` 连接到任何与 ACP 版本 1 兼容的框架。通用适配器负责桥接、ACP 客户端、主机工具中继、事件转换、审批和生命周期行为；内联配置文件描述如何安装和配置一个 ACP 运行时。
+智能体客户端协议（ACP）框架适配器将 `HarnessAgent` 连接到任何与 ACP 版本 1 兼容的框架。通用适配器负责桥接、ACP 客户端、主机工具中继、事件转换、审批和生命周期行为；内联配置文件描述了如何安装和配置一个 ACP 运行时。
 
-除了 ACP 框架适配器之外，您只需要一个可从 NPM 安装或通过受信任的 Bash 命令安装的 ACP 兼容实现。然后，您只需几行代码即可配置 ACP 框架适配器。
+除了 ACP 框架适配器之外，您只需要一个可从 NPM 安装或通过可信 Bash 命令安装的 ACP 兼容实现。然后，您只需几行代码即可配置 ACP 框架适配器。
 
 <Note>
-  框架包为**实验性**。随着这个早期 API 的进一步完善，版本之间可能会有破坏性更改。
+  框架包为**实验性**。随着此早期 API 的进一步完善，版本之间可能会有破坏性更改。
 </Note>
 
 ## 设置
@@ -19,7 +19,7 @@ description: "了解如何通过 AI SDK 框架适配器使用智能体客户端�
 
 ## 基本用法
 
-定义一个 ACP 框架配置文件，例如下面[完整实现](#完整的-acp-框架实现)之一，并将其传递给 `HarnessAgent`：
+定义一个 ACP 框架配置文件（例如下方[完整实现](#complete-acp-harness-implementations)之一），并将其传递给 `HarnessAgent`：
 
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
@@ -51,34 +51,35 @@ try {
 `createACP` 接受：
 
 - `harnessId`：此配置文件的稳定 kebab-case 标识。
-- `version`：ACP 协议版本。默认值为 `'v1'`，目前仅支持该版本。
-- `source`：如何获取 ACP 实现，可以是简单的 NPM 包、锁定的 NPM 安装或受信任的 Bash 安装命令。
+- `version`：ACP 协议版本。默认值且当前仅支持 `'v1'`。
+- `source`：如何获取 ACP 实现，可以是简单的 NPM 包、锁定 NPM 安装或可信 Bash 安装命令。
 - `executable`：从获取的实现中启动的裸命令名称。
 - `args`：传递给可执行文件的可选参数。
 - `forwardEnv`：要转发到沙箱中的非凭据主机环境变量名称。
 - `credentialEnv`：主机凭据环境变量名称。与 `credentialBrokering` 一起配置。
-- `credentialBrokering`：接收有效主机运行时环境作为 `env` 以及转发到沙箱的环境作为 `sandboxEnv` 的函数，然后返回附加的出站请求转换。在精确的请求头匹配中使用 `sandboxEnv` 中的凭据，在转换后的请求头中使用 `env` 中的真实凭据。
-- `credentialForwarding`：可选的同步或异步回调，在框架适配器将每个凭据转发到沙箱进程之前立即自定义该凭据。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名称。此回调仅控制转发到沙箱进程的值。它不限制框架适配器在主机进程中可以发现、读取或以其他方式访问哪些凭据。
+- `credentialBrokering`：接收有效主机运行时环境作为 `env` 以及转发到沙箱的环境作为 `sandboxEnv` 的函数，然后返回附加的出站请求转换。在精确请求头匹配中使用 `sandboxEnv` 中的凭据，在转换后的请求头中使用 `env` 中的真实凭据。
+- `credentialForwarding`：可选的同步或异步回调，在框架适配器将每个凭据转发到沙箱进程之前立即自定义该凭据。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名称。此回调仅控制转发到沙箱进程的值。它不限制框架适配器在主机进程中可以发现、读取或以其他方式访问的凭据。
 - `env`：在引导时写入的持久环境值。
-- `builtinTools`：可选的本地工具定义，用于静态类型和精确名称匹配。
+- `builtinTools`：用于静态类型和精确名称匹配的可选原生工具定义。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
-- `authentication`：宣传的 ACP 身份验证方法、元数据和客户端能力。
+- `authentication`：通告的 ACP 身份验证方法、元数据和客户端能力。
 - `auth`：下游提供商身份验证模式：
   - `auto`（默认）：当 Gateway 凭据和 `providerAuthentication` 配置可用时使用 AI Gateway；否则使用直接身份验证。
   - `direct`：始终使用直接身份验证，即使 Gateway 凭据可用。
   - `ai-gateway`：始终使用 AI Gateway，并在 Gateway 凭据不可用时抛出错误。这需要 `providerAuthentication` 配置。
   - 身份验证环境：从提供的记录中自动检测，而不是从主机进程环境中检测。
-- `providerAuthentication`：声明式的运行时特定 Gateway 环境。
+- `providerAuthentication`：声明式运行时特定 Gateway 环境。
 - `modelMapping`：从提供给 `HarnessAgent` 的 `model` 到实现使用的 ACP 操作的必需静态映射。使用 `session-config-option` 并将其配置选项 ID 作为 `path`，或使用 `session-model` 并将 `session/set_model` 请求属性作为 `path`。
-- `skillsDirectory`：相对于实现的有效 `$HOME` 的本地技能目录。默认值为 `.agents/skills`；对于使用不同位置的运行时，请覆盖它。
-- `instructionMapping`：从 `HarnessAgent` 指令到实现的本地系统或开发者提示词的可选映射。使用 `session-meta` 表示 ACP 会话请求的 `_meta` 字段下的路径，或使用 `launch-env-json` 表示 JSON 启动环境变量中的路径。省略时，指令将前置到第一个用户提示词。
-- `outputSchemaMapping`：从结构化输出 JSON Schema 到 ACP `session/prompt` 请求的 `_meta` 字段下路径的可选实现特定映射。ACP 不标准化结构化输出，因此除非所选实现记录了该私有扩展，否则请省略此项。
-- `permissionModeMapping`：从所有三种 Harness 权限模式到宣传的 ACP 会话模式或配置选项的映射。当 ACP 实现不支持该模式时，将条目设置为 `null`。省略时，适配器按工具类型将 `permissionMode` 应用于 ACP 权限请求。
+- `skillsDirectory`：相对于实现的有效 `$HOME` 的原生技能目录。默认为 `.agents/skills`；对于使用不同位置的运行时，请覆盖它。
+- `instructionMapping`：从 `HarnessAgent` 指令到实现的原生系统或开发者提示词的可选映射。使用 `session-meta` 表示 ACP 会话请求的 `_meta` 字段下的路径，或使用 `launch-env-json` 表示 JSON 启动环境变量中的路径。省略时，指令将前置到第一个用户提示词。
+- `outputSchemaMapping`：从结构化输出 JSON Schema 到 ACP `session/prompt` 请求的 `_meta` 字段下路径的可选实现特定映射。ACP 未标准化结构化输出，因此除非所选实现记录了该私有扩展，否则请省略此项。
+- `askUserQuestions`：实现特定 ACP 客户端问题请求与 Harness `askUserQuestions` 工具之间的可选转换。仅当 ACP 实现暴露等待客户端响应的原生请求时才配置它。
+- `permissionModeMapping`：从所有三种 Harness 权限模式到通告的 ACP 会话模式或配置选项的映射。当 ACP 实现不支持该模式时，将条目设置为 `null`。省略时，适配器按工具类型将 `permissionMode` 应用于 ACP 权限请求。
 - `session.meta`：用于会话创建和恢复的可序列化实现特定元数据。
 - `port`：暴露的桥接端口覆盖。
 - `startupTimeoutMs`：桥接启动超时。默认值为 120 秒。
-- `mintBridgeToken`：接收沙箱 ID 并返回桥接身份验证令牌的同步函数。默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回适当机密的令牌。
-- `clientApp`：可选的客户端归属，包含 `name` 和 `version`。默认值为已安装的 `ai-sdk/harness-acp/<version>` 标识，可用于 Gateway 环境占位符。
+- `mintBridgeToken`：接收沙箱 ID 并返回桥接身份验证令牌的同步函数。默认情况下，适配器生成随机的 32 字节令牌。自定义实现必须返回适当机密的令牌。
+- `clientApp`：带有 `name` 和 `version` 的可选客户端归属。默认为已安装的 `ai-sdk/harness-acp/<version>` 标识，可用于 Gateway 环境占位符。
 
 运行时特定的包名称、环境变量、模式和会话元数据属于内联配置文件，而不是通用适配器。
 
@@ -119,9 +120,9 @@ const source = {
 } as const;
 ```
 
-`packageVersion` 是可选的，提供时必须为精确版本。省略它则安装包的 `latest` dist-tag。省略版本也不会影响框架标识，因此新的上游版本不会使现有的生命周期状态失效。
+`packageVersion` 是可选的，提供时必须为精确版本。省略它则安装包的 `latest` dist-tag。省略版本也不会影响框架标识，因此新的上游版本不会使现有生命周期状态失效。
 
-简单来源仅固定请求的 ACP 包，而其传递依赖在沙箱引导时解析。要冻结完整安装，请使用锁定来源并提供 `package.json` 及其 `pnpm-lock.yaml` 的内容：
+简单来源仅固定所请求的 ACP 包，而其传递依赖在沙箱引导时解析。要冻结完整安装，请使用锁定来源并提供 `package.json` 及其 `pnpm-lock.yaml` 的内容：
 
 ```ts
 const source = {
@@ -132,11 +133,11 @@ const source = {
 } as const;
 ```
 
-锁定来源使用 `pnpm install --frozen-lockfile` 安装提供的文件。`pnpmWorkspaceYaml` 是可选的；当锁定安装需要工作区级别的 pnpm 配置时提供它，例如必需依赖构建脚本的精确版本 `allowBuilds` 策略。
+锁定来源使用 `pnpm install --frozen-lockfile` 安装提供的文件。`pnpmWorkspaceYaml` 是可选的；当锁定安装需要工作区级 pnpm 配置（例如必需依赖构建脚本的精确版本 `allowBuilds` 策略）时提供它。
 
-清单、锁文件以及可选的工作区配置是持久化的引导工件，并参与生命周期标识。不要在这些字符串中包含凭据。
+清单、锁文件和可选的工作区配置是持久化的引导产物，并参与生命周期标识。不要在这些字符串中包含凭据。
 
-安装命令来源在框架的确定性引导目录中运行受信任的 Bash 命令：
+安装命令来源在框架的确定性引导目录内运行可信 Bash 命令：
 
 ```ts
 const cursorSource = {
@@ -150,9 +151,9 @@ const fxSource = {
 } as const;
 ```
 
-该命令以 `set -euo pipefail` 运行，其工作目录设置为 `.harness-bootstrap/<harnessId>/implementation`，`HOME` 设置为紧邻其下方的 `home` 目录。所有持久化安装文件必须保留在该 `HOME` 下方。该命令必须将 `executable` 安装到 `$HOME/.local/bin`；适配器直接启动该确定性路径，不通过 shell，也不会回退到沙箱中已有的命令。
+该命令以 `set -euo pipefail` 运行，其工作目录设置为 `.harness-bootstrap/<harnessId>/implementation`，`HOME` 设置为其正下方的 `home` 目录。所有持久安装文件必须保留在该 `HOME` 之下。该命令必须将 `executable` 安装到 `$HOME/.local/bin`；适配器无需 shell 即可启动该确定性路径，并且不会回退到沙箱中已有的命令。
 
-安装命令不提供自动版本固定。成功的引导保持缓存，精确命令参与引导和生命周期标识。将命令视为可执行配置，不要在其中嵌入凭据，因为引导配方会被持久化。
+安装命令不提供自动版本固定。成功的引导保持缓存，精确命令参与引导和生命周期标识。将命令视为可执行配置，不要在其中嵌入凭据，因为引导配方是持久化的。
 
 ## 身份验证
 
@@ -176,13 +177,13 @@ const harness = createACP({
 });
 ```
 
-提供的记录替换用于身份验证发现的主机环境。`credentialEnv` 从此记录中读取，而 `forwardEnv` 继续从主机读取非身份验证运行时配置。凭据值被排除在引导和生命周期标识之外。
+提供的记录替换主机环境以进行身份验证发现。`credentialEnv` 从此记录读取，而 `forwardEnv` 继续从主机读取非身份验证运行时配置。凭据值被排除在引导和生命周期标识之外。
 
-对于直接身份验证，使用底层 ACP 实现读取的主机环境变量名称配置 `credentialEnv`，并使用 `credentialBrokering` 将其值映射到出站请求头。当网络沙箱支持附加请求转换时，ACP 进程看到来自 `sandboxEnv` 的值，默认情况下这些值是临时占位符。真实值在请求离开沙箱后注入，并且仅当请求包含精确的预期值时才注入。没有该能力的沙箱保留转发真实值的旧行为。仅将 `forwardEnv` 用于非凭据运行时配置。
+对于直接身份验证，使用底层 ACP 实现读取的主机环境变量名称配置 `credentialEnv`，并使用 `credentialBrokering` 将其值映射到出站请求头。当网络沙箱支持附加请求转换时，ACP 进程会看到 `sandboxEnv` 中的值，这些值默认为临时占位符。真实值在请求离开沙箱后注入，且仅当请求包含精确的预期值时才注入。没有该能力的沙箱保留转发真实值的旧行为。仅将 `forwardEnv` 用于非凭据运行时配置。
 
 ### Gateway 环境
 
-将 `providerAuthentication.gateway.env` 设置为底层 ACP 实现用于其提供商端点、凭据和归属的环境变量。配置文件值如 `gateway-api-key`、`gateway-base-url`、`gateway-authorization`、`client-app`、`client-app-name` 和 `client-app-version` 是适配器仅在 Gateway 身份验证被选中后才解析的占位符。三个 client-app 占位符分别解析为组合的 `name/version` 标识、其名称和其版本。结构化启动环境值在其占位符解析后序列化为 JSON。解析后的 Gateway 环境覆盖传递给 `credentialBrokering` 的环境中同名的直接值，因此一个回调可用于两种身份验证模式。
+将 `providerAuthentication.gateway.env` 设置为底层 ACP 实现用于其提供商端点、凭据和归属的环境变量。诸如 `gateway-api-key`、`gateway-base-url`、`gateway-authorization`、`client-app`、`client-app-name` 和 `client-app-version` 等配置文件值是占位符，适配器仅在 Gateway 身份验证被选中后才解析它们。三个 client-app 占位符分别解析为组合的 `name/version` 标识符、其名称和其版本。结构化启动环境值在其占位符解析后序列化为 JSON。解析后的 Gateway 环境覆盖传递给 `credentialBrokering` 的环境中同名的直接值，因此一个回调可用于两种身份验证模式。
 
 ## 沙箱
 
@@ -195,21 +196,21 @@ const sandbox = createVercelSandbox({
 });
 ```
 
-默认情况下，适配器使用第一个暴露的端口。在 `createACP` 上设置 `port` 以选择另一个暴露的端口。如果两者都不可用，会话启动会抛出 `HarnessCapabilityUnsupportedError`，并附有配置说明。
+默认情况下，适配器使用第一个暴露的端口。在 `createACP` 上设置 `port` 以选择另一个暴露的端口。如果两者都不可用，会话启动将抛出 `HarnessCapabilityUnsupportedError`，并附有配置说明。
 
-桥接包、ACP 安装和重放状态位于适配器拥有的目录中，在会话项目之外。技能写入实现 `$HOME` 下方配置的本地目录。会话工作区从空开始。
+桥接包、ACP 安装和重放状态位于会话项目之外的适配器拥有的目录中。技能写入实现 `$HOME` 下配置的原生目录。会话工作区以空状态开始。
 
-## 工具和审批
+## 工具与审批
 
-可选的 `builtinTools` 定义仅在智能体提供与工具键或 `nativeName` 匹配的程序化名称时对本地 ACP 工具进行分类。不匹配的本地和第三方 MCP 调用仍然是有效的提供商执行的动态工具。
+可选的 `builtinTools` 定义仅在智能体提供与工具键或 `nativeName` 匹配的程序化名称时对原生 ACP 工具进行分类。未匹配的原生和第三方 MCP 调用仍然是有效的提供商执行的动态工具。
 
-主机定义的 AI SDK 工具通过框架拥有的 MCP 服务器暴露并在主机中执行。它们的递归 JSON Schema 被保留。没有 `execute` 的工具通过 `continueStream` 暂停等待调用方提供的结果。
+主机定义的 AI SDK 工具通过框架拥有的 MCP 服务器暴露并在主机中执行。它们的递归 JSON Schema 被保留。没有 `execute` 的工具通过 `continueStream` 暂停以等待调用者提供的结果。
 
-当 ACP 实现暴露本地权限控制时，映射所有三种 Harness 权限模式，并将不支持的模式设置为 `null`。选择 `null` 映射会抛出 `HarnessCapabilityUnsupportedError`。适配器根据会话响应验证具体模式或配置选项。配置映射后，任何仍然发生的 ACP 权限请求都会成为 Harness 审批请求。没有映射时，适配器自动为 `permissionMode` 允许的工具类型选择 `allow_once`，并对其余部分请求 Harness 审批。拒绝选择 `reject_once`；从不推断持久选择。主机工具审批保持独立。
+当 ACP 实现暴露原生权限控制时，映射所有三种 Harness 权限模式，并将不支持的模式设置为 `null`。选择 `null` 映射会抛出 `HarnessCapabilityUnsupportedError`。适配器根据会话响应验证具体模式或配置选项。配置映射后，任何仍然发生的 ACP 权限请求都会变成 Harness 审批请求。没有映射时，适配器自动为 `permissionMode` 允许的工具类型选择 `allow_once`，并为其余类型请求 Harness 审批。拒绝选择 `reject_once`；持久选择永远不会被推断。主机工具审批保持独立。
 
 ## 完整的 ACP 框架实现
 
-除非另有说明，这些配置文件支持通过下面显示的运行时特定环境变量进行直接身份验证，以及通过 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 进行 AI Gateway 身份验证。
+除非另有说明，这些配置文件支持通过下方显示的运行时特定环境变量进行直接身份验证，以及通过 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 进行 AI Gateway 身份验证。
 
 ### Claude Code ACP
 
@@ -290,7 +291,7 @@ export const claudeCodeACPHarness = createACP({
 });
 ```
 
-没有 Gateway 凭据时，此配置文件使用直接的 `ANTHROPIC_API_KEY` 或 `ANTHROPIC_AUTH_TOKEN` 身份验证。Gateway 环境通过 Claude 支持的 `CLAUDE_AGENT_SDK_CLIENT_APP` 设置提供版本化归属。`IS_SANDBOX` 允许 Claude Code ACP 在沙箱进程以 root 身份运行时宣传 `bypassPermissions`。
+没有 Gateway 凭据时，此配置文件使用直接的 `ANTHROPIC_API_KEY` 或 `ANTHROPIC_AUTH_TOKEN` 身份验证。Gateway 环境通过 Claude 支持的 `CLAUDE_AGENT_SDK_CLIENT_APP` 设置提供版本化归属。`IS_SANDBOX` 允许 Claude Code ACP 在沙箱进程以 root 身份运行时通告 `bypassPermissions`。
 
 ### Codex ACP
 
@@ -391,12 +392,12 @@ export const codexACPHarness = createACP({
 
 Codex ACP 仅支持 `permissionMode: 'allow-all'`。其限制性会话模式启用 Codex 的内部沙箱，该沙箱不得在已提供给 `HarnessAgent` 的沙箱内运行。
 
-`client-app` 占位符解析为带版本的 `ai-sdk/harness-acp/<version>` 标识，并将其作为 `User-Agent` 和 `x-client-app` 发送。
-没有 Gateway 凭据时，此配置文件使用直接的 `CODEX_API_KEY` 或 `OPENAI_API_KEY` 身份验证。Gateway `env` 值仅在选中 Gateway 时添加到 ACP 进程，因此直接运行时配置保持不变。
+`client-app` 占位符解析为带版本的 `ai-sdk/harness-acp/<version>` 标识符，并将其作为 `User-Agent` 和 `x-client-app` 发送。
+没有 Gateway 凭据时，此配置文件使用直接的 `CODEX_API_KEY` 或 `OPENAI_API_KEY` 身份验证。Gateway `env` 值仅在选择 Gateway 时添加到 ACP 进程，因此直接运行时配置保持不变。
 
 ### Cursor ACP
 
-Cursor 通过 `agent acp` 暴露 ACP，并使用 Bash 安装程序而不是 NPM 包安装其 CLI：
+Cursor 通过 `agent acp` 暴露 ACP，并使用 Bash 安装程序而非 NPM 包安装其 CLI：
 
 ```ts
 import { createACP } from '@ai-sdk/harness-acp';
@@ -443,13 +444,13 @@ export const cursorACPHarness = createACP({
 });
 ```
 
-更新标志防止缓存的安装在运行时自行更改。凭据代理仅限于 Cursor 的初始 API 密钥交换，因此后续请求保持该交换返回的短期 Cursor 访问令牌。
+更新标志可防止缓存的安装在运行时自行更改。凭据代理仅限于 Cursor 的初始 API 密钥交换，因此后续请求保留该交换返回的短期 Cursor 访问令牌。
 
-Cursor 支持 AI Gateway。使用 AI Gateway 凭据配置 Cursor 的 OpenAI API 密钥，并将 **Override OpenAI Base URL** 设置为 `https://ai-gateway.vercel.sh/cursor/v1`。常规 Cursor CLI 继续使用 `CURSOR_API_KEY` 向 Cursor 进行身份验证；该登录与 Cursor 账户中配置的模型提供商和路由是分开的。
+Cursor 支持 AI Gateway。使用 AI Gateway 凭据配置 Cursor 的 OpenAI API 密钥，并将**覆盖 OpenAI 基础 URL** 设置为 `https://ai-gateway.vercel.sh/cursor/v1`。常规 Cursor CLI 继续使用 `CURSOR_API_KEY` 向 Cursor 进行身份验证；该登录与 Cursor 账户中配置的模型提供商和路由是分开的。
 
 ### Grok Build ACP
 
-Grok Build 通过 `grok agent stdio` 直接暴露 ACP。它不为其权限行为宣传 ACP 会话模式，因此此配置文件省略了 `permissionModeMapping`：
+Grok Build 通过 `grok agent stdio` 直接暴露 ACP。它不为权限行为通告 ACP 会话模式，因此此配置文件省略了 `permissionModeMapping`：
 
 ```ts
 import { createACP } from '@ai-sdk/harness-acp';
@@ -509,7 +510,7 @@ export const grokBuildACPHarness = createACP({
 });
 ```
 
-没有 Gateway 凭据时，此配置文件使用直接的 `XAI_API_KEY` 身份验证。Gateway 环境提供客户端名称和版本归属。Grok Build 在内部处理其内置的安全操作。对于通过 ACP 发送的权限请求，适配器按工具类型应用配置的 Harness `permissionMode`，并对其余部分请求显式审批。
+没有 Gateway 凭据时，此配置文件使用直接的 `XAI_API_KEY` 身份验证。Gateway 环境提供客户端名称和版本归属。Grok Build 在内部处理其内置的安全操作。对于通过 ACP 发送的权限请求，适配器按工具类型应用配置的 Harness `permissionMode`，并为其余类型请求显式审批。
 
 ## 已知限制
 

@@ -1,6 +1,6 @@
 ---
 title: "createUIMessageStream"
-description: "createUIMessageStream 的 API 参考文档。"
+description: "createUIMessageStream 的 API 参考。"
 ---
 
 # `createUIMessageStream`
@@ -20,15 +20,18 @@ const existingMessages: UIMessage[] = [
 
 const stream = createUIMessageStream({
   async execute({ writer }) {
+    // 外层流拥有助手消息的生命周期。
+    writer.write({ type: 'start' });
+
     // 开始一条文本消息
     // 注意：text-start、text-delta 和 text-end 步骤中的 id 必须保持一致
-    // 这样系统才能正确识别它们属于同一个文本块
+    // 这允许系统正确识别它们属于同一个文本块
     writer.write({
       type: 'text-start',
       id: 'example-text',
     });
 
-    // 写入消息块
+    // 写入一个消息块
     writer.write({
       type: 'text-delta',
       id: 'example-text',
@@ -50,9 +53,9 @@ const stream = createUIMessageStream({
     writer.merge(
       toUIMessageStream({
         stream: result.stream,
+        sendStart: false,
         onEnd: ({ outcome }) => {
-          // 组合器决定模型流的输出结果也是
-          // 聚合流的输出结果。
+          // 组合器决定模型流的结果也是聚合流的结果。
           writer.setOutcome(outcome);
         },
       }),
@@ -62,12 +65,12 @@ const stream = createUIMessageStream({
   originalMessages: existingMessages,
   onEnd: ({ messages, isContinuation, outcome, responseMessage }) => {
     console.log('流结束，消息为：', messages);
-    console.log('流输出结果：', outcome.status);
+    console.log('流结果：', outcome.status);
   },
 });
 ```
 
-`setOutcome` 记录组合器的策略，而不会写入块或关闭流。通过 `setOutcome` 声明的第一个输出结果会被保留，但致命的执行、合并、错误处理或下游处理失败会使最终的 `onEnd` 输出结果为 `failed`。单独的 `error` 块本身不会改变输出结果。当合并多个子流时，请聚合它们的输出结果并仅调用一次 `setOutcome`。
+`setOutcome` 记录组合器的策略，而不会写入块或关闭流。通过 `setOutcome` 声明的第一个结果会被保留，但致命的执行、合并、错误处理或下游处理失败会使最终的 `onEnd` 结果为 `failed`。单独的 `error` 块本身不会改变结果。当合并多个子流时，请聚合它们的结果并仅调用一次 `setOutcome`。
 
 ## API 签名
 
@@ -87,7 +90,7 @@ const stream = createUIMessageStream({
             {
               name: 'write',
               type: '(part: UIMessageChunk) => void',
-              description: '将 UI 消息块写入流中。',
+              description: '将一个 UI 消息块写入流中。',
             },
             {
               name: 'merge',
@@ -99,13 +102,13 @@ const stream = createUIMessageStream({
               name: 'setOutcome',
               type: '(outcome: UIMessageStreamOutcome) => void',
               description:
-                "声明组合流的操作级输出结果。通过此方法声明的第一个输出结果会被保留，而致命的执行、合并、错误处理或下游处理失败会覆盖声明。支持的状态为 'completed'、'failed'、'aborted' 和 'unknown'。声明输出结果不会写入块或关闭流。",
+                "声明组合流的操作级结果。通过此方法声明的第一个结果会被保留，而致命的执行、合并、错误处理或下游处理失败会覆盖声明。支持的状态为 'completed'、'failed'、'aborted' 和 'unknown'。声明结果不会写入块或关闭流。",
             },
             {
               name: 'onError',
               type: '(error: unknown) => string',
               description:
-                '流写入器用于处理合并流中错误的错误处理器。',
+                '流写入器用于处理合并流中错误的错误处理函数。',
             },
           ],
         },
@@ -140,7 +143,7 @@ const stream = createUIMessageStream({
               name: 'isContinuation',
               type: 'boolean',
               description:
-                '指示响应消息是最后一条原始消息的延续，还是创建了新消息。',
+                '指示响应消息是最后一条原始消息的延续，还是创建了一条新消息。',
             },
             {
               name: 'isAborted',
@@ -151,19 +154,19 @@ const stream = createUIMessageStream({
               name: 'outcome',
               type: "UIMessageStreamOutcome = { status: 'completed' } | { status: 'failed'; error?: unknown } | { status: 'aborted' } | { status: 'unknown' }",
               description:
-                '流的操作级输出结果。它反映流所有者的声明，除非发生致命的流处理失败，并且与模型完成原因和单独的 error 块是分开的。',
+                '流的操作级结果。它反映流所有者的声明，除非发生致命的流处理失败，并且与模型完成原因和单独的 error 块无关。',
             },
             {
               name: 'responseMessage',
               type: 'UIMessage',
               description:
-                '作为响应发送给客户端的消息（包括被扩展的原始消息）。',
+                '作为响应发送给客户端的消息（如果原始消息被扩展，则包括原始消息）。',
             },
             {
               name: 'finishReason',
               type: 'FinishReason | undefined',
               description:
-                "生成完成的原因。可选值为：'stop'、'length'、'content-filter'、'tool-calls'、'error' 或 'other'。",
+                "生成结束的原因。可选值为：'stop'、'length'、'content-filter'、'tool-calls'、'error' 或 'other'。",
             },
           ],
         },

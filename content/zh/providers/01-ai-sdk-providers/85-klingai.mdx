@@ -36,7 +36,7 @@ const klingai = createKlingAI({
 - **apiKey** _string_
 
   Kling AI API 密钥。默认为 `KLINGAI_API_KEY` 环境变量。
-  在 [Kling AI 开发者控制台](https://kling.ai/dev/api-key) 中创建一个。
+  可在 [Kling AI 开发者控制台](https://kling.ai/dev/api-key) 中创建。
 
 - **accessKey** _string_
 
@@ -45,7 +45,7 @@ const klingai = createKlingAI({
 
 - **secretKey** _string_
 
-  Kling AI 密钥。默认为 `KLINGAI_SECRET_KEY` 环境变量。
+  Kling AI 秘密密钥。默认为 `KLINGAI_SECRET_KEY` 环境变量。
   旧版认证方式 — 建议使用 `apiKey`。
 
 - **baseURL** _string_
@@ -63,12 +63,12 @@ const klingai = createKlingAI({
   你可以将其用作中间件来拦截请求，
   或提供自定义 fetch 实现，例如用于测试。
 
-## 身份验证
+## 认证
 
-Kling AI 支持两种身份验证方案：
+Kling AI 支持两种认证方案：
 
-- **API 密钥**（推荐）。一个作为 bearer 令牌发送的单一密钥。在 [Kling AI 开发者控制台](https://kling.ai/dev/api-key) 中创建一个，并将其设置为 `KLINGAI_API_KEY`，或通过 `apiKey` 设置传入。
-- **访问密钥 / 密钥**（旧版）。提供商使用密钥对为每个请求签署短期 JWT。设置 `KLINGAI_ACCESS_KEY` 和 `KLINGAI_SECRET_KEY`，或传入 `accessKey` 和 `secretKey` 设置。
+- **API 密钥**（推荐）。一个作为 Bearer 令牌发送的单一密钥。在 [Kling AI 开发者控制台](https://kling.ai/dev/api-key) 中创建一个，并将其设置为 `KLINGAI_API_KEY`，或通过 `apiKey` 设置传入。
+- **访问密钥 / 秘密密钥**（旧版）。提供商使用密钥对为每个请求签署短期 JWT。设置 `KLINGAI_ACCESS_KEY` 和 `KLINGAI_SECRET_KEY`，或传入 `accessKey` 和 `secretKey` 设置。
 
 凭据按以下顺序解析，显式设置优先于环境变量：
 
@@ -82,7 +82,7 @@ Kling AI 支持两种身份验证方案：
 你可以使用 `.video()` 工厂方法创建 Kling AI 视频模型。
 有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
 
-该提供商目前支持四种视频生成模式：文生视频、图生视频、参考图生成视频（多图）和运动控制。
+该提供商目前支持四种视频生成模式：文生视频、图生视频、参考图生视频（多图）和运动控制。
 
 <Note>
   并非所有选项都受每个模型版本和模式组合的支持。请参阅
@@ -113,7 +113,7 @@ const { videos } = await generateVideo({
 
 ### 图生视频
 
-从起始帧图像生成视频，可附带文本提示词。流行的首尾帧功能可通过 `imageTail` 选项使用：
+从起始帧图像生成视频，可附带文本提示词。可通过 `imageTail` 选项使用流行的首尾帧功能：
 
 ```ts
 import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
@@ -128,7 +128,7 @@ const { videos } = await generateVideo({
   duration: 5,
   providerOptions: {
     klingai: {
-      // Pro 模式是首尾帧控制所必需的
+      // 首尾帧控制需要 Pro 模式
       mode: 'pro',
       // 可选：尾帧图像
       imageTail: 'https://example.com/end-frame.png',
@@ -139,7 +139,7 @@ const { videos } = await generateVideo({
 
 ### 多镜头视频生成
 
-使用多个分镜镜头生成视频，每个镜头都有各自的提示词和时长（Kling v3.0+）：
+使用多个故事板镜头生成视频，每个镜头都有自己的提示词和时长（Kling v3.0+）：
 
 ```ts
 import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
@@ -180,9 +180,9 @@ const { videos } = await generateVideo({
 
 多镜头模式也适用于图生视频，可将起始帧图像与每个镜头的提示词结合使用。
 
-### 参考图生成视频（多图）
+### 参考图生视频（多图）
 
-使用顶层 `inputReferences` 选项组合参考图像生成视频。
+使用顶层 `inputReferences` 选项生成结合参考图像的视频。
 
 ```ts
 import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
@@ -240,8 +240,7 @@ const { videos } = await generateVideo({
 
 - **mode** _'std' | 'pro'_
 
-  视频生成模式。`'std'` 性价比高。`'pro'` 生成质量更高
-  但耗时更长。
+  视频生成模式。`'std'` 性价比高。`'pro'` 生成质量更高，但耗时更长。
 
 - **pollIntervalMs** _number_
 
@@ -267,19 +266,19 @@ const { videos } = await generateVideo({
 
 - **cfgScale** _number_
 
-  视频生成的灵活性。值越高表示对提示词的遵循越强。范围：[0, 1]。V2.x 模型不支持。
+  视频生成的灵活性。值越高表示对提示词的遵循度越强。范围：[0, 1]。V2.x 模型不支持。
 
 - **cameraControl** _object_
 
-  摄像机运动控制，带有 `type` 预设（`'simple'`、`'down_back'`、`'forward_up'`、`'right_turn_forward'`、`'left_turn_forward'`）和可选的 `config`，包含 `horizontal`、`vertical`、`pan`、`tilt`、`roll`、`zoom` 值（范围：[-10, 10]）。
+  摄像机运动控制，包含 `type` 预设（`'simple'`、`'down_back'`、`'forward_up'`、`'right_turn_forward'`、`'left_turn_forward'`）以及可选的 `config`，包含 `horizontal`、`vertical`、`pan`、`tilt`、`roll`、`zoom` 值（范围：[-10, 10]）。
 
 - **multiShot** _boolean_
 
-  启用多镜头视频生成（Kling v3.0+）。为 true 时，视频被拆分为最多 6 个分镜镜头，每个镜头有独立的提示词和时长。
+  启用多镜头视频生成（Kling v3.0+）。为 true 时，视频将被拆分为最多 6 个故事板镜头，每个镜头具有独立的提示词和时长。
 
 - **shotType** _'customize' | 'intelligence'_
 
-  多镜头生成的分镜方法。`'customize'` 使用 `multiPrompt` 进行用户自定义镜头。`'intelligence'` 让模型根据主提示词自动分段。当 `multiShot` 为 true 时必填。
+  多镜头生成的故事板方法。`'customize'` 使用 `multiPrompt` 进行用户自定义镜头。`'intelligence'` 让模型根据主提示词自动分段。当 `multiShot` 为 true 时必填。
 
 - **multiPrompt** _Array&lt;\{index, prompt, duration\}&gt;_
 
@@ -287,7 +286,7 @@ const { videos } = await generateVideo({
 
 - **voiceList** _Array&lt;\{voice_id: string\}&gt;_
 
-  用于语音控制的语音参考（Kling v3.0+）。最多 2 个语音。在提示词中使用 `<<<voice_1>>>` 模板语法引用。需要 `sound: 'on'`。在 I2V 端点上不能与 `elementList` 共存。
+  用于声音控制的语音参考（Kling v3.0+）。最多 2 个语音。在提示词中使用 `<<<voice_1>>>` 模板语法进行引用。需要 `sound: 'on'`。在 I2V 端点上不能与 `elementList` 同时使用。
 
 #### 仅图生视频选项
 
@@ -307,7 +306,7 @@ const { videos } = await generateVideo({
 
 - **elementList** _Array&lt;\{element_id: number\}&gt;_
 
-  用于元素控制的参考元素（Kling v3.0+）。支持视频角色元素和多图像元素。I2V 最多 3 个元素（不能与 `voiceList` 共存）。运动控制最多 1 个元素。
+  用于元素控制的参考元素（Kling v3.0+）。支持视频角色元素和多图像元素。I2V 最多 3 个元素（不能与 `voiceList` 同时使用）。运动控制最多 1 个元素。
 
 #### 仅运动控制选项
 
@@ -323,48 +322,49 @@ const { videos } = await generateVideo({
 
 - **keepOriginalSound** _'yes' | 'no'_
 
-  是否保留参考视频中的原始声音。默认为 `'yes'`。
+  是否保留参考视频的原始声音。默认为 `'yes'`。
 
 <Note>
   视频生成是一个异步过程，可能需要几分钟时间。
   建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保
-  可靠运行。
+  可靠运行。状态轮询信任首次请求时配置的 Kling AI API 源，
+  并在遵循重定向之前验证每个到其他源的重定向。
 </Note>
 
 ### 视频模型能力
 
 #### 文生视频
 
-| 模型                       | 描述                                             |
-| -------------------------- | ------------------------------------------------ |
-| `kling-v3.0-t2v`           | 最新 v3.0，多镜头、语音控制、声音（3-15 秒）     |
-| `kling-v2.6-t2v`           | V2.6，pro 模式下支持声音                         |
-| `kling-v2.5-turbo-t2v`     | 针对速度优化，支持 std 和 pro                    |
-| `kling-v2.1-master-t2v`    | 高质量生成，仅 pro                               |
-| `kling-v2-master-t2v`      | 大师级质量生成                                   |
-| `kling-v1.6-t2v`           | V1.6 生成，支持 std 和 pro                       |
-| `kling-v1-t2v`             | 原始 V1 模型，支持摄像机控制（std）              |
+| 模型                       | 描述                                                         |
+| -------------------------- | ------------------------------------------------------------ |
+| `kling-v3.0-t2v`           | 最新 v3.0，多镜头、声音控制、音频（3-15 秒）                 |
+| `kling-v2.6-t2v`           | V2.6，Pro 模式下支持音频                                     |
+| `kling-v2.5-turbo-t2v`     | 针对速度优化，支持 std 和 pro                                |
+| `kling-v2.1-master-t2v`    | 高质量生成，仅 pro                                           |
+| `kling-v2-master-t2v`      | 大师级质量生成                                               |
+| `kling-v1.6-t2v`           | V1.6 生成，支持 std 和 pro                                   |
+| `kling-v1-t2v`             | 原始 V1 模型，支持摄像机控制（std）                          |
 
 #### 图生视频
 
 | 模型                       | 描述                                                         |
 | -------------------------- | ------------------------------------------------------------ |
-| `kling-v3.0-i2v`           | 最新 v3.0，多镜头、元素/语音控制、声音（3-15 秒）            |
-| `kling-v2.6-i2v`           | V2.6，pro 模式下支持声音和尾帧                               |
-| `kling-v2.5-turbo-i2v`     | 针对速度优化，pro 模式下支持尾帧                             |
+| `kling-v3.0-i2v`           | 最新 v3.0，多镜头、元素/声音控制、音频（3-15 秒）            |
+| `kling-v2.6-i2v`           | V2.6，Pro 模式下支持音频和尾帧                               |
+| `kling-v2.5-turbo-i2v`     | 针对速度优化，Pro 模式下支持尾帧                             |
 | `kling-v2.1-master-i2v`    | 高质量生成，仅 pro                                           |
-| `kling-v2.1-i2v`           | V2.1 生成，pro 模式下支持尾帧                                |
+| `kling-v2.1-i2v`           | V2.1 生成，Pro 模式下支持尾帧                                |
 | `kling-v2-master-i2v`      | 大师级质量生成                                               |
-| `kling-v1.6-i2v`           | V1.6 生成，pro 模式下支持尾帧                                |
-| `kling-v1.5-i2v`           | V1.5 生成，pro 模式下支持尾帧和运动笔刷                      |
+| `kling-v1.6-i2v`           | V1.6 生成，Pro 模式下支持尾帧                                |
+| `kling-v1.5-i2v`           | V1.5 生成，Pro 模式下支持尾帧和运动笔刷                      |
 | `kling-v1-i2v`             | 原始 V1 模型，std/pro 模式下支持尾帧和运动笔刷               |
 
 #### 运动控制
 
-| 模型                             | 描述                                                       |
-| -------------------------------- | ---------------------------------------------------------- |
-| `kling-v3.0-motion-control`      | 最新 v3.0，通过元素绑定增强面部一致性                      |
-| `kling-v2.6-motion-control`      | 将参考视频中的运动迁移到角色图像                            |
+| 模型                           | 描述                                                         |
+| ------------------------------ | ------------------------------------------------------------ |
+| `kling-v3.0-motion-control`    | 最新 v3.0，通过元素绑定增强面部一致性                        |
+| `kling-v2.6-motion-control`    | 将参考视频中的运动迁移到角色图像                             |
 
 <Note>
   如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传入。

@@ -5,7 +5,7 @@ description: "UIMessage 的 API 参考"
 
 # `UIMessage`
 
-`UIMessage` 作为应用程序状态的唯一事实来源，表示完整的消息历史记录，包括元数据、数据部分以及所有上下文信息。与 `ModelMessage`（表示传递给模型的状态或上下文）相比，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
+`UIMessage` 作为应用程序状态的真实来源，表示完整的消息历史记录，包括元数据、数据部分以及所有上下文信息。与 `ModelMessage`（表示传递给模型的状态或上下文）不同，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
 
 ## 类型安全
 
@@ -17,7 +17,7 @@ description: "UIMessage 的 API 参考"
 
 ## 创建您自己的 UIMessage 类型
 
-以下是如何为您的应用程序创建自定义类型的 UIMessage 的示例：
+以下是如何为您的应用程序创建自定义类型化 UIMessage 的示例：
 
 ```typescript
 import { InferUITools, ToolSet, UIMessage, tool } from 'ai';
@@ -69,7 +69,7 @@ interface UIMessage<
   metadata?: METADATA;
 
   /**
-   * 消息的部分。使用此属性在 UI 中渲染消息。
+   * 消息的部分。用于在 UI 中渲染消息。
    */
   parts: Array<UIMessagePart<DATA_PARTS, TOOLS>>;
 }
@@ -103,7 +103,7 @@ type TextUIPart = {
 type ReasoningUIPart = {
   type: 'reasoning';
   /**
-   * 推理部分的 ID。
+   * 推理部分 ID。
    */
   id?: string;
   /**
@@ -123,7 +123,7 @@ type ReasoningUIPart = {
 
 ### `ToolUIPart`
 
-表示工具调用及其结果的消息工具部分。
+表示工具调用及其结果的工具部分。
 
 <Note>
   该类型基于工具的名称（例如，名为 `someTool` 的工具对应
@@ -151,6 +151,36 @@ type ToolUIPart<TOOLS extends UITools = UITools> = ValueOf<{
         errorText?: never;
       }
     | {
+        state: 'approval-requested';
+        input: TOOLS[NAME]['input'];
+        output?: never;
+        errorText?: never;
+        approval: {
+          id: string;
+          approved?: never;
+          descriptor?: unknown;
+          requestReason?: string;
+          reason?: never;
+          isAutomatic?: boolean;
+          signature?: string;
+        };
+      }
+    | {
+        state: 'approval-responded';
+        input: TOOLS[NAME]['input'];
+        output?: never;
+        errorText?: never;
+        approval: {
+          id: string;
+          approved: boolean;
+          descriptor?: unknown;
+          requestReason?: string;
+          reason?: string;
+          isAutomatic?: boolean;
+          signature?: string;
+        };
+      }
+    | {
         state: 'output-available';
         input: TOOLS[NAME]['input'];
         output: TOOLS[NAME]['output'];
@@ -167,6 +197,8 @@ type ToolUIPart<TOOLS extends UITools = UITools> = ValueOf<{
   );
 }>;
 ```
+
+`approval.descriptor` 包含作为 `approvalDescriptor` 在审批请求流块上提供的可选不透明元数据。当工具部分从 `approval-requested` 转换到 `approval-responded` 以及后续包含审批的输出状态时，该元数据会被保留。
 
 ### `CustomContentUIPart`
 
@@ -188,7 +220,7 @@ type CustomContentUIPart = {
 
 ### `SourceUrlUIPart`
 
-消息的来源 URL 部分。
+消息的源 URL 部分。
 
 ```typescript
 type SourceUrlUIPart = {
@@ -202,7 +234,7 @@ type SourceUrlUIPart = {
 
 ### `SourceDocumentUIPart`
 
-消息的文档来源部分。
+消息的文档源部分。
 
 ```typescript
 type SourceDocumentUIPart = {
@@ -232,7 +264,7 @@ type FileUIPart = {
   filename?: string;
   /**
    * 文件的 URL。
-   * 可以是托管文件的 URL 或数据 URL。
+   * 可以是托管文件的 URL 或 Data URL。
    */
   url: string;
 };

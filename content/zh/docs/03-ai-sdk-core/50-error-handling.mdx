@@ -23,11 +23,11 @@ try {
 }
 ```
 
-有关可能抛出的不同类型错误的更多信息，请参阅[错误类型](/docs/reference/ai-sdk-errors)。
+有关可能抛出的不同类型的错误，请参阅[错误类型](/docs/reference/ai-sdk-errors)。
 
-## 处理流式传输错误（简单流）
+## 处理流式错误（简单流）
 
-当不支持错误块的流在传输过程中发生错误时，
+当不支持错误块的流中发生错误时，
 错误会作为常规错误抛出。
 您可以使用 `try/catch` 块处理这些错误。
 
@@ -49,7 +49,7 @@ try {
 }
 ```
 
-## 处理流式传输错误（支持 `error` 的流）
+## 处理流式错误（支持 `error` 的流式传输）
 
 `stream` 结果支持错误部分。
 您可以像处理其他部分一样处理这些部分。
@@ -101,12 +101,61 @@ try {
 }
 ```
 
-流式传输开始后到达的格式良好的提供商错误事件会被
-规范化为 [`StreamProviderError`](/docs/reference/ai-sdk-errors/ai-stream-provider-error)
-实例。相同的实例会提供给 `onError` 等回调以及
-完整流中的 `error` 部分。SDK 不会自动重启
-部分消费的流；请使用 `isRetryable` 实现应用管理的
-重试，并决定如何处理任何部分输出。
+## 流式传输开始后重试提供商错误
+
+`maxRetries` 会重试在启动模型调用时发生的失败。要重试
+在响应流式传输开始后收到的格式良好的提供商错误事件，
+请设置 `streamRetries`：
+
+```ts highlight="7"
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { textStream } = streamText({
+  model: __MODEL__,
+  prompt: '为 4 人写一份素食千层面食谱。',
+  streamRetries: 2,
+});
+
+for await (const textPart of textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+流重试仅使用相同的累积对话和生成上下文重新运行失败的模型步骤。之前完成的步骤（包括其工具调用和工具结果）不会被重放。来自失败尝试的工具输入、工具调用、审批请求、工具回调和客户端工具执行都会被丢弃。只有在某次尝试成功完成模型调用后，它们才会被暴露或执行。
+
+格式良好的提供商错误事件会被规范化为
+[`StreamProviderError`](/docs/reference/ai-sdk-errors/ai-stream-provider-error)
+实例。同一实例会提供给 `onError`，如果未请求恢复或重试已耗尽，则会提供给完整流中的 `error` 部分。在决定是否请求恢复时，请使用其 `isRetryable` 元数据。
+
+重试仍然是同一逻辑步骤的一部分。`onStepStart` 会为该步骤运行一次。`onLanguageModelCallStart` 会为每次提供商调用尝试运行，而 `onLanguageModelCallEnd` 仅对达到模型调用完成的尝试运行。
+
+您也可以在 `onError` 中动态决定。显式设置 `streamRetries` 以启用流恢复；当单次重试应仅由回调引导时，请使用 `0`：
+
+```ts highlight="7-12"
+const result = streamText({
+  model: __MODEL__,
+  prompt: '为 4 人写一份素食千层面食谱。',
+  streamRetries: 0,
+  onError: ({ error }) => {
+    if (isTransientProviderError(error)) {
+      return { retry: true };
+    }
+  },
+});
+```
+
+回调引导的恢复仅限于每个逻辑步骤一次重试。当配置了自动重试时，`onError` 可以在自动重试预算耗尽后请求一次额外的重试。这将某个步骤的恢复调用总数限制为 `streamRetries + 1`。
+
+当省略 `streamRetries` 时，所有流重试行为都会被禁用，现有的仅记录日志的 `onError` 回调会保留增量工具流式传输。`onError` 返回除 `{ retry: true }` 之外的值会保持其先前行为，并且不会请求恢复。已恢复的提供商错误事件不会作为最终的 `error` 部分发出。
+
+<Note type="warning">
+  提供商错误之前发出的非工具输出无法撤回。因此，重试的模型步骤可能会向消费者流追加重复或不同的部分文本、推理、文件或来源。在恢复的输出开始之前，开放的文本和推理部分会被结束，以便 UI 消费者不会将其保留在流式传输状态中。失败尝试的输出会从恢复的步骤结果、结构化数据输出解析、响应消息和后续模型步骤中排除。最终的请求和响应元数据来自恢复的尝试。重试还会增加延迟，并可能产生额外的提供商使用量和成本。
+</Note>
+
+<Note type="warning">
+  失败尝试隔离可防止 AI SDK 客户端工具执行，但无法撤销提供商执行工具已完成的工作。提供商端工作后重试步骤可能会重复该工作或其成本。请为提供商执行的副作用使用幂等控制。
+</Note>
 
 ## 处理流中止
 
@@ -126,7 +175,7 @@ const { textStream } = streamText({
     console.log('流在', steps.length, '个步骤后被中止');
   },
   onEnd: ({ steps, totalUsage }) => {
-    // 正常完成时调用
+    // 在正常完成时调用
     console.log('流正常完成');
   },
 });

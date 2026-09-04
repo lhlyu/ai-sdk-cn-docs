@@ -16,8 +16,8 @@ description: "创建并运行 AI SDK HarnessAgent 会话。"
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-claude-code @ai-sdk/sandbox-vercel" />
 
 基于桥接的 harness（如 Claude Code 和 Codex）需要使用真实的网络沙箱，
-例如 `@ai-sdk/sandbox-vercel`。主机运行时 harness（如 Pi）也可以使用
-`@ai-sdk/sandbox-just-bash` 运行，因为它们不需要沙箱暴露端口。
+例如 `@ai-sdk/sandbox-vercel`。基于宿主运行时的 harness（如 Pi）也可以使用
+`@ai-sdk/sandbox-just-bash` 运行，因为它们不需要暴露沙箱端口。
 
 ## 创建智能体
 
@@ -34,7 +34,7 @@ export const agent = new HarnessAgent({
     ports: [4000],
   }),
   instructions:
-    '你是一位细心的编码助手。倾向于小改动并解释权衡。',
+    'You are a careful coding assistant. Prefer small changes and explain tradeoffs.',
 });
 ```
 
@@ -56,7 +56,7 @@ let exitCode = 0;
 try {
   const result = await agent.generate({
     session,
-    prompt: '为此仓库创建一个简短的 TODO.md。',
+    prompt: 'Create a short TODO.md for this repository.',
   });
 
   console.log(result.text);
@@ -80,7 +80,7 @@ let exitCode = 0;
 try {
   const result = await agent.stream({
     session,
-    prompt: '为此仓库创建一个简短的 TODO.md。',
+    prompt: 'Create a short TODO.md for this repository.',
   });
 
   for await (const part of result.stream) {
@@ -97,11 +97,42 @@ try {
 }
 ```
 
+## 生命周期回调
+
+在 `HarnessAgent` 上配置生命周期回调，以观察智能体调用、模型
+步骤和工具执行：
+
+```ts
+const agent = new HarnessAgent({
+  harness: claudeCode,
+  sandbox,
+  tools: { weather },
+  onStart: event => console.log('call started', event.callId),
+  onStepStart: event => console.log('step started', event.stepNumber),
+  onLanguageModelCallStart: event =>
+    console.log('model call started', event.modelId),
+  onLanguageModelCallEnd: event =>
+    console.log('model call ended', event.finishReason),
+  onToolExecutionStart: event =>
+    console.log('tool started', event.toolCall.toolName),
+  onToolExecutionEnd: event => console.log('tool ended', event.toolOutput.type),
+  onStepEnd: step => console.log('step ended', step.stepNumber),
+  onEnd: event => console.log('call ended', event.finishReason),
+});
+```
+
+在单个 `generate()` 和 `stream()` 调用上配置的回调
+会与设置回调一起被调用，设置回调首先被调用。回调错误会被忽略，不会改变智能体执行。
+
+Harness 运行时在内部执行其内置工具。对于这些工具，
+`onToolExecutionStart` 和 `onToolExecutionEnd` 描述运行时报告结果后的逻辑工具
+生命周期。回调仍然会在工具结果发布到结果流之前被传递。
+
 ## 生成结构化输出
 
-在构造 `HarnessAgent` 时设置 `output`，以要求每一轮都输出相同的类型化结果。
-智能体将输出规范转换为 JSON Schema 供 harness 适配器使用，
-验证完整响应，并通过 `result.output` 返回解析后的值。
+在构造 `HarnessAgent` 时设置 `output`，以要求每轮返回相同的类型化输出。
+智能体将输出规范转换为 JSON Schema 以供 harness 适配器使用，验证完成的响应，
+并通过 `result.output` 返回解析后的值。
 
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
@@ -132,7 +163,7 @@ const session = await agent.createSession();
 try {
   const result = await agent.generate({
     session,
-    prompt: '生成一份千层面食谱。',
+    prompt: 'Generate a lasagna recipe.',
   });
   console.dir(result.output, { depth: Infinity });
 } finally {
@@ -140,9 +171,9 @@ try {
 }
 ```
 
-使用 `stream()` 时，读取 `partialOutputStream` 获取增量解析的值，
-并等待 `result.output` 获取验证后的最终值。结构化数据也仍然
-以 JSON 形式出现在常规文本和流式传输界面中；适配器不会将其添加到
+使用 `stream()` 时，读取 `partialOutputStream` 以获取增量解析的值，并
+等待 `result.output` 以获取验证后的最终值。结构化数据也仍然
+在常规文本和流界面中以 JSON 形式提供；适配器不会将其添加到
 `finish` 部分。
 
 Harness 结构化输出需要 schema。无 schema 的 `Output.json()` 以及
@@ -152,26 +183,25 @@ Harness 结构化输出需要 schema。无 schema 的 `Output.json()` 以及
 
 ## 消息与历史记录
 
-Harness 会话拥有其原生对话历史记录。当你传入 `messages`
+Harness 会话拥有其原生对话历史。当您传递 `messages`
 或消息数组形式的 `prompt` 时，`HarnessAgent` 会将最新的用户消息作为
-该轮的新的输入。它不会将完整的先前对话重放到 harness 中。
+该轮的新输入。它不会将完整的先前对话重放到 harness 中。
 
-末尾的工具消息处理方式不同：工具审批响应和
+尾随工具消息的处理方式不同：工具审批响应和
 客户端提供的工具结果会继续产生相应请求或工具调用的未完成 harness 轮次。
 
-这与模型调用不同，模型调用中应用程序通常发送完整的消息历史。
-在聊天路由中，应持久化并恢复 harness 会话，而不是依赖消息重放。
+这与模型调用不同，模型调用通常由应用程序发送完整的消息历史。
+在聊天路由中，请持久化并恢复 harness 会话，而不是依赖消息重放。
 
 ## 会话生命周期
 
 显式结束每个会话：
 
 - `session.destroy()` 停止运行时并丢弃可恢复性。
-- `session.detach()` 暂停运行时和沙箱，返回恢复状态，并
-  保持沙箱温暖以便稍后重新附加。如果轮次未完成，
-  恢复状态包含继续状态。
+- `session.detach()` 停放运行时和沙箱，返回恢复状态，并
+  保持沙箱温暖以供稍后附加。如果该轮未完成，恢复状态包含继续状态。
 - `session.stop()` 保存恢复状态，然后停止运行时和沙箱。如果
-  轮次未完成，恢复状态包含继续状态。
+  该轮未完成，恢复状态包含继续状态。
 - `session.suspendTurn()` 用于跨进程边界的进阶活动轮次继续。
 - `session.hasUnfinishedTurn()` 报告当前轮次是否必须在会话接受新提示词之前
   继续或挂起。
@@ -191,9 +221,9 @@ import { tool } from 'ai';
 import { z } from 'zod';
 
 const getPolicy = tool({
-  description: '查找当前项目策略。',
+  description: 'Look up the active project policy.',
   inputSchema: z.object({}),
-  execute: async () => '保持公共 API 向后兼容。',
+  execute: async () => 'Keep public APIs backward compatible.',
 });
 
 const agent = new HarnessAgent({
@@ -208,7 +238,7 @@ const agent = new HarnessAgent({
   prepareCall: ({ options, ...call }) => ({
     ...call,
     model: options.useCheaperModel ? 'claude-haiku-4-5' : undefined,
-    instructions: `作为 ${options.area} 专家工作。`,
+    instructions: `Work as the ${options.area} specialist.`,
     skills: [options.area === 'frontend' ? frontendSkill : backendSkill],
     tools: options.enablePolicyTool ? { getPolicy } : undefined,
   }),
@@ -218,7 +248,7 @@ const session = await agent.createSession();
 try {
   await agent.generate({
     session,
-    prompt: '审查当前实现。',
+    prompt: 'Review the current implementation.',
     options: {
       area: 'frontend',
       enablePolicyTool: false,
@@ -228,7 +258,7 @@ try {
 
   await agent.generate({
     session,
-    prompt: '现在审查 API 契约。',
+    prompt: 'Now review the API contract.',
     options: {
       area: 'backend',
       enablePolicyTool: true,
@@ -240,24 +270,23 @@ try {
 }
 ```
 
-`prepareCall` 在新的提示词的自定义 `options` 验证后运行。
-其设置随后在该整个轮次中固定。如果轮次因工具结果、
-审批、停止条件或进程交接而暂停，其继续会重用相同的设置，
-并且不会再次调用 `prepareCall`。这可以防止设置在轮次中途更改。
+`prepareCall` 在新提示词的自定义 `options` 验证后运行。其设置随后在该整轮中固定。
+如果该轮因工具结果、审批、停止条件或进程交接而暂停，其
+继续将重用相同的设置，并且不会再次调用 `prepareCall`。
+这可以防止设置在一轮中途更改。
 
-更改 `model` 不会创建新的 harness 会话。每个适配器在下一个提示词之前
-切换或重新配置其运行时，同时保留会话的对话历史。
+更改 `model` 不会创建新的 harness 会话。每个适配器在下一个提示词之前切换或
+重新配置其运行时，同时保留会话的对话历史。
 
-当 skills、instructions 或工具目录更改时，Codex 适配器会启动
-新的原生 Codex 线程，因为 `codex exec resume` 保留原始的原生线程引导。
-harness 会话仍然可用，但先前的原生对话上下文不会跨该设置更改边界传递。
-设置未更改的轮次会继续现有的原生线程。
+Codex 适配器在其 skills、instructions 或工具目录更改时启动新的原生 Codex 线程，
+因为 `codex exec resume` 保留原始原生线程引导。harness 会话仍然可用，但先前的
+原生对话上下文不会跨越该设置更改边界。设置未更改的轮次继续现有原生线程。
 
 直接将 `abortSignal` 传递给 `generate()` 或 `stream()`；它已经是
-每次调用的设置，不属于 `prepareCall`。`output` 也固定在
+每次调用的设置，不属于 `prepareCall` 的一部分。`output` 也固定在
 智能体上，因为其响应格式与智能体的输出 schema 绑定。
 
-当你将 `sandboxSession` 传递给 `agent.createSession()` 时，调用方保留
+当您将 `sandboxSession` 传递给 `agent.createSession()` 时，调用者保留
 该沙箱的所有权。`session.stop()` 和 `session.destroy()` 仍然结束
 harness 运行时，但不会停止或销毁提供的沙箱会话。
 在这种情况下，智能体的构造函数中不需要 `sandbox` 提供商。
@@ -296,14 +325,13 @@ const session = await agent.createSession(
 );
 ```
 
-`HarnessAgent` 在将恢复状态交给运行时之前，会验证该状态是由
-相同的 harness 适配器生成的。如果恢复状态包含未完成的轮次，
-请在发送新提示词之前调用 `continueStream()` 或 `continueGenerate()`。
+`HarnessAgent` 在将恢复状态交给运行时之前，验证该状态是由相同的 harness
+适配器生成的。如果恢复状态包含未完成的轮次，请在发送新提示词之前调用
+`continueStream()` 或 `continueGenerate()`。
 
 ## 继续挂起的轮次
 
-对于必须将活动轮次跨进程边界交接的进阶工作流，
-请挂起该轮次并持久化继续状态：
+对于必须跨进程边界交接活动轮次的进阶工作流，请挂起该轮次并持久化继续状态：
 
 ```ts
 if (session.hasUnfinishedTurn()) {
@@ -312,8 +340,8 @@ if (session.hasUnfinishedTurn()) {
 }
 ```
 
-当你只有来自 `suspendTurn()` 的原始继续状态时，使用
-`continueFrom` 恢复，然后在不发送新提示词的情况下继续该轮次：
+当您只有来自 `suspendTurn()` 的原始继续状态时，使用 `continueFrom` 恢复，
+然后在不发送新提示词的情况下继续该轮次：
 
 ```ts
 const session = await agent.createSession({
@@ -329,10 +357,10 @@ const result = await agent.continueStream({ session });
 
 ## 在 Harness 步骤后停止
 
-使用 `stopWhen` 选择语义步骤边界。谓词在真实的 harness 工具步骤
-（可以继续进入另一个模型步骤）之后运行，并接收当前调用的已完成步骤。
-当谓词匹配时，返回的结果完成，而底层轮次仍未完成。
-终端纯文本步骤则会消耗该轮次的 `finish` 事件并自然完成。
+使用 `stopWhen` 选择语义步骤边界。谓词在真实的 harness 工具步骤之后运行，
+这些步骤可以继续到另一个模型步骤，并接收当前调用的已完成步骤。
+当谓词匹配时，返回的结果完成，而底层轮次仍未完成。终端
+纯文本步骤则消耗该轮的 `finish` 事件并自然完成。
 
 ```ts
 import { isStepCount } from 'ai';
@@ -349,7 +377,7 @@ const steppedAgent = new HarnessAgent({
 const session = await steppedAgent.createSession();
 const result = await steppedAgent.generate({
   session,
-  prompt: '为此仓库创建一个简短的 TODO.md。',
+  prompt: 'Create a short TODO.md for this repository.',
 });
 
 if (session.hasUnfinishedTurn()) {
@@ -358,10 +386,9 @@ if (session.hasUnfinishedTurn()) {
 }
 ```
 
-`stopWhen` 没有默认值。省略时，`HarnessAgent` 会持续运行
-直到轮次自然完成或暂停等待主机输入，从而保留没有步骤控制的
-智能体的行为。传递一个谓词或数组；匹配任何
-谓词都会完成当前结果切片。使用
+`stopWhen` 没有默认值。省略时，`HarnessAgent` 会持续运行，直到
+该轮自然完成或暂停等待宿主输入，从而保留没有步骤控制的智能体的行为。
+传递一个谓词或数组；匹配任何谓词都会完成当前结果切片。使用
 `createSession({ continueFrom })` 和 `continueStream()` 或
 `continueGenerate()` 恢复已停止的轮次。
 
@@ -369,13 +396,13 @@ if (session.hasUnfinishedTurn()) {
 
 使用 `sandboxConfig` 在 harness 启动前准备沙箱。
 
-`sandboxConfig.onBootstrap` 在沙箱模板创建期间运行，在 harness 适配器
-自身的引导之后、支持快照的提供商发布快照之前。用于应由未来会话
-重用的昂贵设置。当你提供 `onBootstrap` 时，同时提供 `bootstrapHash`；
-每当引导输出应使可重用快照失效时，更改该哈希。
+`sandboxConfig.onBootstrap` 在沙箱模板创建期间运行，在 harness 适配器自身的
+引导之后、支持快照的提供商发布快照之前。用于应被未来会话重用的昂贵设置。
+当您提供 `onBootstrap` 时，也请提供 `bootstrapHash`；每当引导输出应使可重用快照
+失效时，更改哈希。
 
-`sandboxConfig.onSession` 在每个沙箱会话获取且其工作目录存在后运行，
-包括恢复的会话。用于每会话文件或轻量级配置。
+`sandboxConfig.onSession` 在每个沙箱会话被获取且其工作目录存在后运行，
+包括恢复的会话。用于每个会话的文件或轻量级配置。
 
 ```ts
 const agent = new HarnessAgent({
@@ -394,13 +421,13 @@ const agent = new HarnessAgent({
         abortSignal,
       });
       if (result.exitCode !== 0) {
-        throw new Error(`安装 ripgrep 失败：${result.stderr}`);
+        throw new Error(`Failed to install ripgrep: ${result.stderr}`);
       }
     },
     onSession: async ({ session, sessionWorkDir, abortSignal }) => {
       await session.writeTextFile({
         path: `${sessionWorkDir}/README.md`,
-        content: 'harness 的会话笔记。',
+        content: 'Session notes for the harness.',
         abortSignal,
       });
     },
@@ -408,14 +435,13 @@ const agent = new HarnessAgent({
 });
 ```
 
-`workDir` 是可选的。提供时，它必须相对于沙箱的
-默认工作目录，并用作会话工作目录。省略时，
-常规会话使用默认的 `<harnessId>-<sessionId>` 目录，
+`workDir` 是可选的。提供时，它必须相对于沙箱的默认工作目录，
+并用作会话工作目录。省略时，常规会话使用默认的 `<harnessId>-<sessionId>` 目录，
 而 `onBootstrap` 接收沙箱的默认工作目录。
 
 ## 准备可重用沙箱
 
-当你希望沙箱提供商提前为一个 harness 创建或刷新其可重用模板时，
+当您希望沙箱提供商提前为一个 harness 创建或刷新其可重用模板时，
 使用 `prepareHarnessSandboxTemplate()`：
 
 ```ts
@@ -440,10 +466,9 @@ await prepareHarnessSandboxTemplate({
 });
 ```
 
-当你拥有原生沙箱生命周期并希望自己快照准备好的沙箱时，
-使用 `prepareSandboxForHarness()`。它应用选定的 harness
-引导配方和 `sandboxConfig.onBootstrap`，然后返回准备
-元数据。它不会停止或快照沙箱。
+当您拥有原生沙箱生命周期并希望自己快照准备好的沙箱时，
+使用 `prepareSandboxForHarness()`。它应用选定的 harness 引导配方
+和 `sandboxConfig.onBootstrap`，然后返回准备元数据。它不会停止或快照沙箱。
 
 ```ts
 import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
@@ -465,7 +490,7 @@ const preparation = await prepareSandboxForHarness({
 
 const { snapshot } = await nativeSandbox.stop();
 if (snapshot == null) {
-  throw new Error('准备好的沙箱未创建快照。');
+  throw new Error('Prepared sandbox did not create a snapshot.');
 }
 
 const sandboxFromSnapshot = await Sandbox.create({
@@ -494,31 +519,36 @@ console.log(preparation.identity);
   harness 使用其默认模型。
 - `sandbox`：一个 `HarnessV1SandboxProvider`。
 - `id`：可选的稳定智能体标识符。
-- `instructions`：在支持时附加到运行时的系统或开发者
-  提示词的指令，否则前置到用户提示词。
-- `callOptionsSchema` 和 `prepareCall`：验证自定义调用选项并为每个新轮次
-  派生 model、skills、instructions 和 tools。
-- `output`：应用于每一轮的类型化输出规范。
-- `stopWhen`：在完成的 harness 工具步骤（可以继续进入另一个模型步骤）之后
-  完成结果切片的条件。
-- `tools`：当 harness 调用时由主机执行的 AI SDK 工具。
-- `activeTools`：harness 可以调用的内置和主机执行工具的允许列表。
-- `inactiveTools`：harness 不能调用的内置和主机执行工具的拒绝列表。
+- `instructions`：在支持时附加到运行时的系统或开发者提示词的指令，
+  否则前置到用户提示词。
+- `headers`：随模型请求发送的附加标头。标头在构造时固定。
+  不允许使用 `authorization`、`x-api-key`、`user-agent` 和
+  `x-client-app`。
+- `callOptionsSchema` 和 `prepareCall`：验证自定义调用选项并为每个新轮次派生
+  model、skills、instructions 和 tools。
+- `output`：应用于每轮的类型化输出规范。
+- `stopWhen`：在完成的 harness 工具步骤之后完成结果切片的条件，
+  该步骤可以继续到另一个模型步骤。
+- `tools`：当 harness 调用它们时由宿主执行的 AI SDK 工具。
+- `activeTools`：harness 可以调用的内置和宿主执行工具的允许列表。
+- `inactiveTools`：harness 不能调用的内置和宿主执行工具的拒绝列表。
 - `skills`：由适配器呈现的指令包。
 - `permissionMode`：内置工具权限模式。
-- `toolApproval`：主机执行工具的审批状态映射。
+- `toolApproval`：宿主执行工具的审批状态映射。
 - `sandboxConfig`：沙箱工作目录和生命周期 Hook 配置。
 - `telemetry`、`debug` 和 `onLog`：可观测性和诊断。
+
+遥测报告每轮解析的模型、指令和活动的宿主定义工具。Skills 是适配器上下文，
+没有对应的 AI SDK 遥测字段，因此不包含在标准遥测事件中。
 
 适配器特定设置属于适配器工厂，例如
 `createCodex({ reasoningEffort: 'high' })`。
 
 ## 自定义沙箱编排
 
-当你的应用程序自行创建和管理沙箱时，首先准备网络
-沙箱会话，然后将同一会话传递给 `agent.createSession()`。
-智能体不需要沙箱提供商，也不会停止或销毁
-调用方拥有的沙箱。
+当您的应用程序自行创建和管理沙箱时，请先准备网络沙箱会话，
+然后将同一会话传递给 `agent.createSession()`。智能体不需要沙箱提供商，
+也不会停止或销毁调用者拥有的沙箱。
 
 ```ts
 import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
@@ -544,7 +574,7 @@ const session = await agent.createSession({ sandboxSession });
 try {
   const result = await agent.stream({
     session,
-    prompt: '为此仓库创建一个简短的 TODO.md。',
+    prompt: 'Create a short TODO.md for this repository.',
   });
 
   for await (const part of result.stream) {
@@ -560,13 +590,11 @@ try {
 
 ### 无网络控制的基本沙箱会话
 
-以下示例演示了基本会话 API 的工作方式。如果你的项目
-可以暴露完整的网络沙箱会话，强烈建议传递该会话。仅在
-你的项目无法暴露完整网络会话时传递受限的基本会话。
+以下示例演示了基本会话 API 的工作方式。如果您的项目可以暴露完整的网络沙箱会话，
+强烈建议传递该会话。仅在您的项目无法暴露完整网络会话时传递受限的基本会话。
 
-基本沙箱会话仅暴露文件系统和进程 API。智能体仍然
-将沙箱生命周期留给调用方。对于基于桥接的 harness，
-在适配器上配置桥接端口及其外部可达端点，
+基本沙箱会话仅暴露文件系统和进程 API。智能体仍然将沙箱生命周期留给调用者。
+对于基于桥接的 harness，请在适配器上配置桥接端口及其外部可达端点，
 因为基本会话无法解析它们。
 
 ```ts
@@ -601,7 +629,7 @@ const session = await agent.createSession({
 try {
   const result = await agent.stream({
     session,
-    prompt: '为此仓库创建一个简短的 TODO.md。',
+    prompt: 'Create a short TODO.md for this repository.',
   });
 
   for await (const part of result.stream) {
@@ -617,10 +645,8 @@ try {
 
 ## 下一步
 
-- [工具](/docs/ai-sdk-harnesses/tools) 用于内置和主机执行的工具。
-- [技能](/docs/ai-sdk-harnesses/skills) 用于可重用的指令包。
-- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 用于适配器特定
-  设置。
-- [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 用于持久的
-  长时间运行轮次。
+- [工具](/docs/ai-sdk-harnesses/tools) 用于内置和宿主执行的工具。
+- [Skills](/docs/ai-sdk-harnesses/skills) 用于可重用的指令包。
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 用于适配器特定的设置。
+- [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 用于持久的长时间运行轮次。
 - [UI](/docs/ai-sdk-harnesses/ui) 用于 `useChat` 集成。

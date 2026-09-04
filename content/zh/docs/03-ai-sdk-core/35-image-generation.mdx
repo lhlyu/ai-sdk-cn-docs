@@ -79,26 +79,26 @@ const { images } = await generateImage({
 ```
 
 <Note>
-  `generateImage` 将根据需要自动（并行）调用模型，以生成所请求数量的图像。
+  `generateImage` 将根据需要自动（并行）调用模型多次，以生成所请求数量的图像。
 </Note>
 
-每个图像模型在单次 API 调用中都有一个内部限制，限制其可以生成的图像数量。AI SDK 通过在您使用 `n` 参数请求多张图像时适当批处理请求来自动管理此限制。默认情况下，SDK 使用提供商文档中记录的限制（例如，DALL-E 3 每次调用只能生成 1 张图像，而 DALL-E 2 最多支持 10 张）。
+每个图像模型在单次 API 调用中都有一个内部限制，限制其可以生成的图像数量。AI SDK 通过在使用 `n` 参数请求多张图像时适当批量处理请求来自动管理此限制。默认情况下，SDK 使用提供商文档中记录的限制（例如，DALL-E 3 每次调用只能生成 1 张图像，而 DALL-E 2 支持最多 10 张）。
 
-如有需要，您可以在生成图像时使用 `maxImagesPerCall` 设置覆盖此行为。这在处理新模型或自定义模型时特别有用，因为默认的批处理大小可能不是最优的：
+如有需要，您可以在生成图像时使用 `maxImagesPerCall` 设置覆盖此行为。这在处理新模型或自定义模型时特别有用，因为默认的批量大小可能不是最优的：
 
 ```tsx
 const { images } = await generateImage({
   model: __IMAGE_MODEL__,
   prompt: 'Santa Claus driving a Cadillac',
-  maxImagesPerCall: 5, // 覆盖默认批处理大小
-  n: 10, // 将进行 2 次调用，每次 5 张图像
+  maxImagesPerCall: 5, // 覆盖默认批量大小
+  n: 10, // 将进行 2 次调用，每次生成 5 张图像
 });
 ```
 
-### 提供种子
+### 提供种子值
 
-您可以向 `generateImage` 函数提供种子来控制图像生成过程的输出。
-如果模型支持，相同的种子将始终生成相同的图像。
+您可以向 `generateImage` 函数提供种子值来控制图像生成过程的输出。
+如果模型支持，相同的种子值将始终生成相同的图像。
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -114,7 +114,8 @@ const { image } = await generateImage({
 ### 提供商特定设置
 
 图像模型通常具有提供商甚至模型特定的设置。
-您可以使用 `providerOptions` 参数将这些设置传递给 `generateImage` 函数。提供商的选项（如下例中的 `openai`）将成为请求体属性。
+您可以使用 `providerOptions` 参数将这些设置传递给 `generateImage` 函数。
+提供商的选项（如下例中的 `openai`）将成为请求体属性。
 
 ```tsx highlight={"8-13"}
 import { generateImage } from 'ai';
@@ -135,7 +136,9 @@ const { image } = await generateImage({
 
 ### 中止信号和超时
 
-`generateImage` 接受一个可选的 `abortSignal` 参数，类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，您可以使用它来中止图像生成过程或设置超时。
+`generateImage` 接受一个可选的 `abortSignal` 参数，类型为
+[`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
+您可以使用它来中止图像生成过程或设置超时。
 
 ```ts highlight={"7"}
 import { generateImage } from 'ai';
@@ -150,7 +153,8 @@ const { image } = await generateImage({
 
 ### 自定义请求头
 
-`generateImage` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，您可以使用它为图像生成请求添加自定义请求头。
+`generateImage` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，
+您可以使用它向图像生成请求添加自定义请求头。
 
 ```ts highlight={"7"}
 import { generateImage } from 'ai';
@@ -176,7 +180,7 @@ const { image, warnings } = await generateImage({
 
 ### 提供商元数据
 
-某些提供商会为单个图像公开元数据。这些元数据可直接在生成的图像上获取：
+某些提供商会公开单个图像的元数据。这些元数据可直接在生成的图像上获取：
 
 ```tsx
 const prompt = 'Santa Claus driving a Cadillac';
@@ -198,7 +202,7 @@ console.log({
 
 ### 底层调用
 
-当请求被拆分为多个提供商调用时，`calls` 会保留每次调用的图像、提供商元数据、响应元数据、警告和使用情况。`images` 和 `usage` 分别保持便捷的扁平化视图和聚合视图。
+当请求被拆分为多个提供商调用时，`calls` 会保留每次调用的图像、提供商元数据、响应元数据、警告和使用量。`images` 和 `usage` 仍然分别提供便捷的扁平化视图和聚合视图。
 
 ```ts
 const { calls } = await generateImage({
@@ -215,17 +219,18 @@ for (const call of calls) {
 
 ### 错误处理
 
-当 `generateImage` 无法生成有效图像时，它会抛出 [`AI_NoImageGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-image-generated-error)。
+当 `generateImage` 无法生成有效图像时，它会抛出 [`AI_NoImageGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-image-generated-error) 错误。
 
-此错误在 AI 提供商无法生成图像时发生。可能由以下原因引起：
+当 AI 提供商无法生成图像时会发生此错误。可能由以下原因引起：
 
 - 模型未能生成响应
 - 模型生成的响应无法解析
 
 该错误保留了以下信息以帮助您记录问题：
 
-- `responses`：关于图像模型响应的元数据，包括时间戳、模型和请求头。
-- `cause`：错误的原因。您可以使用它进行更详细的错误处理
+- `calls`：底层图像模型调用的结果，包括生成的图像、提供商元数据、响应元数据、警告和使用量。
+- `responses`：图像模型响应的元数据，包括时间戳、模型和请求头。
+- `cause`：错误的原因。您可以使用它进行更详细的错误处理。
 
 ```ts
 import { generateImage, NoImageGeneratedError } from 'ai';
@@ -237,6 +242,12 @@ try {
     console.log('NoImageGeneratedError');
     console.log('Cause:', error.cause);
     console.log('Responses:', error.responses);
+
+    for (const call of error.calls ?? []) {
+      console.log('Provider metadata:', call.providerMetadata);
+      console.log('Warnings:', call.warnings);
+      console.log('Usage:', call.usage);
+    }
   }
 }
 ```
@@ -286,7 +297,7 @@ for (const file of result.files) {
   if (file.mediaType.startsWith('image/')) {
     // 文件对象提供多种数据格式：
     // 以 base64 字符串、Uint8Array 二进制数据访问图像，或检查类型
-    // - file.base64: string (数据 URL 格式)
+    // - file.base64: string (data URL 格式)
     // - file.uint8Array: Uint8Array (二进制数据)
     // - file.mediaType: string (例如 "image/png")
   }
@@ -344,10 +355,10 @@ for (const file of result.files) {
 | [Together.ai](/providers/ai-sdk-providers/togetherai#image-models)              | `black-forest-labs/FLUX.1.1-pro`                             | 512x512, 768x768, 1024x1024                                                                                                                                         |
 | [Together.ai](/providers/ai-sdk-providers/togetherai#image-models)              | `black-forest-labs/FLUX.1-pro`                               | 512x512, 768x768, 1024x1024                                                                                                                                         |
 | [Together.ai](/providers/ai-sdk-providers/togetherai#image-models)              | `black-forest-labs/FLUX.1-schnell-Free`                      | 512x512, 768x768, 1024x1024                                                                                                                                         |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-pro`                                           | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-max`                                           | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1-ultra`                                         | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1`                                               | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
-| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.0-fill`                                          | 从 3:7（竖屏）到 7:3（横屏）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-pro`                                           | 从 3:7（纵向）到 7:3（横向）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-kontext-max`                                           | 从 3:7（纵向）到 7:3（横向）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1-ultra`                                         | 从 3:7（纵向）到 7:3（横向）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1`                                               | 从 3:7（纵向）到 7:3（横向）                                                                                                                              |
+| [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.0-fill`                                          | 从 3:7（纵向）到 7:3（横向）                                                                                                                              |
 
-以上是 AI SDK 提供商支持的图像模型的一小部分。更多信息，请参阅相应的提供商文档。
+以上只是 AI SDK 提供商支持的图像模型中的一小部分。更多信息，请参阅相应的提供商文档。

@@ -1,11 +1,11 @@
 ---
-title: 输出
-description: Output 的 API 参考文档。
+title: "输出"
+description: "Output 的 API 参考文档。"
 ---
 
 # `Output`
 
-`Output` 对象为使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 生成结构化数据提供了输出规范。它允许你指定生成数据的预期形状，并自动处理验证。
+`Output` 对象为使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 生成结构化数据提供了输出规范。它允许你指定生成数据的预期结构，并自动处理验证。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -20,7 +20,7 @@ const { output } = await generateText({
       age: z.number(),
     }),
   }),
-  prompt: '生成一个用户档案。',
+  prompt: '生成一个用户资料。',
 });
 ```
 
@@ -40,7 +40,7 @@ import { generateText, Output } from 'ai';
 const { output } = await generateText({
   model: yourModel,
   output: Output.text(),
-  prompt: '讲个笑话。',
+  prompt: '给我讲个笑话。',
 });
 // output 是一个字符串
 ```
@@ -51,13 +51,13 @@ const { output } = await generateText({
 
 #### 返回值
 
-一个 `Output<string, string>` 规范，用于生成纯文本，无需模式验证。
+一个 `Output<string, string>` 规范，用于生成无模式验证的纯文本。
 
 ---
 
 ### `Output.object()`
 
-用于使用模式生成类型化对象的输出规范。输出会根据提供的模式进行验证，以确保类型安全。
+使用模式生成类型化对象的输出规范。输出将根据提供的模式进行验证，以确保类型安全。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -72,9 +72,9 @@ const { output } = await generateText({
       labels: z.array(z.string()),
     }),
   }),
-  prompt: '生成一个测试用户的信息。',
+  prompt: '为测试用户生成信息。',
 });
-// output 符合模式类型
+// output 匹配模式类型
 ```
 
 #### 参数
@@ -108,18 +108,18 @@ const { output } = await generateText({
 
 一个 `Output<OBJECT, DeepPartial<OBJECT>>` 规范，其中：
 
-- 完整输出会针对模式进行完全验证
-- 部分输出（在流式传输期间）是模式类型的深度部分版本
+- 完整输出根据模式进行完全验证
+- 部分输出（流式传输期间）是模式类型的深度部分版本
 
 <Note>
-  通过 `streamText` 流式传输的部分输出无法根据你提供的模式进行验证，因为不完整的数据可能尚未符合预期的结构。
+  通过 `streamText` 流式传输的部分输出无法根据你提供的模式进行验证，因为不完整的数据可能尚不符合预期的结构。
 </Note>
 
 ---
 
 ### `Output.array()`
 
-用于生成类型化元素数组的输出规范。每个元素都会根据提供的元素模式进行验证。
+用于生成类型化元素数组的输出规范。每个元素都根据提供的元素模式进行验证。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -133,6 +133,8 @@ const { output } = await generateText({
       temperature: z.number(),
       condition: z.string(),
     }),
+    minItems: 2,
+    maxItems: 2,
   }),
   prompt: '列出旧金山和巴黎的天气。',
 });
@@ -148,6 +150,20 @@ const { output } = await generateText({
       type: 'FlexibleSchema<ELEMENT>',
       description:
         '定义每个数组元素结构的模式。支持 Zod 模式、Valibot 模式或 JSON 模式。',
+    },
+    {
+      name: 'minItems',
+      type: 'number',
+      isOptional: true,
+      description:
+        '要生成的最小元素数量。必须是非负整数。',
+    },
+    {
+      name: 'maxItems',
+      type: 'number',
+      isOptional: true,
+      description:
+        '要生成的最大元素数量。必须是非负整数，并且大于或等于 minItems。',
     },
     {
       name: 'name',
@@ -170,8 +186,11 @@ const { output } = await generateText({
 
 一个 `Output<Array<ELEMENT>, Array<ELEMENT>>` 规范，其中：
 
-- 完整输出是一个所有元素都经过验证的数组
-- 部分输出仅包含完全验证的元素（不完整的元素会被排除）
+- 完整输出是一个数组，所有元素均已验证
+- 完整输出根据 `minItems` 和 `maxItems` 进行验证
+- 部分输出仅包含完全验证的元素（不完整的元素被排除）
+
+将 `minItems` 和 `maxItems` 设置为相同的值，以要求精确数量的元素。当提供商支持时，这些边界包含在面向提供商的模式中。AI SDK 还会验证完成的输出，因此忽略这些模式关键字的提供商无法返回超出边界的结果。
 
 #### 使用 `elementStream` 进行流式传输
 
@@ -199,7 +218,7 @@ for await (const hero of elementStream) {
 ```
 
 <Note>
-  `elementStream` 发出的每个元素都是完整且经过你的元素模式验证的，确保每个项目在生成时都具有类型安全。
+  `elementStream` 发出的每个元素都是完整且根据你的元素模式验证过的，确保生成时每个项目的类型安全。如果模型生成的数量超过 `maxItems`，`elementStream` 会在发出第一个多余元素之前报错。提供商生成不会自动中止，最终的 `output` 的 Promise 也会被拒绝。
 </Note>
 
 ---
@@ -216,7 +235,7 @@ const { output } = await generateText({
   output: Output.choice({
     options: ['sunny', 'rainy', 'snowy'] as const,
   }),
-  prompt: '今天的天气是晴天、雨天还是雪天？',
+  prompt: '今天天气是晴天、雨天还是雪天？',
 });
 // output 是 'sunny' | 'rainy' | 'snowy'
 ```
@@ -252,13 +271,13 @@ const { output } = await generateText({
 
 一个 `Output<CHOICE, CHOICE>` 规范，其中：
 
-- 完整输出被验证为提供的选项之一
+- 完整输出被验证为提供的选项中的一个
 
 ---
 
 ### `Output.json()`
 
-用于非结构化 JSON 生成的输出规范。当你想要生成任意 JSON 而不强制执行特定模式时，请使用此方法。
+用于非结构化 JSON 生成的输出规范。当你想要生成任意 JSON 而不强制执行特定模式时，请使用此选项。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -267,7 +286,7 @@ const { output } = await generateText({
   model: yourModel,
   output: Output.json(),
   prompt:
-    '对于每个城市，以 JSON 对象形式返回当前温度和天气状况。',
+    '对于每个城市，以 JSON 对象的形式返回当前温度和天气状况。',
 });
 // output 是任何有效的 JSON 值
 ```
@@ -306,7 +325,7 @@ const { output } = await generateText({
 
 ## 错误处理
 
-当 `generateText` 使用结构化输出无法生成有效对象时，它会抛出一个 [`NoObjectGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-object-generated-error)。
+当使用结构化输出的 `generateText` 无法生成有效对象时，它会抛出 [`NoObjectGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-object-generated-error)。
 
 ```ts
 import { generateText, Output, NoObjectGeneratedError } from 'ai';
@@ -315,7 +334,7 @@ try {
   await generateText({
     model: yourModel,
     output: Output.object({ schema }),
-    prompt: '生成一个用户档案。',
+    prompt: '生成一个用户资料。',
   });
 } catch (error) {
   if (NoObjectGeneratedError.isInstance(error)) {
@@ -328,7 +347,7 @@ try {
 }
 ```
 
-## 参见
+## 另请参阅
 
 - [生成结构化数据](/docs/ai-sdk-core/generating-structured-data)
 - [`generateText()`](/docs/reference/ai-sdk-core/generate-text)

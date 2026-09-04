@@ -9,7 +9,7 @@ description: "使用 @ai-sdk/policy-opa 和 Open Policy Agent 将工具授权规
 
 当你希望授权具备以下特性时使用它：
 
-- 作为独立的、可审查的工件编写，而不是隐藏在智能体设置中的函数。
+- 作为独立的、可审查的工件编写，而不是埋在智能体设置中的函数。
 - 可在 CI 中使用 `opa test` 测试，独立于 SDK。
 - 无需代码部署即可编辑（当从正在运行的 OPA 实例提供服务时）。
 
@@ -19,12 +19,12 @@ description: "使用 @ai-sdk/policy-opa 和 Open Policy Agent 将工具授权规
 
 OPA 是一个通用策略引擎。如果你能将规则表达为对结构化输入的代码，你就可以在工具边界强制执行它。常见类别：
 
-- 安全与访问：作用域、角色、权限、租户隔离、工具、主机或路径的允许列表。
+- 安全和访问：作用域、角色、权限、租户隔离、工具、主机或路径的允许列表。
 - 业务规则：谁可以在哪些资源上、在什么条件下做什么（例如，超过阈值的付款需要审批）。
-- 成本与用量：拒绝或要求审批超过预算、令牌上限或每用户配额的调用。
-- 合规与变更控制：将破坏性或受监管的操作限制在正确的审批人、环境或时间窗口内。
+- 成本和用量：拒绝或要求审批超出预算、令牌上限或每用户配额的调用。
+- 合规和变更控制：将破坏性或受监管的操作限制在正确的审批人、环境或时间窗口内。
 
-决策不仅限于当前调用的参数。策略 `input` 还携带 `messages`，即该次运行的完整模型和工具调用历史，因此规则可以考虑已经发生的事情：先前的工具调用、到目前为止的操作序列，或整个对话中的累计总数。示例：
+决策不仅限于当前调用的参数。策略 `input` 还携带 `messages`，即本次运行的完整模型和工具调用历史，因此规则可以考虑已经发生的事情：先前的工具调用、到目前为止的操作序列，或整个对话中的累计总数。示例：
 
 - 一旦一次运行已经执行了 N 次写入，就要求审批。
 - 拒绝在同一对话中执行第二次不可逆操作（推送、删除）。
@@ -32,12 +32,12 @@ OPA 是一个通用策略引擎。如果你能将规则表达为对结构化输�
 
 ### 最佳适用场景：确定性检查
 
-当决策是确定性的并且可以从结构化字段验证时，策略强制执行最为有效，无论这些字段来自当前调用还是 `messages` 中的历史记录。策略提取一个值并与之比较，因此每次答案都是相同的。
+当决策是确定性的并且可以从结构化字段验证时，策略执行是最强的，无论这些字段来自当前调用还是 `messages` 中的历史记录。策略提取一个值并与之比较，因此每次答案都是相同的。
 
-- 强适用：作用域、权限、数值阈值、允许列表、时间窗口，以及历史感知检查，如计数、序列和累计总数。
-- 弱适用：基于内容或语义的过滤，例如“不要使用不文明语言”或“阻止有毒内容”。这些是尽力而为的，难以验证，且容易被绕过。为它们使用专门的审核或分类步骤，并将策略保留在围绕它的确定性门控上。
+- 强适用：作用域、权限、数字阈值、允许列表、时间窗口以及历史感知检查，如计数、序列和累计总数。
+- 弱适用：基于内容或语义的过滤，如“不要使用不文明语言”或“阻止有害内容”。这些是尽力而为的，难以验证，且容易被绕过。为它们使用专门的审核或分类步骤，并围绕它保持策略作为确定性门控。
 
-经验法则：如果你能指向 `input` 对象中的一个字段并对其编写精确检查，这就是正确的工具。如果规则依赖于判断自由形式的含义，则不要仅依赖策略。
+经验法则：如果你能在 `input` 对象中指出一个字段并对其编写精确检查，这就是正确的工具。如果规则依赖于判断自由形式的含义，则不要仅依赖策略。
 
 ## 安装
 
@@ -45,18 +45,18 @@ OPA 是一个通用策略引擎。如果你能将规则表达为对结构化输�
 pnpm add @ai-sdk/policy-opa
 # 选择其中一个（或两个）OPA 后端：
 pnpm add @open-policy-agent/opa-wasm   # 进程内 WASM 评估
-pnpm add @open-policy-agent/opa        # 连接到正在运行的 OPA 服务器的 HTTP 客户端
+pnpm add @open-policy-agent/opa        # 到正在运行的 OPA 服务器的 HTTP 客户端
 ```
 
 - 后端是可选的 peer 依赖。
-- 只有你导入的后端才会被加载。
+- 只加载你导入的后端。
 
 ## 工作原理
 
-该策略在每次工具分发之前被查询，并映射到标准审批状态之一：
+在每次工具分发之前都会咨询策略，并将其映射到标准审批状态之一：
 
 - `allow` 运行工具。
-- `deny` 返回一个模型可以推理的拒绝结果（无需人工）。
+- `deny` 返回模型可以推理的拒绝结果（无需人工）。
 - `requires-approval` 暂停运行并等待人工 `tool-approval-response`。
 - 没有匹配的规则会规范化为 `not-applicable`，SDK 将其视为允许。在你的策略中添加 `default decision := { "decision": "deny" }` 以默认拒绝。
 
@@ -89,7 +89,7 @@ const result = await generateText({
 
 ## 编写 Rego 策略
 
-策略发出一个决策对象。`reason` 是可选的，会返回给模型（对于 `deny`）或人工审批者（对于 `requires-approval`）。手动审批请求将其作为核心结果中的 `reason` 和 UI 消息中的 `approval.requestReason` 暴露。
+策略发出一个决策对象。`reason` 是可选的，并会返回给模型（对于 `deny`）或人工审批者（对于 `requires-approval`）。手动审批请求将其作为核心结果中的 `reason` 和 UI 消息中的 `approval.requestReason` 暴露出来。
 
 ```rego
 package agent.call
@@ -137,7 +137,7 @@ opaPolicy({
 
 ### 在 CI 中测试策略
 
-OPA 自带测试框架。这些测试无需 SDK 即可运行，这是策略即代码优于应用程序内策略的主要原因。
+OPA 自带测试框架。这些测试无需 SDK 即可运行，这是策略即代码优于应用程序内策略代码的主要原因。
 
 ```rego
 # policy_test.rego
@@ -156,15 +156,16 @@ test_push_denied {
 ### 错误时安全失败
 
 - 如果后端出错（服务器不可达、WASM 故障、包构建错误），`opaPolicy` 返回 `denied`，并将错误消息作为原因。
+- 如果后端返回存在但无法识别的决策，例如未知的 `decision` 值或非布尔值的旧 `allow` 值，`opaPolicy` 返回 `denied`。
 - 错误永远不会从回调中拒绝，也永远不会中止运行。
 - 后端中断会阻止受影响的调用，而不是静默允许它。
-- 这与返回无匹配的规则不同，后者会规范化为 `not-applicable`（允许）。如果你希望未匹配的调用也被拒绝，请使用 `default ... deny` 规则。
+- 这与返回无匹配的规则不同：`null` 或 `undefined` 规范化为 `not-applicable`（允许）。如果你希望未匹配的调用也被拒绝，请使用 `default ... deny` 规则。
 
 ## 加载策略
 
 ### 选项 A：WASM（进程内）
 
-预先将 `.rego` 编译为 WASM：
+提前将 `.rego` 编译为 WASM：
 
 ```sh
 opa build -t wasm -e 'agent/call/decision' -o bundle.tar.gz policy.rego
@@ -182,7 +183,7 @@ const toolApproval = opaPolicy({ client, path: 'agent/call/decision' });
 
 - 每个决策无需网络调用。
 - 当你随应用一起发布策略，或在启动时从对象存储获取策略时，非常适合。
-- 热重载意味着重新构建 WASM 并重新实例化客户端。
+- 热重载意味着重建 WASM 并重新实例化客户端。
 
 ### 选项 B：HTTP（正在运行的 OPA 服务器）
 
@@ -194,16 +195,16 @@ const toolApproval = opaPolicy({ client, path: 'agent/call/decision' });
 ```
 
 - 每个决策一次 HTTP 往返。
-- 当策略频繁更改且你希望无需重新部署即可热重载，或多个服务共享一个 OPA 时，非常适合。
-- 传递 `headers` 以进行 Styra DAS / EOPA 身份验证。
+- 当策略频繁更改并且你想要无需重新部署即可热重载，或多个服务共享一个 OPA 时，非常适合。
+- 为 Styra DAS / EOPA 认证传递 `headers`。
 
 ## 引入外部数据和集成
 
-策略不仅限于工具调用输入。OPA 可以基于外部数据做出决策，例如角色到权限的映射、IDP 组成员资格、权利列表或允许列表，并且这些数据可以在不重新部署应用的情况下更新。
+策略不仅限于工具调用的输入。OPA 可以基于外部数据做出决策，例如角色到权限的映射、IDP 组成员资格、权利列表或允许列表，并且这些数据可以在不重新部署应用的情况下更新。
 
-OPA 如何获取数据是 OPA 的事情，不是这个包的事情。常见方法：
+OPA 如何获取数据是 OPA 的问题，不是这个包的问题。常见方法：
 
-- 加载时的静态数据：将 `data` 传递给 `wasmPolicyClient({ wasm, data })`。它会传递给包的 `setData`，因此策略可以在 `data.*` 下读取它。
+- 加载时的静态数据：将 `data` 传递给 `wasmPolicyClient({ wasm, data })`。它被交给包的 `setData`，因此策略可以在 `data.*` 下读取它。
 - 包：将正在运行的 OPA 服务器（HTTP 后端）指向包服务，以便它定期拉取新的策略和数据。角色映射和 IDP 组无需代码部署即可更新。
 - 评估期间的查找：策略可以在评估决策时调用外部服务（例如 IDP 或权利 API）。
 
@@ -216,7 +217,7 @@ OPA 如何获取数据是 OPA 的事情，不是这个包的事情。常见方�
 
 ## 使用影子模式安全推出
 
-不要将新策略直接部署为强制执行。第一个版本几乎总是会拒绝你本不想拒绝的事情。`shadow(approval, opts)` 评估策略并通过 `onDecision` 报告决策，但告诉 SDK 每个调用都被批准，直到你切换 `enforce: true`。
+不要直接将新策略投入强制执行。第一个版本几乎总是会拒绝你本不想拒绝的东西。`shadow(approval, opts)` 评估策略并通过 `onDecision` 报告决策，但告诉 SDK 每个调用都被批准，直到你切换 `enforce: true`。
 
 ```ts
 import { opaPolicy, shadow, wasmPolicyClient } from '@ai-sdk/policy-opa';
@@ -243,26 +244,26 @@ const toolApproval = shadow(
 推荐的推出流程：
 
 1. 编写策略并使用 `opa test` 测试。
-2. 使用 `enforce: false`（默认值）将其包装在 `shadow(...)` 中，并将 `onDecision` 连接到你的日志/指标。
-3. 在真实环境中运行。检查 `decision.type` 为 `denied` 或 `user-approval` 的事件：这些是策略会改变的调用。
+2. 将其包装在 `shadow(...)` 中，设置 `enforce: false`（默认值），并将 `onDecision` 连接到你的日志/指标。
+3. 在你的真实环境中运行。检查 `decision.type` 为 `denied` 或 `user-approval` 的事件：这些是策略会改变的调用。
 4. 修复策略并迭代。
-5. 当唯一的 `denied` / `user-approval` 事件是你想要的事件时，设置 `enforce: true`。
+5. 当唯一的 `denied` / `user-approval` 事件是你想要的时，设置 `enforce: true`。
 
 遥测语义：
 
-- `onDecision` 是即发即弃的。缓慢或抛错的日志记录器不能阻塞或破坏强制执行，抛出的错误会被吞掉。
-- 契约是强制执行第一，可观测性第二。
+- `onDecision` 是即发即弃的。慢速或抛错的日志记录器不能阻塞或破坏强制执行，抛出的错误会被吞掉。
+- 契约是强制执行优先，可观测性其次。
 - 对于相反的情况（强制执行等待审计日志），从底层 `toolApproval` 内部记录日志，而不是通过 `shadow`。
 
 ## 将决策发送到你的可观测性平台
 
-`onDecision` 不仅用于推出。保持 `shadow` 处于 `enforce: true` 状态，每个决策都会流向你的日志、指标或追踪栈，同时策略保持承载作用。
+`onDecision` 不仅用于推出。保持 `shadow` 在 `enforce: true` 的情况下，每个决策都会流向你的日志、指标或追踪栈，同时策略保持承重。
 
 ```ts
 const toolApproval = shadow(
   opaPolicy({ client, path: 'agent/call/decision' }),
   {
-    enforce: true, // 强制执行 AND 观察
+    enforce: true, // 强制执行 AND 观测
     onDecision: event => {
       metrics.increment('agent.policy.decision', {
         tool: event.toolCall.toolName,
@@ -274,14 +275,14 @@ const toolApproval = shadow(
 );
 ```
 
-- 每个 `PolicyDecisionEvent` 携带工具调用、策略 `decision`（类型和原因）、`enforced` 和 `effective`（SDK 实际执行的内容）。比较 `decision` 与 `effective` 以发现漂移。
+- 每个 `PolicyDecisionEvent` 携带工具调用、策略 `decision`（类型和原因）、`enforced` 和 `effective`（SDK 实际执行的内容）。比较 `decision` 和 `effective` 以发现漂移。
 - `onDecision` 是即发即弃的；请参阅影子模式下的遥测语义。
 
 当你使用 HTTP 后端时，OPA 还可以原生发出 [决策日志](https://www.openpolicyagent.org/docs/management-decision-logs)，将每次评估发送到远程服务以获得完整的审计跟踪，而无需任何应用程序代码。
 
-## 模型边界的 Capability 范围限制
+## 模型边界的工具能力范围限制
 
-`opaCapabilityMiddleware` 比 `toolApproval` 更早地强制执行策略：在模型被告知工具存在之前。这是纵深防御，同时节省令牌并改善越狱拒绝。
+`opaCapabilityMiddleware` 比 `toolApproval` 更早地强制执行策略：在模型被告知工具存在之前。这是纵深防御，此外还节省了令牌并提高了对越狱的拒绝能力。
 
 ```ts
 import { wrapLanguageModel } from 'ai';
@@ -296,12 +297,12 @@ const wrappedModel = wrapLanguageModel({
 ```
 
 - `path` 处的规则返回允许的工具名称的 `string[]`，或 `{ tools: string[] }`。
-- 不在允许列表中的工具会在模型看到它们之前被丢弃。
-- 安全失败：在格式错误的响应或评估器错误时，`params.tools` 被设置为 `undefined`，因此模型被告知它没有工具。对于失败开放，在 Rego 中编写回退。
+- 不在允许列表中的工具在模型看到它们之前被丢弃。
+- 安全失败：在格式错误的响应或评估器错误时，`params.tools` 被设置为 `undefined`，因此模型被告知它没有工具。要安全开放，请在 Rego 中编写回退。
 
-## 限制已发现工具表面的范围
+## 限定发现的工具面
 
-当工具来自 MCP 发现或插件注册表时，你无法提前编写每个工具的规则，而且你忘记的任何工具都会被静默允许。`wrapMcpTools` 通过将未匹配的工具路由到可配置的默认值，使审批在已发现的表面上变得完整。
+当工具来自 MCP 发现或插件注册表时，你无法提前编写每个工具的规则，而且你忘记的任何工具都会被静默允许。`wrapMcpTools` 通过将未匹配的工具路由到可配置的默认值，使审批覆盖发现的工具面。
 
 ```ts
 import { opaPolicy, wasmPolicyClient, wrapMcpTools } from '@ai-sdk/policy-opa';
@@ -322,13 +323,13 @@ await generateText({ model, tools, toolApproval, prompt });
 
 - `'user-approval'`（默认）：需要人工。当你信任来源但想要安全网时很好。
 - `'denied'`：硬允许列表模式。策略枚举允许的内容；其他一切都被拒绝。
-- `'approved'`：允许。仅当发现来源完全可信时。
+- `'approved'`：允许。仅当发现来源完全受信任时。
 
 尽管名称如此，它适用于任何 `Record<string, Tool>`。
 
 ## 未配置策略时允许所有
 
-`optionalOpaPolicy` 在 `client` 为 `undefined` 时返回 `undefined`，这与不传递 `toolApproval` 相同（SDK 批准每个调用）。适用于本地开发或 CI 中策略文件不存在的情况。
+`optionalOpaPolicy` 在 `client` 为 `undefined` 时返回 `undefined`，这与不传递 `toolApproval` 相同（SDK 批准每个调用）。对于策略文件不存在的本地开发或 CI 很有用。
 
 ```ts
 import { optionalOpaPolicy, wasmPolicyClient } from '@ai-sdk/policy-opa';
@@ -343,15 +344,15 @@ const client = wasm ? await wasmPolicyClient({ wasm }) : undefined;
 const toolApproval = optionalOpaPolicy({ client, path: 'agent/call/decision' });
 ```
 
-- `POLICY_WASM_PATH` 未设置：`toolApproval` 为 `undefined`，所有调用都被允许，OPA 模块永远不会加载。
+- `POLICY_WASM_PATH` 未设置：`toolApproval` 为 `undefined`，所有调用都允许，OPA 模块永远不会加载。
 - `POLICY_WASM_PATH` 已设置：策略加载，强制执行开启。
 - 对于更严格的行为（没有策略时拒绝启动），直接使用 `opaPolicy`，让缺失的字节在启动时抛出。
 
 ## 传递性强制执行：复合工具
 
-`toolApproval` 仅在模型直接调用工具时触发。一个粗粒度的调度工具（一个可以运行 `git push` 的 `bash` 工具、一个 HTTP 工具、一个 MCP 代理）允许模型通过路由绕过每个操作的规则。
+`toolApproval` 只在模型直接调用工具时触发。一个粗粒度的调度工具（一个可以运行 `git push` 的 `bash` 工具、一个 HTTP 工具、一个 MCP 代理）允许模型通过路由绕过每个操作的规则。
 
-修复方法在调度器的 `toolApproval` 条目内部：将调度器输入解析为逻辑上的 `(name, args)` 对，然后针对直接工具使用的相同规则进行评估。
+修复方法在调度器的 `toolApproval` 条目内部：将调度器输入解析为逻辑上的 `(name, args)` 对，然后针对直接工具使用的相同规则评估它。
 
 ```ts
 const bashApproval = opaPolicy({
@@ -367,20 +368,20 @@ const bashApproval = opaPolicy({
 
 指导：
 
-- 将匹配逻辑保持在一个地方：要么是共享的 Rego 辅助规则（两个审批都使用相同的 `path` 调用 `opaPolicy`），要么是共享的 TypeScript 谓词。
-- 拒绝任何你无法简化为干净调用的内容。Shell 输入是难以解析的，因此“无法证明它是安全的”意味着拒绝。
-- 诚实的限制：这在模型的调用边界上限制了分发。它不能阻止一个工具在被批准后执行超出其输入描述的额外副作用。为此，在带外沙箱（Vercel Sandbox、Firecracker、容器）中运行不受信任的执行，并将沙箱视为信任边界。
+- 将匹配逻辑保持在一个地方：要么是共享的 Rego 辅助规则（两个审批都用相同的 `path` 调用 `opaPolicy`），要么是共享的 TypeScript 谓词。
+- 拒绝任何你无法简化为干净调用的内容。Shell 输入是难以解析的对抗性输入，因此“无法证明它是安全的”意味着拒绝。
+- 诚实的限制：这在模型的调用边界门控分发。它不能阻止一个工具在被批准后执行超出其输入描述的额外副作用。为此，在带外沙箱（Vercel Sandbox、Firecracker、容器）中运行不受信任的执行，并将沙箱视为信任边界。
 
 SQL、HTTP、MCP、浏览器和 Shell 调度器的工作示例位于 [包 README](https://github.com/vercel/ai/tree/main/packages/policy-opa) 中。
 
 ## 示例应用
 
-[ai-sdk-slackbot](https://github.com/vercel-labs/ai-sdk-slackbot) 示例将这个包端到端地接入一个真实的智能体。它展示了：
+[ai-sdk-slackbot](https://github.com/vercel-labs/ai-sdk-slackbot) 示例将此包端到端地接入一个真实的智能体。它展示了：
 
 - 每个工具调用都由 `policies/decision.rego` 中的 Rego 门控，无需接触 TypeScript 即可编辑。
-- 策略下的真实工具：一个限定域名的网络搜索、一个带有城市允许列表的天气工具，以及一个限制为只读命令允许列表的 `bash` 工具（传递性强制执行）。
-- 使用一个环境变量（`POLICY_MODE`）切换后端：默认进程内 WASM，或用于开发中热重载策略的实时 OPA HTTP 服务器。
-- 策略代码使用 `policies/decision_test.rego` 中的 OPA 原生测试独立测试。
+- 策略下的真实工具：限定域名的网络搜索、具有城市允许列表的天气工具，以及限制为只读命令允许列表的 `bash` 工具（传递性强制执行）。
+- 用一个环境变量（`POLICY_MODE`）切换后端：默认使用进程内 WASM，或使用实时 OPA HTTP 服务器在开发中热重载策略。
+- 策略代码在 `policies/decision_test.rego` 中使用 OPA 原生测试独立测试。
 
 查看 [`policies/`](https://github.com/vercel-labs/ai-sdk-slackbot/tree/main/policies) 和 [`lib/policy/load.ts`](https://github.com/vercel-labs/ai-sdk-slackbot/blob/main/lib/policy/load.ts) 了解策略如何加载和应用。
 
@@ -391,7 +392,7 @@ SQL、HTTP、MCP、浏览器和 Shell 调度器的工作示例位于 [包 README
 引擎中立核心：
 
 - `shadow(approval, opts?)`：包装任何审批，使其被评估和报告，但在 `opts.enforce: true` 之前不强制执行。任何新策略的推荐起点。
-- `wrapMcpTools(tools, approval, opts?)`：使审批在已发现的工具集上变得完整。`opts.default` 控制未覆盖的工具。
+- `wrapMcpTools(tools, approval, opts?)`：使审批覆盖发现的工具集。`opts.default` 控制未覆盖的工具。
 - `PolicyClient`：每个后端实现的 `evaluate(path, input)` 接口。非 OPA 引擎的接缝。
 - 辅助类型：`PolicyDecision`、`WrappedMcpTools`、`PolicyDecisionEvent`。
 
@@ -399,10 +400,10 @@ OPA 后端和适配器：
 
 - `wasmPolicyClient({ wasm, data? })`：异步；在进程中加载编译后的 OPA WASM 包。
 - `httpPolicyClient({ url, headers? })`：同步；针对正在运行的 OPA 服务器的客户端。
-- `opaPolicy({ client, path, toInput? })`：返回一个 `toolApproval` 配置。安全失败。
+- `opaPolicy({ client, path, toInput? })`：返回 `toolApproval` 配置。安全失败。
 - `optionalOpaPolicy({ client, path, toInput? })`：类似于 `opaPolicy`，但在 `client` 为 `undefined` 时返回 `undefined`。
 - `opaCapabilityMiddleware({ client, path, toInput? })`：一个 `LanguageModelV4Middleware`，将 `params.tools` 缩小到允许列表。安全失败。
-- `normalizeOpaDecision(result)`：独立的结果规范化，适用于自己调用 OPA 的用户。
+- `normalizeOpaDecision(result)`：独立的决策规范化，适用于自己调用 OPA 的用户。
 
 ## 相关
 

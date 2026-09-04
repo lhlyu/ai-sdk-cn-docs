@@ -1,23 +1,23 @@
 ---
 title: "Grok Build"
-description: "了解如何使用 Grok Build 工具链适配器。"
+description: "了解如何使用 Grok Build 工具适配器。"
 ---
 
-# Grok Build 工具链
+# Grok Build 工具
 
-Grok Build 工具链适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` 连接到
+Grok Build 工具适配器通过智能体客户端协议（ACP）将 `HarnessAgent` 连接到
 [Grok Build CLI](https://x.ai/cli)。
 该适配器将 ACP 安装、会话、流式传输、工具和生命周期管理委托给 `@ai-sdk/harness-acp`。
 
 <Note>
-  工具链包为**实验性**。随着这个早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  Harness 包为**实验性**。随着此早期 API 的进一步完善，版本之间可能会发生破坏性更改。
 </Note>
 
 ## 设置
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-grok-build @ai-sdk/sandbox-vercel" />
 
-当第一个会话启动时，ACP 工具链会在沙箱内安装固定版本的 Grok Build CLI。
+当第一个会话启动时，ACP harness 会在沙箱内安装固定版本的 Grok Build CLI。
 
 ## 导入
 
@@ -66,8 +66,8 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel 沙箱的 `VERCEL_OIDC_TOKEN`，以及
-[身份验证](#authentication) 下列出的用于 Grok Build 的变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，
+以及 [身份验证](#authentication) 下列出的用于 Grok Build 的变量之一。
 
 ## 适配器设置
 
@@ -87,18 +87,20 @@ const harness = createGrokBuild({
 - `auth`：选择 `auto`、`direct` 或 `ai-gateway` 身份验证，或接受
   隔离的身份验证环境。默认值为 `auto`，当存在 Gateway 凭据时选择
   AI Gateway，否则选择直接的 xAI 身份验证。
-- `credentialForwarding`：可选的同步或异步回调，在工具链适配器将每个凭据转发到
-  沙箱进程之前立即自定义该凭据。它接收原本会被转发的凭据值（真实凭据或掩码值）以及
-  用于暴露该凭据的环境变量名称。此回调仅控制转发到沙箱进程的值。它不限制
-  工具链适配器在宿主进程中可以发现、读取或以其他方式访问哪些凭据。
+- `credentialForwarding`：可选同步或异步回调，在 harness 适配器将每个凭据
+  转发到沙箱进程之前立即自定义该凭据。它接收原本将被转发的凭据值
+  （真实凭据或掩码值）以及用于暴露该凭据的环境变量名称。此回调仅控制
+  转发到沙箱进程中的值。它不限制 harness 适配器在宿主进程中
+  可以发现、读取或以其他方式访问哪些凭据。
 - `reasoningEffort`：支持推理能力的模型的推理努力程度。支持的
   值为 `none`、`minimal`、`low`、`medium`、`high`、`xhigh` 和 `max`。
   省略时，Grok Build 使用其配置的默认值。
 - `mcpServers`：按服务器名称键控的 MCP 服务器定义。
 - `port`：ACP 桥接端口覆盖。
 - `startupTimeoutMs`：等待 ACP 桥接启动的最长时间。
-- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回 ACP 桥接身份验证令牌。默认情况下，适配器生成
-  一个随机的 32 字节令牌。自定义实现必须返回适当机密的令牌。
+- `mintBridgeToken`：接收沙箱 id 并返回 ACP 桥接身份验证令牌的同步函数。
+  默认情况下，适配器生成一个随机的 32 字节令牌。自定义实现必须返回
+  适当机密的令牌。
 
 适配器固定 Grok Build CLI 和 ACP 启动命令。这些实现
 细节不能通过 `createGrokBuild()` 覆盖。
@@ -107,13 +109,13 @@ const harness = createGrokBuild({
 
 Grok Build 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。
 其配置文件将 JSON Schema 映射到 Grok Build 的私有 ACP 提示词元数据，
-运行时通过其提供商结构化输出机制强制执行。
+运行时通过其提供商结构化输出机制强制执行该元数据。
 
 ## 身份验证
 
-默认情况下，身份验证从宿主环境解析。当
-沙箱支持附加请求转换时，Grok Build 会收到一个占位符，适配器将凭据注入到匹配的出站
-请求中。其他沙箱保留直接凭据转发。
+默认情况下，身份验证从宿主环境解析。当沙箱
+支持附加请求转换时，Grok Build 接收占位符，适配器将凭据注入
+匹配的出站请求。其他沙箱保留直接凭据转发。
 
 支持的环境变量：
 
@@ -123,8 +125,8 @@ Grok Build 支持基于模式的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-h
 - `XAI_API_KEY`
 
 使用直接身份验证时，适配器使用 `XAI_API_KEY`。使用 AI Gateway 时，
-它将 Gateway 凭据作为 `XAI_API_KEY` 提供，将 Gateway
-基础 URL 以 `/v1` 结尾映射到 `GROK_XAI_API_BASE_URL` 和
+它将 Gateway 凭据作为 `XAI_API_KEY` 提供，将以 `/v1` 结尾的 Gateway
+基础 URL 映射到 `GROK_XAI_API_BASE_URL` 和
 `GROK_MODELS_BASE_URL`，并设置 `GROK_CLIENT_NAME` 和
 `GROK_CLIENT_VERSION` 用于客户端归属。
 
@@ -146,7 +148,8 @@ const gatewayHarness = createGrokBuild({
 });
 ```
 
-提供的记录替换宿主环境进行身份验证发现，因此它也可以使用 `XAI_API_KEY` 选择直接身份验证。
+提供的记录替换用于身份验证发现的宿主环境，
+因此它也可以使用 `XAI_API_KEY` 选择直接身份验证。
 
 ## 沙箱
 
@@ -161,12 +164,12 @@ const sandbox = createVercelSandbox({
 });
 ```
 
-第一个会话需要网络出口，以便 ACP 工具链可以在沙箱内安装
+第一个会话需要网络出口，以便 ACP harness 可以在沙箱内安装
 `@xai-official/grok@1.0.5`。
 
 ## 内置工具
 
-适配器将这些 Grok Build 内置工具映射到常见的工具链工具：
+适配器将这些 Grok Build 内置工具映射到常见的 harness 工具：
 
 - `bash` (`run_terminal_command`)
 - `edit` (`search_replace`)
@@ -179,23 +182,25 @@ const sandbox = createVercelSandbox({
 调度工具，以及图像生成工具。
 
 Grok Build 不为其权限行为通告 ACP 会话模式。
-当 Grok 发送 ACP 权限请求时，ACP 工具链根据工具类型应用
-配置的 Harness `permissionMode`。Grok 可能会在内部处理安全的
+当 Grok 发送 ACP 权限请求时，ACP harness 根据工具类型应用
+配置的 Harness `permissionMode`。Grok 可以在内部处理安全的
 内置操作，而无需发送权限请求。
 
 ## 已知限制
 
 - ACP v1 不暴露模型步骤边界或每步使用量。适配器
-  推断边界，并在 Grok 不提供总数时报告未知的每步使用量。
+  推断边界，并在 Grok 未提供总数时报告未知的每步使用量。
 - ACP v1 没有可移植的手动压缩或回合中转向 API。
 - ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，
   但过滤 Grok 内置工具会抛出不支持的能力错误。
 - 更改的宿主工具目录要求 Grok Build 刷新其 ACP MCP 工具
-  列表。如果实现保留了过时的工具，回合将明确失败。
+  列表。如果实现保留了过时的工具，则该回合会明确失败。
+- 自定义 `headers` 不受原生支持，仅通过沙箱外部请求转换应用。
+  当提供没有该能力的沙箱时，自定义 `headers` 因此无法传递并被忽略。
 
 ## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
-- [工具链工具](/docs/ai-sdk-harnesses/tools)
-- [工具链适配器](/docs/ai-sdk-harnesses/harness-adapters)
-- [Agent Client Protocol](/providers/ai-sdk-harnesses/acp)
+- [Harness 工具](/docs/ai-sdk-harnesses/tools)
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [智能体客户端协议](/providers/ai-sdk-harnesses/acp)

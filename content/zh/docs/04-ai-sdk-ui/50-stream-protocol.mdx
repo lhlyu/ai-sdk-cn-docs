@@ -1,12 +1,12 @@
 ---
-title: "流式传输协议"
-description: "了解 AI SDK 中支持的流式传输协议。"
+title: "流式协议"
+description: "了解 AI SDK 中支持的流式协议。"
 ---
 
-# 流式传输协议
+# 流式协议
 
 AI SDK UI 函数（如 `useChat` 和 `useCompletion`）同时支持文本流和数据流。
-流式传输协议定义了数据在 HTTP 协议之上如何流式传输到前端。
+流式协议定义了数据如何在 HTTP 协议之上流式传输到前端。
 
 本页介绍这两种协议以及如何在后端和前端使用它们。
 
@@ -51,7 +51,7 @@ export default function Chat() {
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
       {messages.map(message => (
         <div key={message.id} className="whitespace-pre-wrap">
-          {message.role === 'user' ? 'User: ' : 'AI: '}
+          {message.role === 'user' ? '用户: ' : 'AI: '}
           {message.parts.map((part, i) => {
             switch (part.type) {
               case 'text':
@@ -71,7 +71,7 @@ export default function Chat() {
         <input
           className="fixed dark:bg-zinc-900 bottom-0 w-full max-w-md p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
           value={input}
-          placeholder="Say something..."
+          placeholder="说点什么..."
           onChange={e => setInput(e.currentTarget.value)}
         />
       </form>
@@ -90,7 +90,7 @@ import {
 } from 'ai';
 __PROVIDER_IMPORT__;
 
-// Allow streaming responses up to 30 seconds
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -111,10 +111,10 @@ export async function POST(req: Request) {
 
 数据流遵循 AI SDK 提供的特殊协议，用于向前端发送信息。
 
-数据流协议使用服务器发送事件（SSE）格式，以提高标准化程度、通过 ping 保持连接、支持重连以及更好的缓存处理。
+数据流协议使用服务器发送事件（SSE）格式，以实现更好的标准化、通过 ping 保持连接、支持重连以及更好的缓存处理。
 
 <Note>
-  当你从自定义后端提供数据流时，你需要将 `x-vercel-ai-ui-message-stream` 头设置为 `v1`。
+  当你从自定义后端提供数据流时，需要将 `x-vercel-ai-ui-message-stream` 头设置为 `v1`。
 </Note>
 
 目前支持以下流部分：
@@ -134,7 +134,7 @@ data: {"type":"start","messageId":"..."}
 
 ### 文本部分
 
-文本内容使用开始/增量/结束模式流式传输，每个文本块具有唯一 ID。
+文本内容使用开始/增量/结束模式进行流式传输，每个文本块具有唯一 ID。
 
 #### 文本开始部分
 
@@ -158,7 +158,7 @@ data: {"type":"text-start","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb7230
 示例：
 
 ```
-data: {"type":"text-delta","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb72306ca5d","delta":"Hello"}
+data: {"type":"text-delta","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb72306ca5d","delta":"你好"}
 
 ```
 
@@ -177,7 +177,7 @@ data: {"type":"text-end","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb72306c
 
 ### 推理部分
 
-推理内容使用开始/增量/结束模式流式传输，每个推理块具有唯一 ID。
+推理内容使用开始/增量/结束模式进行流式传输，每个推理块具有唯一 ID。
 
 #### 推理开始部分
 
@@ -201,7 +201,7 @@ data: {"type":"reasoning-start","id":"reasoning_123"}
 示例：
 
 ```
-data: {"type":"reasoning-delta","id":"reasoning_123","delta":"This is some reasoning"}
+data: {"type":"reasoning-delta","id":"reasoning_123","delta":"这是一些推理"}
 
 ```
 
@@ -220,7 +220,7 @@ data: {"type":"reasoning-end","id":"reasoning_123"}
 
 ### 推理文件部分
 
-推理文件部分包含对推理过程中生成文件的引用，例如推理过程中生成的图像。
+推理文件部分包含对推理过程中生成的文件（例如推理过程中产生的图像）的引用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -257,13 +257,13 @@ data: {"type":"source-url","sourceId":"https://example.com","url":"https://examp
 示例：
 
 ```
-data: {"type":"source-document","sourceId":"https://example.com","mediaType":"file","title":"Title"}
+data: {"type":"source-document","sourceId":"https://example.com","mediaType":"file","title":"标题"}
 
 ```
 
 ### 文件部分
 
-文件部分包含对文件及其媒体类型的引用。
+文件部分包含对带有媒体类型的文件的引用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -296,7 +296,7 @@ data: {"type":"custom","kind":"openai.compaction","providerMetadata":{"openai":{
 示例：
 
 ```
-data: {"type":"data-weather","data":{"location":"SF","temperature":100}}
+data: {"type":"data-weather","data":{"location":"旧金山","temperature":100}}
 
 ```
 
@@ -311,7 +311,7 @@ data: {"type":"data-weather","data":{"location":"SF","temperature":100}}
 示例：
 
 ```
-data: {"type":"error","errorText":"error message"}
+data: {"type":"error","errorText":"错误消息"}
 
 ```
 
@@ -337,7 +337,7 @@ data: {"type":"tool-input-start","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","t
 示例：
 
 ```
-data: {"type":"tool-input-delta","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","inputTextDelta":"San Francisco"}
+data: {"type":"tool-input-delta","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","inputTextDelta":"旧金山"}
 
 ```
 
@@ -350,7 +350,7 @@ data: {"type":"tool-input-delta","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","i
 示例：
 
 ```
-data: {"type":"tool-input-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","toolName":"getWeatherInformation","input":{"city":"San Francisco"}}
+data: {"type":"tool-input-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","toolName":"getWeatherInformation","input":{"city":"旧金山"}}
 
 ```
 
@@ -363,11 +363,11 @@ data: {"type":"tool-input-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar
 示例：
 
 ```
-data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","approvalId":"approval_123","reason":"Requires operator review"}
+data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","approvalId":"approval_123","approvalDescriptor":{"scope":"account:delete"},"reason":"需要操作员审查"}
 
 ```
 
-当省略 `isAutomatic` 时，请求期望客户端给出明确的审批响应。`reason` 是可选的，解释为什么工具调用需要审批。
+当省略 `isAutomatic` 时，请求期望客户端给出明确的审批响应。`reason` 是可选的，解释为什么工具调用需要审批。`approvalDescriptor` 是用于审批的可选不透明元数据。当流被处理为 UI 消息时，它可作为 `part.approval.descriptor` 使用，并在后续审批状态中保留。
 
 ### 工具审批响应部分
 
@@ -378,7 +378,7 @@ data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7A
 示例：
 
 ```
-data: {"type":"tool-approval-response","approvalId":"approval_123","approved":false,"reason":"User denied the request"}
+data: {"type":"tool-approval-response","approvalId":"approval_123","approved":false,"reason":"用户拒绝了请求"}
 
 ```
 
@@ -393,11 +393,11 @@ data: {"type":"tool-approval-response","approvalId":"approval_123","approved":fa
 示例：
 
 ```
-data: {"type":"tool-output-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","output":{"city":"San Francisco","weather":"sunny"}}
+data: {"type":"tool-output-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","output":{"city":"旧金山","weather":"晴朗"}}
 
 ```
 
-### 工具输出拒绝部分
+### 工具输出被拒部分
 
 指示在审批流程完成后工具执行被拒绝。
 
@@ -410,7 +410,7 @@ data: {"type":"tool-output-denied","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar"}
 
 ```
 
-### 开始步骤部分
+### 步骤开始部分
 
 指示步骤开始的部分。
 
@@ -423,7 +423,7 @@ data: {"type":"start-step"}
 
 ```
 
-### 结束步骤部分
+### 步骤结束部分
 
 指示步骤（即后端中的一次 LLM API 调用）已完成的部分。
 
@@ -438,10 +438,9 @@ data: {"type":"finish-step"}
 
 ```
 
-### 重置步骤部分
+### 步骤重置部分
 
-移除自最近的 `start-step` 部分以来收到的所有消息部分。如果
-没有步骤边界，则移除当前消息中的所有部分。当流式步骤被重试，并且必须使失败尝试的部分输出失效后再发送替换输出时，这很有用。
+移除自最近的 `start-step` 部分以来收到的所有消息部分。如果没有步骤边界，它将移除当前消息中的所有部分。当流式步骤被重试，并且必须使失败尝试的部分输出失效，然后再发送替换输出时，这很有用。
 
 格式：包含 JSON 对象的服务器发送事件
 
@@ -452,7 +451,7 @@ data: {"type":"reset-step"}
 
 ```
 
-### 结束消息部分
+### 消息结束部分
 
 指示消息完成的部分。
 
@@ -474,7 +473,7 @@ data: {"type":"finish"}
 示例：
 
 ```
-data: {"type":"abort","reason":"user cancelled"}
+data: {"type":"abort","reason":"用户取消"}
 
 ```
 
@@ -491,7 +490,7 @@ data: [DONE]
 
 ```
 
-数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并且默认使用。
+数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并默认使用。
 `useCompletion` 仅支持 `text` 和 `data` 流部分。
 
 在后端，你可以将 `streamText` 结果流传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它。
@@ -514,7 +513,7 @@ export default function Chat() {
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
       {messages.map(message => (
         <div key={message.id} className="whitespace-pre-wrap">
-          {message.role === 'user' ? 'User: ' : 'AI: '}
+          {message.role === 'user' ? '用户: ' : 'AI: '}
           {message.parts.map((part, i) => {
             switch (part.type) {
               case 'text':
@@ -534,7 +533,7 @@ export default function Chat() {
         <input
           className="fixed dark:bg-zinc-900 bottom-0 w-full max-w-md p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
           value={input}
-          placeholder="Say something..."
+          placeholder="说点什么..."
           onChange={e => setInput(e.currentTarget.value)}
         />
       </form>
@@ -553,7 +552,7 @@ import {
 } from 'ai';
 __PROVIDER_IMPORT__;
 
-// Allow streaming responses up to 30 seconds
+// 允许流式响应最长 30 秒
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
