@@ -1,6 +1,6 @@
 ---
 title: "Open Responses"
-description: "了解如何将 Open Responses 提供商与 AI SDK 结合使用。"
+description: "了解如何将 Open Responses 提供商用于 AI SDK。"
 ---
 
 # Open Responses 提供商
@@ -12,7 +12,7 @@ description: "了解如何将 Open Responses 提供商与 AI SDK 结合使用。
 
 ## 安装
 
-Open Responses 提供商可在 `@ai-sdk/open-responses` 模块中使用。你可以通过以下命令安装它：
+Open Responses 提供商在 `@ai-sdk/open-responses` 模块中可用。你可以通过以下命令安装它：
 
 <InstallPackages packages="@ai-sdk/open-responses" />
 
@@ -53,6 +53,10 @@ const openResponses = createOpenResponses({
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。默认为全局 `fetch` 函数。
 
+- **strictResponseInput** _boolean_
+
+  使用严格的 OpenAI Responses 输入模式序列化助手历史记录。没有项目 ID 的助手消息作为简单输入消息发送，而具有真实提供商项目 ID 的消息作为完整输出项发送。默认为 `false`。
+
 ### 端点示例
 
 对于不需要身份验证的本地 LM Studio 服务器：
@@ -78,7 +82,7 @@ const openAIResponses = createOpenResponses({
 });
 ```
 
-你可以通过更改 `name`、`url`、身份验证和模型 ID，使用相同的设置连接到其他兼容服务。
+你可以通过更改 `name`、`url`、身份验证和模型 ID，将相同的设置用于其他兼容服务。
 
 ## 语言模型
 
@@ -136,7 +140,7 @@ for await (const textPart of result.textStream) {
 
 使用顶层的 [`reasoning`](/docs/ai-sdk-core/reasoning) 设置来控制推理努力程度。提供商将支持的值映射到 Open Responses 的 `reasoning.effort` 字段。
 
-该提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。提供商选项的键必须与传递给 `createOpenResponses` 的 `name` 匹配：
+该提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。提供商选项键必须与传递给 `createOpenResponses` 的 `name` 匹配：
 
 ```ts
 import {
@@ -166,13 +170,13 @@ console.log(reasoningText);
 console.log(text);
 ```
 
-`reasoningEffort` 接受任何字符串，并将原样传递给端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的端点原生值（例如 `'max'`），请使用此选项。当两者都设置时，`providerOptions` 中的 `reasoningEffort` 优先于顶层的 `reasoning` 值。
+`reasoningEffort` 接受任何字符串，并原样传递给端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的端点原生值（例如 `'max'`），请使用它。当两者都设置时，`providerOptions` 中的 `reasoningEffort` 优先于顶层的 `reasoning` 值。
 
 `reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`，并且可以与任一推理努力设置结合使用。推理支持和接受的努力值取决于端点和模型；不支持的值可能会被端点拒绝或忽略。
 
 ## 文件输入
 
-该提供商支持在用户消息中包含图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（如 PDF）则作为 `input_file` 部分发送。
+该提供商支持用户消息中的图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（如 PDF）作为 `input_file` 部分发送。
 
 你可以将文件作为内联数据提供：
 
@@ -210,15 +214,15 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-你也可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。此提供商不支持提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据。
+你也可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据不受此提供商支持。
 
 ## 实验性扩展
 
-Open Responses 实现可以添加带命名空间的工具、项目和流式事件。使用 `Experimental_OpenResponsesExtension` 来编码和解码实现的扩展线上格式。未注册的提供商工具会从请求中省略，并发出 `unsupported` 警告。
+Open Responses 实现可以添加命名空间的工具、项目和流式事件。使用 `Experimental_OpenResponsesExtension` 来编码和解码实现的扩展线上格式。未注册的提供商工具会从请求中省略，并带有 `unsupported` 警告。
 
 此 API 是实验性的，在未来的版本中可能会更改。
 
-AI SDK 提供商工具 ID 使用点号表示法（`acme.document_search`），而 Open Responses 线上类型使用冒号表示法（`acme:document_search`）。`id` 中的命名空间必须与每个注册的线上类型中的命名空间匹配。
+AI SDK 提供商工具 ID 使用点表示法（`acme.document_search`），而 Open Responses 线上类型使用冒号表示法（`acme:document_search`）。`id` 中的命名空间必须与每个注册的线上类型中的命名空间匹配。
 
 ```ts
 import {
@@ -283,26 +287,26 @@ const result = await generateText({
 });
 ```
 
-在每个解码的 `tool-call` 或 `tool-input-start` 部分上设置 `providerExecuted`。它可以因项目或事件而异。
+在每个解码的 `tool-call` 或 `tool-input-start` 部分上设置 `providerExecuted`。它可以根据项目或事件而变化。
 
 扩展编解码器可以定义：
 
-- `encodeTool`：编码提供商工具。返回 `undefined` 会省略该工具并发出 `unsupported` 警告。选择被省略工具的 `toolChoice` 也会被省略。
+- `encodeTool`：编码提供商工具。返回 `undefined` 会省略该工具并带有 `unsupported` 警告。选择被省略工具的 `toolChoice` 也会被省略。
 - `encodeToolChoice`：编码特定的 `toolChoice`。默认为 `{ type: toolType }`。
 - `decodeItem`：将已完成的项目映射到 AI SDK 内容部分。`mode` 为 `'generate'` 或 `'stream'`。
-- `encodeInputItem`：在原始线上项目不可用时，编码工具调用或工具结果历史记录。返回的项目必须包含 `id`、`status` 和已注册的带命名空间的 `type`。
+- `encodeInputItem`：当原始线上项目不可用时，编码工具调用或工具结果历史记录。返回的项目必须包含 `id`、`status` 和已注册的命名空间 `type`。
 - `decodeEvent`：将流式事件映射到 AI SDK 流部分。其 `state` 映射在一次响应流期间有效。
 
 工具、项目和事件能力是独立的。例如，仅项目的扩展定义 `itemTypes` 和 `decodeItem`，而不定义 `toolType` 或 `encodeTool`。能力字段必须成对提供。
 
-每个解码的项目都会添加一个 `open-responses.extension-replay` 自定义部分，该部分将原始 JSON 存储在提供商元数据中。其他解码的部分引用该自定义部分，而不是复制项目。将 `result.response.messages` 传递给后续调用会重放一次原始项目，包括不透明字段。这也会保留那些仅解码为仅响应源部分的项目。
+每个解码的项目都会添加一个 `open-responses.extension-replay` 自定义部分，将原始 JSON 存储在提供商元数据中。其他解码的部分引用该自定义部分，而不是复制项目。将 `result.response.messages` 传递给后续调用会重放一次原始项目，包括不透明字段。这也会保留那些仅解码为仅响应源部分的项目。
 
-适配器仅验证扩展判别器字段。在返回 AI SDK 部分之前，请在编解码器中验证其他项目和事件字段。原始项目存储在提供商元数据中，并可能出现在持久化消息、遥测、日志或 UI 负载中。
+适配器仅验证扩展判别字段。在编解码器中验证其他项目和事件字段，然后再返回 AI SDK 部分。原始项目存储在提供商元数据中，可能出现在持久化消息、遥测、日志或 UI 负载中。
 
-扩展回调无法跨工作流步骤边界序列化。请在工作流步骤内部创建提供商。使用扩展配置的模型进行序列化会抛出 `SerializationError`。
+扩展回调无法跨工作流步骤边界序列化。在工作流步骤内部创建提供商。使用扩展配置的模型进行序列化会抛出 `SerializationError`。
 
 ## 限制
 
-- 不支持停止序列、`topK` 和 `seed`，并且会发出警告并忽略它们。
+- 停止序列、`topK` 和 `seed` 不受支持，并会被忽略并带有警告。
 - 该提供商仅支持语言模型。它不提供嵌入或图像生成模型。
 - 支持 AI SDK 函数工具和已注册的 Open Responses 扩展。其他提供商特定的工具和选项需要专门的提供商实现。
