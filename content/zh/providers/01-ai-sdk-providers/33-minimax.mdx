@@ -1,30 +1,29 @@
 ---
 title: "MiniMax"
-description: "了解如何将 MiniMax 模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用 MiniMax 模型。"
 ---
 
 # MiniMax 提供商
 
-[MiniMax](https://www.minimax.io) 提供商通过 MiniMax API 提供对 MiniMax-M
-系列语言模型的访问，包括具有推理能力的模型，以及通过 MiniMax-H 系列进行视频生成。
+[MiniMax](https://www.minimax.io) 提供商通过 MiniMax API 提供对 MiniMax-M 系列语言模型的访问，包括具备推理能力的模型，以及使用 MiniMax-H 系列进行视频生成。
 
-API 密钥可以从 [MiniMax 平台](https://platform.minimax.io) 获取。
+API 密钥可从 [MiniMax 平台](https://platform.minimax.io) 获取。
 
-## 安装
+## 设置
 
-MiniMax 提供商可通过 `@ai-sdk/minimax` 模块获得。你可以使用以下命令安装：
+MiniMax 提供商通过 `@ai-sdk/minimax` 模块提供。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/minimax" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/minimax` 导入默认的提供商实例 `minimax`：
+你可以从 `@ai-sdk/minimax` 导入默认提供商实例 `minimax`：
 
 ```ts
 import { minimax } from '@ai-sdk/minimax';
 ```
 
-对于自定义配置，你可以导入 `createMiniMax` 并使用你的设置创建提供商实例：
+如需自定义配置，你可以导入 `createMiniMax` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createMiniMax } from '@ai-sdk/minimax';
@@ -39,20 +38,20 @@ const minimax = createMiniMax({
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀。此提供商使用 MiniMax 的
-  Anthropic 兼容协议，因此默认前缀是
-  `https://api.minimax.io/anthropic/v1` — 而非 OpenAI 兼容的
+  Anthropic 兼容协议，因此默认前缀为
+  `https://api.minimax.io/anthropic/v1` —— 而不是 OpenAI 兼容的
   `https://api.minimax.io/v1`。
 
 - **videoBaseURL** _string_
 
   为视频生成 API 调用使用不同的 URL 前缀。视频 API 使用
   MiniMax V2 原生端点（而非 Anthropic 兼容端点）。
-  默认前缀是 `https://api.minimax.io`。
+  默认前缀为 `https://api.minimax.io`。
 
 - **apiKey** _string_
 
-  MiniMax API 的 API 密钥。默认为 `MINIMAX_API_KEY` 环境变量。
-  语言模型将其发送在 `x-api-key` 请求头中（
+  MiniMax API 的 API 密钥。默认使用 `MINIMAX_API_KEY` 环境
+  变量。语言模型将其放在 `x-api-key` 请求头中（
   Anthropic 兼容协议）；视频模型将其作为
   `Authorization: Bearer` 发送。
 
@@ -74,7 +73,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: minimax('minimax-m3'),
-  prompt: '写一份适合 4 人的素食千层面食谱。',
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
 
@@ -82,7 +81,7 @@ const { text } = await generateText({
 
 ```ts
 const model = minimax.chat('minimax-m3');
-// 或
+// or
 const model = minimax.languageModel('minimax-m3');
 ```
 
@@ -91,7 +90,8 @@ MiniMax 语言模型可用于 `streamText` 函数
 
 ### 推理
 
-MiniMax-M 模型可以在最终响应之前产生中间推理（“思考”）。你可以通过提供商选项控制此行为。推理输出通过标准的 AI SDK 推理部分进行流式传输。
+MiniMax-M 模型可以在最终响应之前产生中间推理（“思考”）。你可以通过提供商选项控制此行为。推理
+输出通过标准 AI SDK 推理部分进行流式传输。
 
 ```ts
 import { minimax, type MiniMaxLanguageModelOptions } from '@ai-sdk/minimax';
@@ -104,36 +104,40 @@ const { text, reasoningText } = await generateText({
       thinking: { type: 'adaptive' },
     } satisfies MiniMaxLanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  prompt: 'How many "r"s are in the word "strawberry"?',
 });
 
 console.log(reasoningText);
 console.log(text);
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
-以下可选的提供商选项可用于 MiniMax 语言模型：
+以下可选提供商选项可用于 MiniMax 语言模型：
 
 - **thinking** _object_
 
   控制模型的推理（“思考”）行为。
   - **type** _'adaptive' | 'disabled'_
     - `'adaptive'`：模型自行决定何时推理（启用深度推理）
-    - `'disabled'`：模型直接响应而不进行推理，以获得更高的吞吐量和更低的延迟
+    - `'disabled'`：模型直接响应而不进行推理，以获得更高的
+      吞吐量和更低的延迟
 
   省略时，模型使用其提供商端默认值。
 
   <Note>
-    思考控制仅在 `minimax-m3` 上受支持。M2.x 模型始终进行思考，因此 `'disabled'` 对它们无效。
+    思考控制仅在 `minimax-m3` 上受支持。M2.x 模型始终
+    进行思考，因此 `'disabled'` 对它们没有效果。
   </Note>
 
 ## 视频模型
 
-你可以使用 [`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video)
-函数通过 MiniMax-H3 和 MiniMax-H3-Max 模型生成视频。MiniMax-H3-Max 是更快的变体：它以较低分辨率渲染，并支持除参考视频之外的所有模式。
+你可以使用
+[`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video)
+函数通过 MiniMax-H3 和 MiniMax-H3-Max 模型生成视频。MiniMax-H3-Max 是更快的变体：它以较低分辨率渲染，
+并支持除参考视频生成之外的所有模式。
 
 ```ts
 import { minimax, type MiniMaxVideoModelOptions } from '@ai-sdk/minimax';
@@ -141,64 +145,154 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: minimax.video('MiniMax-H3'),
-  prompt: '一只白色小猫在阳光明媚的花园里追逐蝴蝶。',
+  prompt: 'A white kitten chases a butterfly across a sunlit garden.',
   aspectRatio: '16:9',
   duration: 5,
   providerOptions: {
     minimax: {
       resolution: '768P',
-      pollTimeoutMs: 600000, // 10 分钟
+      pollTimeoutMs: 600000, // 10 minutes
     } satisfies MiniMaxVideoModelOptions,
   },
 });
 ```
 
-两种模型每次调用生成一个视频。生成是异步的 — 模型创建一个任务并轮询直到完成，然后返回生成的 MP4 URL。状态轮询信任第一次请求的已配置 MiniMax API 源，并在遵循重定向之前验证每个到其他源的重定向。
+两个模型每次调用生成一个视频。生成是异步的 —— 默认情况下，
+模型创建一个任务并轮询直到完成，然后返回生成的
+MP4 URL。
+状态轮询在首次请求时信任配置的 MiniMax API 源，并在跟随每个重定向到另一个源之前进行验证。
 
-`duration` 接受整数秒，默认为 5。MiniMax-H3 支持 4 到 15 秒；MiniMax-H3-Max 支持 5 到 15 秒。小数值会被四舍五入，超出范围的值会被限制，每种情况都会发出警告。MiniMax-H3 支持 `768P` 和 `2K` 输出，而 MiniMax-H3-Max 支持 `480P` 和 `768P`。
+`duration` 接受整数秒数，默认为 5。MiniMax-H3
+支持 4 到 15 秒；MiniMax-H3-Max 支持 5 到 15 秒。小数值
+会被四舍五入，超出范围的值会被限制，两者都会发出警告。
+MiniMax-H3 支持 `768P` 和 `2K` 输出，而 MiniMax-H3-Max 支持 `480P`
+和 `768P`。
 
-API 接受命名层级而非帧大小，因此顶层 `resolution` 会与每个宽高比每个层级一个帧大小的固定表进行匹配：
+API 接受命名层级而非帧尺寸，因此顶层 `resolution`
+会与一个固定表进行匹配，该表为每个宽高比的每个层级指定一个帧尺寸：
 
-| 层级   | 接受的 `resolution` 值                                                                 |
-| ------ | -------------------------------------------------------------------------------------- |
-| `480P` | `480x480`, `1120x480`, `854x480`, `640x480`, `480x854`, `480x640`                      |
-| `768P` | `768x768`, `1792x768`, `1366x768`, `1024x768`, `768x1366`, `768x1024`                  |
-| `2K`   | `2048x2048`, `2560x1080`, `2560x1440`, `2048x1536`, `1440x2560`, `1536x2048`           |
+| 层级   | 接受的 `resolution` 值                                                       |
+| ------ | ---------------------------------------------------------------------------- |
+| `480P` | `480x480`, `1120x480`, `854x480`, `640x480`, `480x854`, `480x640`            |
+| `768P` | `768x768`, `1792x768`, `1366x768`, `1024x768`, `768x1366`, `768x1024`        |
+| `2K`   | `2048x2048`, `2560x1080`, `2560x1440`, `2048x1536`, `1440x2560`, `1536x2048` |
 
-表外的任何值，或所选模型不支持的层级，都会发出警告并回退到模型默认值。`providerOptions.minimax.resolution` 精确指定层级并优先于顶层值，后者会被报告为已忽略。
+表之外的任何值，或所选模型不支持的层级，都会发出警告
+并回退到模型默认值。`providerOptions.minimax.resolution` 精确指定
+层级，并优先于顶层值，后者会被报告为已忽略。
 
-对于**文本转视频**，省略 `aspectRatio` 时默认为 `16:9`。MiniMax API 要求纯文本请求具有具体的宽高比，并且不接受 `adaptive`。对于**参考转视频**，省略 `aspectRatio` 时 API 默认为 `adaptive`。对于使用帧图像的**图像转视频**，宽高比遵循输入图像。
+对于**文本转视频**，省略时 `aspectRatio` 默认为 `16:9`。MiniMax
+API 要求纯文本请求使用具体比例，不接受
+`adaptive`。对于**参考转视频**，省略 `aspectRatio` 时 API 默认为 `adaptive`。对于使用帧图像的**图像转视频**，宽高
+比遵循输入图像。
 
 <Note>
-  结果 URL 具有时效性。生成后请及时将视频下载并持久化到你自己的存储中。
+  结果 URL 有时间限制。生成后请及时将视频下载并持久化到你自己的
+  存储中。
 </Note>
+
+### 异步生成
+
+要让 SDK 管理启动/状态流程，请将 `poll` 传递给 `generateVideo`：
+
+```ts
+import { minimax } from '@ai-sdk/minimax';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: minimax.video('MiniMax-H3'),
+  prompt: 'A white kitten chases a butterfly across a sunlit garden.',
+  poll: { intervalMs: 10000, timeoutMs: 600000 },
+});
+```
+
+没有 `poll` 或 `webhook` 时，生成继续使用提供商的
+`pollIntervalMs` 和 `pollTimeoutMs` 选项。使用 `poll` 时，则应用 SDK 的轮询
+设置。
+
+MiniMax 未实现通用 webhook hook。将 `webhook` 传递给
+`generateVideo` 会回退到 SDK 轮询，而不会调用工厂。MiniMax 的
+挑战握手和进度通知需要协议感知的接收器，
+与通用 SDK 和 Workflow webhook 接收器不兼容。
+
+对于调用方管理的调度，使用 `experimental_startVideo` 提交一个任务
+而不轮询，并使用 `experimental_getVideoStatus` 检查一次，返回
+`pending`、`completed` 或 `error`。持久化来自 `experimental_startVideo` 的完整 JSON 可序列化
+`operation`，并将其原样传递给
+具有相同配置的模型上的 `experimental_getVideoStatus`。
+其 `resolvedInputs` 包含 `imageCount` 和 `referenceVideoIndices`：原始混合 `inputReferences`
+数组中已接受的 URL 视频引用的从零开始的位置。内联视频计入上限但会从索引中省略；
+重复引用保留单独的索引。operation 和状态
+元数据都不会保留输入 URL、提示词、内联数据或 API 凭据。
+状态元数据使用这些索引而非 `referenceVideoUrls`；不带 `poll` 或
+`webhook` 的普通 `generateVideo` 调用保留现有的 URL 元数据。
+参见
+[启动/状态示例](https://github.com/vercel/ai/blob/main/examples/ai-functions/src/generate-video/minimax/start-status.ts)。
+
+对于应用程序管理的回调，请向
+`experimental_startVideo` 传递显式的 `webhookUrl`：
+
+```ts
+import { minimax } from '@ai-sdk/minimax';
+import {
+  experimental_startVideo as startVideo,
+  experimental_getVideoStatus as getVideoStatus,
+} from 'ai';
+
+const model = minimax.video('MiniMax-H3');
+const { operation } = await startVideo({
+  model,
+  prompt: 'A white kitten chases a butterfly across a sunlit garden.',
+  webhookUrl: 'https://example.com/api/minimax/callback',
+});
+
+// Persist operation, then check it from your application's callback handler.
+const status = await getVideoStatus(model, { operation });
+```
+
+你的应用程序托管回调端点并处理 MiniMax 的回调
+协议；适配器仅将 `webhookUrl` 作为 MiniMax 的 `callback_url` 转发。
+端点必须在 3 秒内原样回显验证 `challenge`
+并过滤掉 `queued`/`running` 进度更新。当
+`task.status` 为 `succeeded`、`failed` 或 `cancelled` 时处理终止通知，然后使用
+`getVideoStatus` 和持久化的 operation 来获取结果。挑战和进度更新都不表示完成。有关回调契约，请参见
+[MiniMax V2 API 参考](https://platform.minimax.io/docs/api-reference/video-generation-v2-create.md)。
 
 ### 生成模式
 
-生成模式根据你传递的输入进行推断：
+生成模式根据你传递的输入推断：
 
-- **文本转视频** — 仅 `prompt`。
-- **首帧图像转视频** — 传递 `image`（或带有 `frameType: 'first_frame'` 的 `frameImages` 条目）来动画化起始图像。
-- **首尾关键帧** — 传递同时包含 `first_frame` 和 `last_frame` 的 `frameImages` 来控制过渡。
-- **参考转视频（仅 MiniMax-H3）** — 传递 `inputReferences`（图像和/或视频，按媒体类型路由）以保持主体/风格或跟随运动。帧图像和引用互斥。MiniMax-H3-Max 不支持参考转视频输入。
+- **文本转视频** —— 仅 `prompt`。
+- **首帧图像转视频** —— 传递 `image`（或带有
+  `frameType: 'first_frame'` 的 `frameImages` 条目）来为起始图像添加动画。
+- **首尾关键帧** —— 传递同时包含 `first_frame` 和
+  `last_frame` 的 `frameImages` 来控制过渡。
+- **参考转视频（仅 MiniMax-H3）** —— 传递 `inputReferences`（图像
+  和/或视频，按媒体类型路由）以保持主体/风格或跟随运动。
+  帧图像和参考互斥。MiniMax-H3-Max 不支持
+  参考转视频输入。
 
-当提供帧图像时，宽高比遵循图像，任何显式的 `aspectRatio` 都会被忽略。
+当提供帧图像时，宽高比遵循图像，任何
+显式的 `aspectRatio` 都会被忽略。
 
 ### 视频提供商选项
 
-以下可选的提供商选项可用于 MiniMax 视频模型：
+以下可选提供商选项可用于 MiniMax 视频模型：
 
 - **resolution** _'480P' | '768P' | '2K'_
 
-  输出分辨率。MiniMax-H3 支持 `'768P'` 和 `'2K'`（默认）。MiniMax-H3-Max 支持 `'480P'` 和 `'768P'`（默认）。
+  输出分辨率。MiniMax-H3 支持 `'768P'` 和 `'2K'`（默认值）。
+  MiniMax-H3-Max 支持 `'480P'` 和 `'768P'`（默认值）。
 
 - **ratio** _'adaptive' | '21:9' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16'_
 
-  生成视频的宽高比。覆盖顶层的 `aspectRatio`。
+  生成视频的宽高比。覆盖顶层 `aspectRatio`。
 
 - **referenceAudioUrls** _string[]_
 
-  用于 MiniMax-H3 参考转视频生成的参考音频 URL（或 `mm_file://` 句柄）。必须与至少一个参考图像或视频配对。最多 3 个。MiniMax-H3-Max 不支持参考音频。
+  用于 MiniMax-H3
+  参考转视频生成的参考音频 URL（或 `mm_file://` 句柄）。必须与至少一个参考
+  图像或视频配对。最多 3 个。MiniMax-H3-Max 不支持参考音频。
 
 - **aigcWatermark** _boolean_
 
@@ -206,14 +300,17 @@ API 接受命名层级而非帧大小，因此顶层 `resolution` 会与每个�
 
 - **pollIntervalMs** _number_
 
-  任务状态轮询之间的时间间隔（毫秒）。默认值：`10000`。
+  任务状态轮询之间的间隔（毫秒）。默认值：`10000`。
 
 - **pollTimeoutMs** _number_
 
   超时前轮询的最长时间（毫秒）。默认值：`600000`。
 
 <Note>
-  MiniMax `mm_file://` 句柄仅按原样转发用于 `referenceAudioUrls`。它们不能用于 `image`、`frameImages` 或 `inputReferences`：这些输入通过 AI SDK 的文件处理，该处理会将任何不是 `http(s)://` 或 `data:` URL 的字符串进行 base64 解码。请将这些输入作为公共 URL、数据 URI 或二进制数据传递。
+  MiniMax `mm_file://` 句柄仅对
+  `referenceAudioUrls` 原样转发。它们不能用于 `image`、`frameImages` 或
+  `inputReferences`：这些输入会经过 AI SDK 的文件处理，它会
+  对任何不是 `http(s)://` 或 `data:` URL 的字符串进行 base64 解码。请改为将这些输入作为公共 URL、数据 URI 或二进制数据传递。
 </Note>
 
 ### 视频提供商元数据
@@ -226,43 +323,49 @@ MiniMax 视频结果包含 `providerMetadata.minimax`：
 
 - **videoUrl** _string_
 
-  MiniMax 托管的 MP4 URL（与 `video` 相同的 URL）。具有时效性。
+  MiniMax 托管的 MP4 URL（与 `video` 相同的 URL）。有时间限制。
 
 - **resolvedInputs** _object_
 
-  实际发送的输入，在 H3 施加的限制和拒绝之后（警告报告输入被丢弃，但不报告有多少幸存）。
-  - **imageCount** _number_ — 发送的图像数量（帧图像或参考图像）。
-  - **referenceVideoUrls** _string[]_ — 发送的参考视频的 URL。内联视频数据被省略，因为它作为数据 URI 发送。
+  在 H3 施加的上限和拒绝之后实际发送的输入
+  （警告会报告某个输入被丢弃，但不会报告有多少个保留下来）。
+  - **imageCount** _number_ —— 发送的图像数量（帧图像或参考
+    图像）。
+  - **referenceVideoUrls** _string[]_ —— 发送的参考视频的 URL。
+    内联视频数据会被省略，因为它作为数据 URI 发送。
 
 - **duration** _number_
 
-  生成视频的时长（秒），当 API 报告时。
+  生成视频的时长（秒），当 API 报告时提供。
 
 - **ratio** _string_
 
-  生成视频的宽高比，当 API 报告时。
+  生成视频的宽高比，当 API 报告时提供。
 
 - **resolution** _string_
 
-  生成视频的分辨率层级，当 API 报告时。
+  生成视频的分辨率层级，当 API 报告时提供。
 
 - **usage** _object_
 
-  计费秒数，当 API 报告时：`totalSeconds`、`inputSeconds` 和 `outputSeconds`。
+  计费秒数，当 API 报告时提供：`totalSeconds`、`inputSeconds`
+  和 `outputSeconds`。
 
 ## 模型能力
 
-| 模型                      | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
-| ------------------------- | -------- | -------- | -------- | ------------ |
-| `minimax-m3`              | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2.7`            | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2.7-highspeed`  | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2.5`            | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2.5-highspeed`  | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2.1`            | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2.1-highspeed`  | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `minimax-m2`              | <Cross /> | <Check /> | <Check /> | <Check />    |
+| 模型                     | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| ------------------------ | ----------- | ----------------- | ---------- | -------------- |
+| `minimax-m3`             | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2.7`           | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2.7-highspeed` | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2.5`           | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2.5-highspeed` | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2.1`           | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2.1-highspeed` | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `minimax-m2`             | <Cross />   | <Check />         | <Check />  | <Check />      |
 
 <Note>
-  请参阅 [MiniMax 文档](https://platform.minimax.io/docs) 获取可用模型的完整列表。如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  请参见 [MiniMax 文档](https://platform.minimax.io/docs) 获取可用模型的完整
+  列表。如有需要，你也可以将任何可用的提供商模型 ID 作为
+  字符串传递。
 </Note>

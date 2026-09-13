@@ -1,0 +1,119 @@
+---
+title: "experimental_listBatches"
+description: "experimental_listBatches 的 API 参考。"
+---
+
+# `experimental_listBatches()`
+
+<Note type="warning">
+  批处理支持处于实验阶段，API 可能会在补丁版本中发生变化。
+</Note>
+
+列出异步批处理的一页及其最新的规范化状态。有关批处理生命周期的完整指南，请参阅 [Batch](/docs/ai-sdk-core/batch)。
+
+```ts
+import { experimental_listBatches as listBatches } from 'ai';
+
+const page = await listBatches({
+  provider,
+  limit: 20,
+  cursor,
+});
+
+console.log(page.batches, page.nextCursor);
+```
+
+## Import
+
+<Snippet
+  text={`import { experimental_listBatches } from "ai"`}
+  prompt={false}
+/>
+
+## API 签名
+
+### 参数
+
+<PropertiesTable
+  content={[
+    {
+      name: 'provider',
+      type: 'Experimental_BatchProvider',
+      isOptional: true,
+      description:
+        '要列出其批处理的提供商。默认为全局提供商，如果未配置全局提供商，则默认为 AI Gateway。',
+    },
+    {
+      name: 'limit',
+      type: 'number',
+      isOptional: true,
+      description: '此页中返回的批处理最大数量。',
+    },
+    {
+      name: 'cursor',
+      type: 'string',
+      isOptional: true,
+      description:
+        '上一次列表操作作为 nextCursor 返回的不透明游标。',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description: '用于列出批处理的额外提供商特定选项。',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description:
+        '列出批处理的最大重试次数。设置为 0 以禁用重试。默认值：2。',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: '用于取消请求的可选中止信号。',
+    },
+    {
+      name: 'timeout',
+      type: 'number | { totalMs?: number }',
+      isOptional: true,
+      description: '列表请求允许的最长时间。',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string | undefined>',
+      isOptional: true,
+      description: '请求的额外 HTTP 标头。',
+    },
+  ]}
+/>
+
+### 返回值
+
+<PropertiesTable
+  content={[
+    {
+      name: 'batches',
+      type: 'Array<Experimental_Batch>',
+      description:
+        '此页中的批处理。每一项包含一个可序列化的批处理引用及其最新的规范化状态。',
+    },
+    {
+      name: 'nextCursor',
+      type: 'string',
+      isOptional: true,
+      description:
+        '作为 cursor 传入以获取下一页的不透明游标。当没有更多批处理时省略。',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata',
+      isOptional: true,
+      description: '列表操作的提供商特定元数据。',
+    },
+  ]}
+/>
+
+使用不支持列出批处理的提供商调用此函数会抛出 `UnsupportedFunctionalityError`。

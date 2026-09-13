@@ -1,0 +1,291 @@
+---
+title: "批处理"
+description: "了解如何使用 AI SDK 处理异步批处理。"
+---
+
+# 批处理
+
+<Note type="warning">
+  批处理支持处于实验阶段，API 可能会在补丁版本中发生变化。
+</Note>
+
+批处理允许你提交多个独立的请求进行异步处理。提供商在后台处理批处理，因此你的应用程序无需在模型生成结果期间保持请求打开。这对于分类、摘要和内容生成等不需要立即响应的任务非常有用。
+
+批处理 API 支持使用 `type: 'text'` 进行文本生成，以及使用 `type: 'image'` 进行图像生成。
+
+AI SDK 为批处理生命周期提供了五个函数：
+
+- [`experimental_startBatch`](/docs/reference/ai-sdk-core/start-batch)
+  提交一个批处理并返回其初始状态和一个可序列化的引用。
+- [`experimental_getBatchStatus`](/docs/reference/ai-sdk-core/get-batch-status)
+  获取最新状态和请求计数。
+- [`experimental_getBatchResults`](/docs/reference/ai-sdk-core/get-batch-results)
+  异步迭代每个请求的最终结果。
+- [`experimental_cancelBatch`](/docs/reference/ai-sdk-core/cancel-batch)
+  请求取消一个批处理。
+- [`experimental_listBatches`](/docs/reference/ai-sdk-core/list-batches)
+  列出批处理及其最新状态。
+
+这五个函数都从 `ai` 导出。下面的示例使用了别名，以便在应用程序代码中使用更短的名称：
+
+```ts
+import {
+  experimental_cancelBatch as cancelBatch,
+  experimental_getBatchResults as getBatchResults,
+  experimental_getBatchStatus as getBatchStatus,
+  experimental_listBatches as listBatches,
+  experimental_startBatch as startBatch,
+} from 'ai';
+```
+
+取消和列出是提供商的可选能力。使用未实现这些功能的提供商调用任一函数会抛出 `UnsupportedFunctionalityError`。在下面的取消和列出示例中，`provider` 表示实现了相应能力的批处理提供商。
+
+## 支持的提供商
+
+批处理需要实现批处理接口的提供商。支持情况因提供商和模型而异。支持该功能的第一方提供商包括：
+
+| 提供商                                               | 提供商值       | 请求类型      | 提供商 API                                                                                    |
+| ---------------------------------------------------- | -------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| [Anthropic](/providers/ai-sdk-providers/anthropic)   | `anthropic`    | 文本          | [Message Batches API](https://platform.claude.com/docs/en/build-with-claude/batch-processing) |
+| [Google](/providers/ai-sdk-providers/google)         | `google`       | 文本、图像    | [Gemini Batch API](https://ai.google.dev/gemini-api/docs/batch-api)                           |
+| [OpenAI](/providers/ai-sdk-providers/openai)         | `openai`       | 文本          | [Batch API](https://developers.openai.com/api/docs/guides/batch)                              |
+| [xAI](/providers/ai-sdk-providers/xai)               | `xai`          | 文本、图像    | [Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api)                        |
+| [AI Gateway](/providers/ai-sdk-providers/ai-gateway) | 全局默认       | 文本          | [Batch processing](https://vercel.com/docs/ai-gateway/models-and-providers/batch-processing)  |
+
+有关支持的模型、限制和原生批处理行为，请参阅提供商文档。例如，OpenAI 批处理支持通过 Responses API 提供，而非 `openai.chat()`；xAI 批处理支持通过 Responses API 提供，而非 `xai.chat()`。
+
+## 启动批处理
+
+向 `startBatch` 传入一个提供商和一个或多个具有唯一标识的请求。每个请求必须指定 `type: 'text'`、模型 ID，以及文本 `prompt` 或 `messages` 数组。在提供商支持的情况下，请求可以使用不同的模型 ID。每个请求还可以使用常见的文本生成设置，例如 `instructions`、`maxOutputTokens`、`temperature`、`topP`、`topK`、`presencePenalty`、`frequencyPenalty`、`stopSequences`、`seed` 和 `reasoning`。
+
+工具定义和工具设置在每个请求上单独提供。使用相同名称的工具在每个使用它的请求中必须具有相同的定义。
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { experimental_startBatch as startBatch } from 'ai';
+
+const provider = anthropic;
+
+const batch = await startBatch({
+  provider,
+  requests: [
+    {
+      id: 'capital-france',
+      type: 'text',
+      model: 'claude-haiku-4-5',
+      prompt: 'What is the capital of France?',
+    },
+    {
+      id: 'capital-germany',
+      type: 'text',
+      model: 'claude-haiku-4-5',
+      prompt: 'What is the capital of Germany?',
+    },
+  ],
+});
+
+console.log(batch.id, batch.status);
+```
+
+请求 ID 必须非空且在批处理内唯一。它们是输入请求与其结果之间的关联。结果不保证按输入顺序返回，因此在将结果与应用程序数据关联时，请使用 ID 而不是数组位置。
+
+你可以在批处理级别使用 `providerOptions` 传递提供商特定的设置，也可以在单个请求上使用该请求的 `providerOptions`。提供商支持的设置在两个级别之间可能有所不同。启动结果上的 `warnings` 属性包含有关不支持设置的警告。
+
+`startBatch` 返回的批处理引用是可序列化的。如果批处理将由另一个进程或在稍后时间完成，请在进程退出前持久化它。在检索批处理时，请传入相同的提供商。AI SDK 使用该引用来确保批处理不会通过不兼容的提供商读取。
+
+### 图像请求
+
+图像请求使用与 `generateImage` 相同的提示词和生成设置：`prompt`、`n`、`size`、`aspectRatio`、`seed` 和 `providerOptions`。对于支持图像编辑的提供商，提示词还可以包含输入图像和蒙版。提供商批处理端点可能仅支持这些选项的子集；不支持的选项会产生警告或错误。
+
+```ts
+import { google } from '@ai-sdk/google';
+import { experimental_startBatch as startBatch } from 'ai';
+
+const batch = await startBatch({
+  provider: google,
+  requests: [
+    {
+      id: 'red-panda',
+      type: 'image',
+      model: 'gemini-2.5-flash-image',
+      prompt: 'A red panda reading beside a cabin window',
+      aspectRatio: '16:9',
+    },
+  ],
+});
+```
+
+成功的图像项具有一个由 `GeneratedFile` 值组成的 `images` 数组，以及图像警告、响应元数据、用量和提供商元数据（当提供商提供时）。成功的文本项具有 `text` 和 `content` 属性。使用 `type` 属性来收窄混合结果：
+
+```ts
+for await (const item of getBatchResults({ provider: google, batch })) {
+  if (item.type === 'image' && item.status === 'succeeded') {
+    console.log(item.images);
+  }
+}
+```
+
+## 批处理工具
+
+批处理文本请求同时支持客户端定义的工具和提供商定义的工具。工具定义会随每个包含它们的请求一起发送，因此模型可以为每个请求独立调用它们。
+
+客户端定义的工具在批处理中仅为定义。它们的 `execute` 函数永远不会被调用，AI SDK 在检索到工具调用后不会提交工具结果或启动后续生成。将相同的工具集传递给 `getBatchResults` 以验证和规范化返回的工具调用：
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import {
+  experimental_getBatchResults as getBatchResults,
+  experimental_startBatch as startBatch,
+  tool,
+} from 'ai';
+import { z } from 'zod';
+
+const tools = {
+  get_weather: tool({
+    description: 'Get the current weather for a location.',
+    inputSchema: z.object({ location: z.string() }),
+    execute: async ({ location }) => {
+      // This function is not called by batch processing.
+      return { location, temperature: 21, condition: 'sunny' };
+    },
+  }),
+};
+
+const batch = await startBatch({
+  provider: anthropic,
+  requests: [
+    {
+      id: 'weather-san-francisco',
+      type: 'text',
+      model: 'claude-haiku-4-5',
+      prompt: 'Call get_weather for San Francisco, California.',
+      tools,
+      toolChoice: { type: 'tool', toolName: 'get_weather' },
+    },
+  ],
+});
+
+for await (const item of getBatchResults({
+  provider: anthropic,
+  batch,
+  tools,
+})) {
+  if (item.status === 'succeeded') {
+    console.log(item.id, item.content);
+  }
+}
+```
+
+提供商定义的工具（例如网络搜索或代码执行）在该提供商的批处理 API 支持时，可以在提供商端执行。它们的工具调用和结果会作为规范化的 `content` 部分返回。有关批处理中可用的工具和模型，请参阅提供商文档。
+
+## 检查批处理状态
+
+启动结果包含初始状态。在提供商处理批处理期间，使用 `getBatchStatus` 获取最新状态：
+
+```ts
+import { setTimeout } from 'node:timers/promises';
+
+let status = batch.status;
+let error = batch.error;
+
+while (status === 'pending') {
+  await setTimeout(10_000);
+  const latestStatus = await getBatchStatus({
+    provider: anthropic,
+    batch,
+  });
+  status = latestStatus.status;
+  error = latestStatus.error;
+}
+
+if (status === 'failed') {
+  throw new Error(error?.message ?? 'The batch failed.');
+}
+```
+
+规范化的批处理状态为以下之一：
+
+- `pending` — 提供商仍在处理批处理。
+- `completed` — 批处理已达到最终状态，可以检索结果。
+- `failed` — 批处理无法完成。`error` 属性可能包含更多详细信息。
+
+状态响应还可以包含 `requestCounts`、`createdAt`、`expiresAt`、`rawStatus` 和提供商元数据。`requestCounts` 报告提供商已知的总数、待处理、已完成和失败的请求数。
+
+对于支持 webhook 的提供商，向 `startBatch` 传入 `webhookUrl` 以在批处理达到最终状态时接收通知。Webhook 支持和负载因提供商而异。上面链接的提供商页面描述了它们的 webhook 行为；不支持 webhook 的提供商会返回不支持警告并继续执行。
+
+## 取消批处理
+
+使用 `cancelBatch` 请求提供商停止处理批处理：
+
+```ts
+const result = await cancelBatch({
+  provider,
+  batch,
+});
+
+console.log(result.providerMetadata);
+```
+
+调用成功意味着提供商接受了取消请求。它并不保证取消已完成，也不保证每个待处理的请求都会被取消。在请求取消后，使用 `getBatchStatus` 获取最新状态。
+
+结果可以包含提供商元数据，其中带有来自取消响应的附加信息。
+
+## 列出批处理
+
+使用 `listBatches` 从提供商检索批处理。结果是分页的。将返回的 `nextCursor` 作为 `cursor` 传入以检索下一页：
+
+```ts
+let cursor: string | undefined;
+
+do {
+  const page = await listBatches({
+    provider,
+    limit: 20,
+    cursor,
+  });
+
+  for (const batch of page.batches) {
+    console.log(batch.id, batch.status);
+  }
+
+  cursor = page.nextCursor;
+} while (cursor != null);
+```
+
+每一项都是一个可序列化的批处理引用，带有其最新的规范化状态，因此可以直接传递给 `getBatchStatus`、`getBatchResults` 或 `cancelBatch`。游标是不透明的且因提供商而异；应用程序应原样存储或传递它们，而不是检查其内容。
+
+## 检索结果
+
+批处理完成后，`getBatchResults` 返回一个异步可迭代对象。每一项包含一个输入请求的 ID 和最终状态：
+
+```ts
+for await (const item of getBatchResults({ provider: anthropic, batch })) {
+  if (item.status === 'succeeded') {
+    console.log(item.id, item.text);
+  } else {
+    console.error(item.id, item.status, item.error);
+  }
+}
+```
+
+成功的项包括：
+
+- `text` — 拼接后的文本内容。当结果不包含文本部分时，这可能是一个空字符串。
+- `content` — 有序的、规范化的内容部分，包括文本、推理、文件、来源、工具调用、工具结果，以及提供商支持时的提供商内容。
+- `finishReason` 和可选的 `rawFinishReason`。
+- `usage` 和可选的 `response` 元数据。
+- 可选的 `providerMetadata`。
+
+失败、已取消和已过期的项包含其 `id` 和状态。失败的项包含 `error`；已取消和已过期的项也可能包含一个。一个请求失败并不一定意味着批处理中的每个请求都失败，因此请独立处理每一项。
+
+批处理检索不会运行 AI SDK 工具循环，也不会调用客户端定义的 `execute` 函数。提供商定义的工具可能作为批处理处理的一部分在提供商端执行。将结果内容和提供商元数据视为不受信任的模型输出，并避免不加区分地记录它们，因为它们可能包含敏感数据。
+
+## 请求控制
+
+所有批处理生命周期函数都接受 `providerOptions`、`headers`、`timeout` 和 `abortSignal` 用于当前操作。`getBatchStatus`、`getBatchResults` 和 `listBatches` 还接受 `maxRetries`：
+
+- `maxRetries` 控制状态、结果检索和列出的重试。它不会重试批处理创建或取消。默认值为 2；将其设置为 0 以禁用重试。
+- `abortSignal` 取消当前的 API 请求。
+- `timeout` 限制当前 HTTP 操作。
+
+这些控制会影响与提供商的通信。它们不会改变提供商的处理截止时间，也不会取消已经提交的批处理。

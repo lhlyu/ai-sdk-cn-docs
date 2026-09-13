@@ -1,12 +1,12 @@
 ---
 title: "聊天机器人工具使用"
-description: "了解如何将工具与 useChat Hook 结合使用。"
+description: "了解如何在 useChat Hook 中使用工具。"
 ---
 
 # 聊天机器人工具使用
 
-通过 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text)，您可以在聊天机器人应用中使用工具。
-AI SDK 在此场景下支持三种工具执行模式：
+借助 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text)，你可以在聊天机器人应用中使用工具。
+在此场景下，AI SDK 支持三种工具执行模式：
 
 1. 自动执行的服务器端工具
 2. 自动执行的客户端工具
@@ -14,36 +14,37 @@ AI SDK 在此场景下支持三种工具执行模式：
 
 流程如下：
 
-1. 用户在聊天界面中输入消息。
+1. 用户在聊天 UI 中输入一条消息。
 1. 消息被发送到 API 路由。
-1. 在您的服务器端路由中，语言模型在 `streamText` 调用期间生成工具调用。
+1. 在你的服务器端路由中，语言模型在 `streamText` 调用期间生成工具调用。
 1. 所有工具调用都被转发到客户端。
-1. 服务器端工具使用其 `execute` 方法执行，其结果被转发到客户端。
+1. 服务器端工具使用其 `execute` 方法执行，结果被转发到客户端。
 1. 应自动执行的客户端工具通过 `onToolCall` 回调处理。
-   您必须调用 `addToolOutput` 来提供工具结果。
-1. 需要用户交互的客户端工具可以在界面中显示。
-   工具调用和结果可作为工具调用部分，在最后一条助手消息的 `parts` 属性中获取。
-1. 当用户交互完成时，可以使用 `addToolOutput` 将工具结果添加到聊天中。
-1. 聊天可以配置为当所有工具结果可用时自动提交，使用 `sendAutomaticallyWhen`。
+   你必须调用 `addToolOutput` 来提供工具结果。
+1. 需要用户交互的客户端工具可以在 UI 中显示。
+   工具调用和结果作为工具调用部件（tool invocation parts）在最后一条助手消息的 `parts` 属性中可用。
+1. 当用户交互完成后，可以使用 `addToolOutput` 将工具结果添加到聊天中。
+1. 可以使用 `sendAutomaticallyWhen` 配置聊天在所有工具结果可用时自动提交。
    这会触发此流程的另一次迭代。
 
-工具调用和工具执行作为类型化工具部分集成到助手消息中。
-工具部分首先是一个工具调用，然后在工具执行后变为工具结果。
+工具调用和工具执行作为带类型的工具部件（typed tool parts）集成到助手消息中。
+工具部件最初是工具调用，当工具执行后它变为工具结果。
 工具结果包含有关工具调用的所有信息以及工具执行的结果。
 
 <Note>
-  工具结果提交可以使用 `sendAutomaticallyWhen` 选项进行配置。您可以使用
-  `lastAssistantMessageIsCompleteWithToolCalls` 辅助函数在所有工具结果可用时
-  自动提交。这简化了客户端代码，同时在需要时仍允许完全控制。
+  工具结果提交可以使用 `sendAutomaticallyWhen`
+  选项进行配置。你可以使用 `lastAssistantMessageIsCompleteWithToolCalls` 辅助函数
+  在所有工具结果可用时自动提交。这简化了
+  客户端代码，同时在需要时仍允许完全控制。
 </Note>
 
 ## 示例
 
 在此示例中，我们将使用三个工具：
 
-- `getWeatherInformation`：自动执行的服务器端工具，返回指定城市的天气。
-- `askForConfirmation`：需要用户交互的客户端工具，向用户请求确认。
-- `getLocation`：自动执行的客户端工具，返回一个随机城市。
+- `getWeatherInformation`：一个自动执行的服务器端工具，返回给定城市的天气。
+- `askForConfirmation`：一个用户交互的客户端工具，向用户请求确认。
+- `getLocation`：一个自动执行的客户端工具，返回一个随机城市。
 
 ### API 路由
 
@@ -58,7 +59,7 @@ import {
 __PROVIDER_IMPORT__;
 import { z } from 'zod';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     model: __MODEL__,
     messages: await convertToModelMessages(messages),
     tools: {
-      // 带有 execute 函数的服务器端工具：
+      // server-side tool with execute function:
       getWeatherInformation: {
         description: 'show the weather in a given city to the user',
         inputSchema: z.object({ city: z.string() }),
@@ -79,14 +80,14 @@ export async function POST(req: Request) {
           ];
         },
       },
-      // 启动用户交互的客户端工具：
+      // client-side tool that starts user interaction:
       askForConfirmation: {
         description: 'Ask the user for confirmation.',
         inputSchema: z.object({
           message: z.string().describe('The message to ask for confirmation.'),
         }),
       },
-      // 在客户端自动执行的客户端工具：
+      // client-side tool that is automatically executed on the client:
       getLocation: {
         description:
           'Get the user location. Always ask for confirmation before using this tool.',
@@ -103,34 +104,34 @@ export async function POST(req: Request) {
 
 ### 客户端页面
 
-客户端页面使用 `useChat` Hook 创建具有实时消息流式传输的聊天机器人应用。
-工具调用作为类型化工具部分显示在聊天界面中。
+客户端页面使用 `useChat` Hook 创建一个具有实时消息流式传输的聊天机器人应用。
+工具调用作为带类型的工具部件显示在聊天 UI 中。
 请确保使用消息的 `parts` 属性来渲染消息。
 
 有三点值得注意：
 
 1. [`onToolCall`](/docs/reference/ai-sdk-ui/use-chat#on-tool-call) 回调用于处理应自动执行的客户端工具。
    在此示例中，`getLocation` 工具是一个返回随机城市的客户端工具。
-   您调用 `addToolOutput` 来提供结果（不使用 `await` 以避免潜在的死锁）。
+   你调用 `addToolOutput` 来提供结果（不使用 `await` 以避免潜在的死锁）。
 
    <Note>
-     始终先在 `onToolCall` 处理器中检查 `if (toolCall.dynamic)`。
-     如果不进行此检查，当您在 `addToolOutput` 中尝试使用
-     `toolCall.toolName` 时，TypeScript 将抛出类似
+     在你的 `onToolCall` 处理程序中，始终先检查 `if (toolCall.dynamic)`。
+     如果没有此检查，当你尝试在 `addToolOutput` 中使用
+     `toolCall.toolName` 时，TypeScript 会抛出类似
      `Type 'string' is not assignable to type '"toolName1" | "toolName2"'` 的错误。
    </Note>
 
-2. [`sendAutomaticallyWhen`](/docs/reference/ai-sdk-ui/use-chat#send-automatically-when) 选项与 `lastAssistantMessageIsCompleteWithToolCalls` 辅助函数配合使用，可在所有工具结果可用时自动提交。
+2. 使用 `lastAssistantMessageIsCompleteWithToolCalls` 辅助函数的 [`sendAutomaticallyWhen`](/docs/reference/ai-sdk-ui/use-chat#send-automatically-when) 选项会在所有工具结果可用时自动提交。
 
-3. 助手消息的 `parts` 数组包含具有类型化名称（如 `tool-askForConfirmation`）的工具部分。
-   客户端工具 `askForConfirmation` 显示在界面中。
+3. 助手消息的 `parts` 数组包含具有带类型名称（如 `tool-askForConfirmation`）的工具部件。
+   客户端工具 `askForConfirmation` 显示在 UI 中。
    它向用户请求确认，并在用户确认或拒绝执行后显示结果。
-   结果通过 `addToolOutput` 添加到聊天中，并使用 `tool` 参数以确保类型安全。
+   结果使用 `addToolOutput` 添加到聊天中，并带有 `tool` 参数以确保类型安全。
 
-类型化工具部分还包括 `approval-requested`、`approval-responded`
-和 `output-denied` 状态。在处理 `part.state` 时请包含这些状态，
-即使工具不需要审批。有关完整的审批界面，请参阅
-[工具执行审批](#工具执行审批)。
+带类型的工具部件还包括 `approval-requested`、`approval-responded`
+和 `output-denied` 状态。在处理 `part.state` 时请包含这些状态以进行
+穷尽处理，即使工具不需要审批也是如此。完整的审批 UI 请参阅
+[工具执行审批](#tool-execution-approval)。
 
 ```tsx filename='app/page.tsx' highlight="6,11,16,19-23,25-26,28-33,51,66-70,77-81"
 'use client';
@@ -150,9 +151,9 @@ export default function Chat() {
 
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 
-    // 运行自动执行的客户端工具：
+    // run client-side tools that are automatically executed:
     async onToolCall({ toolCall }) {
-      // 首先检查是否为动态工具以进行正确的类型收窄
+      // Check if it's a dynamic tool first for proper type narrowing
       if (toolCall.dynamic) {
         return;
       }
@@ -160,7 +161,7 @@ export default function Chat() {
       if (toolCall.toolName === 'getLocation') {
         const cities = ['New York', 'Los Angeles', 'Chicago', 'San Francisco'];
 
-        // 不使用 await - 避免潜在的死锁
+        // No await - avoids potential deadlocks
         addToolOutput({
           tool: 'getLocation',
           toolCallId: toolCall.toolCallId,
@@ -178,18 +179,18 @@ export default function Chat() {
           <strong>{`${message.role}: `}</strong>
           {message.parts.map(part => {
             switch (part.type) {
-              // 将文本部分渲染为纯文本：
+              // render text parts as simple text:
               case 'text':
                 return part.text;
 
-              // 对于工具部分，使用类型化的工具部分名称：
+              // for tool parts, use the typed tool part names:
               case 'tool-askForConfirmation': {
                 const callId = part.toolCallId;
 
                 switch (part.state) {
                   case 'input-streaming':
                     return (
-                      <div key={callId}>正在加载确认请求...</div>
+                      <div key={callId}>Loading confirmation request...</div>
                     );
                   case 'input-available':
                     return (
@@ -205,7 +206,7 @@ export default function Chat() {
                               })
                             }
                           >
-                            是
+                            Yes
                           </button>
                           <button
                             onClick={() =>
@@ -216,25 +217,25 @@ export default function Chat() {
                               })
                             }
                           >
-                            否
+                            No
                           </button>
                         </div>
                       </div>
                     );
                   case 'approval-requested':
-                    return <div key={callId}>已请求审批。</div>;
+                    return <div key={callId}>Approval requested.</div>;
                   case 'approval-responded':
-                    return <div key={callId}>已收到审批响应。</div>;
+                    return <div key={callId}>Approval response received.</div>;
                   case 'output-available':
                     return (
                       <div key={callId}>
-                        已允许位置访问：{part.output}
+                        Location access allowed: {part.output}
                       </div>
                     );
                   case 'output-error':
-                    return <div key={callId}>错误：{part.errorText}</div>;
+                    return <div key={callId}>Error: {part.errorText}</div>;
                   case 'output-denied':
-                    return <div key={callId}>工具调用已被拒绝。</div>;
+                    return <div key={callId}>Tool call denied.</div>;
                 }
                 break;
               }
@@ -245,24 +246,24 @@ export default function Chat() {
                 switch (part.state) {
                   case 'input-streaming':
                     return (
-                      <div key={callId}>正在准备位置请求...</div>
+                      <div key={callId}>Preparing location request...</div>
                     );
                   case 'input-available':
-                    return <div key={callId}>正在获取位置...</div>;
+                    return <div key={callId}>Getting location...</div>;
                   case 'approval-requested':
-                    return <div key={callId}>已请求审批。</div>;
+                    return <div key={callId}>Approval requested.</div>;
                   case 'approval-responded':
-                    return <div key={callId}>已收到审批响应。</div>;
+                    return <div key={callId}>Approval response received.</div>;
                   case 'output-available':
-                    return <div key={callId}>位置：{part.output}</div>;
+                    return <div key={callId}>Location: {part.output}</div>;
                   case 'output-error':
                     return (
                       <div key={callId}>
-                        获取位置时出错：{part.errorText}
+                        Error getting location: {part.errorText}
                       </div>
                     );
                   case 'output-denied':
-                    return <div key={callId}>位置请求已被拒绝。</div>;
+                    return <div key={callId}>Location request denied.</div>;
                 }
                 break;
               }
@@ -271,7 +272,7 @@ export default function Chat() {
                 const callId = part.toolCallId;
 
                 switch (part.state) {
-                  // 预渲染流式工具输入的示例：
+                  // example of pre-rendering streaming tool inputs:
                   case 'input-streaming':
                     return (
                       <pre key={callId}>{JSON.stringify(part, null, 2)}</pre>
@@ -279,28 +280,28 @@ export default function Chat() {
                   case 'input-available':
                     return (
                       <div key={callId}>
-                        正在获取 {part.input.city} 的天气信息...
+                        Getting weather information for {part.input.city}...
                       </div>
                     );
                   case 'approval-requested':
-                    return <div key={callId}>已请求审批。</div>;
+                    return <div key={callId}>Approval requested.</div>;
                   case 'approval-responded':
-                    return <div key={callId}>已收到审批响应。</div>;
+                    return <div key={callId}>Approval response received.</div>;
                   case 'output-available':
                     return (
                       <div key={callId}>
-                        {part.input.city} 的天气：{part.output}
+                        Weather in {part.input.city}: {part.output}
                       </div>
                     );
                   case 'output-error':
                     return (
                       <div key={callId}>
-                        获取 {part.input.city} 的天气时出错：{' '}
+                        Error getting weather for {part.input.city}:{' '}
                         {part.errorText}
                       </div>
                     );
                   case 'output-denied':
-                    return <div key={callId}>天气请求已被拒绝。</div>;
+                    return <div key={callId}>Weather request denied.</div>;
                 }
                 break;
               }
@@ -328,7 +329,7 @@ export default function Chat() {
 
 ### 错误处理
 
-有时在客户端工具执行期间可能会发生错误。使用 `addToolOutput` 方法，并将 `state` 设置为 `output-error`，同时提供 `errorText` 值而不是 `output` 来记录错误。
+有时在客户端工具执行期间可能会发生错误。使用 `addToolOutput` 方法，并将 `state` 设置为 `output-error`，使用 `errorText` 值而不是 `output` 来记录错误。
 
 ```tsx filename='app/page.tsx' highlight="19,36-41"
 'use client';
@@ -348,9 +349,9 @@ export default function Chat() {
 
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 
-    // 运行自动执行的客户端工具：
+    // run client-side tools that are automatically executed:
     async onToolCall({ toolCall }) {
-      // 首先检查是否为动态工具以进行正确的类型收窄
+      // Check if it's a dynamic tool first for proper type narrowing
       if (toolCall.dynamic) {
         return;
       }
@@ -359,7 +360,7 @@ export default function Chat() {
         try {
           const weather = await getWeatherInformation(toolCall.input);
 
-          // 不使用 await - 避免潜在的死锁
+          // No await - avoids potential deadlocks
           addToolOutput({
             tool: 'getWeatherInformation',
             toolCallId: toolCall.toolCallId,
@@ -370,7 +371,7 @@ export default function Chat() {
             tool: 'getWeatherInformation',
             toolCallId: toolCall.toolCallId,
             state: 'output-error',
-            errorText: '无法获取天气信息',
+            errorText: 'Unable to get the weather information',
           });
         }
       }
@@ -379,23 +380,37 @@ export default function Chat() {
 }
 ```
 
+渲染消息时，使用 `isToolOutputErrorUIPart` 来识别失败的
+静态和动态工具部件，而无需直接检查工具状态：
+
+```tsx
+import { isToolOutputErrorUIPart, type UIMessage } from 'ai';
+
+function ToolError({ part }: { part: UIMessage['parts'][number] }) {
+  if (!isToolOutputErrorUIPart(part)) {
+    return null;
+  }
+
+  return <div role="alert">{part.errorText}</div>;
+}
+```
+
 ## 工具执行审批
 
-工具执行审批允许您在服务器端工具运行之前要求用户确认。与在浏览器中执行的[客户端工具](#示例)不同，需要审批的工具仍然在服务器上执行——但仅在用户批准之后。
+工具执行审批让你可以在服务器端工具运行之前要求用户确认。与在浏览器中执行的[客户端工具](#example)不同，需要审批的工具仍然在服务器上执行——但仅在用户批准之后。
 
-当您希望实现以下目标时，请使用工具执行审批：
+在以下情况下使用工具执行审批：
 
 - 确认敏感操作（支付、删除、外部 API 调用）
 - 让用户在执行前审查工具输入
-- 为自动化工作流增加人工监督
+- 为自动化工作流添加人工监督
 
 对于需要在浏览器中运行的工具（更新 UI 状态、访问浏览器 API），请改用客户端工具。
 
-### 服务器端设置
+### 服务器设置
 
-通过在 `streamText` 上设置 `toolApproval` 来启用审批。工具上较旧的
-`needsApproval` 属性已弃用。有关配置选项（包括基于输入的动态审批），
-请参阅[工具执行审批](/docs/ai-sdk-core/tools-and-tool-calling#tool-execution-approval)。
+在 `streamText` 上使用 `toolApproval` 启用审批。工具上较旧的
+`needsApproval` 属性已弃用。有关包括基于输入的动态审批在内的配置选项，请参阅[工具执行审批](/docs/ai-sdk-core/tools-and-tool-calling#tool-execution-approval)。
 
 ```tsx filename='app/api/chat/route.ts'
 import {
@@ -436,11 +451,11 @@ export async function POST(req: Request) {
 }
 ```
 
-### 客户端审批界面
+### 客户端审批 UI
 
-当工具需要手动审批时，工具部分的状态为
-`approval-requested`。自动批准和拒绝也会流经相同的
-审批状态，但它们会设置 `part.approval.isAutomatic === true`，因此您
+当工具需要手动审批时，工具部件的状态为
+`approval-requested`。自动批准和拒绝也会流经
+相同的审批状态，但它们会设置 `part.approval.isAutomatic === true`，因此你
 可以在不调用 `addToolApprovalResponse` 的情况下渲染状态。自动
 审批决策还可以包含 `part.approval.reason`。
 
@@ -463,14 +478,14 @@ export default function Chat() {
                   if (part.approval.isAutomatic) {
                     return (
                       <div key={part.toolCallId}>
-                        正在检查 {part.input.city} 的审批...
+                        Checking approval for {part.input.city}...
                       </div>
                     );
                   }
 
                   return (
                     <div key={part.toolCallId}>
-                      <p>获取 {part.input.city} 的天气？</p>
+                      <p>Get weather for {part.input.city}?</p>
                       {part.approval.requestReason && (
                         <p>{part.approval.requestReason}</p>
                       )}
@@ -482,7 +497,7 @@ export default function Chat() {
                           })
                         }
                       >
-                        批准
+                        Approve
                       </button>
                       <button
                         onClick={() =>
@@ -492,7 +507,7 @@ export default function Chat() {
                           })
                         }
                       >
-                        拒绝
+                        Deny
                       </button>
                     </div>
                   );
@@ -500,32 +515,32 @@ export default function Chat() {
                 case 'approval-responded':
                   return (
                     <div key={part.toolCallId}>
-                      {part.input.city} 的天气请求已
-                      {part.approval.isAutomatic ? '自动' : ''}{' '}
-                      {part.approval.approved ? '批准' : '拒绝'}。
+                      Weather request for {part.input.city} was
+                      {part.approval.isAutomatic ? ' automatically' : ''}{' '}
+                      {part.approval.approved ? 'approved' : 'denied'}.
                       {part.approval.reason
-                        ? ` 原因：${part.approval.reason}`
+                        ? ` Reason: ${part.approval.reason}`
                         : ''}
                     </div>
                   );
                 case 'output-available':
                   return (
                     <div key={part.toolCallId}>
-                      {part.input.city} 的天气：{part.output}
+                      Weather in {part.input.city}: {part.output}
                     </div>
                   );
                 case 'output-denied':
                   return (
                     <div key={part.toolCallId}>
-                      {part.input.city} 的天气请求已被拒绝。
+                      Weather request for {part.input.city} was denied.
                       {part.approval.reason
-                        ? ` 原因：${part.approval.reason}`
+                        ? ` Reason: ${part.approval.reason}`
                         : ''}
                     </div>
                   );
               }
             }
-            // 处理其他部分类型...
+            // Handle other part types...
           })}
         </div>
       ))}
@@ -535,23 +550,24 @@ export default function Chat() {
 ```
 
 仅对手动审批调用 `addToolApprovalResponse`。自动审批
-决策已经以 `approval-requested` 和 `approval-responded` 状态到达 UI 流中，
-被拒绝的执行会继续到 `output-denied`。
-如果您从自动批准或拒绝中返回 `reason`，它将作为
-`part.approval.reason` 提供。
-对于手动审批请求，需要审批的原因可作为
-`part.approval.requestReason` 获取。它与提供给
+决策已经作为 `approval-requested` 和
+`approval-responded` 状态到达 UI 流中，被拒绝的执行会继续到 `output-denied`。
+如果你从自动批准或拒绝中返回 `reason`，它可作为
+`part.approval.reason` 使用。
+对于手动审批请求，要求审批的原因可作为
+`part.approval.requestReason` 使用。它与提供给
 `addToolApprovalResponse` 的可选响应原因保持分离。
 
-审批请求块还可以包含带有不透明应用程序特定元数据的 `approvalDescriptor`。
-UI 消息处理在 `approval-requested` 状态下将其公开为
-`part.approval.descriptor`，并在后续包含审批的状态中保留它，
-包括 `approval-responded`。这允许客户端渲染或持久化服务器计算的审批元数据，
-而无需使用它来确定工具是否已获批准。
+审批请求块还可以包含带有不透明
+应用特定元数据的 `approvalDescriptor`。UI 消息处理将其作为
+`part.approval.descriptor` 在 `approval-requested` 状态中暴露，并在
+后续包含审批的状态（包括 `approval-responded`）中保留它。这让
+客户端可以渲染或持久化服务器计算的审批元数据，而无需用它来
+确定工具是否被批准。
 
-### 保护敏感工具的审批安全
+### 为敏感工具保护审批
 
-在 `useChat` 模式中，客户端每轮都会将完整的消息历史发送到服务器。如果没有额外的保护，被修改的客户端可能会伪造审批响应。对于执行敏感操作的工具，请在 `streamText` 调用中添加 `experimental_toolApprovalSecret`，以便服务器以加密方式验证审批确实由其签发：
+在 `useChat` 模式中，客户端每一轮都会将完整消息历史发送到服务器。如果没有额外的保护，被修改的客户端可能会伪造审批响应。对于执行敏感操作的工具，请在你的 `streamText` 调用中添加 `experimental_toolApprovalSecret`，以便服务器以加密方式验证审批是由其发出的：
 
 ```tsx filename='app/api/chat/route.ts' highlight="6"
 const result = streamText({
@@ -568,8 +584,9 @@ const result = streamText({
 ### 审批后自动提交
 
 <Note>
-  如果您在批准工具执行后没有任何反应，请确保您手动调用
-  `sendMessage` 或在 `useChat` Hook 上配置 `sendAutomaticallyWhen`。
+  如果你在批准工具执行后没有任何反应，请确保你
+  手动调用 `sendMessage` 或在 `useChat` Hook 上配置了
+  `sendAutomaticallyWhen`。
 </Note>
 
 使用 `lastAssistantMessageIsCompleteWithApprovalResponses` 在审批后自动继续对话：
@@ -585,21 +602,21 @@ const { messages, addToolApprovalResponse } = useChat({
 
 ## 动态工具
 
-当使用动态工具（编译时类型未知的工具）时，UI 部分使用通用的 `dynamic-tool` 类型，而不是特定的工具类型：
+使用动态工具（编译时类型未知的工具）时，UI 部件使用通用的 `dynamic-tool` 类型，而不是特定的工具类型：
 
 ```tsx filename='app/page.tsx'
 {
   message.parts.map((part, index) => {
     switch (part.type) {
-      // 具有特定（`tool-${toolName}`）类型的静态工具
+      // Static tools with specific (`tool-${toolName}`) types
       case 'tool-getWeatherInformation':
         return <WeatherDisplay part={part} />;
 
-      // 动态工具使用通用的 `dynamic-tool` 类型
+      // Dynamic tools use generic `dynamic-tool` type
       case 'dynamic-tool':
         return (
           <div key={index}>
-            <h4>工具：{part.toolName}</h4>
+            <h4>Tool: {part.toolName}</h4>
             {part.state === 'input-streaming' && (
               <pre>{JSON.stringify(part.input, null, 2)}</pre>
             )}
@@ -607,7 +624,7 @@ const { messages, addToolApprovalResponse } = useChat({
               <pre>{JSON.stringify(part.output, null, 2)}</pre>
             )}
             {part.state === 'output-error' && (
-              <div>错误：{part.errorText}</div>
+              <div>Error: {part.errorText}</div>
             )}
           </div>
         );
@@ -616,15 +633,15 @@ const { messages, addToolApprovalResponse } = useChat({
 }
 ```
 
-动态工具在以下集成场景中非常有用：
+动态工具在集成以下内容时很有用：
 
-- 没有模式的 MCP（模型上下文协议）工具
+- 没有 schema 的 MCP（Model Context Protocol）工具
 - 运行时加载的用户定义函数
 - 外部工具提供商
 
 ## 工具调用流式传输
 
-工具调用流式传输在 AI SDK 5.0 中**默认启用**，允许您在生成工具调用时对其进行流式传输。这通过实时显示正在生成的工具输入提供了更好的用户体验。
+工具调用流式传输在 AI SDK 5.0 中**默认启用**，允许你在工具调用生成时对其进行流式传输。这通过实时显示正在生成的工具输入来提供更好的用户体验。
 
 ```tsx filename='app/api/chat/route.ts'
 export async function POST(req: Request) {
@@ -633,7 +650,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: __MODEL__,
     messages: await convertToModelMessages(messages),
-    // toolCallStreaming 在 v5 中默认启用
+    // toolCallStreaming is enabled by default in v5
     // ...
   });
 
@@ -643,10 +660,10 @@ export async function POST(req: Request) {
 }
 ```
 
-启用工具调用流式传输后，部分工具调用将作为数据流的一部分进行流式传输。
-它们可通过 `useChat` Hook 获取。
-助手消息的类型化工具部分也将包含部分工具调用。
-您可以使用工具部分的 `state` 属性来渲染正确的 UI。
+启用工具调用流式传输后，部分工具调用会作为数据流的一部分进行流式传输。
+它们可通过 `useChat` Hook 获得。
+助手消息的带类型工具部件也将包含部分工具调用。
+你可以使用工具部件的 `state` 属性来渲染正确的 UI。
 
 ```tsx filename='app/page.tsx' highlight="9,10"
 export default function Chat() {
@@ -666,15 +683,15 @@ export default function Chat() {
                   case 'input-available':
                     return <pre>{JSON.stringify(part.input, null, 2)}</pre>;
                   case 'approval-requested':
-                    return <div>已请求审批。</div>;
+                    return <div>Approval requested.</div>;
                   case 'approval-responded':
-                    return <div>已收到审批响应。</div>;
+                    return <div>Approval response received.</div>;
                   case 'output-available':
                     return <pre>{JSON.stringify(part.output, null, 2)}</pre>;
                   case 'output-error':
-                    return <div>错误：{part.errorText}</div>;
+                    return <div>Error: {part.errorText}</div>;
                   case 'output-denied':
-                    return <div>工具调用已被拒绝。</div>;
+                    return <div>Tool call denied.</div>;
                 }
             }
           })}
@@ -685,18 +702,18 @@ export default function Chat() {
 }
 ```
 
-## 步骤开始部分
+## 步骤开始部件
 
-当您使用多步骤工具调用时，AI SDK 会向助手消息添加步骤开始部分。
-如果您想显示工具调用之间的边界，可以按如下方式使用 `step-start` 部分：
+当你使用多步骤工具调用时，AI SDK 会向助手消息添加步骤开始部件。
+如果你想显示工具调用之间的边界，可以按如下方式使用 `step-start` 部件：
 
 ```tsx filename='app/page.tsx'
 // ...
-// 在您渲染消息部分的位置：
+// where you render the message parts:
 message.parts.map((part, index) => {
   switch (part.type) {
     case 'step-start':
-      // 将步骤边界显示为水平线：
+      // show step boundaries as horizontal lines:
       return index > 0 ? (
         <div key={index} className="text-gray-500">
           <hr className="my-2 border-gray-300" />
@@ -715,8 +732,8 @@ message.parts.map((part, index) => {
 
 ## 服务器端多步骤调用
 
-您也可以在服务器端使用 `streamText` 进行多步骤调用。
-当所有被调用的工具在服务器端都有 `execute` 函数时，此功能有效。
+你也可以在服务器端使用 `streamText` 进行多步骤调用。
+当所有被调用的工具在服务器端都有 `execute` 函数时，这可以正常工作。
 
 ```tsx filename='app/api/chat/route.ts' highlight="22-28,31"
 import {
@@ -740,7 +757,7 @@ export async function POST(req: Request) {
       getWeatherInformation: {
         description: 'show the weather in a given city to the user',
         inputSchema: z.object({ city: z.string() }),
-        // 工具具有 execute 函数：
+        // tool has execute function:
         execute: async ({}: { city: string }) => {
           const weatherOptions = ['sunny', 'cloudy', 'rainy', 'snowy', 'windy'];
           return weatherOptions[
@@ -761,14 +778,14 @@ export async function POST(req: Request) {
 ## 错误
 
 语言模型在调用工具时可能会出错。
-默认情况下，出于安全原因，这些错误会被屏蔽，并在 UI 中显示为“发生错误”。
+默认情况下，出于安全原因，这些错误会被屏蔽，并在 UI 中显示为 "An error occurred"。
 
-要显示错误，您可以在调用 `toUIMessageResponse` 时使用 `onError` 函数。
+要显示这些错误，你可以在调用 `toUIMessageResponse` 时使用 `onError` 函数。
 
 ```tsx
 export function errorHandler(error: unknown) {
   if (error == null) {
-    return '未知错误';
+    return 'unknown error';
   }
 
   if (typeof error === 'string') {
@@ -796,7 +813,7 @@ return createUIMessageStreamResponse({
 });
 ```
 
-如果您使用的是 `createUIMessageResponse`，可以在调用 `toUIMessageResponse` 时使用 `onError` 函数：
+如果你使用的是 `createUIMessageResponse`，你可以在调用 `toUIMessageResponse` 时使用 `onError` 函数：
 
 ```tsx
 const response = createUIMessageResponse({
@@ -804,6 +821,6 @@ const response = createUIMessageResponse({
   async execute(dataStream) {
     // ...
   },
-  onError: error => `自定义错误：${error.message}`,
+  onError: error => `Custom error: ${error.message}`,
 });
 ```

@@ -1,13 +1,13 @@
 ---
-title: rerank
-description: rerank 的 API 参考文档。
+title: "rerank"
+description: "rerank 的 API 参考。"
 ---
 
 # `rerank()`
 
-使用重排序模型，根据文档与查询的相关性对一组文档进行重新排序。
+使用重排序模型，根据文档与查询的相关性对一组文档进行重排序。
 
-这对于通过基于查询和文档的语义理解来重新排序文档、电子邮件或其他内容，从而提高搜索相关性非常理想。
+这非常适合通过基于查询和文档的语义理解对文档、电子邮件或其他内容重新排序，从而提升搜索相关性。
 
 ```ts
 import { cohere } from '@ai-sdk/cohere';
@@ -20,7 +20,7 @@ const { ranking } = await rerank({
 });
 ```
 
-## 导入
+## Import
 
 <Snippet text={`import { rerank } from "ai"`} prompt={false} />
 
@@ -34,13 +34,13 @@ const { ranking } = await rerank({
       name: 'model',
       type: 'RerankingModel',
       description:
-        "要使用的重排序模型。例如：cohere.reranking('rerank-v3.5')",
+        "要使用的重排序模型。示例：cohere.reranking('rerank-v3.5')",
     },
     {
       name: 'documents',
       type: 'Array<VALUE>',
       description:
-        '要重新排序的文档。可以是字符串数组或 JSON 对象数组。',
+        '要重排序的文档。可以是字符串数组或 JSON 对象数组。',
     },
     {
       name: 'query',
@@ -52,7 +52,7 @@ const { ranking } = await rerank({
       type: 'number',
       isOptional: true,
       description:
-        '要返回的排名靠前的文档的最大数量。如果未指定，则返回所有文档。',
+        '要返回的顶部文档的最大数量。如果未指定，则返回所有文档。',
     },
     {
       name: 'maxRetries',
@@ -66,14 +66,14 @@ const { ranking } = await rerank({
       type: 'AbortSignal',
       isOptional: true,
       description:
-        '一个可选的终止信号，可用于取消调用。',
+        '可选的中止信号，可用于取消调用。',
     },
     {
       name: 'headers',
       type: 'Record<string, string>',
       isOptional: true,
       description:
-        '随请求发送的附加 HTTP 标头。仅适用于基于 HTTP 的提供商。',
+        '随请求发送的额外 HTTP 头。仅适用于基于 HTTP 的提供商。',
     },
     {
       name: 'providerOptions',
@@ -82,8 +82,15 @@ const { ranking } = await rerank({
       description: '重排序请求的提供商特定选项。',
     },
     {
+      name: 'runtimeContext',
+      type: 'RUNTIME_CONTEXT',
+      isOptional: true,
+      description:
+        '传递给生命周期回调的用户定义运行时上下文。默认为空对象。遥测集成仅接收通过 telemetry.includeRuntimeContext 显式包含的顶层属性。',
+    },
+    {
       name: 'telemetry',
-      type: 'TelemetryOptions',
+      type: 'TelemetryOptions<RUNTIME_CONTEXT>',
       isOptional: true,
       description: '遥测配置。',
       properties: [
@@ -95,7 +102,7 @@ const { ranking } = await rerank({
               type: 'boolean',
               isOptional: true,
               description:
-                '启用或禁用遥测。默认启用。设置为 `false` 可选择退出。',
+                '启用或禁用遥测。默认启用。设置为 `false` 可退出。',
             },
             {
               name: 'recordInputs',
@@ -119,11 +126,18 @@ const { ranking } = await rerank({
                 '此函数的标识符。用于按函数对遥测数据进行分组。',
             },
             {
+              name: 'includeRuntimeContext',
+              type: '{ [KEY in keyof RUNTIME_CONTEXT]?: boolean }',
+              isOptional: true,
+              description:
+                '要包含在遥测中的顶层运行时上下文属性。仅包含设置为 true 的属性。默认排除所有属性。用户回调仍会接收完整上下文。',
+            },
+            {
               name: 'integrations',
               isOptional: true,
               type: 'Telemetry | Telemetry[]',
               description:
-                '每次调用的遥测集成，用于接收生命周期事件。提供时，这些集成将替换此调用的任何全局注册集成。',
+                '接收生命周期事件的每次调用遥测集成。提供时，这些集成将替换此调用中任何全局注册的集成。',
             },
           ],
         },
@@ -131,17 +145,17 @@ const { ranking } = await rerank({
     },
     {
       name: 'onStart',
-      type: '(event: RerankStartEvent) => void | Promise<void>',
+      type: '(event: RerankStartEvent<RUNTIME_CONTEXT>) => void | Promise<void>',
       isOptional: true,
       description:
-        '在重排序操作开始时调用，在调用重排序模型之前。',
+        '在重排序操作开始时、调用重排序模型之前调用。事件包含完整、未过滤的 runtimeContext。',
     },
     {
       name: 'onEnd',
-      type: '(event: RerankEndEvent) => void | Promise<void>',
+      type: '(event: RerankEndEvent<RUNTIME_CONTEXT>) => void | Promise<void>',
       isOptional: true,
       description:
-        '在重排序操作完成时调用，在重排序模型返回结果之后。',
+        '在重排序操作完成时、重排序模型返回之后调用。事件包含完整、未过滤的 runtimeContext。',
     },
   ]}
 />
@@ -153,17 +167,17 @@ const { ranking } = await rerank({
     {
       name: 'originalDocuments',
       type: 'Array<VALUE>',
-      description: '原始文档数组，保持原始顺序。',
+      description: '原始顺序的原始文档数组。',
     },
     {
       name: 'rerankedDocuments',
       type: 'Array<VALUE>',
-      description: '按相关性得分排序的文档（降序）。',
+      description: '按相关性分数排序（降序）的文档。',
     },
     {
       name: 'ranking',
       type: 'Array<RankingItem<VALUE>>',
-      description: '包含得分和索引的排名项数组。',
+      description: '包含分数和索引的排序项数组。',
       properties: [
         {
           type: 'RankingItem<VALUE>',
@@ -172,13 +186,13 @@ const { ranking } = await rerank({
               name: 'originalIndex',
               type: 'number',
               description:
-                '该文档在原始文档数组中的索引。',
+                '文档在原始文档数组中的索引。',
             },
             {
               name: 'score',
               type: 'number',
               description:
-                '文档的相关性得分（通常为 0-1，值越高表示越相关）。',
+                '文档的相关性分数（通常为 0-1，越高表示越相关）。',
             },
             {
               name: 'document',
@@ -217,7 +231,7 @@ const { ranking } = await rerank({
               name: 'headers',
               isOptional: true,
               type: 'Record<string, string>',
-              description: '响应标头。',
+              description: '响应头。',
             },
             {
               name: 'body',
@@ -234,7 +248,7 @@ const { ranking } = await rerank({
       type: 'ProviderMetadata | undefined',
       isOptional: true,
       description:
-        '来自提供商的可选元数据。外部键是提供商名称。内部值是元数据。具体细节取决于提供商。',
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详细信息取决于提供商。',
     },
   ]}
 />

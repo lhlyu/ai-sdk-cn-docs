@@ -7,12 +7,12 @@ description: "了解如何使用 Cline harness 适配器。"
 
 Cline harness 适配器将 `HarnessAgent` 连接到
 [Cline SDK](https://docs.cline.bot/sdk/overview) 智能体运行时
-（`@cline/agents`）。该运行时作为主机上的进程内 Node 库运行
-——无需桥接——而其内置工具在会话沙箱中执行，
+（`@cline/agents`）。该运行时作为进程内 Node 库在宿主机上运行
+——无需桥接——而其内置工具针对会话沙箱执行，
 因此模型所推理的工作区完全位于沙箱内部。
 
 <Note>
-  Harness 包为**实验性**。随着此早期 API 的进一步完善，
+  Harness 包目前处于**实验阶段**。随着这一早期 API 的进一步完善，
   各版本之间可能会出现破坏性变更。
 </Note>
 
@@ -28,7 +28,7 @@ Cline 运行时没有引导步骤：会话启动时不会在沙箱内安装任�
 import { cline, createCline } from '@ai-sdk/harness-cline';
 ```
 
-`cline` 等同于使用默认配置调用 `createCline()`。
+`cline` 等同于使用默认配置的 `createCline()`。
 
 ## 基本用法
 
@@ -51,7 +51,7 @@ let exitCode = 0;
 try {
   const result = await agent.stream({
     session,
-    prompt: '检查测试失败并修复生产代码。',
+    prompt: 'Check the test failures and fix the production code.',
   });
 
   for await (const part of result.stream) {
@@ -68,9 +68,9 @@ try {
 }
 ```
 
-要使用此智能体，请确保环境变量中包含 `VERCEL_OIDC_TOKEN`
-用于 Vercel 沙箱。当使用默认的 `auto` 认证模式时，
-同一令牌通过 AI Gateway 对模型调用进行身份验证。
+要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的
+`VERCEL_OIDC_TOKEN`。当使用默认的 `auto` 认证模式时，同一令牌也用于通过
+AI Gateway 对模型调用进行认证。
 
 ## 适配器设置
 
@@ -84,47 +84,50 @@ const harness = createCline({
 
 设置项：
 
-- `auth`：认证模式（`auto`、`direct` 或 `ai-gateway`）或
-  隔离的认证环境。
-- `mcpServers`：按服务器名称键控的 MCP 服务器定义。
-- `providerId`：Cline LLM 提供商 ID（例如 `anthropic`、`openai`、`gemini`）。
-  省略时，直接认证使用 Cline 后端。显式自定义提供商
-  仅适用于直接认证。
+- `auth`：认证模式（`auto`、`direct` 或 `ai-gateway`）或隔离的认证环境。
+- `mcpServers`：以服务器名称为键的 MCP 服务器定义。
+- `providerId`：Cline LLM 提供商 id（例如 `anthropic`、`openai`、`gemini`）。
+  省略时，直接认证使用 Cline 后端。显式自定义
+  提供商仅适用于直接认证。
 - `apiKey`：提供商 API 密钥。省略时，Cline 网关回退到
-  所配置提供商的相应环境变量。
+  所配置提供商的环境变量。
 - `baseUrl`：自定义提供商端点。
 - `headers`：发送给提供商的额外请求头。
-- `reasoningEffort`：支持推理的模型的推理努力程度。支持
+- `reasoningEffort`：支持推理的模型的推理强度。支持
   `none`、`minimal`、`low`、`medium`、`high`、`xhigh` 和 `max`。`none`
-  禁用推理；其他每个值都会以该努力程度启用推理。
-  省略时，Cline SDK 自行选择推理行为。
-- `maxIterations`：每轮智能体循环迭代的安全上限。
+  禁用推理；其他所有值都会以该强度启用推理。
+  省略时，Cline SDK 会选择推理行为。
+- `maxIterations`：每轮智能体循环迭代次数的安全上限。
 
 要提供额外的操作指导，请使用 `HarnessAgent` 上的 `instructions` 设置。
-适配器会将其附加到 Cline 的系统提示词中。
+适配器会将其追加到 Cline 的系统提示词中。
 
 ## 结构化输出
 
-Cline 支持基于 Schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)，
-要求使用一个终端工具，其参数使用请求的 JSON Schema。
-这需要支持外部工具的提供商/模型路由；
+Cline 通过要求一个终端工具（其参数使用所请求的 JSON Schema）来支持
+基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。
+这需要具有外部工具支持的提供商/模型路由；
 `providerId: 'openai-codex-cli'` 会抛出 `HarnessCapabilityUnsupportedError`。
 
 ## 认证
 
-`auth` 设置选择 Cline 从主机环境读取的凭据：
+`auth` 设置用于选择 Cline 从宿主机环境中读取哪些凭据：
 
-- `auto`（默认）：优先使用 AI Gateway 凭据，否则使用
-  直接的 Cline 凭据。
-- `direct`：使用 `CLINE_API_KEY` 和可选的 `CLINE_API_BASE_URL`。
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，否则使用
+  直接 Cline 凭据。
+- `direct`：使用 `CLINE_API_KEY` 以及可选的 `CLINE_API_BASE_URL`。
 - `ai-gateway`：使用 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 以及
   可选的 `AI_GATEWAY_BASE_URL`。
+
+如果未设置适用的凭据环境变量，适配器会尝试
+从宿主系统解析原生订阅，除非选择了 AI Gateway
+认证。
 
 ```ts
 const harness = createCline({ auth: 'ai-gateway' });
 ```
 
-当主机在运行时解析凭据时，传入认证环境：
+当宿主机在运行时解析凭据时，传入一个认证环境：
 
 ```ts
 const harness = createCline({
@@ -135,19 +138,18 @@ const harness = createCline({
 });
 ```
 
-提供的记录会替换主机环境用于认证发现，
-因此它也可以使用 `CLINE_API_KEY` 选择直接认证。
+所提供的记录会替换用于认证发现的宿主机环境，
+因此它也可以通过 `CLINE_API_KEY` 选择直接认证。
 
 `CLINE_API_BASE_URL` 是 Cline 的后端根 URL；SDK 的 `/api/v1` 提供商
-路径会附加到其后。对于 AI Gateway，适配器会改为覆盖 Cline 的
-进程内提供商配置，使用 Gateway 凭据及其 `/v1` 端点。
-在显式 Gateway 模式或提供的认证环境选择 Gateway 时，
-直接的 Cline 凭据绝不会用作回退。
+路径会追加到其后。对于 AI Gateway，适配器则会使用 Gateway 凭据及其 `/v1`
+端点覆盖 Cline 的进程内提供商配置。在显式
+Gateway 模式下，或当所提供的认证环境选择 Gateway 时，绝不会将直接 Cline 凭据用作回退。
 
 ## 沙箱
 
-Cline 运行时在主机上运行，不需要沙箱端口，因此
-任何网络沙箱都可以使用——包括无端口配置：
+Cline 运行时在宿主机上运行，不需要沙箱端口，因此任何
+网络沙箱都可以工作——包括无端口配置：
 
 ```ts
 const sandbox = createVercelSandbox({
@@ -155,7 +157,7 @@ const sandbox = createVercelSandbox({
 });
 ```
 
-所有内置工具都通过沙箱会话的文件和执行接口
+所有内置工具都通过沙箱会话的文件和 exec 接口
 在沙箱文件系统上操作。
 
 ## 内置工具
@@ -170,33 +172,34 @@ const sandbox = createVercelSandbox({
 - `glob`
 - `ls`
 
-所有内置工具均基于沙箱：`bash` 在会话工作目录中运行，
-相对文件路径也相对于该目录解析。
+所有内置工具都由沙箱支持：`bash` 在会话工作
+目录中运行，相对文件路径也相对于该目录解析。
 
-当 `permissionMode` 为 `allow-reads` 或 `allow-edits` 时，
-Cline 支持内置工具审批请求，支持通过 `activeTools`/`inactiveTools`
-进行原生内置工具过滤，以及主机执行的 AI SDK 工具审批。
+当 `permissionMode` 为
+`allow-reads` 或 `allow-edits` 时，Cline 支持内置工具审批请求，支持通过
+`activeTools`/`inactiveTools` 进行原生内置工具过滤，以及宿主机执行的 AI SDK 工具审批。
 
 ## 技能
 
 Harness 提供的技能会写入沙箱 HOME
-（`~/.agents/skills/<name>/SKILL.md`），并通过系统提示词部分
-告知模型；当任务需要时，模型使用 `read` 工具加载技能的完整内容。
+（`~/.agents/skills/<name>/SKILL.md`），并通过系统提示词的一个章节向模型通告；
+当任务需要时，模型使用 `read`
+工具加载技能的完整内容。
 
 ## 会话生命周期
 
-对话状态保存在主机进程运行时中。在 `detach`/`stop` 时，
-适配器将对话历史持久化到沙箱工作区
-（会话工作目录中的 `.cline-harness/history.json`），
-因此未来的进程可以在沙箱提供商重新附加后恢复会话。由于
-运行时驻留在主机上，暂停的轮次会从持久化的历史记录中
-重新运行继续，而不是无损附加（与
+对话状态保存在宿主机进程运行时中。在 `detach`/`stop` 时，
+适配器会将对话历史持久化到沙箱工作区
+（会话工作目录中的 `.cline-harness/history.json`），以便未来的
+进程可以在沙箱提供商重新附加后恢复会话。由于
+运行时驻留在宿主机上，挂起的轮次会从持久化的历史记录重新运行继续，
+而不是无损附加（与
 [Pi 适配器](/providers/ai-sdk-harnesses/pi) 相同的权衡）。
 
-独立的 Cline 运行时不支持手动压缩（`doCompact`），
-会抛出 `HarnessCapabilityUnsupportedError`。
+独立 Cline 运行时不支持手动压缩（`doCompact`），
+并会抛出 `HarnessCapabilityUnsupportedError`。
 
-## 相关链接
+## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [Harness 工具](/docs/ai-sdk-harnesses/tools)

@@ -1,13 +1,13 @@
 ---
-title: embed
-description: embed 的 API 参考文档。
+title: "embed"
+description: "embed 的 API 参考。"
 ---
 
 # `embed()`
 
 使用嵌入模型为单个值生成嵌入。
 
-适用于需要嵌入单个值以检索相似项或在下游任务中使用嵌入的场景。
+这非常适合需要嵌入单个值的用例，例如检索相似项或将嵌入用于下游任务。
 
 ```ts
 import { embed } from 'ai';
@@ -18,7 +18,7 @@ const { embedding } = await embed({
 });
 ```
 
-## 导入
+## Import
 
 <Snippet text={`import { embed } from "ai"`} prompt={false} />
 
@@ -44,32 +44,39 @@ const { embedding } = await embed({
       type: 'number',
       isOptional: true,
       description:
-        '最大重试次数。设为 0 可禁用重试。默认值：2。',
+        '最大重试次数。设置为 0 可禁用重试。默认值：2。',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
       description:
-        '可选的终止信号，用于取消调用。',
+        '可选的中止信号，可用于取消调用。',
     },
     {
       name: 'headers',
       type: 'Record<string, string>',
       isOptional: true,
       description:
-        '随请求发送的额外 HTTP 标头。仅适用于基于 HTTP 的提供商。',
+        '随请求发送的额外 HTTP 头。仅适用于基于 HTTP 的提供商。',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions',
       isOptional: true,
       description:
-        '提供商特定的选项，会透传给提供商。',
+        '传递给提供商的提供商特定选项。',
+    },
+    {
+      name: 'runtimeContext',
+      type: 'RUNTIME_CONTEXT',
+      isOptional: true,
+      description:
+        '传递给生命周期回调的用户定义运行时上下文。默认为空对象。遥测集成仅接收通过 telemetry.includeRuntimeContext 显式包含的顶层属性。',
     },
     {
       name: 'telemetry',
-      type: 'TelemetryOptions',
+      type: 'TelemetryOptions<RUNTIME_CONTEXT>',
       isOptional: true,
       description: '遥测配置。',
       properties: [
@@ -81,7 +88,7 @@ const { embedding } = await embed({
               type: 'boolean',
               isOptional: true,
               description:
-                '启用或禁用遥测。默认启用。设为 `false` 可选择退出。',
+                '启用或禁用遥测。默认启用。设置为 `false` 可退出。',
             },
             {
               name: 'recordInputs',
@@ -102,14 +109,21 @@ const { embedding } = await embed({
               type: 'string',
               isOptional: true,
               description:
-                '此函数的标识符。用于按函数分组遥测数据。',
+                '此函数的标识符。用于按函数对遥测数据进行分组。',
+            },
+            {
+              name: 'includeRuntimeContext',
+              type: '{ [KEY in keyof RUNTIME_CONTEXT]?: boolean }',
+              isOptional: true,
+              description:
+                '要包含在遥测中的顶层运行时上下文属性。仅包含设置为 true 的属性。默认排除所有属性。用户回调仍会接收完整上下文。',
             },
             {
               name: 'integrations',
               isOptional: true,
               type: 'Telemetry | Telemetry[]',
               description:
-                '每次调用的遥测集成，用于接收生命周期事件。提供时，它们会替换此调用中任何全局注册的集成。',
+                '接收生命周期事件的每次调用遥测集成。提供时，这些集成将替换此调用中任何全局注册的集成。',
             },
           ],
         },
@@ -117,14 +131,20 @@ const { embedding } = await embed({
     },
     {
       name: 'onStart',
-      type: '(event: EmbedStartEvent) => PromiseLike<void> | void',
+      type: '(event: EmbedStartEvent<RUNTIME_CONTEXT>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '嵌入操作开始时的回调，在调用嵌入模型之前触发。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+        '在嵌入操作开始时（调用嵌入模型之前）调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
       properties: [
         {
-          type: 'EmbedStartEvent',
+          type: 'EmbedStartEvent<RUNTIME_CONTEXT>',
           parameters: [
+            {
+              name: 'runtimeContext',
+              type: 'RUNTIME_CONTEXT',
+              description:
+                '提供给操作的完整、未过滤的运行时上下文。',
+            },
             {
               name: 'callId',
               type: 'string',
@@ -153,12 +173,12 @@ const { embedding } = await embed({
             {
               name: 'abortSignal',
               type: 'AbortSignal | undefined',
-              description: '用于取消操作的终止信号。',
+              description: '用于取消操作的中止信号。',
             },
             {
               name: 'headers',
               type: 'Record<string, string | undefined> | undefined',
-              description: '随请求发送的额外 HTTP 标头。',
+              description: '随请求发送的额外 HTTP 头。',
             },
             {
               name: 'providerOptions',
@@ -171,14 +191,20 @@ const { embedding } = await embed({
     },
     {
       name: 'onEnd',
-      type: '(event: EmbedEndEvent) => PromiseLike<void> | void',
+      type: '(event: EmbedEndEvent<RUNTIME_CONTEXT>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '嵌入操作完成时的回调，在嵌入模型返回结果后触发。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+        '在嵌入操作完成时（嵌入模型返回之后）调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
       properties: [
         {
-          type: 'EmbedEndEvent',
+          type: 'EmbedEndEvent<RUNTIME_CONTEXT>',
           parameters: [
+            {
+              name: 'runtimeContext',
+              type: 'RUNTIME_CONTEXT',
+              description:
+                '提供给操作的完整、未过滤的运行时上下文。',
+            },
             {
               name: 'callId',
               type: 'string',
@@ -192,12 +218,12 @@ const { embedding } = await embed({
             {
               name: 'model',
               type: '{ provider: string; modelId: string }',
-              description: '已使用的嵌入模型。',
+              description: '所使用的嵌入模型。',
             },
             {
               name: 'value',
               type: 'string | Array<string>',
-              description: '已嵌入的值。',
+              description: '被嵌入的值。',
             },
             {
               name: 'embedding',
@@ -207,7 +233,7 @@ const { embedding } = await embed({
             {
               name: 'usage',
               type: 'EmbeddingModelUsage',
-              description: '嵌入操作的令牌使用情况。',
+              description: '嵌入操作的 token 用量。',
             },
             {
               name: 'warnings',
@@ -222,7 +248,7 @@ const { embedding } = await embed({
             {
               name: 'response',
               type: '{ headers?: Record<string, string>; body?: unknown } | undefined',
-              description: '可选的响应数据，包括标头和主体。',
+              description: '可选的响应数据，包括头和正文。',
             },
           ],
         },
@@ -238,17 +264,17 @@ const { embedding } = await embed({
     {
       name: 'value',
       type: 'VALUE',
-      description: '已嵌入的值。',
+      description: '被嵌入的值。',
     },
     {
       name: 'embedding',
       type: 'number[]',
-      description: '值的嵌入。',
+      description: '该值的嵌入。',
     },
     {
       name: 'usage',
       type: 'EmbeddingModelUsage',
-      description: '生成嵌入的令牌使用情况。',
+      description: '生成嵌入的 token 用量。',
       properties: [
         {
           type: 'EmbeddingModelUsage',
@@ -256,7 +282,7 @@ const { embedding } = await embed({
             {
               name: 'tokens',
               type: 'number',
-              description: '嵌入中使用的令牌数量。',
+              description: '嵌入中使用的 token 数量。',
             },
           ],
         },
@@ -281,13 +307,13 @@ const { embedding } = await embed({
               name: 'headers',
               isOptional: true,
               type: 'Record<string, string>',
-              description: '响应标头。',
+              description: '响应头。',
             },
             {
               name: 'body',
               type: 'unknown',
               isOptional: true,
-              description: '响应主体。',
+              description: '响应正文。',
             },
           ],
         },
@@ -298,7 +324,7 @@ const { embedding } = await embed({
       type: 'ProviderMetadata | undefined',
       isOptional: true,
       description:
-        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。具体细节取决于提供商。',
+        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详细信息取决于提供商。',
     },
   ]}
 />

@@ -5,19 +5,19 @@ description: "UIMessage 的 API 参考"
 
 # `UIMessage`
 
-`UIMessage` 作为应用程序状态的真实来源，表示完整的消息历史记录，包括元数据、数据部分以及所有上下文信息。与 `ModelMessage`（表示传递给模型的状态或上下文）不同，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
+`UIMessage` 是应用程序状态的唯一真实来源，它表示完整的消息历史记录，包括元数据、数据部分以及所有上下文信息。与表示传递给模型的状态或上下文的 `ModelMessage` 不同，`UIMessage` 包含 UI 渲染和客户端功能所需的完整应用程序状态。
 
 ## 类型安全
 
-`UIMessage` 被设计为类型安全的，并接受三个泛型参数，以确保整个应用程序中的正确类型：
+`UIMessage` 被设计为类型安全的，并接受三个泛型参数，以确保在整个应用程序中具有正确的类型：
 
 1. **`METADATA`** - 用于附加消息信息的自定义元数据类型
 2. **`DATA_PARTS`** - 用于结构化数据组件的自定义数据部分类型
 3. **`TOOLS`** - 用于类型安全工具交互的工具定义
 
-## 创建您自己的 UIMessage 类型
+## 创建你自己的 UIMessage 类型
 
-以下是如何为您的应用程序创建自定义类型化 UIMessage 的示例：
+以下是为你的应用程序创建自定义类型 UIMessage 的示例：
 
 ```typescript
 import { InferUITools, ToolSet, UIMessage, tool } from 'ai';
@@ -54,22 +54,22 @@ interface UIMessage<
   TOOLS extends UITools = UITools,
 > {
   /**
-   * 消息的唯一标识符。
+   * A unique identifier for the message.
    */
   id: string;
 
   /**
-   * 消息的角色。
+   * The role of the message.
    */
   role: 'system' | 'user' | 'assistant';
 
   /**
-   * 消息的元数据。
+   * The metadata of the message.
    */
   metadata?: METADATA;
 
   /**
-   * 消息的部分。用于在 UI 中渲染消息。
+   * The parts of the message. Use this for rendering the message in the UI.
    */
   parts: Array<UIMessagePart<DATA_PARTS, TOOLS>>;
 }
@@ -85,11 +85,11 @@ interface UIMessage<
 type TextUIPart = {
   type: 'text';
   /**
-   * 文本内容。
+   * The text content.
    */
   text: string;
   /**
-   * 文本部分的状态。
+   * The state of the text part.
    */
   state?: 'streaming' | 'done';
 };
@@ -103,19 +103,19 @@ type TextUIPart = {
 type ReasoningUIPart = {
   type: 'reasoning';
   /**
-   * 推理部分 ID。
+   * The reasoning part ID.
    */
   id?: string;
   /**
-   * 推理文本。
+   * The reasoning text.
    */
   text: string;
   /**
-   * 推理部分的状态。
+   * The state of the reasoning part.
    */
   state?: 'streaming' | 'done';
   /**
-   * 提供商元数据。
+   * The provider metadata.
    */
   providerMetadata?: Record<string, any>;
 };
@@ -123,10 +123,10 @@ type ReasoningUIPart = {
 
 ### `ToolUIPart`
 
-表示工具调用及其结果的工具部分。
+消息的工具部分，表示工具调用及其结果。
 
 <Note>
-  该类型基于工具的名称（例如，名为 `someTool` 的工具对应
+  该类型基于工具的名称（例如，对于名为 `someTool` 的工具，类型为
   `tool-someTool`）。
 </Note>
 
@@ -198,21 +198,49 @@ type ToolUIPart<TOOLS extends UITools = UITools> = ValueOf<{
 }>;
 ```
 
-`approval.descriptor` 包含作为 `approvalDescriptor` 在审批请求流块上提供的可选不透明元数据。当工具部分从 `approval-requested` 转换到 `approval-responded` 以及后续包含审批的输出状态时，该元数据会被保留。
+`approval.descriptor` 包含可选的不透明元数据，作为审批请求流数据块上的
+`approvalDescriptor` 提供。当工具部分从 `approval-requested` 转换为
+`approval-responded` 时，以及在后续包含审批的输出状态中，该元数据会被保留。
+
+### `ToolOutputErrorUIPart`
+
+执行失败的静态或动态工具部分。在渲染消息时使用
+`isToolOutputErrorUIPart` 类型守卫，这样你的代码就无需直接检查工具状态判别符。
+
+```tsx
+import { isToolOutputErrorUIPart, type UIMessage } from 'ai';
+
+function ToolError({ part }: { part: UIMessage['parts'][number] }) {
+  if (!isToolOutputErrorUIPart(part)) {
+    return null;
+  }
+
+  return <div role="alert">{part.errorText}</div>;
+}
+```
+
+泛型 `ToolOutputErrorUIPart<TOOLS>` 类型保留了静态工具的输入类型，同时也包含动态工具错误：
+
+```typescript
+type ToolOutputErrorUIPart<TOOLS extends UITools = UITools> = Extract<
+  ToolUIPart<TOOLS> | DynamicToolUIPart,
+  { state: 'output-error' }
+>;
+```
 
 ### `CustomContentUIPart`
 
-消息的提供商特定自定义内容部分。
+消息中特定于提供商的自定义内容部分。
 
 ```typescript
 type CustomContentUIPart = {
   type: 'custom';
   /**
-   * 自定义内容的种类，格式为 `{provider}.{provider-type}`。
+   * The kind of custom content, in the format `{provider}.{provider-type}`.
    */
   kind: `${string}.${string}`;
   /**
-   * 提供商元数据。
+   * The provider metadata.
    */
   providerMetadata?: Record<string, any>;
 };
@@ -255,16 +283,16 @@ type SourceDocumentUIPart = {
 type FileUIPart = {
   type: 'file';
   /**
-   * 文件的 IANA 媒体类型。
+   * IANA media type of the file.
    */
   mediaType: string;
   /**
-   * 文件的可选文件名。
+   * Optional filename of the file.
    */
   filename?: string;
   /**
-   * 文件的 URL。
-   * 可以是托管文件的 URL 或 Data URL。
+   * The URL of the file.
+   * It can either be a URL to a hosted file or a Data URL.
    */
   url: string;
 };
@@ -272,10 +300,10 @@ type FileUIPart = {
 
 ### `DataUIPart`
 
-用于自定义数据类型的数据部分。
+消息中用于自定义数据类型的数据部分。
 
 <Note>
-  该类型基于数据部分的名称（例如，名为 `someDataPart` 的数据部分对应
+  该类型基于数据部分的名称（例如，对于名为 `someDataPart` 的数据部分，类型为
   `data-someDataPart`）。
 </Note>
 

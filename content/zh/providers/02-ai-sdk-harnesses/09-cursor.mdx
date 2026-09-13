@@ -6,21 +6,21 @@ description: "了解如何使用 Cursor harness 适配器。"
 # Cursor Harness
 
 Cursor harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` 连接到
-[Cursor CLI](https://cursor.com/cli)。该适配器将 ACP 会话、流式传输、工具和生命周期管理
-委托给 `@ai-sdk/harness-acp`。
+[Cursor CLI](https://cursor.com/cli)。
+该适配器将 ACP 会话、流式传输、工具和生命周期管理委托给
+`@ai-sdk/harness-acp`。
 
 <Note>
-  Harness 包目前为**实验性**。随着早期 API 的进一步完善，版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验阶段**。随着这一早期 API 的进一步完善，各版本之间可能会出现破坏性变更。
 </Note>
 
-## 安装
+## 设置
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-cursor @ai-sdk/sandbox-vercel" />
 
-创建 Cursor 用户 API 密钥并设置 `CURSOR_API_KEY`。该密钥用于在沙箱中对 Cursor CLI
-进行身份验证，无论 Cursor 如何向模型提供商进行身份验证。
+创建一个 Cursor 用户 API 密钥并设置 `CURSOR_API_KEY`。无论 Cursor 如何向模型提供商进行身份验证，该密钥都用于在沙箱中对 Cursor CLI 进行身份验证。
 
-适配器会在首个会话启动时，使用官方 Cursor 安装命令在沙箱内安装 Cursor CLI。
+适配器会在第一个会话启动时，使用 Cursor 官方安装命令在沙箱内安装 Cursor CLI。
 
 ## 导入
 
@@ -28,7 +28,7 @@ Cursor harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` �
 import { createCursor, cursor } from '@ai-sdk/harness-cursor';
 ```
 
-`cursor` 等同于使用默认配置调用 `createCursor()`。
+`cursor` 等同于使用默认配置的 `createCursor()`。
 
 ## 基本用法
 
@@ -51,7 +51,7 @@ const session = await agent.createSession();
 try {
   const result = await agent.generate({
     session,
-    prompt: '检查此项目并总结其用途。',
+    prompt: 'Inspect this project and summarize its purpose.',
   });
   console.log(result.text);
 } finally {
@@ -59,7 +59,7 @@ try {
 }
 ```
 
-要在 Vercel Sandbox 中使用此智能体，请在宿主环境中提供 `VERCEL_OIDC_TOKEN` 和
+要将此智能体与 Vercel Sandbox 一起使用，请在主机环境中提供 `VERCEL_OIDC_TOKEN` 和
 `CURSOR_API_KEY`。
 
 ## 适配器设置
@@ -76,18 +76,12 @@ const harness = createCursor({
 
 设置项：
 
-- `auth`：接受共享的 ACP 模式 `auto`、`direct` 或 `ai-gateway`，或为 `CURSOR_API_KEY`
-  提供隔离的身份验证环境。此设置无法更改 Cursor 的提供商身份验证路由。显式的 `direct`
-  和 `ai-gateway` 值会发出配置提醒；`auto` 不会，因为它不声明预期的路由。
-- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到
-  沙箱进程之前对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于
-  暴露该凭据的环境变量名称。此回调仅控制转发到沙箱进程的值，不会限制 harness 适配器在
-  宿主进程中可以发现、读取或以其他方式访问的凭据。
-- `mcpServers`：以服务器名称作为键的 MCP 服务器定义。
+- `auth`：接受共享的 ACP 模式 `auto`、`direct` 或 `ai-gateway`，或者为 `CURSOR_API_KEY` 提供隔离的身份验证环境。这无法更改 Cursor 的提供商身份验证路由。显式指定 `direct` 和 `ai-gateway` 值会发出配置提醒；`auto` 不会，因为它未声明预期的路由。
+- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它会接收原本将被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在主机进程中能够发现、读取或以其他方式访问哪些凭据。
+- `mcpServers`：以服务器名称为键的 MCP 服务器定义。
 - `port`：ACP 桥接端口覆盖。
 - `startupTimeoutMs`：等待 ACP 桥接启动的最长时间。
-- `mintBridgeToken`：同步函数，接收沙箱 ID 并返回 ACP 桥接身份验证令牌。默认情况下，
-  适配器会生成一个随机的 32 字节令牌。自定义实现必须返回足够机密的令牌。
+- `mintBridgeToken`：同步函数，接收沙箱 id 并返回 ACP 桥接身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够安全的令牌。
 
 适配器固定了安装命令和 ACP 启动命令。这些实现细节无法通过 `createCursor()` 覆盖。
 
@@ -95,18 +89,16 @@ const harness = createCursor({
 
 Cursor 有两个独立的身份验证层：
 
-1. `CURSOR_API_KEY` 用于向 Cursor 账户验证 Cursor CLI。harness 在每种 `auth` 模式下
-   都需要此密钥。
-2. Cursor 的账户设置决定了 Cursor 如何向模型提供商进行身份验证。harness 无法读取或
-   更改此设置。
+1. `CURSOR_API_KEY` 用于向 Cursor 账户验证 Cursor CLI 的身份。harness 在每种 `auth` 模式下都需要此密钥。
+2. Cursor 的账户设置决定 Cursor 如何向模型提供商进行身份验证。harness 无法读取或更改此设置。
 
-对于直接路由，请在 Cursor 中配置模型提供商。对于 AI Gateway，请使用 AI Gateway API
-密钥配置 Cursor 的 OpenAI API 密钥，并在 Cursor 设置中将 **Override OpenAI Base URL**
-设置为 `https://ai-gateway.vercel.sh/cursor/v1`。Cursor 会从其账户配置中解析该凭据；
-harness 不会使用 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 进行模型提供商身份验证。
+如果未设置适用的凭据环境变量，适配器会尝试从主机系统解析原生订阅，除非选择了 AI Gateway 身份验证。
 
-显式的 `direct` 和 `ai-gateway` 值会发出警告，提示所选路由必须在 Cursor 中配置。
-`auto` 被接受且不会发出警告：
+对于直接路由，请在 Cursor 中配置模型提供商。对于 AI Gateway，请使用 AI Gateway API 密钥配置 Cursor 的 OpenAI API 密钥，并在 Cursor 设置中将 **Override OpenAI Base URL** 设置为
+`https://ai-gateway.vercel.sh/cursor/v1`。Cursor 会从其账户配置中解析该凭据；harness 不会使用
+`AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 进行模型提供商身份验证。
+
+显式指定 `direct` 和 `ai-gateway` 值会发出警告，提示所选路由必须在 Cursor 中配置。`auto` 会被接受且不会发出警告：
 
 ```ts
 const automaticHarness = createCursor({ auth: 'auto' });
@@ -114,7 +106,7 @@ const directHarness = createCursor({ auth: 'direct' });
 const gatewayHarness = createCursor({ auth: 'ai-gateway' });
 ```
 
-在不修改或读取 `process.env` 的情况下，以编程方式提供解析后的 Cursor 账户凭据：
+以编程方式提供解析后的 Cursor 账户凭据，而无需修改或读取 `process.env`：
 
 ```ts
 const harness = createCursor({
@@ -126,8 +118,8 @@ const harness = createCursor({
 
 ## 沙箱
 
-Cursor 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少暴露一个端口的网络沙箱，
-例如 `@ai-sdk/sandbox-vercel`：
+Cursor 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少暴露一个端口的网络沙箱，例如
+`@ai-sdk/sandbox-vercel`：
 
 ```ts
 const sandbox = createVercelSandbox({
@@ -136,33 +128,33 @@ const sandbox = createVercelSandbox({
 });
 ```
 
-首个会话需要网络出口来运行 Cursor 的官方安装程序。
+第一个会话需要网络出口才能运行 Cursor 的官方安装程序。
 
 ## 内置工具
 
-适配器将 Cursor 的终端、glob 和 grep 工具映射到通用的 `bash`、`glob` 和 `grep` 工具。
-它还以稳定的名称暴露 Cursor 的其他内置工具，包括 `read`、`edit`、`ls`、
-`semanticSearch`、`webSearch`、`task`，以及 Cursor 的规划、MCP、浏览器和环境工具。
+适配器将 Cursor 的 terminal、glob 和 grep 工具映射到通用的 `bash`、
+`glob` 和 `grep` 工具。它还会以稳定的名称暴露 Cursor 其余的内置工具，包括 `read`、`edit`、`ls`、`semanticSearch`、`webSearch`、
+`task`，以及 Cursor 的 planning、MCP、browser 和 environment 工具。
 
-Cursor 宿主工具调用使用 ACP MCP 传输。适配器识别 Cursor 的 MCP 负载，并将该调用与
-宿主侧工具执行相关联。
+Cursor 主机工具调用使用 ACP MCP 传输。适配器会识别 Cursor 的
+MCP 负载，并将调用与主机侧工具执行相关联。
 
 ## 已知限制
 
-- Cursor 的模型提供商身份验证路由必须在 Cursor 中配置。`auth` 适配器设置无法以编程
-  方式切换该路由。
-- ACP v1 不暴露模型步骤边界或每步使用量。当 Cursor 未提供总量时，适配器会推断边界并
-  报告未知的每步使用量。
-- ACP v1 没有可移植的手动压缩或回合中转向 API。
-- ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 Cursor 内置工具会抛出
-  不支持的能力错误。
-- Cursor ACP 不暴露结构化输出元数据映射，因此不支持基于 schema 的结构化输出。
-- 自定义 `headers` 不受原生支持，仅通过沙箱外部请求转换应用。当提供的沙箱不具备该能力
-  时，自定义 `headers` 无法传递并被忽略。
+- Cursor 的模型提供商身份验证路由必须在 Cursor 中配置。
+  `auth` 适配器设置无法以编程方式切换它。
+- ACP v1 不暴露模型步骤边界或每步用量。当 Cursor 未提供总计数据时，适配器会推断边界并报告未知的每步用量。
+- ACP v1 没有可移植的手动压缩或回合中途引导 API。
+- ACP v1 没有可移植的内置工具过滤 API。支持过滤主机工具，但过滤 Cursor 内置工具会抛出不受支持的能力错误。
+- Cursor 目前不支持内置工具审批请求。请在此适配器中使用
+  `permissionMode: 'allow-all'`。主机执行的 AI SDK 工具审批仍然有效。
+- Cursor ACP 不暴露结构化数据输出元数据映射，因此不支持基于 schema 的
+  结构化数据输出。
+- 原生不支持自定义 `headers`，只能通过沙箱外部请求转换来应用。因此，当提供的沙箱不具备该能力时，自定义 `headers` 无法传递，会被忽略。
 
-## 相关链接
+## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
-- [Harness 工具](/docs/ai-sdk-harnesses/tools)
-- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)
+- [Harness tools](/docs/ai-sdk-harnesses/tools)
+- [Harness adapters](/docs/ai-sdk-harnesses/harness-adapters)
 - [Agent Client Protocol](/providers/ai-sdk-harnesses/acp)
