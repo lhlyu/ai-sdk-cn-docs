@@ -1,18 +1,18 @@
 ---
-title: 模型上下文协议 (MCP) 工具
-description: 学习如何在 AI SDK 和 Next.js 中使用 MCP 工具
-tags: ['next', '工具调用', '智能体', 'mcp']
+title: "Model Context Protocol (MCP) 工具"
+description: "学习如何在 AI SDK 和 Next.js 中使用 MCP 工具"
+tags: ['next', 'tool use', 'agent', 'mcp']
 ---
 
 # MCP 工具
 
-AI SDK 通过提供一个轻量级客户端来支持模型上下文协议 (MCP) 工具，该客户端暴露了一个 `tools` 方法，用于从 MCP 服务器检索工具。使用后，应始终关闭客户端以释放资源。
+AI SDK 通过提供一个轻量级客户端来支持 Model Context Protocol (MCP) 工具，该客户端暴露了一个 `tools` 方法，用于从 MCP 服务器检索工具。使用后，应始终关闭客户端以释放资源。
 
 ## 服务端
 
-让我们创建一个 `/api/completion` 的路由处理器，它将根据输入提示词和 MCP 工具生成文本，这些工具可在生成过程中的任何时刻被调用。该路由将调用 `ai` 模块中的 `streamText` 函数，该函数会根据输入提示词生成文本并将其流式传输到客户端。
+让我们为 `/api/completion` 创建一个路由处理器，它将根据输入提示词和可在生成过程中随时调用的 MCP 工具来生成文本。该路由将调用 `ai` 模块中的 `streamText` 函数，然后根据输入提示词生成文本并将其流式传输到客户端。
 
-如果你更倾向于使用官方传输层（可选），请安装模型上下文协议的官方 TypeScript SDK：
+如果你更倾向于使用官方传输方式（可选），请安装 Model Context Protocol 的官方 TypeScript SDK：
 
 <Snippet text="pnpm install @modelcontextprotocol/sdk" />
 
@@ -21,7 +21,7 @@ import { createMCPClient } from '@ai-sdk/mcp';
 import { streamText } from 'ai';
 import { Experimental_StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio';
 import { openai } from '@ai-sdk/openai';
-// 可选：如果你更倾向于使用官方传输层
+// Optional: Official transports if you prefer them
 // import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 // import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse';
 // import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp';
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   const { prompt }: { prompt: string } = await req.json();
 
   try {
-    // 初始化一个 MCP 客户端以连接到 `stdio` MCP 服务器（仅限本地）：
+    // Initialize an MCP client to connect to a `stdio` MCP server (local only):
     const transport = new Experimental_StdioMCPTransport({
       command: 'node',
       args: ['src/stdio/dist/server.js'],
@@ -40,35 +40,35 @@ export async function POST(req: Request) {
       transport,
     });
 
-    // 通过客户端传输配置直接连接到 HTTP MCP 服务器
+    // Connect to an HTTP MCP server directly via the client transport config
     const httpClient = await createMCPClient({
       transport: {
         type: 'http',
         url: 'http://localhost:3000/mcp',
 
-        // 可选：配置请求头
+        // optional: configure headers
         // headers: { Authorization: 'Bearer my-api-key' },
 
-        // 可选：提供 OAuth 客户端提供程序以进行自动授权
+        // optional: provide an OAuth client provider for automatic authorization
         // authProvider: myOAuthClientProvider,
       },
     });
 
-    // 通过客户端传输配置直接连接到服务器发送事件 (SSE) MCP 服务器
+    // Connect to a Server-Sent Events (SSE) MCP server directly via the client transport config
     const sseClient = await createMCPClient({
       transport: {
         type: 'sse',
         url: 'http://localhost:3000/sse',
 
-        // 可选：配置请求头
+        // optional: configure headers
         // headers: { Authorization: 'Bearer my-api-key' },
 
-        // 可选：提供 OAuth 客户端提供程序以进行自动授权
+        // optional: provide an OAuth client provider for automatic authorization
         // authProvider: myOAuthClientProvider,
       },
     });
 
-    // 或者，你可以使用官方 SDK 创建传输层，而不是直接配置：
+    // Alternatively, you can create transports with the official SDKs instead of direct config:
     // const httpTransport = new StreamableHTTPClientTransport(new URL('http://localhost:3000/mcp'));
     // const httpClient = await createMCPClient({ transport: httpTransport });
     // const sseTransport = new SSEClientTransport(new URL('http://localhost:3000/sse'));
@@ -80,22 +80,22 @@ export async function POST(req: Request) {
     const tools = {
       ...toolSetOne,
       ...toolSetTwo,
-      ...toolSetThree, // 注意：此方法会导致后续工具集覆盖具有相同名称的工具
+      ...toolSetThree, // note: this approach causes subsequent tool sets to override tools with the same name
     };
 
     const response = await streamText({
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-astra',
       tools,
       prompt,
-      // 流式传输时，应在响应完成后关闭客户端：
+      // When streaming, the client should be closed after the response is finished:
       onEnd: async () => {
         await stdioClient.close();
         await httpClient.close();
         await sseClient.close();
       },
-      // 在 onError 中关闭客户端是可选的
-      // - 关闭：立即释放资源，防止连接挂起
-      // - 不关闭：保持连接打开以进行重试
+      // Closing clients onError is optional
+      // - Closing: Immediately frees resources, prevents hanging connections
+      // - Not closing: Keeps connection open for retries
       onError: async error => {
         await stdioClient.close();
         await httpClient.close();
@@ -105,14 +105,14 @@ export async function POST(req: Request) {
 
     return response.toDataStreamResponse();
   } catch (error) {
-    return new Response('内部服务器错误', { status: 500 });
+    return new Response('Internal Server Error', { status: 500 });
   }
 }
 ```
 
 ## 客户端
 
-让我们创建一个简单的 React 组件，它从 `@ai-sdk/react` 模块导入 `useCompletion` Hook。当点击按钮时，`useCompletion` Hook 会调用 `/api/completion` 端点。该端点会根据输入提示词生成文本并将其流式传输到客户端。
+让我们创建一个简单的 React 组件，它从 `@ai-sdk/react` 模块导入 `useCompletion` Hook。当点击按钮时，`useCompletion` Hook 将调用 `/api/completion` 端点。该端点将根据输入提示词生成文本并将其流式传输到客户端。
 
 ```tsx filename="app/page.tsx"
 'use client';
@@ -129,11 +129,11 @@ export default function Page() {
       <div
         onClick={async () => {
           await complete(
-            '请帮我安排明天上午10点与 Sonny 和 Robby 的通话！',
+            'Please schedule a call with Sonny and Robby for tomorrow at 10am ET for me!',
           );
         }}
       >
-        安排通话
+        Schedule a call
       </div>
 
       {completion}

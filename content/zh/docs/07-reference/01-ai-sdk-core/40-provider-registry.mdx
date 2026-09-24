@@ -1,19 +1,23 @@
 ---
-title: createProviderRegistry
-description: 用于管理多个提供商和模型的注册表（API 参考）
+title: "createProviderRegistry"
+description: "用于管理多个提供商和模型的注册表（API 参考）"
 ---
 
 # `createProviderRegistry()`
 
-当您使用多个提供商和模型时，通常希望将它们集中管理，并通过简单的字符串 ID 来访问模型。
+当你使用多个提供商和模型时，通常希望在一个中心位置管理它们，
+并通过简单的字符串 id 来访问模型。
 
-`createProviderRegistry` 允许您创建一个包含多个提供商的注册表，您可以通过 `providerId:modelId` 格式的 ID 来访问它们。
+`createProviderRegistry` 允许你创建一个包含多个提供商的注册表，
+你可以通过 `providerId:modelId` 格式的 id 来访问它们。
 
-在 TypeScript 中，注册表模型 ID 会根据已注册的提供商 ID 进行推断。当提供商公开了字面量模型 ID 类型时，编辑器可以建议组合后的 `providerId:modelId` 值。
+在 TypeScript 中，注册表模型 ID 会根据已注册的提供商 ID 进行推断。
+当提供商暴露字面量模型 ID 类型时，编辑器可以提示组合后的
+`providerId:modelId` 值。
 
 ### 设置
 
-您可以使用 `createProviderRegistry` 创建一个包含多个提供商和模型的注册表。
+你可以使用 `createProviderRegistry` 创建一个包含多个提供商和模型的注册表。
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -21,10 +25,10 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createProviderRegistry } from 'ai';
 
 export const registry = createProviderRegistry({
-  // 使用前缀和默认设置注册提供商：
+  // register provider with prefix and default setup:
   anthropic,
 
-  // 使用前缀和自定义设置注册提供商：
+  // register provider with prefix and custom setup:
   openai: createOpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   }),
@@ -33,7 +37,7 @@ export const registry = createProviderRegistry({
 
 ### 自定义分隔符
 
-默认情况下，注册表使用 `:` 作为提供商和模型 ID 之间的分隔符。您可以通过传递 `separator` 选项来自定义此分隔符：
+默认情况下，注册表使用 `:` 作为提供商和模型 ID 之间的分隔符。你可以通过传入 `separator` 选项来自定义此分隔符：
 
 ```ts
 const registry = createProviderRegistry(
@@ -44,27 +48,29 @@ const registry = createProviderRegistry(
   { separator: ' > ' },
 );
 
-// 现在您可以使用自定义分隔符
+// Now you can use the custom separator
 const model = registry.languageModel('anthropic > claude-3-opus-20240229');
 ```
 
 ### 语言模型
 
-您可以通过注册表的 `languageModel` 方法来访问语言模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+你可以使用注册表上的 `languageModel` 方法来访问语言模型。
+提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"5"}
 import { generateText } from 'ai';
 import { registry } from './registry';
 
 const { text } = await generateText({
-  model: registry.languageModel('openai:gpt-4.1'),
-  prompt: '发明一个新节日并描述其传统。',
+  model: registry.languageModel('openai:gpt-6-astra'),
+  prompt: 'Invent a new holiday and describe its traditions.',
 });
 ```
 
 ### 文本嵌入模型
 
-您可以通过注册表的 `.embeddingModel` 方法来访问文本嵌入模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+你可以使用注册表上的 `.embeddingModel` 方法来访问文本嵌入模型。
+提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"5"}
 import { embed } from 'ai';
@@ -72,13 +78,14 @@ import { registry } from './registry';
 
 const { embedding } = await embed({
   model: registry.embeddingModel('openai:text-embedding-3-small'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
 });
 ```
 
 ### 图像模型
 
-您可以通过注册表的 `imageModel` 方法来访问图像模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+你可以使用注册表上的 `imageModel` 方法来访问图像模型。
+提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"5"}
 import { generateImage } from 'ai';
@@ -86,13 +93,14 @@ import { registry } from './registry';
 
 const { image } = await generateImage({
   model: registry.imageModel('openai:dall-e-3'),
-  prompt: '平静海面上美丽的日落',
+  prompt: 'A beautiful sunset over a calm ocean',
 });
 ```
 
 ### 视频模型
 
-您可以通过注册表的 `videoModel` 方法来访问视频模型。提供商 ID 将成为模型 ID 的前缀：`providerId:modelId`。
+你可以使用注册表上的 `videoModel` 方法来访问视频模型。
+提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"7"}
 import { fal } from '@ai-sdk/fal';
@@ -102,13 +110,14 @@ const registry = createProviderRegistry({ fal });
 
 const { videos } = await experimental_generateVideo({
   model: registry.videoModel('fal:luma-dream-machine/ray-2'),
-  prompt: '一只猫在日落时分的海滩上行走',
+  prompt: 'A cat walking on a beach at sunset',
 });
 ```
 
 ### 文件和技能
 
-您可以通过调用 `registry.files(providerId)` 和 `registry.skills(providerId)` 来访问提供商的文件和技能接口。
+你可以通过调用 `registry.files(providerId)` 和 `registry.skills(providerId)`
+来访问提供商的文件和技能接口。
 
 ## 导入
 
@@ -124,7 +133,7 @@ const { videos } = await experimental_generateVideo({
       name: 'providers',
       type: 'Record<string, Provider>',
       description:
-        '提供商的唯一标识符。它在注册表中应该是唯一的。',
+        'The unique identifier for the provider. It should be unique within the registry.',
       properties: [
         {
           type: 'Provider',
@@ -133,58 +142,58 @@ const { videos } = await experimental_generateVideo({
               name: 'languageModel',
               type: '(id: string) => LanguageModel',
               description:
-                '一个根据 ID 返回语言模型的函数。',
+                'A function that returns a language model by its id.',
             },
             {
               name: 'embeddingModel',
               type: '(id: string) => EmbeddingModel<string>',
               description:
-                '一个根据 ID 返回文本嵌入模型的函数。',
+                'A function that returns a text embedding model by its id.',
             },
             {
               name: 'imageModel',
               type: '(id: string) => ImageModel',
-              description: '一个根据 ID 返回图像模型的函数。',
+              description: 'A function that returns an image model by its id.',
             },
             {
               name: 'transcriptionModel',
               type: '(id: string) => TranscriptionModel',
               isOptional: true,
               description:
-                '一个根据 ID 返回转录模型的函数。',
+                'A function that returns a transcription model by its id.',
             },
             {
               name: 'speechModel',
               type: '(id: string) => SpeechModel',
               isOptional: true,
-              description: '一个根据 ID 返回语音模型的函数。',
+              description: 'A function that returns a speech model by its id.',
             },
             {
               name: 'rerankingModel',
               type: '(id: string) => RerankingModel',
               isOptional: true,
               description:
-                '一个根据 ID 返回重排序模型的函数。',
+                'A function that returns a reranking model by its id.',
             },
             {
               name: 'videoModel',
               type: '(id: string) => VideoModelV4',
               isOptional: true,
-              description: '一个根据 ID 返回视频模型的函数。',
+              description: 'A function that returns a video model by its id.',
             },
             {
               name: 'files',
               type: '() => FilesV4',
               isOptional: true,
               description:
-                '一个返回提供商文件 API 接口的函数。',
+                'A function that returns the provider files API interface.',
             },
             {
               name: 'skills',
               type: '() => SkillsV4',
               isOptional: true,
               description:
-                '一个返回提供商技能 API 接口的函数。',
+                'A function that returns the provider skills API interface.',
             },
           ],
         },
@@ -194,7 +203,7 @@ const { videos } = await experimental_generateVideo({
       name: 'options',
       type: 'object',
       isOptional: true,
-      description: '注册表的可选配置。',
+      description: 'Optional configuration for the registry.',
       properties: [
         {
           type: 'Options',
@@ -204,21 +213,21 @@ const { videos } = await experimental_generateVideo({
               type: 'string',
               isOptional: true,
               description:
-                '提供商和模型 ID 之间的自定义分隔符。默认为 ":"。',
+                'Custom separator between provider and model IDs. Defaults to ":".',
             },
             {
               name: 'languageModelMiddleware',
               type: 'LanguageModelMiddleware | LanguageModelMiddleware[]',
               isOptional: true,
               description:
-                '用于包装从注册表获取的所有语言模型的中间件。',
+                'Middleware to wrap all language models obtained from the registry.',
             },
             {
               name: 'imageModelMiddleware',
               type: 'ImageModelMiddleware | ImageModelMiddleware[]',
               isOptional: true,
               description:
-                '用于包装从注册表获取的所有图像模型的中间件。',
+                'Middleware to wrap all image models obtained from the registry.',
             },
           ],
         },
@@ -237,55 +246,72 @@ const { videos } = await experimental_generateVideo({
       name: 'languageModel',
       type: '(id: string) => LanguageModel',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回语言模型的函数',
+        'A function that returns a language model by its id (format: providerId:modelId)',
     },
     {
       name: 'embeddingModel',
       type: '(id: string) => EmbeddingModel<string>',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回文本嵌入模型的函数',
+        'A function that returns a text embedding model by its id (format: providerId:modelId)',
     },
     {
       name: 'imageModel',
       type: '(id: string) => ImageModel',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回图像模型的函数',
+        'A function that returns an image model by its id (format: providerId:modelId)',
     },
     {
       name: 'transcriptionModel',
       type: '(id: string) => TranscriptionModel',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回转录模型的函数',
+        'A function that returns a transcription model by its id (format: providerId:modelId)',
     },
     {
       name: 'speechModel',
       type: '(id: string) => SpeechModel',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回语音模型的函数',
+        'A function that returns a speech model by its id (format: providerId:modelId)',
     },
     {
       name: 'rerankingModel',
       type: '(id: string) => RerankingModel',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回重排序模型的函数',
+        'A function that returns a reranking model by its id (format: providerId:modelId)',
     },
     {
       name: 'videoModel',
       type: '(id: string) => VideoModelV4',
       description:
-        '一个根据 ID（格式：providerId:modelId）返回视频模型的函数',
+        'A function that returns a video model by its id (format: providerId:modelId)',
     },
     {
       name: 'files',
       type: '(providerId: string) => FilesV4',
       description:
-        '一个根据提供商 ID 返回提供商文件 API 接口的函数。',
+        'A function that returns a provider files API interface by provider id.',
     },
     {
       name: 'skills',
       type: '(providerId: string) => SkillsV4',
       description:
-        '一个根据提供商 ID 返回提供商技能 API 接口的函数。',
+        'A function that returns a provider skills API interface by provider id.',
     },
   ]}
 />
+
+## 实验性评估模型
+
+推断出的返回类型还暴露了 `evaluationModel('providerId:modelId')`，
+返回 `Experimental_EvaluationModelV4`。提供商必须暴露一个
+`evaluationModel` 工厂。自定义分隔符和模型 ID
+推断的工作方式与视频模型相同。语言和图像中间件不会
+包装评估模型。`ProviderRegistryProvider` 仍然是一个稳定的接口；
+使用推断出的返回类型或 `Experimental_EvaluationProviderRegistry` 来
+保留实验性评估访问。
+
+不可用的评估能力或模型会抛出 `NoSuchModelError`，并带有
+`modelType: 'evaluationModel'`；未知的注册表提供商会抛出
+`NoSuchProviderError`。这些能力是结构性扩展，并未
+添加到稳定的 `ProviderV4` 契约中。当未配置默认提供商时，直接评估字符串 ID 默认
+使用 Gateway。
+有关可运行的用法模式，请参阅[评估](/docs/ai-sdk-core/evaluation#model-aliases-and-registries)。

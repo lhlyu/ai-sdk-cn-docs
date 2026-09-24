@@ -8,7 +8,7 @@ description: "了解如何使用 Claude Code harness 适配器。"
 Claude Code harness 适配器通过 `@anthropic-ai/claude-agent-sdk` 将 `HarnessAgent` 连接到 Claude Code。该适配器在沙箱内运行一个桥接程序，并通过沙箱暴露的 WebSocket 将 Claude Code 事件流式传输回主机。
 
 <Note>
-  Harness 包目前处于**实验性**阶段。由于这一早期 API 仍在进一步完善，各版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验阶段**。由于这一早期 API 仍在进一步完善，各版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -86,13 +86,14 @@ const harness = createClaudeCode({
 设置项：
 
 - `auth`：身份验证模式（`auto`、`direct` 或 `ai-gateway`），或一个隔离的身份验证环境。
-- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在主机进程中能够发现、读取或以其他方式访问哪些凭据。
+- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本将被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值，不会限制 harness 适配器在主机进程中能够发现、读取或以其他方式访问哪些凭据。
 - `mcpServers`：以服务器名称为键的 MCP 服务器定义。
 - `maxTurns`：在让出之前允许的最大内部轮次。
 - `env`：Claude Code 进程的环境变量。这些值会合并到沙箱桥接进程环境之上并优先使用。
 - `thinking`：扩展思考配置。`type` 可以是 `enabled`、`disabled` 或 `adaptive`。对于 enabled 或 adaptive 思考，`display` 可以是 `summarized` 或 `omitted`。默认为 `{ type: 'adaptive', display: 'summarized' }`。
 - `port`：桥接端口覆盖。
 - `startupTimeoutMs`：等待桥接程序启动的最长时间。
+- `reconnect`：已建立的桥接 WebSocket 连接断开后的重连时机。`maxElapsedMs` 控制总重试窗口，包括连接建立和退避延迟，默认为 30 秒。`initialDelayMs` 默认为 50 毫秒，`maxDelayMs` 默认为 2 秒。这些重试使用指数退避，并且与 `startupTimeoutMs` 相互独立。当沙箱、桥接进程或桥接端点永久不可用时，它们无法恢复。
 - `mintBridgeToken`：同步函数，接收沙箱 id 并返回桥接身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够安全的令牌。
 
 ## 结构化输出
@@ -101,13 +102,13 @@ Claude Code 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sd
 
 ## 身份验证
 
-`auth` 设置用于选择如何从主机环境解析凭据：
+`auth` 设置用于选择如何从主机环境中解析凭据：
 
 - `auto`（默认）：在可用时使用 AI Gateway 凭据，否则回退到直接的 Anthropic 凭据。
 - `direct`：使用 Anthropic 凭据。
 - `ai-gateway`：使用 AI Gateway 凭据。
 
-当沙箱支持附加式请求转换时，桥接程序会接收占位符，适配器会将凭据注入到匹配的出站请求中。不支持该能力的沙箱则保留直接凭据转发。
+当沙箱支持附加式请求转换时，桥接程序会接收占位符，适配器会将凭据注入到匹配的出站请求中。不具备该能力的沙箱则保留直接凭据转发。
 
 支持的环境变量：
 
@@ -118,7 +119,7 @@ Claude Code 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sd
 - `ANTHROPIC_AUTH_TOKEN`
 - `ANTHROPIC_BASE_URL`
 
-如果未设置适用的凭据环境变量，适配器会尝试从主机系统解析原生订阅，除非选择了 AI Gateway 身份验证。
+如果未设置任何适用的凭据环境变量，适配器会尝试从主机系统解析原生订阅，除非选择了 AI Gateway 身份验证。
 
 当你不需要自动检测时，可以选择特定的身份验证模式：
 
@@ -127,7 +128,7 @@ const directHarness = createClaudeCode({ auth: 'direct' });
 const gatewayHarness = createClaudeCode({ auth: 'ai-gateway' });
 ```
 
-传入身份验证环境，以便在不读取 `process.env` 的情况下使用以编程方式解析的凭据：
+传入一个身份验证环境，以便在不读取 `process.env` 的情况下使用以编程方式解析的凭据：
 
 ```ts
 const harness = createClaudeCode({
@@ -135,7 +136,7 @@ const harness = createClaudeCode({
 });
 ```
 
-所提供的记录会替换用于身份验证发现的主机环境。只有可识别的身份验证变量会被转发。
+所提供的记录会替换用于身份验证发现的主机环境。只有被识别的身份验证变量会被转发。
 
 ## 沙箱
 

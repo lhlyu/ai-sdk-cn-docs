@@ -8,7 +8,7 @@ description: "了解如何使用 Codex harness 适配器。"
 Codex harness 适配器通过 `@openai/codex-sdk` 将 `HarnessAgent` 连接到 Codex。该适配器在沙箱内运行一个桥接程序，并通过沙箱暴露的 WebSocket 将 Codex 线程事件流式传输回主机。
 
 <Note>
-  Harness 包目前处于**实验阶段**。由于这一早期 API 仍在不断完善，各版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验阶段**。由于这一早期 API 仍在进一步完善，各版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -83,28 +83,29 @@ const harness = createCodex({
 设置项：
 
 - `auth`：身份验证模式（`auto`、`direct` 或 `ai-gateway`），或一个隔离的身份验证环境。
-- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在主机进程中能够发现、读取或以其他方式访问哪些凭据。
+- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它会接收原本将被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在主机进程中能够发现、读取或以其他方式访问哪些凭据。
 - `codexConfig`：额外的原生 Codex 配置。值会按原样传递，因此请使用 Codex 的 `config.toml` 参考中的 snake_case 键。适配器管理的值优先于冲突的条目。
 - `mcpServers`：以服务器名称为键的 MCP 服务器定义。
 - `reasoningEffort`：`low`、`medium`、`high`、`xhigh` 或 `max`。
 - `webSearch`：允许实时网络搜索。
 - `port`：桥接端口覆盖。
 - `startupTimeoutMs`：等待桥接程序启动的最长时间。
-- `mintBridgeToken`：同步函数，接收沙箱 id 并返回桥接身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够安全的令牌。
+- `reconnect`：已建立的桥接 WebSocket 连接断开后的重连时机。`maxElapsedMs` 控制总重试窗口，包括连接建立和退避延迟，默认值为 30 秒。`initialDelayMs` 默认值为 50 毫秒，`maxDelayMs` 默认值为 2 秒。这些重试使用指数退避，并且与 `startupTimeoutMs` 相互独立。当沙箱、桥接进程或桥接端点永久不可用时，它们无法恢复。
+- `mintBridgeToken`：同步函数，接收沙箱 id 并返回桥接身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。自定义实现必须返回一个足够保密的令牌。
 
 ## 结构化输出
 
-Codex 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。适配器通过 Codex SDK 原生的 `outputSchema` 轮次选项传递 JSON Schema。
+Codex 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harnesses/harness-agent#generate-structured-output)。适配器通过 Codex SDK 的原生 `outputSchema` 轮次选项传递 JSON Schema。
 
 ## 身份验证
 
-`auth` 设置用于选择如何从主机环境解析凭据：
+`auth` 设置用于选择如何从主机环境中解析凭据：
 
-- `auto`（默认）：在可用时使用 AI Gateway 凭据，否则回退到直接的 OpenAI 凭据。
+- `auto`（默认）：在可用时使用 AI Gateway 凭据，否则回退到直接使用 OpenAI 凭据。
 - `direct`：使用 OpenAI 凭据。
 - `ai-gateway`：使用 AI Gateway 凭据。
 
-当沙箱支持附加式请求转换时，桥接程序会接收占位符，适配器会将凭据注入到匹配的出站请求中。不支持该能力的沙箱则保留直接凭据转发。
+当沙箱支持附加式请求转换时，桥接程序会接收占位符，适配器会将凭据注入到匹配的出站请求中。不具备该能力的沙箱则保留直接凭据转发。
 
 支持的环境变量：
 
@@ -117,7 +118,7 @@ Codex 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk-harn
 - `OPENAI_ORGANIZATION`
 - `OPENAI_PROJECT`
 
-如果未设置任何适用的凭据环境变量，除非选择了 AI Gateway 身份验证，否则适配器会尝试从主机系统解析原生订阅。
+如果未设置任何适用的凭据环境变量，适配器会尝试从主机系统解析原生订阅，除非选择了 AI Gateway 身份验证。
 
 当你不想使用自动检测时，可以选择特定的身份验证模式：
 
@@ -126,7 +127,7 @@ const directHarness = createCodex({ auth: 'direct' });
 const gatewayHarness = createCodex({ auth: 'ai-gateway' });
 ```
 
-传入一个身份验证环境，以便在不读取 `process.env` 的情况下使用以编程方式解析的凭据：
+传入一个身份验证环境，以使用以编程方式解析的凭据，而无需读取 `process.env`：
 
 ```ts
 const harness = createCodex({
@@ -134,7 +135,7 @@ const harness = createCodex({
 });
 ```
 
-所提供的记录会替换用于身份验证发现的主机环境。只有可识别的身份验证变量会被转发。
+所提供的记录会替换用于身份验证发现的主机环境。只有已识别的身份验证变量会被转发。
 
 对于 OpenAI 兼容端点，请选择 `direct` 并设置 `OPENAI_BASE_URL`。
 
@@ -158,15 +159,15 @@ const sandbox = createVercelSandbox({
 
 当其他 Codex 内置工具不符合常见工具形态时，它们也可能出现在 `agent.tools` 中。
 
-Codex 文件变更也可能以动态的 `fileChange` 工具部分出现，因为某些 Codex 文件变更并非源自可见的模型可调用工具。
+Codex 文件更改也可能以动态 `fileChange` 工具部分的形式出现，因为某些 Codex 文件变更并非源自模型可调用的可见工具。
 
 ## 已知限制
 
-Codex 目前不支持内置工具审批请求。请在此适配器中使用 `permissionMode: 'allow-all'`。主机执行的 AI SDK 工具审批仍然有效。
+Codex 目前不支持内置工具审批请求。请在此适配器中使用 `permissionMode: 'allow-all'`。由主机执行的 AI SDK 工具审批仍然有效。
 
-Codex 目前不支持内置工具过滤。你仍然可以使用 `activeTools` 和 `inactiveTools` 来过滤主机执行的工具，但过滤 `bash` 或 `webSearch` 等 Codex 内置工具会抛出错误。
+Codex 目前不支持内置工具过滤。你仍然可以使用 `activeTools` 和 `inactiveTools` 来过滤由主机执行的工具，但过滤 `bash` 或 `webSearch` 等 Codex 内置工具会抛出错误。
 
-## 相关
+## 相关内容
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [Harness 工具](/docs/ai-sdk-harnesses/tools)

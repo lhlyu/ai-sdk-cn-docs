@@ -5,7 +5,8 @@ description: "了解如何使用 AI SDK 生成图像。"
 
 # 图像生成
 
-AI SDK 提供了 [`generateImage`](/docs/reference/ai-sdk-core/generate-image) 函数，用于根据给定的提示词使用图像模型生成图像。
+AI SDK 提供了 [`generateImage`](/docs/reference/ai-sdk-core/generate-image)
+函数，用于使用图像模型根据给定的提示词生成图像。
 
 ```tsx
 import { generateImage } from 'ai';
@@ -26,14 +27,14 @@ const uint8Array = image.uint8Array; // Uint8Array image data
 
 ## 设置
 
-### 尺寸与宽高比
+### 尺寸和宽高比
 
 根据模型的不同，你可以指定尺寸或宽高比。
 
 ##### 尺寸
 
 尺寸以 `{width}x{height}` 格式的字符串指定。
-模型仅支持少数几种尺寸，且每个模型和提供商支持的尺寸各不相同。
+模型仅支持少数几种尺寸，并且每个模型和提供商支持的尺寸各不相同。
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -49,7 +50,7 @@ const { image } = await generateImage({
 ##### 宽高比
 
 宽高比以 `{width}:{height}` 格式的字符串指定。
-模型仅支持少数几种宽高比，且每个模型和提供商支持的宽高比各不相同。
+模型仅支持少数几种宽高比，并且每个模型和提供商支持的宽高比各不相同。
 
 ```tsx highlight={"7"}
 import { generateImage } from 'ai';
@@ -78,12 +79,12 @@ const { images } = await generateImage({
 ```
 
 <Note>
-  `generateImage` 会自动按需（并行）调用模型，以生成请求数量的图像。
+  `generateImage` 会自动按需（并行）调用模型，以生成所请求数量的图像。
 </Note>
 
-每个图像模型对单次 API 调用可生成的图像数量都有内部限制。当你使用 `n` 参数请求多张图像时，AI SDK 会通过适当地批量请求来自动管理这一点。默认情况下，SDK 使用提供商文档中记录的限制（例如，DALL-E 3 每次调用只能生成 1 张图像，而 DALL-E 2 最多支持 10 张）。
+每个图像模型对单次 API 调用可生成的图像数量都有内部限制。当你使用 `n` 参数请求多张图像时，AI SDK 会通过适当地批处理请求来自动管理这一点。默认情况下，SDK 使用提供商文档中记录的限制（例如，DALL-E 3 每次调用只能生成 1 张图像，而 DALL-E 2 最多支持 10 张）。
 
-如有需要，你可以在生成图像时使用 `maxImagesPerCall` 设置来覆盖此行为。这在处理默认批量大小可能并非最优的新模型或自定义模型时特别有用：
+如有需要，你可以在生成图像时使用 `maxImagesPerCall` 设置来覆盖此行为。这在处理默认批大小可能并非最优的新模型或自定义模型时特别有用：
 
 ```tsx
 const { images } = await generateImage({
@@ -112,8 +113,9 @@ const { image } = await generateImage({
 
 ### 提供商特定设置
 
-图像模型通常具有提供商特定甚至模型特定的设置。
-你可以使用 `providerOptions` 参数将此类设置传递给 `generateImage` 函数。提供商（下例中为 `openai`）的选项会成为请求体属性。
+图像模型通常有提供商特定甚至模型特定的设置。
+你可以使用 `providerOptions` 参数将此类设置传递给 `generateImage` 函数。提供商
+（下例中为 `openai`）的选项会成为请求体属性。
 
 ```tsx highlight={"8-13"}
 import { generateImage } from 'ai';
@@ -132,9 +134,10 @@ const { image } = await generateImage({
 });
 ```
 
-### 中止信号与超时
+### 中止信号和超时
 
-`generateImage` 接受一个可选的 `abortSignal` 参数，类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
+`generateImage` 接受一个可选的 `abortSignal` 参数，其类型为
+[`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
 你可以使用它来中止图像生成过程或设置超时。
 
 ```ts highlight={"7"}
@@ -150,7 +153,7 @@ const { image } = await generateImage({
 
 ### 自定义请求头
 
-`generateImage` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，
+`generateImage` 接受一个可选的 `headers` 参数，其类型为 `Record<string, string>`，
 你可以使用它向图像生成请求添加自定义请求头。
 
 ```ts highlight={"7"}
@@ -166,7 +169,7 @@ const { image } = await generateImage({
 
 ### 警告
 
-如果模型返回警告，例如针对不支持的参数，这些警告将在响应的 `warnings` 属性中提供。
+如果模型返回警告，例如针对不支持的参数，它们将在响应的 `warnings` 属性中提供。
 
 ```tsx
 const { image, warnings } = await generateImage({
@@ -177,7 +180,7 @@ const { image, warnings } = await generateImage({
 
 ### 提供商元数据
 
-某些提供商会公开单张图像的元数据。它可以直接在生成的图像上访问：
+一些提供商为单张图像公开元数据。它可直接在生成的图像上访问：
 
 ```tsx
 const prompt = 'Santa Claus driving a Cadillac';
@@ -199,7 +202,7 @@ console.log({
 
 ### 底层调用
 
-当一次请求被拆分为多次提供商调用时，`calls` 会保留每次调用的图像、提供商元数据、响应元数据、警告和用量。`images` 和 `usage` 则分别保持为便捷的扁平化视图和聚合视图。
+当一次请求被拆分为多次提供商调用时，`calls` 会保留每次调用的图像、提供商元数据、响应元数据、警告和用量。`images` 和 `usage` 仍然分别是便捷的扁平化视图和聚合视图。
 
 ```ts
 const { calls } = await generateImage({
@@ -220,12 +223,12 @@ for (const call of calls) {
 未分类的空图像响应会在抛出此错误之前根据 `maxRetries` 进行重试。
 提供商可以将终止性空响应（例如内容审核拦截）分类为 `isRetryable: false`；这些响应不会被重试。
 
-当 AI 提供商未能生成图像时会发生此错误。它可能由以下原因引起：
+当 AI 提供商无法生成图像时会发生此错误。它可能由以下原因引起：
 
 - 模型未能生成响应
 - 模型生成的响应无法解析
 
-该错误会保留以下信息，以帮助你记录问题：
+该错误会保留以下信息以帮助你记录问题：
 
 - `calls`：底层图像模型调用的结果，包括生成的图像、提供商元数据、响应元数据、警告和用量。
 - `responses`：关于图像模型响应的元数据，包括时间戳、模型和请求头。
@@ -280,7 +283,7 @@ const { image } = await generateImage({
 
 ## 使用语言模型生成图像
 
-某些语言模型（例如 Google `gemini-2.5-flash-image`）支持包括图像在内的多模态输出。
+一些语言模型（例如 Google `gemini-3.1-flash-image-preview`）支持包括图像在内的多模态输出。
 使用此类模型时，你可以通过响应的 `files` 属性访问生成的图像。
 
 ```ts
@@ -288,7 +291,7 @@ import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: google('gemini-2.5-flash-image'),
+  model: google('gemini-3.1-flash-image-preview'),
   prompt: 'Generate an image of a comic cat',
 });
 
@@ -305,7 +308,7 @@ for (const file of result.files) {
 
 ## 图像模型
 
-| 提供商                                                                        | 模型                                                        | 支持的尺寸（`width x height`）或宽高比（`width : height`）                                                                                                |
+| 提供商                                                                          | 模型                                                         | 支持的尺寸（`width x height`）或宽高比（`width : height`）                                                                                                          |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [xAI Grok](/providers/ai-sdk-providers/xai#image-models)                        | `grok-imagine-image`                                         | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `2:1`, `1:2`, `19.5:9`, `9:19.5`, `20:9`, `9:20`, `auto`                                                         |
 | [OpenAI](/providers/ai-sdk-providers/openai#image-models)                       | `gpt-image-2.5-flare`                                        | 1024x1024, 1536x1024, 1024x1536, custom                                                                                                                             |
@@ -362,4 +365,4 @@ for (const file of result.files) {
 | [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.1`                                               | From 3:7 (portrait) to 7:3 (landscape)                                                                                                                              |
 | [Black Forest Labs](/providers/ai-sdk-providers/black-forest-labs#image-models) | `flux-pro-1.0-fill`                                          | From 3:7 (portrait) to 7:3 (landscape)                                                                                                                              |
 
-以上只是 AI SDK 提供商支持的图像模型的一小部分。更多信息请参阅各提供商的文档。
+以上只是 AI SDK 提供商所支持的图像模型的一小部分。如需了解更多，请参阅各提供商的文档。

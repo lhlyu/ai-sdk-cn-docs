@@ -3,26 +3,26 @@ title: "Node.js"
 description: "了解如何使用 AI SDK 和 Node.js 构建你的第一个智能体。"
 ---
 
-# Node.js 快速入门
+# Node.js 快速开始
 
-AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动的应用程序。
+AI SDK 是一个功能强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动的应用程序。
 
-在本快速入门教程中，你将构建一个带有流式聊天用户界面的简单智能体。在此过程中，你将学习在自己的项目中使用 SDK 所需的关键概念和技术。
+在本快速开始教程中，你将构建一个带有流式传输聊天用户界面的简单智能体。在此过程中，你将学习在自有项目中使用该 SDK 所必需的关键概念和技术。
 
 如果你不熟悉[提示词工程](/docs/advanced/prompt-engineering)和 [HTTP 流式传输](/docs/foundations/streaming)的概念，可以选择先阅读这些文档。
 
-## 前提条件
+## 前置条件
 
-要遵循本快速入门指南，你需要：
+要跟随本快速开始，你需要：
 
 - 在本地开发机器上安装 Node.js 22+ 和 pnpm。
-- 一个 [Vercel AI Gateway](https://vercel.com/ai-gateway) API 密钥。
+- 一个 [ Vercel AI Gateway ](https://vercel.com/ai-gateway) API 密钥。
 
-如果你尚未获得 Vercel AI Gateway API 密钥，可以通过在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
+如果你还没有获得 Vercel AI Gateway API 密钥，可以在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)获取。
 
 ## 设置你的应用程序
 
-首先，使用 `mkdir` 命令创建一个新目录。进入你的新目录，然后运行 `pnpm init` 命令。这将在你的新目录中创建一个 `package.json` 文件。
+首先使用 `mkdir` 命令创建一个新目录。进入新目录，然后运行 `pnpm init` 命令。这将在你的新目录中创建一个 `package.json`。
 
 ```bash
 mkdir my-ai-app
@@ -30,12 +30,12 @@ cd my-ai-app
 pnpm init
 ```
 
-### 安装依赖项
+### 安装依赖
 
-安装 `ai`（AI SDK）以及其他必要的依赖项。
+安装 `ai`（即 AI SDK）以及其他必要的依赖。
 
 <Note>
-  AI SDK 被设计为与任何大型语言模型交互的统一接口。这意味着你只需一行代码即可更改模型和提供商！在[提供商](/providers)部分了解更多关于[可用提供商](/providers)和[构建自定义提供商](/providers/community-providers/custom-providers)的信息。
+  AI SDK 旨在提供一个统一的接口来与任何大型语言模型交互。这意味着你只需一行代码即可更换模型和提供商！在[提供商](/providers)部分了解更多关于[可用提供商](/providers)和[构建自定义提供商](/providers/community-providers/custom-providers)的信息。
 </Note>
 
 ```bash
@@ -43,11 +43,11 @@ pnpm add ai zod dotenv
 pnpm add -D @types/node tsx typescript
 ```
 
-`ai` 包包含 AI SDK。你将使用 `zod` 来定义类型安全的模式，这些模式将传递给大型语言模型（LLM）。你将使用 `dotenv` 来访问应用程序中的环境变量（你的 Vercel AI Gateway 密钥）。还有三个开发依赖项（使用 `-D` 标志安装），它们是运行 TypeScript 代码所必需的。
+`ai` 包包含 AI SDK。你将使用 `zod` 定义类型安全的 schema，并将其传递给大型语言模型（LLM）。你将使用 `dotenv` 在应用程序中访问环境变量（你的 Vercel AI Gateway 密钥）。此外还有三个开发依赖项（使用 `-D` 标志安装），它们是运行 TypeScript 代码所必需的。
 
 ### 配置 Vercel AI Gateway API 密钥
 
-在你的项目根目录中创建一个 `.env` 文件，并添加你的 Vercel AI Gateway API 密钥。此密钥用于向 Vercel AI Gateway 服务验证你的应用程序。
+在项目根目录中创建一个 `.env` 文件，并添加你的 Vercel AI Gateway API 密钥。此密钥用于向 Vercel AI Gateway 服务验证你的应用程序。
 
 <Snippet text="touch .env" />
 
@@ -60,12 +60,12 @@ AI_GATEWAY_API_KEY=xxxxxxxxx
 将 `xxxxxxxxx` 替换为你实际的 Vercel AI Gateway API 密钥。
 
 <Note className="mb-4">
-  AI SDK 将使用 `AI_GATEWAY_API_KEY` 环境变量来向 Vercel AI Gateway 进行身份验证。
+  AI SDK 将使用 `AI_GATEWAY_API_KEY` 环境变量向 Vercel AI Gateway 进行身份验证。
 </Note>
 
 ## 创建你的应用程序
 
-在你的项目根目录中创建一个 `index.ts` 文件，并添加以下代码：
+在项目根目录中创建一个 `index.ts` 文件，并添加以下代码：
 
 ```ts filename="index.ts"
 import { ModelMessage, streamText } from 'ai';
@@ -108,29 +108,29 @@ main().catch(console.error);
 
 让我们看看这段代码中发生了什么：
 
-1. 设置一个 readline 接口来从终端获取输入，从而允许直接从命令行进行交互式会话。
-2. 初始化一个名为 `messages` 的数组，用于存储对话历史。这个历史记录允许智能体在持续对话中保持上下文。
+1. 设置一个 readline 接口以从终端获取输入，从而支持直接从命令行进行交互式会话。
+2. 初始化一个名为 `messages` 的数组，用于存储对话历史。此历史记录使智能体能够在持续对话中保持上下文。
 3. 在 `main` 函数中：
 
 - 提示并捕获用户输入，将其存储在 `userInput` 中。
-- 将用户输入作为用户消息添加到 `messages` 数组中。
-- 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 函数。此函数接受一个包含 `model` 提供商和 `messages` 的配置对象。
+- 将用户输入作为用户消息添加到 `messages` 数组。
+- 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text)。此函数接受一个配置对象，其中包含 `model` 提供商和 `messages`。
 - 遍历 `streamText` 函数返回的文本流（`result.textStream`），并将流的内容打印到终端。
-- 将助手的响应添加到 `messages` 数组中。
+- 将助手的响应添加到 `messages` 数组。
 
 ## 运行你的应用程序
 
-至此，你已经构建了智能体所需的一切！要启动你的应用程序，请使用以下命令：
+至此，你已经构建了智能体所需的一切！要启动应用程序，请使用以下命令：
 
 <Snippet text="pnpm tsx index.ts" />
 
-你应该会在终端中看到一个提示。输入一条消息进行测试，看看 AI 智能体如何实时响应！AI SDK 使得使用 Node.js 快速轻松地构建 AI 聊天界面成为可能。
+你应该会在终端中看到提示。输入一条消息进行测试，看看 AI 智能体如何实时响应！AI SDK 让使用 Node.js 构建 AI 聊天界面变得快速而简单。
 
 ## 选择提供商
 
-AI SDK 通过[第一方](/providers/ai-sdk-providers)、[兼容 OpenAI](/providers/openai-compatible-providers) 和[社区](/providers/community-providers)包支持数十个模型提供商。
+AI SDK 通过[第一方](/providers/ai-sdk-providers)、[OpenAI 兼容](/providers/openai-compatible-providers)和[社区](/providers/community-providers)包支持数十种模型提供商。
 
-本快速入门使用 [Vercel AI Gateway](https://vercel.com/ai-gateway) 提供商，它是默认的[全局提供商](/docs/ai-sdk-core/provider-management#global-provider-configuration)。这意味着你可以使用模型配置中的简单字符串来访问模型：
+本快速开始使用 [Vercel AI Gateway](https://vercel.com/ai-gateway) 提供商，它是默认的[全局提供商](/docs/ai-sdk-core/provider-management#global-provider-configuration)。这意味着你可以在模型配置中使用简单的字符串来访问模型：
 
 ```ts
 model: __MODEL__;
@@ -139,34 +139,34 @@ model: __MODEL__;
 你也可以通过另外两种等效方式显式导入并使用 gateway 提供商：
 
 ```ts
-// 选项 1：从 'ai' 包导入（默认包含）
+// Option 1: Import from 'ai' package (included by default)
 import { gateway } from 'ai';
-model: gateway('anthropic/claude-sonnet-4.5');
+model: gateway('anthropic/claude-sonnet-5');
 
-// 选项 2：安装并从 '@ai-sdk/gateway' 包导入
+// Option 2: Install and import from '@ai-sdk/gateway' package
 import { gateway } from '@ai-sdk/gateway';
-model: gateway('anthropic/claude-sonnet-4.5');
+model: gateway('anthropic/claude-sonnet-5');
 ```
 
 ### 使用其他提供商
 
-要使用不同的提供商，请安装其包并创建一个提供商实例。例如，要直接使用 OpenAI：
+要使用其他提供商，请安装其包并创建提供商实例。例如，要直接使用 OpenAI：
 
 <InstallPackages packages="@ai-sdk/openai" />
 
 ```ts
 import { openai } from '@ai-sdk/openai';
 
-model: openai('gpt-5.1');
+model: openai('gpt-6-astra');
 ```
 
 ## 使用工具增强你的智能体
 
-虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这就是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
+虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这正是[工具](/docs/ai-sdk-core/tools-and-tool-calling)的用武之地。
 
-工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一个响应中考虑。
+工具是 LLM 可以调用的操作。这些操作的结果可以反馈给 LLM，以便在下一个响应中加以考虑。
 
-例如，如果用户询问当前天气，没有工具，智能体只能根据其训练数据提供一般信息。但是，有了天气工具，它可以获取并提供最新的、特定于位置的天气信息。
+例如，如果用户询问当前天气，在没有工具的情况下，智能体只能根据其训练数据提供一般性信息。但有了天气工具，它就可以获取并提供最新的、特定位置的天气信息。
 
 让我们通过添加一个简单的天气工具来增强你的智能体。
 
@@ -231,19 +231,19 @@ async function main() {
 main().catch(console.error);
 ```
 
-在这个更新后的代码中：
+在这段更新后的代码中：
 
-1. 你从 `ai` 包中导入了 `tool` 函数。
-2. 你定义了一个包含 `weather` 工具的 `tools` 对象。这个工具：
-   - 有一个描述，帮助智能体理解何时使用它。
-   - 使用 Zod 模式定义了 `inputSchema`，指定它需要一个 `location` 字符串来执行此工具。智能体将尝试从对话上下文中提取此输入。如果无法提取，它将询问用户缺失的信息。
-   - 定义了一个 `execute` 函数，该函数模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
+1. 你从 `ai` 包导入了 `tool` 函数。
+2. 你定义了一个 `tools` 对象，其中包含一个 `weather` 工具。此工具：
+   - 具有一个描述，帮助智能体理解何时使用它。
+   - 使用 Zod schema 定义 `inputSchema`，指定执行此工具需要一个 `location` 字符串。智能体将尝试从对话上下文中提取此输入。如果无法提取，它会向用户询问缺失的信息。
+   - 定义了一个 `execute` 函数，用于模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
 
-现在，你的智能体可以“获取”用户询问的任何位置的天气信息。当智能体确定需要使用天气工具时，它将生成一个带有必要参数的工具调用。然后，`execute` 函数将自动运行，智能体将使用结果来生成其响应。
+现在你的智能体可以“获取”用户询问的任何位置的天气信息。当智能体确定需要使用天气工具时，它会生成一个带有必要参数的工具调用。随后 `execute` 函数将自动运行，智能体将使用结果生成其响应。
 
 尝试询问类似“纽约的天气怎么样？”这样的问题，看看智能体如何使用新工具。
 
-注意到空白的“assistant”响应了吗？这是因为智能体没有生成文本响应，而是生成了一个工具调用。你可以通过结果对象的 `toolCall` 和 `toolResult` 键访问工具调用和随后的工具结果。
+注意到空的“assistant”响应了吗？这是因为智能体没有生成文本响应，而是生成了一个工具调用。你可以在结果对象的 `toolCall` 和 `toolResult` 键中访问工具调用及后续的工具结果。
 
 ```typescript highlight="50-51"
 import { ModelMessage, streamText, tool } from 'ai';
@@ -304,13 +304,13 @@ async function main() {
 main().catch(console.error);
 ```
 
-现在，当你询问天气时，你将在聊天界面中看到工具调用及其结果。
+现在，当你询问天气时，你将看到工具调用及其结果显示在聊天界面中。
 
-## 启用多步骤工具调用
+## 启用多步工具调用
 
-你可能已经注意到，虽然工具结果在聊天界面中可见，但智能体并没有使用这些信息来回答你的原始查询。这是因为一旦智能体生成了一个工具调用，它在技术上就完成了其生成过程。
+你可能已经注意到，虽然工具结果在聊天界面中可见，但智能体并没有使用这些信息来回答你最初的问题。这是因为一旦智能体生成了工具调用，从技术上讲它就已经完成了生成。
 
-为了解决这个问题，你可以使用 `stopWhen` 启用多步骤工具调用。此功能将自动将工具结果发送回智能体，以触发额外的生成，直到满足你定义的停止条件。在这种情况下，你希望智能体使用天气工具的结果来回答你的问题。
+要解决此问题，你可以使用 `stopWhen` 启用多步工具调用。此功能会自动将工具结果发送回智能体，以触发额外的生成，直到满足你定义的停止条件。在本例中，你希望智能体使用天气工具的结果来回答你的问题。
 
 ### 更新你的应用程序
 
@@ -379,14 +379,14 @@ async function main() {
 main().catch(console.error);
 ```
 
-在这个更新后的代码中：
+在这段更新后的代码中：
 
-1. 你将 `stopWhen` 设置为 `isStepCount` 为 5，允许智能体在任意给定的生成中使用最多 5 个“步骤”。
-2. 你添加了一个 `onStepEnd` 回调，用于记录交互中每个步骤的任何 `toolResults`，帮助你了解智能体的工具使用情况。这意味着我们也可以删除前面示例中的 `toolCall` 和 `toolResult` 的 `console.log` 语句。
+1. 你将 `stopWhen` 设置为 `isStepCount` 5，允许智能体在任意给定生成中使用最多 5 个“步骤”。
+2. 你添加了一个 `onStepEnd` 回调，用于记录交互每一步中的任何 `toolResults`，帮助你了解智能体的工具使用情况。这意味着我们还可以删除上一个示例中的 `toolCall` 和 `toolResult` 的 `console.log` 语句。
 
 现在，当你询问某个位置的天气时，你应该会看到智能体使用天气工具的结果来回答你的问题。
 
-通过设置 `stopWhen: isStepCount(5)`，你允许智能体在任意给定的生成中使用最多 5 个“步骤”。这使得更复杂的交互成为可能，并允许智能体在需要时通过多个步骤收集和处理信息。你可以通过添加另一个工具将温度从摄氏度转换为华氏度来看到这一点。
+通过设置 `stopWhen: isStepCount(5)`，你允许智能体在任意给定生成中使用最多 5 个“步骤”。这支持更复杂的交互，并允许智能体在需要时通过多个步骤收集和处理信息。你可以通过添加另一个将温度从摄氏度转换为华氏度的工具来观察其实际效果。
 
 ### 添加第二个工具
 
@@ -469,21 +469,21 @@ async function main() {
 main().catch(console.error);
 ```
 
-现在，当你询问“纽约的摄氏温度是多少？”时，你应该会看到一个更完整的交互过程：
+现在，当你询问“纽约的天气是多少摄氏度？”时，你应该会看到更完整的交互：
 
-1. 智能体将为纽约调用天气工具。
+1. 智能体将调用纽约的天气工具。
 2. 你将看到记录的工具结果。
 3. 然后它将调用温度转换工具，将温度从华氏度转换为摄氏度。
-4. 然后智能体将使用该信息提供关于纽约天气的自然语言响应。
+4. 智能体随后将使用该信息提供关于纽约天气的自然语言响应。
 
-这种多步骤方法允许智能体收集信息并使用它来提供更准确和上下文相关的响应，使你的智能体更加有用。
+这种多步方法允许智能体收集信息并使用它来提供更准确、更具上下文相关性的响应，使你的智能体变得相当有用。
 
-这个例子演示了工具如何扩展智能体的能力。你可以创建更复杂的工具来与真实的 API、数据库或任何其他外部系统集成，允许智能体实时访问和处理现实世界的数据，并执行与外部世界交互的操作。工具弥合了智能体知识截止日期和当前信息之间的差距，同时还使其能够采取有意义的行动，而不仅仅是生成文本响应。
+此示例演示了工具如何扩展智能体的能力。你可以创建更复杂的工具来与真实 API、数据库或任何其他外部系统集成，使智能体能够实时访问和处理真实世界的数据，并执行与外部世界交互的操作。工具弥合了智能体知识截止日期与当前信息之间的差距，同时还使其能够采取有意义的操作，而不仅仅是生成文本响应。
 
-## 下一步去哪里？
+## 接下来去哪里？
 
-你已经使用 AI SDK 构建了一个 AI 智能体！从这里开始，你有几条探索路径：
+你已经使用 AI SDK 构建了一个 AI 智能体！从这里开始，你有几条路径可以探索：
 
-- 要了解有关 AI SDK 的更多信息，请阅读[文档](/docs)。
+- 要了解更多关于 AI SDK 的信息，请阅读[文档](/docs)。
 - 如果你有兴趣通过指南深入学习，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot)和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
 - 要快速启动你的第一个 AI 项目，请探索可用的[模板](https://vercel.com/templates?type=ai)。

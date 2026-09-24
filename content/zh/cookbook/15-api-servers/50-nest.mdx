@@ -1,22 +1,22 @@
 ---
-title: Nest.js
-description: 了解如何在 Nest.js 服务器中使用 AI SDK
+title: "Nest.js"
+description: "了解如何在 Nest.js 服务器中使用 AI SDK"
 tags: ['api servers', 'streaming']
 ---
 
 # Nest.js
 
-你可以在 [Nest.js](https://nestjs.com/) 服务器中使用 AI SDK 生成文本和对象，并将其流式传输到客户端。
+你可以在 [Nest.js](https://nestjs.com/) 服务器中使用 AI SDK，向客户端生成并流式传输文本和对象。
 
 ## 示例
 
-以下示例展示了如何实现一个 Nest.js 控制器，该控制器使用 AI SDK 将文本和对象流式传输到客户端。
+这些示例展示了如何实现一个 Nest.js 控制器，使用 AI SDK 向客户端流式传输文本和对象。
 
 **完整示例**：[github.com/vercel/ai/examples/nest](https://github.com/vercel/ai/tree/main/examples/nest)
 
 ### UI 消息流
 
-你可以使用 `pipeUIMessageStreamToResponse` 辅助函数将流数据传递到服务器响应。
+你可以使用 `pipeUIMessageStreamToResponse` 辅助函数将流数据管道传输到服务器响应。
 
 ```ts filename='app.controller.ts'
 import { Controller, Post, Res } from '@nestjs/common';
@@ -32,8 +32,8 @@ export class AppController {
   @Post('/')
   async root(@Res() res: Response) {
     const result = streamText({
-      model: 'openai/gpt-4o',
-      prompt: '发明一个新节日并描述其传统。',
+      model: 'openai/gpt-6-astra',
+      prompt: 'Invent a new holiday and describe its traditions.',
     });
 
     pipeUIMessageStreamToResponse({
@@ -64,7 +64,7 @@ export class AppController {
   async streamData(@Res() response: Response) {
     const stream = createUIMessageStream({
       execute: ({ writer }) => {
-        // 写入一些数据
+        // write some data
         writer.write({ type: 'start' });
 
         writer.write({
@@ -75,16 +75,16 @@ export class AppController {
         });
 
         const result = streamText({
-          model: 'openai/gpt-4o',
-          prompt: '发明一个新节日并描述其传统。',
+          model: 'openai/gpt-6-astra',
+          prompt: 'Invent a new holiday and describe its traditions.',
         });
         writer.merge(
           toUIMessageStream({
             stream: result.stream,
             sendStart: false,
             onError: error => {
-              // 出于安全原因，错误消息默认被屏蔽。
-              // 如果你想向客户端暴露错误消息，可以在此处进行：
+              // Error messages are masked by default for security reasons.
+              // If you want to expose the error message to the client, you can do so here:
               return error instanceof Error ? error.message : String(error);
             },
           }),
@@ -98,7 +98,7 @@ export class AppController {
 
 ### 文本流
 
-你可以使用 `pipeTextStreamToResponse` 辅助函数配合 `toTextStream` 将文本流传递到响应。
+你可以将 `pipeTextStreamToResponse` 辅助函数与 `toTextStream` 一起使用，将文本流管道传输到响应。
 
 ```ts filename='app.controller.ts'
 import { Controller, Post, Res } from '@nestjs/common';
@@ -110,8 +110,8 @@ export class AppController {
   @Post()
   async example(@Res() res: Response) {
     const result = streamText({
-      model: 'openai/gpt-4o',
-      prompt: '发明一个新节日并描述其传统。',
+      model: 'openai/gpt-6-astra',
+      prompt: 'Invent a new holiday and describe its traditions.',
     });
 
     pipeTextStreamToResponse({
@@ -124,4 +124,4 @@ export class AppController {
 
 ## 故障排除
 
-- 代理时流式传输不工作：[相关文档](/docs/troubleshooting/streaming-not-working-when-proxied)
+- [使用代理时](/docs/troubleshooting/streaming-not-working-when-proxied)流式传输无法正常工作

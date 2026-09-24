@@ -1,43 +1,43 @@
 ---
-title: 工作流模式
-description: 学习使用 AI SDK 构建可靠智能体的工作流模式。
+title: "工作流模式"
+description: "学习使用 AI SDK 构建可靠智能体的工作流模式。"
 ---
 
 # 工作流模式
 
-将[概览](/docs/agents/overview)中的构建模块与以下模式相结合，为你的智能体增加结构和可靠性：
+将[概述](/docs/agents/overview)中的构建模块与这些模式相结合，为你的智能体增加结构性和可靠性：
 
-- [顺序处理](#顺序处理链) - 按顺序执行的步骤
-- [并行处理](#并行处理) - 同时运行的独立任务
-- [评估/反馈循环](#评估器-优化器) - 迭代检查和改进结果
-- [编排](#编排器-工作者) - 协调多个组件
-- [路由](#路由) - 根据上下文分配工作
+- [顺序处理](#sequential-processing-chains) - 按顺序执行的步骤
+- [并行处理](#parallel-processing) - 独立任务同时运行
+- [评估/反馈循环](#evaluator-optimizer) - 迭代检查和改进结果
+- [编排](#orchestrator-worker) - 协调多个组件
+- [路由](#routing) - 根据上下文引导工作
 
 ## 选择你的方法
 
 考虑以下关键因素：
 
-- **灵活性 vs 控制** - LLM 需要多少自由度，以及你必须对其行为施加多大的约束？
-- **容错性** - 在你的用例中，错误的后果是什么？
+- **灵活性与控制** - LLM 需要多少自由度，与你必须多严格地约束其行为之间的权衡？
+- **错误容忍度** - 在你的使用场景中，错误的后果是什么？
 - **成本考量** - 更复杂的系统通常意味着更多的 LLM 调用和更高的成本
-- **可维护性** - 更简单的架构更容易调试和修改
+- **维护性** - 更简单的架构更容易调试和修改
 
-**从满足需求的最简单方法开始**。仅在必要时通过以下方式增加复杂性：
+**从满足你需求的最简单方法开始**。仅在以下情况需要时增加复杂性：
 
 1. 将任务分解为清晰的步骤
 2. 为特定能力添加工具
-3. 实施反馈循环以进行质量控制
+3. 实现反馈循环以进行质量控制
 4. 为复杂工作流引入多个智能体
 
 让我们看看这些模式的实际示例。
 
-## 模式示例
+## 模式与示例
 
-这些模式改编自 [Anthropic 关于构建有效智能体的指南](https://www.anthropic.com/research/building-effective-agents)，可作为构建模块，你可以组合它们来创建全面的工作流。每种模式都针对任务执行的特定方面。深思熟虑地组合它们，为复杂问题构建可靠的解决方案。
+这些模式改编自 [Anthropic 关于构建有效智能体的指南](https://www.anthropic.com/research/building-effective-agents)，可作为构建模块，你可以将它们组合起来创建全面的工作流。每种模式都针对任务执行的特定方面。请深思熟虑地组合它们，为复杂问题构建可靠的解决方案。
 
 ## 顺序处理（链）
 
-最简单的工作流模式按预定义顺序执行步骤。每个步骤的输出成为下一步的输入，形成清晰的操作链。将此模式用于具有明确定义序列的任务，例如内容生成管道或数据转换过程。
+最简单的工作流模式按预定义的顺序执行步骤。每个步骤的输出成为下一步骤的输入，形成清晰的操作链。将此模式用于具有明确序列的任务，如内容生成管道或数据转换流程。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -47,13 +47,13 @@ import { z } from 'zod';
 async function generateMarketingCopy(input: string) {
   const model = __MODEL__;
 
-  // 第一步：生成营销文案
+  // First step: Generate marketing copy
   const { text: copy } = await generateText({
     model,
-    prompt: `为以下内容撰写有说服力的营销文案：${input}。专注于利益和情感诉求。`,
+    prompt: `Write persuasive marketing copy for: ${input}. Focus on benefits and emotional appeal.`,
   });
 
-  // 对文案进行质量检查
+  // Perform quality check on copy
   const { output: qualityMetrics } = await generateText({
     model,
     output: Output.object({
@@ -63,15 +63,15 @@ async function generateMarketingCopy(input: string) {
         clarity: z.number().min(1).max(10),
       }),
     }),
-    prompt: `评估此营销文案：
-    1. 是否存在行动号召（是/否）
-    2. 情感吸引力（1-10）
-    3. 清晰度（1-10）
+    prompt: `Evaluate this marketing copy for:
+    1. Presence of call to action (true/false)
+    2. Emotional appeal (1-10)
+    3. Clarity (1-10)
 
-    要评估的文案：${copy}`,
+    Copy to evaluate: ${copy}`,
   });
 
-  // 如果质量检查失败，则使用更具体的说明重新生成
+  // If quality check fails, regenerate with more specific instructions
   if (
     !qualityMetrics.hasCallToAction ||
     qualityMetrics.emotionalAppeal < 7 ||
@@ -79,12 +79,12 @@ async function generateMarketingCopy(input: string) {
   ) {
     const { text: improvedCopy } = await generateText({
       model,
-      prompt: `重写此营销文案，要求如下：
-      ${!qualityMetrics.hasCallToAction ? '- 包含清晰的行动号召' : ''}
-      ${qualityMetrics.emotionalAppeal < 7 ? '- 更强的情感吸引力' : ''}
-      ${qualityMetrics.clarity < 7 ? '- 提高清晰度和直接性' : ''}
+      prompt: `Rewrite this marketing copy with:
+      ${!qualityMetrics.hasCallToAction ? '- A clear call to action' : ''}
+      ${qualityMetrics.emotionalAppeal < 7 ? '- Stronger emotional appeal' : ''}
+      ${qualityMetrics.clarity < 7 ? '- Improved clarity and directness' : ''}
 
-      原始文案：${copy}`,
+      Original copy: ${copy}`,
     });
     return { copy: improvedCopy, qualityMetrics };
   }
@@ -95,7 +95,7 @@ async function generateMarketingCopy(input: string) {
 
 ## 路由
 
-此模式让模型根据上下文和中间结果决定工作流中的路径。模型充当智能路由器，在工作流的不同分支之间引导执行流程。在处理需要不同处理方法的多样化输入时使用此模式。在下面的示例中，第一次 LLM 调用的结果决定了第二次调用的模型大小和系统提示词。
+此模式让模型根据上下文和中间结果决定在工作流中走哪条路径。模型充当智能路由器，在你的工作流的不同分支之间引导执行流程。在处理需要不同处理方法的多样化输入时使用此模式。在下面的示例中，第一次 LLM 调用的结果决定了第二次调用的模型规模和系统提示词。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -105,7 +105,7 @@ import { z } from 'zod';
 async function handleCustomerQuery(query: string) {
   const model = __MODEL__;
 
-  // 第一步：对查询类型进行分类
+  // First step: Classify the query type
   const { output: classification } = await generateText({
     model,
     output: Output.object({
@@ -115,29 +115,29 @@ async function handleCustomerQuery(query: string) {
         complexity: z.enum(['simple', 'complex']),
       }),
     }),
-    prompt: `对此客户查询进行分类：
+    prompt: `Classify this customer query:
     ${query}
 
-    确定：
-    1. 查询类型（general、refund 或 technical）
-    2. 复杂度（simple 或 complex）
-    3. 分类的简要理由`,
+    Determine:
+    1. Query type (general, refund, or technical)
+    2. Complexity (simple or complex)
+    3. Brief reasoning for classification`,
   });
 
-  // 根据分类进行路由
-  // 根据查询类型和复杂度设置模型和系统提示词
+  // Route based on classification
+  // Set model and system prompt based on query type and complexity
   const { text: response } = await generateText({
     model:
       classification.complexity === 'simple'
-        ? 'openai/gpt-4o-mini'
-        : 'openai/o4-mini',
+        ? 'openai/gpt-6-luna'
+        : 'openai/gpt-6-astra',
     instructions: {
       general:
-        '你是一名处理一般咨询的专家级客户服务代理。',
+        'You are an expert customer service agent handling general inquiries.',
       refund:
-        '你是一名专门处理退款请求的客户服务代理。请遵循公司政策并收集必要信息。',
+        'You are a customer service agent specializing in refund requests. Follow company policy and collect necessary information.',
       technical:
-        '你是一名具有深厚产品知识的技术支持专家。专注于清晰的分步故障排除。',
+        'You are a technical support specialist with deep product knowledge. Focus on clear step-by-step troubleshooting.',
     }[classification.type],
     prompt: query,
   });
@@ -155,17 +155,17 @@ import { generateText, Output } from 'ai';
 __PROVIDER_IMPORT__;
 import { z } from 'zod';
 
-// 示例：使用多个专业审查员进行并行代码审查
+// Example: Parallel code review with multiple specialized reviewers
 async function parallelCodeReview(code: string) {
   const model = __MODEL__;
 
-  // 运行并行审查
+  // Run parallel reviews
   const [securityReview, performanceReview, maintainabilityReview] =
     await Promise.all([
       generateText({
         model,
         instructions:
-          '你是一名代码安全专家。专注于识别安全漏洞、注入风险和身份验证问题。',
+          'You are an expert in code security. Focus on identifying security vulnerabilities, injection risks, and authentication issues.',
         output: Output.object({
           schema: z.object({
             vulnerabilities: z.array(z.string()),
@@ -173,14 +173,14 @@ async function parallelCodeReview(code: string) {
             suggestions: z.array(z.string()),
           }),
         }),
-        prompt: `审查此代码：
+        prompt: `Review this code:
       ${code}`,
       }),
 
       generateText({
         model,
         instructions:
-          '你是一名代码性能专家。专注于识别性能瓶颈、内存泄漏和优化机会。',
+          'You are an expert in code performance. Focus on identifying performance bottlenecks, memory leaks, and optimization opportunities.',
         output: Output.object({
           schema: z.object({
             issues: z.array(z.string()),
@@ -188,14 +188,14 @@ async function parallelCodeReview(code: string) {
             optimizations: z.array(z.string()),
           }),
         }),
-        prompt: `审查此代码：
+        prompt: `Review this code:
       ${code}`,
       }),
 
       generateText({
         model,
         instructions:
-          '你是一名代码质量专家。专注于代码结构、可读性和最佳实践的遵循。',
+          'You are an expert in code quality. Focus on code structure, readability, and adherence to best practices.',
         output: Output.object({
           schema: z.object({
             concerns: z.array(z.string()),
@@ -203,7 +203,7 @@ async function parallelCodeReview(code: string) {
             recommendations: z.array(z.string()),
           }),
         }),
-        prompt: `审查此代码：
+        prompt: `Review this code:
       ${code}`,
       }),
     ]);
@@ -214,11 +214,11 @@ async function parallelCodeReview(code: string) {
     { ...maintainabilityReview.output, type: 'maintainability' },
   ];
 
-  // 使用另一个模型实例聚合结果
+  // Aggregate results using another model instance
   const { text: summary } = await generateText({
     model,
-    instructions: '你是一名技术负责人，负责汇总多个代码审查结果。',
-    prompt: `将这些代码审查结果综合成一个包含关键操作的简洁摘要：
+    instructions: 'You are a technical lead summarizing multiple code reviews.',
+    prompt: `Synthesize these code review results into a concise summary with key actions:
     ${JSON.stringify(reviews, null, 2)}`,
   });
 
@@ -228,7 +228,7 @@ async function parallelCodeReview(code: string) {
 
 ## 编排器-工作者
 
-一个主模型（编排器）协调专门工作者的执行。每个工作者针对特定的子任务进行优化，而编排器则维护整体上下文并确保结果连贯。此模式擅长处理需要不同类型专业知识或处理的复杂任务。
+主模型（编排器）协调专业工作者的执行。每个工作者针对特定的子任务进行优化，而编排器维护整体上下文并确保结果一致。此模式擅长处理需要不同类型专业知识或处理的复杂任务。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -236,7 +236,7 @@ __PROVIDER_IMPORT__;
 import { z } from 'zod';
 
 async function implementFeature(featureRequest: string) {
-  // 编排器：规划实现
+  // Orchestrator: Plan the implementation
   const { output: implementationPlan } = await generateText({
     model: __MODEL__,
     output: Output.object({
@@ -252,22 +252,22 @@ async function implementFeature(featureRequest: string) {
       }),
     }),
     instructions:
-      '你是一名规划功能实现的高级软件架构师。',
-    prompt: `分析此功能请求并创建实现计划：
+      'You are a senior software architect planning feature implementations.',
+    prompt: `Analyze this feature request and create an implementation plan:
     ${featureRequest}`,
   });
 
-  // 工作者：执行计划中的更改
+  // Workers: Execute the planned changes
   const fileChanges = await Promise.all(
     implementationPlan.files.map(async file => {
-      // 每个工作者专门处理一种类型的更改
+      // Each worker is specialized for the type of change
       const workerSystemPrompt = {
         create:
-          '你是一名专家，擅长按照最佳实践和项目模式实现新文件。',
+          'You are an expert at implementing new files following best practices and project patterns.',
         modify:
-          '你是一名专家，擅长修改现有代码，同时保持一致性并避免回归。',
+          'You are an expert at modifying existing code while maintaining consistency and avoiding regressions.',
         delete:
-          '你是一名专家，擅长安全地删除代码，同时确保没有破坏性更改。',
+          'You are an expert at safely removing code while ensuring no breaking changes.',
       }[file.changeType];
 
       const { output: change } = await generateText({
@@ -279,10 +279,10 @@ async function implementFeature(featureRequest: string) {
           }),
         }),
         instructions: workerSystemPrompt,
-        prompt: `为 ${file.filePath} 实现更改以支持：
+        prompt: `Implement the changes for ${file.filePath} to support:
         ${file.purpose}
 
-        考虑整体功能上下文：
+        Consider the overall feature context:
         ${featureRequest}`,
       });
 
@@ -302,7 +302,7 @@ async function implementFeature(featureRequest: string) {
 
 ## 评估器-优化器
 
-通过专门的评估步骤为工作流添加质量控制，以评估中间结果。根据评估结果，工作流可以继续、使用调整后的参数重试或采取纠正措施。这创建了能够自我改进和错误恢复的健壮工作流。
+通过专门的评估步骤来评估中间结果，为工作流添加质量控制。根据评估结果，工作流继续执行、调整参数后重试或采取纠正措施。这创建了能够自我改进和错误恢复的健壮工作流。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -314,19 +314,19 @@ async function translateWithFeedback(text: string, targetLanguage: string) {
   let iterations = 0;
   const MAX_ITERATIONS = 3;
 
-  // 初始翻译
+  // Initial translation
   const { text: translation } = await generateText({
     model: __MODEL__,
-    instructions: '你是一名文学翻译专家。',
-    prompt: `将以下文本翻译成 ${targetLanguage}，保留语气和文化细微差别：
+    instructions: 'You are an expert literary translator.',
+    prompt: `Translate this text to ${targetLanguage}, preserving tone and cultural nuances:
     ${text}`,
   });
 
   currentTranslation = translation;
 
-  // 评估-优化循环
+  // Evaluation-optimization loop
   while (iterations < MAX_ITERATIONS) {
-    // 评估当前翻译
+    // Evaluate current translation
     const { output: evaluation } = await generateText({
       model: __MODEL__,
       output: Output.object({
@@ -339,20 +339,20 @@ async function translateWithFeedback(text: string, targetLanguage: string) {
           improvementSuggestions: z.array(z.string()),
         }),
       }),
-      instructions: '你是一名评估文学翻译的专家。',
-      prompt: `评估此翻译：
+      instructions: 'You are an expert in evaluating literary translations.',
+      prompt: `Evaluate this translation:
 
-      原文：${text}
-      翻译：${currentTranslation}
+      Original: ${text}
+      Translation: ${currentTranslation}
 
-      考虑：
-      1. 整体质量
-      2. 语气保留
-      3. 细微差别保留
-      4. 文化准确性`,
+      Consider:
+      1. Overall quality
+      2. Preservation of tone
+      3. Preservation of nuance
+      4. Cultural accuracy`,
     });
 
-    // 检查质量是否达到阈值
+    // Check if quality meets threshold
     if (
       evaluation.qualityScore >= 8 &&
       evaluation.preservesTone &&
@@ -362,16 +362,16 @@ async function translateWithFeedback(text: string, targetLanguage: string) {
       break;
     }
 
-    // 根据反馈生成改进的翻译
+    // Generate improved translation based on feedback
     const { text: improvedTranslation } = await generateText({
       model: __MODEL__,
-      instructions: '你是一名文学翻译专家。',
-      prompt: `根据以下反馈改进此翻译：
+      instructions: 'You are an expert literary translator.',
+      prompt: `Improve this translation based on the following feedback:
       ${evaluation.specificIssues.join('\n')}
       ${evaluation.improvementSuggestions.join('\n')}
 
-      原文：${text}
-      当前翻译：${currentTranslation}`,
+      Original: ${text}
+      Current Translation: ${currentTranslation}`,
     });
 
     currentTranslation = improvedTranslation;

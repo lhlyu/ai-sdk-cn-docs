@@ -1,14 +1,14 @@
 ---
-title: 在聊天中渲染可视化界面
-description: 了解如何使用 AI SDK 和 React Server Components 生成文本。
-tags: ['rsc', '生成式用户界面']
+title: "在聊天中渲染可视化界面"
+description: "了解如何使用 AI SDK 和 React Server Components 生成文本。"
+tags: ['rsc', 'generative user interface']
 ---
 
 # 在聊天中渲染可视化界面
 
-我们已经了解了语言模型如何根据与用户的对话来调用函数并渲染组件。
+我们已经了解了语言模型如何根据与用户的对话调用函数并渲染组件。
 
-当我们在 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 中定义多个函数时，模型可以根据用户的意图推理出要调用的正确函数。这意味着你可以编写多个函数，而无需实现复杂的路由逻辑来运行它们。
+当我们在 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 中定义多个函数时，模型可以根据用户的意图推理出应该调用哪些函数。这意味着你可以编写一系列函数，而无需承担实现复杂路由逻辑来运行它们的负担。
 
 ## 客户端
 
@@ -20,7 +20,7 @@ import { ClientMessage } from './actions';
 import { useActions, useUIState } from '@ai-sdk/rsc';
 import { generateId } from 'ai';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
@@ -61,7 +61,7 @@ export default function Home() {
             ]);
           }}
         >
-          发送消息
+          Send Message
         </button>
       </div>
     </div>
@@ -138,7 +138,7 @@ export async function continueConversation(
   const history = getMutableAIState();
 
   const result = await streamUI({
-    model: 'openai/gpt-5.4',
+    model: 'openai/gpt-6-astra',
     messages: [...history.get(), { role: 'user', content: input }],
     text: ({ content, done }) => {
       if (done) {
@@ -153,21 +153,21 @@ export async function continueConversation(
     tools: {
       showStockInformation: {
         description:
-          '获取指定股票代码在过去 numOfMonths 个月内的股票信息',
+          'Get stock information for symbol for the last numOfMonths months',
         inputSchema: z.object({
           symbol: z
             .string()
-            .describe('要获取信息的股票代码'),
+            .describe('The stock symbol to get information for'),
           numOfMonths: z
             .number()
-            .describe('要获取历史信息的月数'),
+            .describe('The number of months to get historical information for'),
         }),
         generate: async ({ symbol, numOfMonths }) => {
           history.done((messages: ServerMessage[]) => [
             ...messages,
             {
               role: 'assistant',
-              content: `正在显示 ${symbol} 的股票信息`,
+              content: `Showing stock information for ${symbol}`,
             },
           ]);
 
@@ -175,18 +175,18 @@ export async function continueConversation(
         },
       },
       showFlightStatus: {
-        description: '获取航班状态',
+        description: 'Get the status of a flight',
         inputSchema: z.object({
           flightNumber: z
             .string()
-            .describe('要获取状态的航班号'),
+            .describe('The flight number to get status for'),
         }),
         generate: async ({ flightNumber }) => {
           history.done((messages: ServerMessage[]) => [
             ...messages,
             {
               role: 'assistant',
-              content: `正在显示 ${flightNumber} 的航班状态`,
+              content: `Showing flight status for ${flightNumber}`,
             },
           ]);
 

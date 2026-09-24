@@ -5,19 +5,19 @@ description: "让模型通过沙箱化的 JavaScript 和 TypeScript 编排 AI SD
 
 # 代码模式
 
-代码模式允许模型编写 JavaScript 或 TypeScript 代码来调用你的 AI SDK 工具。生成的代码在隔离的 QuickJS 沙箱中运行，并返回 JSON 可序列化的结果。
+代码模式让模型编写 JavaScript 或 TypeScript 来调用你的 AI SDK 工具。生成的代码在隔离的 QuickJS 沙箱中运行，并返回可 JSON 序列化的结果。
 
 模型无需逐个调用工具，而是可以使用代码模式来：
 
-- 并发调用独立的工具
+- 并发调用相互独立的工具
 - 转换和组合工具结果
-- 在返回给模型之前过滤大型工具响应
-- 使用 JavaScript 控制流进行多步骤操作
+- 在将大型工具响应返回给模型之前进行过滤
+- 使用 JavaScript 控制流执行多步骤操作
 
 代码模式由 `@ai-sdk/code-mode` 包提供。
 
 <Note type="warning">
-  代码模式为实验性功能，其 API 在未来的版本中可能发生变化。它需要 Node.js 22 或更高版本，并且不适用于浏览器或边缘运行时。
+  代码模式是实验性的，其 API 可能会在未来版本中发生变化。它需要 Node.js 22 或更高版本，并且不适用于浏览器或边缘运行时。
 </Note>
 
 ## 安装
@@ -26,9 +26,9 @@ description: "让模型通过沙箱化的 JavaScript 和 TypeScript 编排 AI SD
 pnpm add ai @ai-sdk/code-mode zod
 ```
 
-## 将代码模式与 `generateText` 结合使用
+## 将代码模式与 `generateText` 配合使用
 
-在一个工具集中定义你的工具，并使用 `experimental_toolCallers` 来选择代码模式可以调用哪些工具：
+在一个工具集中定义你的工具，并使用 `experimental_toolCallers` 选择代码模式可以调用哪些工具：
 
 ```ts
 import {
@@ -39,7 +39,7 @@ import { generateText, isStepCount, tool } from 'ai';
 import { z } from 'zod';
 
 const getInventory = tool({
-  description: '获取产品的可用库存。',
+  description: 'Get available inventory for a product.',
   inputSchema: z.object({
     productId: z.string(),
   }),
@@ -54,7 +54,7 @@ const getInventory = tool({
 });
 
 const getDemand = tool({
-  description: '获取产品的请求数量。',
+  description: 'Get requested units for a product.',
   inputSchema: z.object({
     productId: z.string(),
   }),
@@ -86,11 +86,11 @@ const result = await generateText({
     getDemand: ['code_mode'],
   },
   stopWhen: isStepCount(10),
-  prompt: '比较产品 sku_123 的库存和需求。',
+  prompt: 'Compare inventory and demand for product sku_123.',
 });
 ```
 
-`experimental_toolCallers` 中的键是被管理的工具。值标识了它们允许的调用者。在此示例中，`getInventory` 和 `getDemand` 可通过 `code_mode` 使用，但它们不会作为可直接调用的工具暴露给模型。当工具也应可直接调用时，请包含 `DIRECT_TOOL_CALL`：
+`experimental_toolCallers` 中的键是被治理的工具。值标识了它们允许的调用者。在此示例中，`getInventory` 和 `getDemand` 可通过 `code_mode` 使用，但它们不会作为可直接调用的工具暴露给模型。当某个工具还应可直接调用时，请包含 `DIRECT_TOOL_CALL`：
 
 ```ts
 experimental_toolCallers: {
@@ -98,11 +98,41 @@ experimental_toolCallers: {
 };
 ```
 
-没有 `experimental_toolCallers` 条目的工具保持其现有的直接工具调用行为。
+没有 `experimental_toolCallers` 条目的工具会保留其现有的直接工具调用行为。
 
-代码模式工具的描述包含根据其允许工具的输入和输出模式生成的 TypeScript 签名。描述、`inputExamples` 和精确的模式有助于模型编写正确的代码。
+代码模式工具的描述包含根据其允许工具的输入和输出 schema 生成的 TypeScript 签名。描述、`inputExamples` 和精确的 schema 有助于模型编写正确的代码。
 
-对于上述示例，模型可以生成如下程序：
+### 通过对话发现工具
+
+默认情况下，更改通过代码模式路由的工具也会更改提供商可见的 `code_mode` 工具描述。将 `toolDiscovery` 设置为 `'conversation'` 可保持该工具定义稳定，改为在用户消息中提供当前的主机工具目录：
+
+```ts
+const codeMode = codeModeTool({
+  toolDiscovery: 'conversation',
+});
+
+const tools = {
+  code_mode: codeMode,
+  getInventory,
+  getDemand,
+} as const;
+
+const result = await generateText({
+  model: __MODEL__,
+  tools,
+  experimental_toolCallers: {
+    getInventory: ['code_mode'],
+    getDemand: ['code_mode'],
+  },
+  prompt: 'Compare inventory and demand for product sku_123.',
+});
+```
+
+AI SDK 会在调用模型之前向对话中添加完整的代码模式能力目录。该目录包含通过代码模式路由的工具的 TypeScript 签名和调用示例。当有效工具或其定义在后续步骤或生成调用中发生变化时，SDK 会添加一个新目录来替换之前的目录。
+
+此模式可以改善提示词缓存复用，因为提供商可见的工具定义保持不变。实际的缓存行为取决于模型提供商。
+
+对于上面的示例，模型可以生成如下程序：
 
 ```ts
 const [inventory, demand] = await Promise.all([
@@ -123,20 +153,26 @@ const user = await tools['lookup-user']({ userId: 'user_123' });
 return { id: user.id, plan: user.plan };
 ```
 
+### 搜索延迟加载的工具
+
+将 `toolSearch()` 与 `deferLoading: true` 配合使用，仅在模型需要时才暴露工具。使用 `toolDiscovery: 'conversation'` 时，发现的定义会以用户消息的形式到达，通过保持提供商可见的代码模式工具不变来保留工具定义缓存。实际的提示词缓存复用取决于提供商。
+
+有关直接调用和代码模式的示例，请参阅[工具搜索](/docs/ai-sdk-core/tool-search)。
+
 ## 编写代码模式程序
 
 生成的程序支持：
 
-- JavaScript 和类型剥离的 TypeScript
+- JavaScript 和去除类型的 TypeScript
 - 顶层 `await` 和 `return`
 - 标准 JavaScript 控制流和数据转换
 - 用于并发工具调用的 `Promise.all`
 - `JSON.parse` 和 `JSON.stringify`
 - `console.log`、`console.info`、`console.debug` 和 `console.error`
 
-每次工具调用都是异步的，必须被等待或以其他方式观察。在工具调用仍处于分离状态时返回会导致调用失败并中止未完成的工作。
+每次工具调用都是异步的，必须被 await 或以其他方式观察。在工具调用仍处于分离状态时返回会导致调用失败并中止未完成的工作。
 
-程序和工具输入输出以 JSON 形式跨越沙箱边界。只返回 JSON 可序列化的值。TypeScript 支持仅限于移除类型语法；代码模式不执行类型检查，也不提供完整的 TypeScript 编译器。
+程序和工具输入输出以 JSON 形式跨越沙箱边界。只返回可 JSON 序列化的值。TypeScript 支持仅限于移除类型语法；代码模式不执行类型检查，也不提供完整的 TypeScript 编译器。
 
 ## 直接执行
 
@@ -164,13 +200,13 @@ const result = await runCodeMode({
 
 ## 工具审批
 
-代码模式目前不与 AI SDK 工具审批流程集成。由生成的代码进行的工具调用嵌套在代码模式调用内部，因此它们无法暂停生成并向你的应用程序显示工具审批请求。
+代码模式目前不与 AI SDK 工具审批流程集成。由生成代码发起的工具调用嵌套在代码模式调用内部，因此它们无法暂停生成并向你的应用程序呈现工具审批请求。
 
-不要将依赖用户审批的工具暴露给代码模式。应让这些工具保持由模型直接调用。如果嵌套工具需要审批，该调用将被拒绝而不是执行。
+不要将依赖用户审批的工具暴露给代码模式。请改为让这些工具保持可被模型直接调用。如果嵌套工具需要审批，该调用会被拒绝而不是执行。
 
 ## 执行限制
 
-每次调用都有运行时、内存、源代码大小、结果、工具负载、控制台输出和工具调用的限制。使用 `executionPolicy` 覆盖它们：
+每次调用都有针对运行时、内存、源代码大小、结果、工具负载、控制台输出和工具调用的限制。使用 `executionPolicy` 覆盖它们：
 
 ```ts
 const codeMode = codeModeTool({
@@ -194,10 +230,10 @@ const codeMode = codeModeTool({
 - `maxConsoleOutputBytes`：合并的控制台输出
 - `maxToolInputBytes`：每次工具调用的输入
 - `maxToolOutputBytes`：每次工具调用的输出
-- `maxBridgeRequests`：总工具调用次数
-- `maxInFlightBridgeRequests`：并发工具调用次数
+- `maxBridgeRequests`：工具调用总数
+- `maxInFlightBridgeRequests`：并发工具调用数
 
-使用 `experimental_setMaxWorkers` 设置进程范围内并发代码模式工作器的上限：
+使用 `experimental_setMaxWorkers` 设置进程范围内并发代码模式 worker 的上限：
 
 ```ts
 import { experimental_setMaxWorkers as setMaxWorkers } from '@ai-sdk/code-mode';
@@ -205,21 +241,21 @@ import { experimental_setMaxWorkers as setMaxWorkers } from '@ai-sdk/code-mode';
 setMaxWorkers(4);
 ```
 
-如果没有显式上限，代码模式会根据可用内存选择一个，最多 32 个工作器。
+如果没有显式上限，代码模式会根据可用内存选择一个上限，最多 32 个 worker。
 
 ## 隔离与工具访问
 
-每次调用都会获得一个全新的 QuickJS 上下文。沙箱代码无法访问：
+每次调用都会获得一个全新的 QuickJS 上下文。沙箱化代码无法访问：
 
-- Node.js 全局变量，如 `process`、`require` 或 `module`
+- Node.js 全局变量，例如 `process`、`require` 或 `module`
 - 主机文件系统或模块加载器
 - `fetch`、WebCrypto 或性能 API
 - `eval` 或动态 `Function` 构造
 
-网络或系统访问必须在工具中实现并显式提供给代码模式。
+网络或系统访问必须在工具中实现，并显式提供给代码模式。
 
 <Note type="warning">
-  将沙箱视为纵深防御。生成的代码和工具参数是不可信的。工具在你的主机应用程序中执行，位于 QuickJS 沙箱之外，并且提供的工具所暴露的每个能力都可供生成的程序使用。在每个工具内部强制执行授权并验证输入。
+  将沙箱视为纵深防御。生成的代码和工具参数是不可信的。工具在你的主机应用程序中、QuickJS 沙箱之外执行，所提供的工具暴露的每一项能力都可供生成的程序使用。请在每个工具内部强制执行授权并验证输入。
 </Note>
 
-工具输入模式在其 `execute` 函数运行之前进行验证。中止信号和 AI SDK 工具执行上下文会转发到嵌套的工具调用。
+工具输入 schema 会在其 `execute` 函数运行之前进行验证。中止信号和 AI SDK 工具执行上下文会转发给嵌套的工具调用。

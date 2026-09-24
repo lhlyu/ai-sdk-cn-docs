@@ -1,9 +1,9 @@
 ---
-title: "语音合成"
+title: "语音"
 description: "了解如何使用 AI SDK 从文本生成语音。"
 ---
 
-# 语音合成
+# 语音
 
 AI SDK 提供了 [`generateSpeech`](/docs/reference/ai-sdk-core/generate-speech)
 函数，用于使用语音模型从文本生成语音。
@@ -13,7 +13,7 @@ import { generateSpeech } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 const audio = await generateSpeech({
-  model: openai.speech('tts-1'),
+  model: openai.speech('gpt-4o-mini-tts'),
   text: 'Hello, world!',
   voice: 'alloy',
 });
@@ -22,23 +22,23 @@ const audio = await generateSpeech({
 要访问生成的音频：
 
 ```ts
-const audioData = result.audio.uint8Array; // 音频数据，类型为 Uint8Array
-// 或
-const audioBase64 = result.audio.base64; // 音频数据，类型为 base64 字符串
+const audioData = result.audio.uint8Array; // audio data as Uint8Array
+// or
+const audioBase64 = result.audio.base64; // audio data as base64 string
 ```
 
 ## 设置
 
 ### 提供商特定设置
 
-您可以使用 `providerOptions` 参数设置特定于模型的设置。
+你可以使用 `providerOptions` 参数设置模型特定的设置。
 
 ```ts highlight="7-11"
 import { generateSpeech } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 const audio = await generateSpeech({
-  model: openai.speech('tts-1'),
+  model: openai.speech('gpt-4o-mini-tts'),
   text: 'Hello, world!',
   providerOptions: {
     openai: {
@@ -50,32 +50,32 @@ const audio = await generateSpeech({
 
 ### 中止信号与超时
 
-`generateSpeech` 接受一个可选的 `abortSignal` 参数，其类型为
+`generateSpeech` 接受一个可选的 `abortSignal` 参数，类型为
 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
-您可以使用它来中止语音生成过程或设置超时。
+你可以使用它来中止语音生成过程或设置超时。
 
 ```ts highlight="7"
 import { openai } from '@ai-sdk/openai';
 import { generateSpeech } from 'ai';
 
 const audio = await generateSpeech({
-  model: openai.speech('tts-1'),
+  model: openai.speech('gpt-4o-mini-tts'),
   text: 'Hello, world!',
-  abortSignal: AbortSignal.timeout(1000), // 1 秒后中止
+  abortSignal: AbortSignal.timeout(1000), // Abort after 1 second
 });
 ```
 
 ### 自定义请求头
 
-`generateSpeech` 接受一个可选的 `headers` 参数，其类型为 `Record<string, string>`，
-您可以使用它为语音生成请求添加自定义请求头。
+`generateSpeech` 接受一个可选的 `headers` 参数，类型为 `Record<string, string>`，
+你可以使用它向语音生成请求添加自定义请求头。
 
 ```ts highlight="7"
 import { openai } from '@ai-sdk/openai';
 import { generateSpeech } from 'ai';
 
 const audio = await generateSpeech({
-  model: openai.speech('tts-1'),
+  model: openai.speech('gpt-4o-mini-tts'),
   text: 'Hello, world!',
   headers: { 'X-Custom-Header': 'custom-value' },
 });
@@ -83,14 +83,14 @@ const audio = await generateSpeech({
 
 ### 警告
 
-警告（例如不支持的参数）可在 `warnings` 属性上获取。
+警告（例如不支持的参数）可通过 `warnings` 属性获取。
 
 ```ts
 import { openai } from '@ai-sdk/openai';
 import { generateSpeech } from 'ai';
 
 const audio = await generateSpeech({
-  model: openai.speech('tts-1'),
+  model: openai.speech('gpt-4o-mini-tts'),
   text: 'Hello, world!',
 });
 
@@ -99,17 +99,17 @@ const warnings = audio.warnings;
 
 ### 错误处理
 
-当 `generateSpeech` 无法生成有效的音频时，它会抛出一个 [`AI_NoSpeechGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-speech-generated-error) 错误。
+当 `generateSpeech` 无法生成有效的音频时，它会抛出 [`AI_NoSpeechGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-speech-generated-error)。
 
 此错误可能由以下任一原因引起：
 
 - 模型未能生成响应
 - 模型生成的响应无法解析
 
-该错误保留了以下信息以帮助您记录问题：
+该错误会保留以下信息，以帮助你记录问题：
 
 - `responses`：关于语音模型响应的元数据，包括时间戳、模型和请求头。
-- `cause`：错误的原因。您可以使用它进行更详细的错误处理。
+- `cause`：错误的原因。你可以使用它进行更详细的错误处理。
 
 ```ts
 import { generateSpeech, NoSpeechGeneratedError } from 'ai';
@@ -117,21 +117,21 @@ import { openai } from '@ai-sdk/openai';
 
 try {
   await generateSpeech({
-    model: openai.speech('tts-1'),
+    model: openai.speech('gpt-4o-mini-tts'),
     text: 'Hello, world!',
   });
 } catch (error) {
   if (NoSpeechGeneratedError.isInstance(error)) {
     console.log('AI_NoSpeechGeneratedError');
-    console.log('原因:', error.cause);
-    console.log('响应:', error.responses);
+    console.log('Cause:', error.cause);
+    console.log('Responses:', error.responses);
   }
 }
 ```
 
 ## 语音模型
 
-| 提供商                                                                   | 模型                               |
+| 提供商                                                                   | 模型                                |
 | ------------------------------------------------------------------------ | ----------------------------------- |
 | [OpenAI](/providers/ai-sdk-providers/openai#speech-models)               | `tts-1`                             |
 | [OpenAI](/providers/ai-sdk-providers/openai#speech-models)               | `tts-1-hd`                          |
@@ -147,6 +147,8 @@ try {
 | [Google](/providers/ai-sdk-providers/google#speech-models)               | `gemini-2.5-flash-preview-tts`      |
 | [Google](/providers/ai-sdk-providers/google#speech-models)               | `gemini-2.5-pro-preview-tts`        |
 | [Google](/providers/ai-sdk-providers/google#speech-models)               | `gemini-3.1-flash-tts-preview`      |
+| [Google](/providers/ai-sdk-providers/google#speech-models)               | `gemini-3.8-flash-tts`              |
+| [Google](/providers/ai-sdk-providers/google#speech-models)               | `gemini-3.8-flash-lite-tts`         |
 | [Google Vertex](/providers/ai-sdk-providers/google-vertex#speech-models) | `gemini-2.5-flash-tts`              |
 | [Google Vertex](/providers/ai-sdk-providers/google-vertex#speech-models) | `gemini-2.5-pro-tts`                |
 | [Google Vertex](/providers/ai-sdk-providers/google-vertex#speech-models) | `gemini-2.5-flash-lite-preview-tts` |
@@ -160,4 +162,4 @@ try {
 | [Fish Audio](/providers/ai-sdk-providers/fish-audio#speech-models)       | `s2-pro`                            |
 | [Fish Audio](/providers/ai-sdk-providers/fish-audio#speech-models)       | `s2.1-pro`                          |
 
-以上仅是 AI SDK 提供商支持的语音模型的一小部分。更多信息，请参阅相应提供商的文档。
+以上是 AI SDK 提供商支持的语音模型的一小部分。如需了解更多，请参阅各提供商的文档。

@@ -1,16 +1,16 @@
 ---
-title: "多步骤工具调用"
-description: "了解如何使用 AI SDK 和 Next.js 进行多步骤工具调用"
+title: "多步骤调用工具"
+description: "了解如何使用 AI SDK 和 Next.js 在多步骤中调用工具"
 tags: ['next', 'streaming', 'tool use']
 ---
 
-# 多步骤工具调用
+# 多步骤调用工具
 
-某些语言模型擅长通过多步骤工具调用来完成更复杂的任务。当工具之间存在依赖关系，并且需要在同一生成步骤中按顺序执行时，这一点尤其有用。
+一些语言模型非常擅长通过多步骤调用工具来完成更复杂的任务。当工具之间相互依赖，并且需要在同一次生成步骤中按顺序执行时，这一点尤其有用。
 
 ## 客户端
 
-让我们创建一个 React 组件，从 `@ai-sdk/react` 模块导入 `useChat` Hook。当用户发送消息时，`useChat` Hook 将调用 `/api/chat` 端点。该端点将根据对话历史生成助手的响应，并将其流式传输到客户端。如果助手响应中包含工具调用，Hook 也会自动显示它们。
+让我们创建一个 React 组件，从 `@ai-sdk/react` 模块导入 `useChat` Hook。当用户发送消息时，`useChat` Hook 会调用 `/api/chat` 端点。该端点会根据对话历史生成助手的响应，并将其流式传输到客户端。如果助手响应中包含工具调用，该 Hook 也会自动显示它们。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -71,13 +71,13 @@ export default function Page() {
 
 ## 服务端
 
-你将在 `/api/chat` 创建一个新路由，使用 `ai` 模块中的 `streamText` 函数根据对话历史生成助手的响应。
+你将在 `/api/chat` 创建一个新路由，使用 `ai` 模块中的 `streamText` 函数，根据对话历史生成助手的响应。
 
-你将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数指定两个工具，分别名为 `getLocation` 和 `getWeather`，它们将首先获取用户的位置，然后使用该位置获取天气。
+你将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数来指定两个工具，分别名为 `getLocation` 和 `getWeather`，它们会先获取用户的位置，然后使用该位置来获取天气。
 
-你将添加前面提到的两个函数，并使用 zod 指定其参数的 schema。
+你将添加前面提到的两个函数，并使用 zod 来指定其参数的 schema。
 
-要执行多步骤工具调用，你可以使用 `stopWhen` 选项来指定模型生成工具调用时的停止条件。在此示例中，你将将其设置为 `isStepCount(5)`，以允许多次连续的工具调用（步骤）。
+要在多步骤中调用工具，你可以使用 `stopWhen` 选项来指定模型生成工具调用时的停止条件。在此示例中，你将其设置为 `isStepCount(5)`，以允许多次连续的工具调用（步骤）。
 
 ```ts filename='app/api/chat/route.ts'
 import {
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: ChatMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
+    model: 'openai/gpt-6-astra',
     instructions: 'You are a helpful assistant.',
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),

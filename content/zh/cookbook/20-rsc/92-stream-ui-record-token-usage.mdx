@@ -1,18 +1,18 @@
 ---
-title: 流式传输用户界面后记录 Token 用量
-description: 了解如何使用 AI SDK 和 React Server Components 在流式传输用户界面后记录 Token 用量
+title: "在流式传输用户界面后记录 Token 用量"
+description: "了解如何在使用 AI SDK 和 React Server Components 流式传输用户界面后记录 Token 用量"
 tags: ['rsc', 'usage']
 ---
 
-# 流式传输用户界面后记录 Token 用量
+# 在流式传输用户界面后记录 Token 用量
 
 当你使用 [`streamUI`](/docs/reference/ai-sdk-rsc/stream-ui) 流式传输结构化数据时，
-你可能需要记录 Token 用量以用于计费目的。
+你可能希望记录 Token 用量以便计费。
 
 ## `onFinish` 回调
 
 你可以使用 `onFinish` 回调来记录 Token 用量。
-该回调在流式传输完成时被调用。
+它会在流结束时被调用。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -22,7 +22,7 @@ import { ClientMessage } from './actions';
 import { useActions, useUIState } from '@ai-sdk/rsc';
 import { generateId } from 'ai';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
@@ -63,7 +63,7 @@ export default function Home() {
             ]);
           }}
         >
-          发送消息
+          Send Message
         </button>
       </div>
     </div>
@@ -100,7 +100,7 @@ export async function continueConversation(
   const history = getMutableAIState();
 
   const result = await streamUI({
-    model: 'openai/gpt-5.4',
+    model: 'openai/gpt-6-astra',
     messages: [...history.get(), { role: 'user', content: input }],
     text: ({ content, done }) => {
       if (done) {
@@ -114,27 +114,27 @@ export async function continueConversation(
     },
     tools: {
       deploy: {
-        description: '将仓库部署到 Vercel',
+        description: 'Deploy repository to vercel',
         inputSchema: z.object({
           repositoryName: z
             .string()
-            .describe('仓库名称，例如：vercel/ai-chatbot'),
+            .describe('The name of the repository, example: vercel/ai-chatbot'),
         }),
         generate: async function* ({ repositoryName }) {
-          yield <div>正在克隆仓库 {repositoryName}...</div>; // [!code highlight:5]
+          yield <div>Cloning repository {repositoryName}...</div>; // [!code highlight:5]
           await new Promise(resolve => setTimeout(resolve, 3000));
-          yield <div>正在构建仓库 {repositoryName}...</div>;
+          yield <div>Building repository {repositoryName}...</div>;
           await new Promise(resolve => setTimeout(resolve, 2000));
-          return <div>{repositoryName} 已部署！</div>;
+          return <div>{repositoryName} deployed!</div>;
         },
       },
     },
     onFinish: ({ usage }) => {
       const { promptTokens, completionTokens, totalTokens } = usage;
-      // 你自己的逻辑，例如保存聊天历史或记录用量
-      console.log('提示词 Token 数：', promptTokens);
-      console.log('补全 Token 数：', completionTokens);
-      console.log('总 Token 数：', totalTokens);
+      // your own logic, e.g. for saving the chat history or recording usage
+      console.log('Prompt tokens:', promptTokens);
+      console.log('Completion tokens:', completionTokens);
+      console.log('Total tokens:', totalTokens);
     },
   });
 

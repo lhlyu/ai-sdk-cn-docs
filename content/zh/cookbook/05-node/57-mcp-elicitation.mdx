@@ -1,22 +1,22 @@
 ---
-title: 模型上下文协议 (MCP) 提示收集
-description: 了解如何使用 AI SDK 处理来自 MCP 服务器的提示收集请求
+title: "模型上下文协议 (MCP) 引导"
+description: "了解如何使用 AI SDK 处理来自 MCP 服务器的引导请求"
 tags: ['node', 'mcp', 'elicitation']
 ---
 
-# MCP 提示收集
+# MCP 引导
 
-提示收集是一种机制，MCP 服务器可以在工具执行期间向客户端请求额外信息。此示例演示了如何处理提示收集请求，例如收集用户注册信息。
+引导（Elicitation）是一种机制，允许 MCP 服务器在工具执行期间向客户端请求额外信息。本示例演示了如何处理引导请求，例如收集用户注册信息。
 
 ## 示例：用户注册
 
-此示例展示了如何设置一个 MCP 客户端来处理来自需要收集用户输入的服务器的提示收集请求。
+本示例展示了如何设置 MCP 客户端，以处理来自需要收集用户输入的服务器的引导请求。
 
 ```ts
 import { createMCPClient, ElicitationRequestSchema } from '@ai-sdk/mcp';
 import { generateText } from 'ai';
 
-// 创建启用了提示收集能力的 MCP 客户端
+// Create the MCP client with elicitation capability enabled
 const mcpClient = await createMCPClient({
   transport: {
     type: 'sse',
@@ -27,19 +27,19 @@ const mcpClient = await createMCPClient({
   },
 });
 
-// 注册一个处理提示收集请求的处理器
+// Register a handler for elicitation requests
 mcpClient.onElicitationRequest(ElicitationRequestSchema, async request => {
-  console.log('服务器正在请求：', request.params.message);
-  console.log('期望的模式：', request.params.requestedSchema);
+  console.log('Server is requesting:', request.params.message);
+  console.log('Expected schema:', request.params.requestedSchema);
 
-  // 根据模式收集用户输入
-  // 在这里实现你自己的逻辑来提示用户
+  // Collect user input according to the schema
+  // This is where you would implement your own logic to prompt the user
   const userData = await promptUserForInput(request.params.requestedSchema);
 
-  // 返回包含以下三种操作之一的结果：
-  // - 'accept'：用户提供了请求的信息
-  // - 'decline'：用户选择不提供信息
-  // - 'cancel'：用户完全取消了操作
+  // Return the result with one of three actions:
+  // - 'accept': User provided the requested information
+  // - 'decline': User chose not to provide the information
+  // - 'cancel': User cancelled the operation entirely
   return {
     action: 'accept',
     content: userData,
@@ -50,28 +50,28 @@ try {
   const tools = await mcpClient.tools();
 
   const { text } = await generateText({
-    model: 'openai/gpt-4o-mini',
+    model: 'openai/gpt-6-luna',
     tools,
-    prompt: '注册一个新用户账户',
+    prompt: 'Register a new user account',
   });
 
-  console.log('响应：', text);
+  console.log('Response:', text);
 } finally {
   await mcpClient.close();
 }
 
-// promptUserForInput 的示例实现
+// Example implementation of promptUserForInput
 async function promptUserForInput(
   schema: unknown,
 ): Promise<Record<string, unknown>> {
-  // 实现你自己的逻辑来根据模式收集输入
-  // 这可以是：
-  // - 使用 readline 的命令行提示
-  // - 一个网页表单
-  // - 一个 GUI 对话框
-  // - 任何其他输入机制
+  // Implement your own logic to collect input based on the schema
+  // This could be:
+  // - A CLI prompt using readline
+  // - A web form
+  // - A GUI dialog
+  // - Any other input mechanism
 
-  // 对于此示例，我们将返回模拟数据
+  // For this example, we'll return mock data
   return {
     username: 'johndoe',
     email: 'john@example.com',
@@ -81,23 +81,23 @@ async function promptUserForInput(
 }
 ```
 
-## 提示收集响应操作
+## 引导响应操作
 
-你的处理器必须返回一个包含 `action` 字段的对象：
+你的处理程序必须返回一个包含 `action` 字段的对象：
 
-- **`'accept'`**：用户提供了请求的信息。必须包含带有数据的 `content`。
-- **`'decline'`**：用户选择不提供信息。
-- **`'cancel'`**：用户完全取消了操作。
+- **`'accept'`**：用户提供了所请求的信息。必须包含带有数据的 `content`。
+- **`'decline'`**：用户选择不提供该信息。
+- **`'cancel'`**：用户完全取消了该操作。
 
 ## 重要说明
 
 <Note type="warning">
-  正确处理提示收集请求是客户端应用程序的责任。MCP 客户端仅将这些请求从服务器传递给你的应用程序代码。
+  客户端应用程序需要自行妥善处理引导请求。MCP 客户端只是将这些来自服务器的请求呈现给你的应用程序代码。
 </Note>
 
-提示收集处理器应：
+引导处理程序应当：
 
 1. 解析 `request.params.requestedSchema` 以了解服务器需要哪些数据
-2. 实现适当的用户输入收集方式（命令行、网页表单等）
-3. 验证输入与请求的模式匹配
+2. 实现适当的用户输入收集方式（CLI、Web 表单等）
+3. 验证输入与所请求的 schema 匹配
 4. 返回适当的操作和内容

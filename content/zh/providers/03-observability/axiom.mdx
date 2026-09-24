@@ -1,59 +1,59 @@
 ---
 title: "Axiom"
-description: "使用 Axiom 测量、观察并改进您的 AI SDK 应用程序"
+description: "使用 Axiom 度量、观测并改进你的 AI SDK 应用"
 ---
 
 # Axiom 可观测性
 
-**Axiom** 是一个数据平台，具有针对 **AI 工程工作流** 的专门功能，帮助您自信地构建复杂的 AI 系统。
+**Axiom** 是一个数据平台，专为 **AI 工程工作流** 提供专门功能，帮助你自信地构建复杂的 AI 系统。
 
-Axiom 与 AI SDK 的集成使用模型包装器自动捕获每次 LLM 调用的详细追踪，让您即时了解应用程序的性能、成本和运行情况。
+Axiom 与 AI SDK 的集成使用模型包装器，自动捕获每次 LLM 调用的详细追踪信息，让你能够即时洞察应用的性能、成本和行为。
 
 ## 设置
 
 ### 1. 配置 Axiom
 
-首先，您需要一个 Axiom 组织、一个用于发送追踪的数据集以及一个 API 令牌。
+首先，你需要一个 Axiom 组织、一个用于发送追踪信息的数据集，以及一个 API 令牌。
 
-- [创建一个 Axiom 组织](https://app.axiom.co/register)。
-- [创建一个新数据集](https://app.axiom.co/datasets)（例如 `my-ai-app`）。
-- [创建一个 API 令牌](https://app.axiom.co/settings/api-tokens)，并为其授予数据集的摄取权限。
+- [创建 Axiom 组织](https://app.axiom.co/register)。
+- [创建新数据集](https://app.axiom.co/datasets)（例如 `my-ai-app`）。
+- [创建 API 令牌](https://app.axiom.co/settings/api-tokens)，并授予对数据集的摄取权限。
 
 ### 2. 安装 Axiom SDK
 
-在您的项目中安装 Axiom 包：
+在你的项目中安装 Axiom 包：
 
 <InstallPackages packages="axiom" />
 
 ### 3. 设置环境变量
 
-在 `.env` 文件中配置您的环境变量。这使用标准的 OpenTelemetry 配置将追踪直接发送到您的 Axiom 数据集。
+在 `.env` 文件中配置环境变量。这里使用标准的 OpenTelemetry 配置，将追踪信息直接发送到你的 Axiom 数据集。
 
 ```bash filename=".env"
-# Axiom 配置
+# Axiom Configuration
 AXIOM_TOKEN="YOUR_AXIOM_API_TOKEN"
 AXIOM_DATASET="your-axiom-dataset-name"
 
-# Vercel 和 OpenTelemetry 配置
+# Vercel and OpenTelemetry Configuration
 OTEL_SERVICE_NAME="my-ai-app"
 OTEL_EXPORTER_OTLP_ENDPOINT="https://api.axiom.co/v1/traces"
 OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer YOUR_AXIOM_API_TOKEN,X-Axiom-Dataset=your-axiom-dataset-name"
 
-# 您的 AI 提供商密钥
+# Your AI Provider Key
 OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 ```
 
-将占位符值替换为您实际的 Axiom 令牌和数据集名称。
+将占位符值替换为你实际的 Axiom 令牌和数据集名称。
 
-### 4. 设置检测
+### 4. 设置插桩
 
-要将数据发送到 Axiom，请配置一个追踪器。例如，使用一个专用的检测文件，并在应用程序其余部分之前加载它。以下是 Node.js 环境的示例配置：
+要将数据发送到 Axiom，需要配置一个 tracer。例如，使用一个专用的插桩文件，并在应用其余部分之前加载它。以下是 Node.js 环境的示例配置：
 
-1. 安装依赖项：
+1. 安装依赖：
 
 <InstallPackages packages="dotenv @opentelemetry/exporter-trace-otlp-http @opentelemetry/resources @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/semantic-conventions @opentelemetry/api" />
 
-2. 创建检测文件：
+2. 创建插桩文件：
 
 ```typescript filename="src/instrumentation.ts"
 import { trace } from '@opentelemetry/api';
@@ -89,22 +89,22 @@ initAxiomAI({ tracer, redactionPolicy: RedactionPolicy.AxiomDefault });
 
 ### 5. 包装并使用 AI 模型
 
-在您的应用程序代码中，从 Axiom 导入 `wrapAISDKModel`，并使用它来包装您现有的 AI SDK 模型客户端。
+在你的应用代码中，从 Axiom 导入 `wrapAISDKModel`，并用它来包装你现有的 AI SDK 模型客户端。
 
 ```typescript
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { wrapAISDKModel } from 'axiom/ai';
 
-// 1. 创建您的标准 AI 模型提供商
+// 1. Create your standard AI model provider
 const openaiProvider = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 2. 包装模型以启用自动追踪
-const tracedGpt4o = wrapAISDKModel(openaiProvider('gpt-4o'));
+// 2. Wrap the model to enable automatic tracing
+const tracedGpt4o = wrapAISDKModel(openaiProvider('gpt-6-astra'));
 
-// 3. 像平常一样使用包装后的模型
+// 3. Use the wrapped model as you normally would
 const { text } = await generateText({
   model: tracedGpt4o,
   prompt: 'What is the capital of Spain?',
@@ -113,27 +113,27 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-使用 `tracedGpt4o` 模型进行的任何调用现在都会自动将详细追踪发送到您的 Axiom 数据集。
+现在，使用 `tracedGpt4o` 模型进行的所有调用都会自动将详细追踪信息发送到你的 Axiom 数据集。
 
-## 在 Axiom 中您将看到的内容
+## 你将在 Axiom 中看到的内容
 
-集成后，您的 Axiom 数据集将包含：
+集成完成后，你的 Axiom 数据集将包含：
 
-- **AI 追踪瀑布图：** 一个专用视图，用于可视化单步和多步 LLM 工作流。
-- **生成式 AI 仪表盘：** 一个预构建的仪表盘，用于监控成本、延迟、令牌使用情况和错误率。
-- **详细跨度：** 每次调用的丰富遥测数据，包括完整的提示词和完成内容、令牌计数以及模型信息。
+- **AI Trace Waterfall：** 一个专用视图，用于可视化单步和多步 LLM 工作流。
+- **Gen AI Dashboard：** 一个预构建的仪表板，用于监控成本、延迟、令牌使用量和错误率。
+- **Detailed Spans：** 每次调用的丰富遥测数据，包括完整的提示词和补全内容、令牌数量以及模型信息。
 
 ## 高级用法
 
-Axiom 的 AI SDK 提供更高级的检测功能，以实现更深入的可见性：
+Axiom 的 AI SDK 提供了更高级的插桩功能，以实现更深入的可见性：
 
-- **业务上下文：** 使用 `withSpan` 函数将 LLM 调用分组到特定的业务能力下（例如 `customer_support_agent`）。
-- **工具追踪：** 使用 `wrapTool` 辅助函数自动追踪 AI 模型调用的工具执行情况。
+- **Business Context：** 使用 `withSpan` 函数将 LLM 调用归组到特定的业务能力下（例如 `customer_support_agent`）。
+- **Tool Tracing：** 使用 `wrapTool` 辅助函数自动追踪 AI 模型调用的工具的执行情况。
 
-要了解有关这些功能的更多信息，请参阅 [Axiom AI SDK 检测指南](https://axiom.co/docs/ai-engineering/observe/axiom-ai-sdk-instrumentation)。
+要了解有关这些功能的更多信息，请参阅 [Axiom AI SDK Instrumentation guide](https://axiom.co/docs/ai-engineering/observe/axiom-ai-sdk-instrumentation)。
 
 ## 其他资源
 
-- [Axiom AI 工程文档](https://axiom.co/docs/ai-engineering/overview)
-- [GitHub 上的 Axiom AI SDK](https://github.com/axiomhq/ai)
-- [完整快速入门指南](https://axiom.co/docs/ai-engineering/quickstart)
+- [Axiom AI Engineering Documentation](https://axiom.co/docs/ai-engineering/overview)
+- [Axiom AI SDK on GitHub](https://github.com/axiomhq/ai)
+- [Full Quickstart Guide](https://axiom.co/docs/ai-engineering/quickstart)

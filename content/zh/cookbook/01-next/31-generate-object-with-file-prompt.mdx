@@ -1,7 +1,7 @@
 ---
-title: 通过表单提交使用文件提示词生成对象
-description: 学习如何使用 AI SDK 和 Next.js 通过表单提交利用文件提示词生成对象
-tags: ['next', '多模态']
+title: "通过表单提交使用文件提示词生成对象"
+description: "学习如何使用 AI SDK 和 Next.js 通过表单提交使用文件提示词生成对象"
+tags: ['next', 'multi-modal']
 ---
 
 # 通过表单提交使用文件提示词生成对象
@@ -14,11 +14,11 @@ tags: ['next', '多模态']
   Vertex](/providers/ai-sdk-providers/google-vertex#file-inputs))。
 </Note>
 
-使用特定模型，您可以将 PDF（文件）作为提示词的一部分发送。让我们创建一个简单的 Next.js 应用程序，允许用户上传 PDF 并将其发送给 LLM 进行摘要生成。
+对于部分模型，你可以将 PDF（文件）作为提示词的一部分发送。让我们创建一个简单的 Next.js 应用，允许用户上传 PDF 并将其发送给 LLM 进行摘要。
 
 ## 客户端
 
-在前端，创建一个允许用户上传 PDF 的表单。提交表单时，将 PDF 发送到 `/api/analyze` 路由。
+在前端，创建一个允许用户上传 PDF 的表单。当表单提交时，将 PDF 发送到 `/api/analyze` 路由。
 
 ```tsx file="app/page.tsx"
 'use client';
@@ -45,16 +45,16 @@ export default function Page() {
               setDescription(await response.text());
             }
           } catch (error) {
-            console.error('分析失败:', error);
+            console.error('Analysis failed:', error);
           }
         }}
       >
         <div>
-          <label>上传图片</label>
+          <label>Upload Image</label>
           <input name="pdf" type="file" accept="application/pdf" />
         </div>
         <button type="submit" disabled={loading}>
-          提交{loading && '中...'}
+          Submit{loading && 'ing...'}
         </button>
       </form>
       {description && (
@@ -67,7 +67,7 @@ export default function Page() {
 
 ## 服务端
 
-在服务端，创建一个 API 路由来接收 PDF，将其发送给 LLM，并返回结果。此示例使用 [ `generateText` ](/docs/reference/ai-sdk-core/generate-text) 函数配合 `Output.object` 将摘要生成为结构化输出的一部分。
+在服务端，创建一个 API 路由来接收 PDF，将其发送给 LLM，并返回结果。此示例使用 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 函数配合 `Output.object` 将摘要作为结构化输出的一部分生成。
 
 ```typescript file="app/api/analyze/route.ts"
 import { generateText, Output } from 'ai';
@@ -86,14 +86,14 @@ export async function POST(request: Request) {
   const fileDataUrl = `data:application/pdf;base64,${base64Data}`;
 
   const result = await generateText({
-    model: 'openai/gpt-4o',
+    model: 'openai/gpt-6-astra',
     messages: [
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: '分析以下 PDF 并生成摘要。',
+            text: 'Analyze the following PDF and generate a summary.',
           },
           {
             type: 'file',
@@ -107,11 +107,11 @@ export async function POST(request: Request) {
       schema: z.object({
         people: z
           .object({
-            name: z.string().describe('人员姓名。'),
-            age: z.number().min(0).describe('人员年龄。'),
+            name: z.string().describe('The name of the person.'),
+            age: z.number().min(0).describe('The age of the person.'),
           })
           .array()
-          .describe('人员数组。'),
+          .describe('An array of people.'),
       }),
     }),
   });

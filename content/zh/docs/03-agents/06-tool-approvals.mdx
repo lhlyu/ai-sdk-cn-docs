@@ -5,30 +5,30 @@ description: "为 ToolLoopAgent 工具添加手动和自动审批流程。"
 
 # 工具审批
 
-默认情况下，带有 `execute` 函数的工具会在模型调用时自动运行。使用 `ToolLoopAgent` 上的 `toolApproval` 可在选定的工具调用执行前对其进行审查、批准或拒绝。
+默认情况下，带有 `execute` 函数的工具在模型调用时会自动运行。使用 `ToolLoopAgent` 上的 `toolApproval` 可以在选定的工具调用执行前对其进行审查、批准或拒绝。
 
-`toolApproval` 适用于可能修改数据、花费资金、执行代码、发送消息、访问私有数据或执行任何其他敏感操作的工具。
+`toolApproval` 适用于可能修改数据、花费金钱、执行代码、发送消息、访问私有数据或执行任何其他敏感操作的工具。
 
 <Note>
-  `toolApproval` 适用于由 AI SDK 执行的工具。由提供商执行的工具在提供商端运行，不使用 AI SDK 工具审批。
+  `toolApproval` 适用于由 AI SDK 执行的工具。提供商执行的工具在提供商侧运行，不使用 AI SDK 工具审批。
 </Note>
 
 ## 状态
 
-每个审批规则返回以下状态之一，可以是字符串，也可以是带有 `type` 字段的对象：
+每条审批规则返回以下状态之一，可以是字符串，也可以是带有 `type` 字段的对象：
 
-- `'not-applicable'`：正常执行工具，不附带审批元数据。这是默认状态。
-- `'approved'`：记录自动批准，然后执行工具。
-- `'denied'`：记录自动拒绝并返回被拒绝的工具输出。
+- `'not-applicable'`：正常执行工具，不附加审批元数据。这是默认值。
+- `'approved'`：记录一次自动批准，然后执行工具。
+- `'denied'`：记录一次自动拒绝，并返回被拒绝的工具输出。
 - `'user-approval'`：发出审批请求并等待明确响应。
 
-对于自动批准和拒绝，当你想包含原因时，请使用对象形式：
+对于自动批准和拒绝，当你想要包含原因时，请使用对象形式：
 
 ```ts
 toolApproval: {
   deleteFile: {
     type: 'denied',
-    reason: '此工作区中已禁用删除文件功能',
+    reason: 'Deleting files is disabled in this workspace',
   },
 }
 ```
@@ -37,7 +37,7 @@ toolApproval: {
 
 ## 为工具要求审批
 
-当每个工具有简单策略时，使用按工具映射。
+当每个工具都有简单策略时，使用按工具映射。
 
 ```ts highlight="13-15"
 import { ToolLoopAgent, tool } from 'ai';
@@ -58,11 +58,11 @@ const agent = new ToolLoopAgent({
 });
 ```
 
-当调用 `runCommand` 时，智能体会返回 `tool-approval-request`，而不是执行该工具。
+当调用 `runCommand` 时，智能体会返回一个 `tool-approval-request`，而不是执行该工具。
 
-## 根据工具输入进行决策
+## 基于工具输入进行决策
 
-当决策取决于解析后的工具输入时，使用按工具审批函数。该函数接收类型化输入以及 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`。
+当决策取决于解析后的工具输入时，使用按工具的审批函数。该函数接收类型化的输入以及 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`。
 
 ```ts highlight="17-24"
 import { ToolLoopAgent, tool } from 'ai';
@@ -84,7 +84,7 @@ const agent = new ToolLoopAgent({
   toolApproval: {
     processPayment: async ({ amount }, { runtimeContext }) => {
       if (runtimeContext.role !== 'admin') {
-        return { type: 'denied', reason: '只有管理员才能发送付款' };
+        return { type: 'denied', reason: 'Only admins can send payments' };
       }
       return amount > 1000 ? 'user-approval' : undefined;
     },
@@ -92,11 +92,11 @@ const agent = new ToolLoopAgent({
 });
 ```
 
-在此示例中，非管理员用户会被自动拒绝，大额付款需要手动审批，而管理员的小额付款则正常执行。
+在此示例中，非管理员用户会被自动拒绝，大额支付需要手动审批，而较小的管理员支付则正常执行。
 
-## 为所有工具使用一个策略
+## 对所有工具使用同一策略
 
-当审批取决于完整工具调用、跨工具的共享状态或完整工具集时，直接将函数作为 `toolApproval` 传递。这称为 `GenericToolApprovalFunction`。
+当审批取决于完整的工具调用、跨工具的共享状态或完整的工具集时，直接将函数作为 `toolApproval` 传入。这称为 `GenericToolApprovalFunction`。
 
 ```ts highlight="13-16,18-20,22-23"
 const agent = new ToolLoopAgent({
@@ -127,11 +127,11 @@ const agent = new ToolLoopAgent({
 
 通用函数接收：
 
-- `toolCall`：完整的工具调用，包括 `toolName`、`toolCallId`、`input` 以及是否为动态调用。
+- `toolCall`：完整的工具调用，包括 `toolName`、`toolCallId`、`input` 以及它是否为动态的。
 - `tools`：模型可用的所有工具。
 - `toolsContext`：所有工具的上下文。
-- `messages`：为产生工具调用的步骤发送给模型的消息。
-- `runtimeContext`：调用的共享运行时上下文。
+- `messages`：为产生该工具调用的步骤发送给模型的消息。
+- `runtimeContext`：该调用的共享运行时上下文。
 
 ## 按请求配置审批
 
@@ -152,7 +152,7 @@ const agent = new ToolLoopAgent({
     toolApproval: {
       runCommand: options.canRunCommands
         ? 'user-approval'
-        : { type: 'denied', reason: '命令访问已禁用' },
+        : { type: 'denied', reason: 'Command access is disabled' },
     },
   }),
   tools: {
@@ -170,14 +170,14 @@ const agent = new ToolLoopAgent({
 
 1. 使用 `toolApproval` 调用 `agent.generate()` 或 `agent.stream()`。
 2. 从结果或 UI 流中读取 `tool-approval-request`。
-3. 向用户或你的审批系统请求决策。
-4. 将 `tool-approval-response` 添加到消息中。
+3. 向用户或你的审批系统询问决策。
+4. 向消息中添加 `tool-approval-response`。
 5. 使用更新后的消息再次调用智能体。
 
 ```ts highlight="5-6,10-18,21-24,26"
 import { type ModelMessage, type ToolApprovalResponse } from 'ai';
 
-const messages: ModelMessage[] = [{ role: 'user', content: '删除 temp.txt' }];
+const messages: ModelMessage[] = [{ role: 'user', content: 'Delete temp.txt' }];
 
 const result = await agent.generate({ messages });
 messages.push(...result.responseMessages);
@@ -190,7 +190,7 @@ for (const part of result.content) {
       type: 'tool-approval-response',
       approvalId: part.approvalId,
       approved: true,
-      reason: '用户确认该文件可以被删除',
+      reason: 'User confirmed the file can be deleted',
     });
   }
 }
@@ -203,15 +203,15 @@ messages.push({
 const finalResult = await agent.generate({ messages });
 ```
 
-如果批准，工具将在第二次调用时运行。如果拒绝，模型会收到拒绝通知，并可以在没有工具结果的情况下做出响应。
+如果获得批准，工具会在第二次调用时运行。如果被拒绝，模型会收到拒绝信息，并可以在没有工具结果的情况下进行响应。
 
 <Note>
-  当工具执行被拒绝时，考虑添加一条指令，例如“当工具执行未获批准时，不要重试”，以防止对同一操作重复发出审批请求。
+  当工具执行被拒绝时，考虑添加诸如“当工具执行未获批准时，不要重试”的指令，以防止对同一操作重复发出审批请求。
 </Note>
 
 ## 与 `useChat` 一起使用
 
-当将智能体流式传输到聊天 UI 时，审批请求会以 `state: 'approval-requested'` 的工具部分出现。使用 `addToolApprovalResponse` 进行响应。
+当将智能体流式传输到聊天 UI 时，审批请求会以带有 `state: 'approval-requested'` 的工具部分出现。使用 `addToolApprovalResponse` 进行响应。
 
 ```tsx highlight="7-9,17-40"
 'use client';
@@ -244,7 +244,7 @@ export default function Chat() {
                 })
               }
             >
-              批准
+              Approve
             </button>
             <button
               onClick={() =>
@@ -254,7 +254,7 @@ export default function Chat() {
                 })
               }
             >
-              拒绝
+              Deny
             </button>
           </div>
         );
@@ -264,22 +264,33 @@ export default function Chat() {
 }
 ```
 
-仅对手动审批调用 `addToolApprovalResponse`。自动批准和拒绝已包含在流中的审批状态中。
-当手动审批状态包含原因时，该原因可通过 `part.approval.requestReason` 获取。使用 `addToolApprovalResponse` 提供的原因会单独存储为 `part.approval.reason`。
+仅对手动审批调用 `addToolApprovalResponse`。自动批准和拒绝已在流中包含审批状态。
+当手动审批状态包含原因时，可通过
+`part.approval.requestReason` 获取。通过
+`addToolApprovalResponse` 提供的原因会单独存储为 `part.approval.reason`。
+
+### Schema 转换与持久化审批
+
+当审批请求的原始 schema 输入与呈现用于审批的输入不同时，审批请求会在 `inputSchemaInput` 中保留原始 schema 输入。在持久化
+`responseMessages` 或 UI 消息时保留此字段；UI 消息转换函数会自动保留它。
+
+在继续时，SDK 会重建转换后的输入，并检查其是否与已批准的输入匹配。它绝不会用不同的值替换已批准的输入。如果重新验证失败或会更改已批准的值，则省略原始输入的较旧或投影历史记录会被拒绝为无效工具输入。
+
+原始输入会包含在持久化消息和 UI 审批流中，包括被 schema 转换移除的字段。移除字段的转换不会将其从审批元数据中隐去。
 
 ## 安全注意事项
 
 ### 信任模型
 
-在标准的 `useChat` 模式中，服务器根据客户端每轮发送的消息重建对话。服务器不会在请求之间持久化对话状态。这意味着消息历史是客户端控制的输入。
+在标准的 `useChat` 模式中，服务器会根据客户端每轮发送的消息重建对话。服务器不会在请求之间持久化对话状态。这意味着消息历史是客户端控制的输入。
 
-从该历史重建的工具审批会在执行前重新验证：工具输入会根据工具的模式进行检查，审批策略也会被重新评估。然而，如果没有额外的保护，客户端为符合模式的输入构造看似有效的审批，就可以绕过人工介入步骤。
+从此历史记录重建的工具审批在执行前会重新验证：工具输入会根据工具的 schema 进行检查，审批策略也会重新评估。但是，如果没有额外的保护，客户端可以为符合 schema 的输入伪造一个看似有效的审批，从而绕过人工介入步骤。
 
-如果你的工具执行敏感操作（修改数据、花费资金、调用外部 API、访问私有资源），请使用 `experimental_toolApprovalSecret` 将审批以加密方式绑定到签发它们的服务器。
+如果你的工具执行敏感操作（修改数据、花费金钱、调用外部 API、访问私有资源），请使用 `experimental_toolApprovalSecret` 以加密方式将审批绑定到签发它们的服务器。
 
-### 使用 `experimental_toolApprovalSecret` 签署审批
+### 使用 `experimental_toolApprovalSecret` 对审批进行签名
 
-当你提供密钥时，服务器会在签发时对每个审批请求进行 HMAC 签名，并在审批重放时验证签名。伪造或篡改的审批会在工具执行前被拒绝。在 `ToolLoopAgent` 上配置密钥（或直接将其传递给 `generateText` 或 `streamText`）。
+当你提供密钥时，服务器会在签发时对每个审批请求进行 HMAC 签名，并在审批被重放时验证签名。伪造或被篡改的审批会在工具执行前被拒绝。在 `ToolLoopAgent` 上配置该密钥（或直接将其传递给 `generateText` 或 `streamText`）。
 
 ```ts highlight="6"
 const agent = new ToolLoopAgent({
@@ -298,31 +309,32 @@ const result = await agent.generate({
 
 **设置密钥：**
 
-1. 生成高熵随机字符串（至少 32 字节）：
+1. 生成一个高熵随机字符串（至少 32 字节）：
    ```bash
    openssl rand -base64 32
    ```
-2. 将其存储为所有服务器实例都可访问的环境变量：
+2. 将其存储为所有服务器实例均可访问的环境变量：
    ```
    TOOL_APPROVAL_SECRET=your-generated-secret-here
    ```
 3. 通过 `experimental_toolApprovalSecret` 将其传递给 `ToolLoopAgent`、`generateText` 或 `streamText`。
 
-每个可能处理请求的无服务器实例都需要相同的密钥，因为一个实例签署审批，而另一个实例可能在下一轮验证它。
+每个可能处理请求的无服务器实例都需要相同的密钥，因为一个实例签发审批，而另一个实例可能在下一轮验证它。
 
 **配置后的行为：**
 
-- 没有有效签名的审批请求将被拒绝（故障关闭）
+- 没有有效签名的审批请求会被拒绝（故障关闭）
 - 未配置密钥：审批照常工作（向后兼容）
-- 密钥永远不会发送到客户端或包含在流中
+- 密钥绝不会发送到客户端或包含在流中
 
 <Note>
-  `WorkflowAgent` 也支持 `experimental_toolApprovalSecret`。它会在写入持久化审批请求之前在工作流步骤中签名。传递环境变量引用，例如 `{ environmentVariable: 'TOOL_APPROVAL_SECRET' }`，以便仅在签名和验证步骤中读取原始密钥。只有签名会被持久化并发送到客户端。
+  `WorkflowAgent` 也支持 `experimental_toolApprovalSecret`。它会在写入持久审批请求之前在工作流步骤中进行签名。传入环境变量引用，例如
+  `{ environmentVariable: 'TOOL_APPROVAL_SECRET' }`，以便仅在签名和验证步骤中读取原始密钥。只有签名会被持久化并发送到客户端。
 </Note>
 
 ## 相关 API
 
 - 将 `toolApproval` 与 `ToolLoopAgent`、`generateText` 和 `streamText` 一起使用。
 - 使用[基于策略的工具审批](/docs/agents/policy-tool-approvals)（`@ai-sdk/policy-opa`）以代码形式编写审批规则。
-- 仅在 [`WorkflowAgent`](/docs/agents/workflow-agent) 中使用 `needsApproval`，其中审批会挂起和恢复持久化工作流执行。
+- 仅在 [`WorkflowAgent`](/docs/agents/workflow-agent) 中使用 `needsApproval`，其中审批会暂停和恢复持久工作流执行。
 - 子智能体工具不能使用 `toolApproval`；请参阅[子智能体](/docs/agents/subagents#no-tool-approvals-in-subagents)。

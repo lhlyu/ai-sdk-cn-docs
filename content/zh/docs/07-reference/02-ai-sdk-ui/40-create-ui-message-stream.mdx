@@ -5,7 +5,7 @@ description: "createUIMessageStream 的 API 参考。"
 
 # `createUIMessageStream`
 
-`createUIMessageStream` 函数允许你创建用于 UI 消息的可读流，并具备消息合并、错误处理和完成回调等高级功能。
+`createUIMessageStream` 函数允许你为 UI 消息创建可读流，并支持消息合并、错误处理和完成回调等高级功能。
 
 ## 导入
 
@@ -20,34 +20,34 @@ const existingMessages: UIMessage[] = [
 
 const stream = createUIMessageStream({
   async execute({ writer }) {
-    // 外层流拥有助手消息的生命周期。
+    // The outer stream owns the assistant message lifecycle.
     writer.write({ type: 'start' });
 
-    // 开始一条文本消息
-    // 注意：text-start、text-delta 和 text-end 步骤中的 id 必须保持一致
-    // 这允许系统正确识别它们属于同一个文本块
+    // Start a text message
+    // Note: The id must be consistent across text-start, text-delta, and text-end steps
+    // This allows the system to correctly identify they belong to the same text block
     writer.write({
       type: 'text-start',
       id: 'example-text',
     });
 
-    // 写入一个消息块
+    // Write a message chunk
     writer.write({
       type: 'text-delta',
       id: 'example-text',
       delta: 'Hello',
     });
 
-    // 结束文本消息
+    // End the text message
     writer.write({
       type: 'text-end',
       id: 'example-text',
     });
 
-    // 合并来自 streamText 的另一个流
+    // Merge another stream from streamText
     const result = streamText({
       model: __MODEL__,
-      prompt: '写一首关于 AI 的俳句',
+      prompt: 'Write a haiku about AI',
     });
 
     writer.merge(
@@ -55,22 +55,23 @@ const stream = createUIMessageStream({
         stream: result.stream,
         sendStart: false,
         onEnd: ({ outcome }) => {
-          // 组合器决定模型流的结果也是聚合流的结果。
+          // The composer decides that the model stream outcome is also the
+          // aggregate stream outcome.
           writer.setOutcome(outcome);
         },
       }),
     );
   },
-  onError: error => `自定义错误：${error.message}`,
+  onError: error => `Custom error: ${error.message}`,
   originalMessages: existingMessages,
   onEnd: ({ messages, isContinuation, outcome, responseMessage }) => {
-    console.log('流结束，消息为：', messages);
-    console.log('流结果：', outcome.status);
+    console.log('Stream ended with messages:', messages);
+    console.log('Stream outcome:', outcome.status);
   },
 });
 ```
 
-`setOutcome` 记录组合器的策略，而不会写入块或关闭流。通过 `setOutcome` 声明的第一个结果会被保留，但致命的执行、合并、错误处理或下游处理失败会使最终的 `onEnd` 结果为 `failed`。单独的 `error` 块本身不会改变结果。当合并多个子流时，请聚合它们的结果并仅调用一次 `setOutcome`。
+`setOutcome` 记录组合器的策略，而不会写入 chunk 或关闭流。通过 `setOutcome` 声明的第一个结果会被保留，但致命的执行、合并、错误处理或下游处理失败会使最终的 `onEnd` 结果为 `failed`。单个 `error` chunk 本身不会改变结果。合并多个子流时，请聚合它们的结果并调用一次 `setOutcome`。
 
 ## API 签名
 
@@ -82,7 +83,7 @@ const stream = createUIMessageStream({
       name: 'execute',
       type: '(options: { writer: UIMessageStreamWriterWithOutcome }) => Promise<void> | void',
       description:
-        '一个接收 writer 实例的函数，可以使用它将 UI 消息块写入流中。',
+        'A function that receives a writer instance and can use it to write UI message chunks to the stream.',
       properties: [
         {
           type: 'UIMessageStreamWriterWithOutcome',
@@ -90,25 +91,25 @@ const stream = createUIMessageStream({
             {
               name: 'write',
               type: '(part: UIMessageChunk) => void',
-              description: '将一个 UI 消息块写入流中。',
+              description: 'Writes a UI message chunk to the stream.',
             },
             {
               name: 'merge',
               type: '(stream: ReadableStream<UIMessageChunk>) => void',
               description:
-                '将另一个 UI 消息流的内容合并到此流中。',
+                'Merges the contents of another UI message stream into this stream.',
             },
             {
               name: 'setOutcome',
               type: '(outcome: UIMessageStreamOutcome) => void',
               description:
-                "声明组合流的操作级结果。通过此方法声明的第一个结果会被保留，而致命的执行、合并、错误处理或下游处理失败会覆盖声明。支持的状态为 'completed'、'failed'、'aborted' 和 'unknown'。声明结果不会写入块或关闭流。",
+                "Declares the operation-level outcome of the composed stream. The first outcome declared through this method is retained, while fatal execution, merge, error-handling, or downstream processing failures override declarations. Supported statuses are 'completed', 'failed', 'aborted', and 'unknown'. Declaring an outcome does not write a chunk or close the stream.",
             },
             {
               name: 'onError',
               type: '(error: unknown) => string',
               description:
-                '流写入器用于处理合并流中错误的错误处理函数。',
+                'Error handler that is used by the stream writer for handling errors in merged streams.',
             },
           ],
         },
@@ -118,18 +119,18 @@ const stream = createUIMessageStream({
       name: 'onError',
       type: '(error: unknown) => string',
       description:
-        '一个处理错误并返回错误消息字符串的函数。默认情况下，它返回错误消息。',
+        'A function that handles errors and returns an error message string. By default, it returns the error message.',
     },
     {
       name: 'originalMessages',
       type: 'UIMessage[] | undefined',
       description:
-        '原始消息。如果提供，则假定为持久化模式，并为响应消息提供消息 ID。',
+        'The original messages. If provided, persistence mode is assumed and a message ID is provided for the response message.',
     },
     {
       name: 'onEnd',
-      type: '(options: { messages: UIMessage[]; isContinuation: boolean; isAborted: boolean; outcome: UIMessageStreamOutcome; responseMessage: UIMessage; finishReason?: FinishReason }) => PromiseLike<void> | void',
-      description: '流结束时调用的回调函数。',
+      type: '(options: { messages: UIMessage[]; isContinuation: boolean; isAborted: boolean; isCancelled?: true; outcome: UIMessageStreamOutcome; responseMessage: UIMessage; finishReason?: FinishReason }) => PromiseLike<void> | void',
+      description: 'A callback function that is called when the stream ends.',
       properties: [
         {
           type: 'EndOptions',
@@ -137,36 +138,42 @@ const stream = createUIMessageStream({
             {
               name: 'messages',
               type: 'UIMessage[]',
-              description: '更新后的 UI 消息列表。',
+              description: 'The updated list of UI messages.',
             },
             {
               name: 'isContinuation',
               type: 'boolean',
               description:
-                '指示响应消息是最后一条原始消息的延续，还是创建了一条新消息。',
+                'Indicates whether the response message is a continuation of the last original message, or if a new message was created.',
             },
             {
               name: 'isAborted',
               type: 'boolean',
-              description: '指示流是否被中止。',
+              description: 'Indicates whether the stream was aborted.',
+            },
+            {
+              name: 'isCancelled',
+              type: 'true | undefined',
+              description:
+                'Present and true when the consumer cancelled the stream before an outcome was declared, for example because the client disconnected.',
             },
             {
               name: 'outcome',
               type: "UIMessageStreamOutcome = { status: 'completed' } | { status: 'failed'; error?: unknown } | { status: 'aborted' } | { status: 'unknown' }",
               description:
-                '流的操作级结果。它反映流所有者的声明，除非发生致命的流处理失败，并且与模型完成原因和单独的 error 块无关。',
+                "The operation-level outcome of the stream. It reflects the stream owner declaration unless a fatal stream-processing failure occurs, and is separate from model finish reasons and individual error chunks. It remains 'unknown' when the consumer cancels before an outcome is declared; check isCancelled to distinguish that case from normal closure without a declared outcome.",
             },
             {
               name: 'responseMessage',
               type: 'UIMessage',
               description:
-                '作为响应发送给客户端的消息（如果原始消息被扩展，则包括原始消息）。',
+                'The message that was sent to the client as a response (including the original message if it was extended).',
             },
             {
               name: 'finishReason',
               type: 'FinishReason | undefined',
               description:
-                "生成结束的原因。可选值为：'stop'、'length'、'content-filter'、'tool-calls'、'error' 或 'other'。",
+                "The reason why the generation finished. One of: 'stop', 'length', 'content-filter', 'tool-calls', 'error', or 'other'.",
             },
           ],
         },
@@ -174,14 +181,14 @@ const stream = createUIMessageStream({
     },
     {
       name: 'onFinish',
-      type: '(options: { messages: UIMessage[]; isContinuation: boolean; isAborted: boolean; outcome: UIMessageStreamOutcome; responseMessage: UIMessage; finishReason?: FinishReason }) => PromiseLike<void> | void',
-      description: '`onEnd` 的已弃用别名。',
+      type: '(options: { messages: UIMessage[]; isContinuation: boolean; isAborted: boolean; isCancelled?: true; outcome: UIMessageStreamOutcome; responseMessage: UIMessage; finishReason?: FinishReason }) => PromiseLike<void> | void',
+      description: 'Deprecated alias for `onEnd`.',
     },
     {
       name: 'generateId',
       type: 'IdGenerator | undefined',
       description:
-        '用于为消息生成唯一 ID 的函数。如果未提供，则使用默认的 ID 生成器。',
+        'A function to generate unique IDs for messages. Uses the default ID generator if not provided.',
     },
   ]}
 />
@@ -190,4 +197,4 @@ const stream = createUIMessageStream({
 
 `ReadableStream<UIMessageChunk>`
 
-一个发出 UI 消息块的可读流。该流会自动处理错误传播、多个流的合并，并在所有操作完成时进行适当的清理。
+一个可读流，用于发出 UI 消息 chunk。该流会自动处理错误传播、多个流的合并，以及所有操作完成后的正确清理。

@@ -1,14 +1,14 @@
 ---
-title: 将消息保存到数据库
-description: 了解如何使用 AI SDK 和 React 服务器组件将消息保存到外部数据库
-tags: ['rsc', '工具使用']
+title: "将消息保存到数据库"
+description: "了解如何使用 AI SDK 和 React Server Components 将消息保存到外部数据库"
+tags: ['rsc', 'tool use']
 ---
 
 # 将消息保存到数据库
 
-有时与语言模型的对话会变得有趣，你可能希望保存状态，以便稍后重新查看或继续对话。
+有时与语言模型的对话可能会变得很有趣，你可能希望保存状态，以便日后重新查看或继续对话。
 
-`createAI` 有一个名为 `onSetAIState` 的实验性回调函数，每当 AI 状态发生变化时，它就会被调用。你可以利用它来将 AI 状态保存到文件或数据库中。
+`createAI` 有一个实验性的回调函数 `onSetAIState`，每当 AI 状态发生变化时都会被调用。你可以使用它将 AI 状态保存到文件或数据库中。
 
 ## 客户端
 
@@ -21,7 +21,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 从数据库获取聊天历史
+  // get chat history from database
   const history: ServerMessage[] = getChat();
 
   return (
@@ -44,7 +44,7 @@ import { ClientMessage } from './actions';
 import { useActions, useUIState } from '@ai-sdk/rsc';
 import { generateId } from 'ai';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
@@ -85,7 +85,7 @@ export default function Home() {
             ]);
           }}
         >
-          发送消息
+          Send Message
         </button>
       </div>
     </div>
@@ -93,9 +93,9 @@ export default function Home() {
 }
 ```
 
-## 服务器端
+## 服务端
 
-我们将使用回调函数来监听状态变化，并在收到 `done` 事件时保存对话。
+我们将使用回调函数来监听状态变化，并在收到 `done` 事件后保存对话。
 
 ```tsx filename='app/actions.tsx'
 'use server';
@@ -125,7 +125,7 @@ export async function continueConversation(
   const history = getMutableAIState();
 
   const result = await streamUI({
-    model: 'openai/gpt-5.4',
+    model: 'openai/gpt-6-astra',
     messages: [...history.get(), { role: 'user', content: input }],
     text: ({ content, done }) => {
       if (done) {
@@ -141,14 +141,14 @@ export async function continueConversation(
     tools: {
       showStockInformation: {
         description:
-          '获取指定股票代码在过去 numOfMonths 个月内的股票信息',
+          'Get stock information for symbol for the last numOfMonths months',
         inputSchema: z.object({
           symbol: z
             .string()
-            .describe('要获取信息的股票代码'),
+            .describe('The stock symbol to get information for'),
           numOfMonths: z
             .number()
-            .describe('要获取历史信息的月份数'),
+            .describe('The number of months to get historical information for'),
         }),
         generate: async ({ symbol, numOfMonths }) => {
           history.done([

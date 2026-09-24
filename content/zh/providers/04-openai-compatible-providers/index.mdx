@@ -13,6 +13,7 @@ description: "在 AI SDK 中使用 OpenAI 兼容提供商。"
 
 - [LM Studio](/providers/openai-compatible-providers/lmstudio)
 - [NIM](/providers/openai-compatible-providers/nim)
+- [ModelRush](/providers/openai-compatible-providers/modelrush)
 - [Heroku](/providers/openai-compatible-providers/heroku)
 - [Clarifai](/providers/openai-compatible-providers/clarifai)
 - [NEAR AI Cloud](/providers/openai-compatible-providers/nearai)
@@ -21,7 +22,7 @@ description: "在 AI SDK 中使用 OpenAI 兼容提供商。"
 
 ## 设置
 
-OpenAI 兼容提供商可通过 `@ai-sdk/openai-compatible` 模块获取。你可以使用以下命令安装：
+OpenAI 兼容提供商可通过 `@ai-sdk/openai-compatible` 模块使用。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/openai-compatible" />
 
@@ -53,7 +54,7 @@ const provider = createOpenAICompatible({
 
 - **headers** _Record&lt;string,string&gt;_
 
-  可选的、要包含在请求中的自定义请求头。这些头将在使用 `apiKey` 选项可能添加的任何头之后添加到请求头中。
+  可选的、要包含在请求中的自定义请求头。这些将在通过 `apiKey` 选项可能添加的任何头之后添加到请求头中。
 
 - **queryParams** _Record&lt;string,string&gt;_
 
@@ -68,7 +69,7 @@ const provider = createOpenAICompatible({
 
 - **includeUsage** _boolean_
 
-  在流式传输响应中包含使用信息。启用后，使用数据将包含在流式传输请求的响应元数据中。默认为 `undefined`（`false`）。
+  在流式传输响应中包含用量信息。启用后，用量数据将包含在流式传输请求的响应元数据中。默认为 `undefined`（`false`）。
 
 - **supportsStructuredOutputs** _boolean_
 
@@ -93,7 +94,7 @@ const provider = createOpenAICompatible({
 ## 语言模型
 
 你可以使用提供商实例创建提供商模型。
-第一个参数是模型 ID，例如 `model-id`。
+第一个参数是模型 id，例如 `model-id`。
 
 ```ts
 const model = provider('model-id');
@@ -110,7 +111,7 @@ const model = provider('model-id');
 
 - **文本生成** - 生成文本补全
 - **流式传输** - 实时流式传输文本响应
-- **工具调用** - 调用工具/函数并支持流式传输
+- **工具调用** - 支持流式传输的工具/函数调用
 - **结构化输出** - 生成带 schema 验证的 JSON（当启用 `supportsStructuredOutputs` 时）
 - **推理内容** - 支持返回推理/思考 token 的模型（例如 DeepSeek R1）
 - **系统消息** - 支持系统提示词
@@ -140,7 +141,7 @@ const { text } = await generateText({
 
 接受非标准 `video_url` 内容部分的 OpenAI 兼容提供商
 可以接收视频文件部分。内联字节和 base64 编码数据会作为
-数据 URL 发送：
+data URL 发送：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -171,7 +172,7 @@ const { text } = await generateText({
 });
 ```
 
-要直接传递托管的视频 URL 而不先下载它，请为提供商配置
+要直接传递托管视频 URL 而不先下载它，请为提供商配置
 `supportedUrls`：
 
 ```ts
@@ -204,11 +205,11 @@ const { text } = await generateText({
 
 `video_url` 是 OpenAI 兼容提供商的扩展，而不是官方 OpenAI
 Chat Completions 内容类型。视频支持、接受的格式、大小和
-时长限制，以及对公共 URL 或数据 URL 的支持取决于提供商和
+时长限制，以及对公共 URL 或 data URL 的支持都取决于提供商和
 模型。在支持的情况下，优先使用托管 URL，以避免在
 请求体中嵌入大型视频。
 
-### 包含模型 ID 以实现自动补全
+### 包含模型 id 以实现自动补全
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -344,14 +345,14 @@ const { images } = await generateImage({
   生成图像的背景行为。支持的值取决于
   提供商和模型。
 
-提供商和模型可能支持将 `auto` 用于 `size`、`quality` 或 `background`。
+提供商和模型可能支持 `size`、`quality` 或 `background` 的 `auto` 值。
 
 `OpenAICompatibleImageModelOptions` 还接受额外的提供商特定
 选项。这些选项会原样传递给提供商 API。
 
 ### 图像编辑
 
-OpenAI 兼容提供商通过 `/images/edits` 端点支持图像编辑。通过 `prompt.images` 传入输入图像，以转换或编辑现有图像。
+OpenAI 兼容提供商通过 `/images/edits` 端点支持图像编辑。通过 `prompt.images` 传入输入图像以转换或编辑现有图像。
 
 #### 基本图像编辑
 
@@ -439,7 +440,7 @@ const { embedding } = await embed({
 
 ### 嵌入模型选项
 
-嵌入模型可以通过 `providerOptions` 使用以下提供商选项：
+通过 `providerOptions` 可以为嵌入模型使用以下提供商选项：
 
 - **dimensions** _number_
 
@@ -448,7 +449,7 @@ const { embedding } = await embed({
 
 - **user** _string_
 
-  表示你的最终用户的唯一标识符，可以帮助提供商
+  表示最终用户的唯一标识符，可以帮助提供商
   监控和检测滥用行为。
 
 ```ts
@@ -492,17 +493,17 @@ const { text } = await generateText({
 
 ### 补全模型选项
 
-补全模型可以通过 `providerOptions` 使用以下提供商选项：
+通过 `providerOptions` 可以为补全模型使用以下提供商选项：
 
 - **echo** _boolean_
 
-  在补全内容之外，同时回显提示词。
+  在补全内容之外回显提示词。
 
 - **logitBias** _Record&lt;string, number&gt;_
 
-  修改指定 token 出现在补全内容中的可能性。
+  修改指定 token 出现在补全中的可能性。
   接受一个 JSON 对象，将 token（由其 token ID 指定）映射到
-  从 -100 到 100 的关联偏置值。
+  关联的偏置值，范围为 -100 到 100。
 
 - **suffix** _string_
 
@@ -510,7 +511,7 @@ const { text } = await generateText({
 
 - **user** _string_
 
-  表示你的最终用户的唯一标识符，可以帮助提供商
+  表示最终用户的唯一标识符，可以帮助提供商
   监控和检测滥用行为。
 
 ```ts
@@ -529,11 +530,11 @@ const { text } = await generateText({
 
 ## 聊天模型选项
 
-聊天模型可以通过 `providerOptions` 使用以下提供商选项：
+通过 `providerOptions` 可以为聊天模型使用以下提供商选项：
 
 - **user** _string_
 
-  表示你的最终用户的唯一标识符，可以帮助提供商
+  表示最终用户的唯一标识符，可以帮助提供商
   监控和检测滥用行为。
 
 - **reasoningEffort** _string_
@@ -567,7 +568,7 @@ const { text } = await generateText({
 
 OpenAI 兼容提供商支持向请求体添加提供商特定选项。这些选项通过请求体中的 `providerOptions` 字段指定。
 
-例如，如果你创建了一个名称为 `providerName` 的提供商实例，你可以像这样向请求体添加 `customOption` 字段：
+例如，如果你创建了一个名为 `providerName` 的提供商实例，可以像这样向请求体添加 `customOption` 字段：
 
 ```ts
 const provider = createOpenAICompatible({
@@ -585,9 +586,9 @@ const { text } = await generateText({
 });
 ```
 
-请注意，`providerOptions` 键将采用 camelCase。如果你将提供商名称设置为 `provider-name`，选项仍然需要在 `providerOptions.providerName` 上设置。
+请注意，`providerOptions` 的键将采用 camelCase。如果你将提供商名称设置为 `provider-name`，选项仍然需要设置在 `providerOptions.providerName` 上。
 
-发送给提供商的请求体将包含值为 `magic-value` 的 `customOption` 字段。这为你提供了一种简单的方法，无需修改提供商或 AI SDK 代码即可向请求添加提供商特定选项。
+发送给提供商的请求体将包含值为 `magic-value` 的 `customOption` 字段。这让你可以轻松地向请求添加提供商特定选项，而无需修改提供商或 AI SDK 代码。
 
 ## 自定义元数据提取
 
@@ -601,9 +602,9 @@ OpenAI 兼容提供商支持通过元数据提取器从 API 响应中提取提�
 - 处理包含非标准响应字段的提供商
 - 试验 beta 或预览功能
 - 捕获提供商特定的指标或调试信息
-- 在不更改 SDK 的情况下支持提供商 API 的快速演进
+- 支持提供商 API 快速演进而无需更改 SDK
 
-元数据提取器适用于流式传输和非流式传输聊天补全，由两个主要组件组成：
+元数据提取器适用于流式传输和非流式传输的聊天补全，由两个主要组件组成：
 
 1. 一个从完整响应中提取元数据的函数
 2. 一个流式提取器，可以在流式传输响应中跨块累积元数据
@@ -682,4 +683,4 @@ const { text, providerMetadata } = await generateText({
 console.log(providerMetadata.myProvider.customMetric);
 ```
 
-这使你能够访问提供商特定的信息，同时在不同提供商之间保持一致接口。
+这让你可以访问提供商特定的信息，同时在不同提供商之间保持一致的接口。

@@ -1,22 +1,24 @@
 ---
-title: 与 PDF 对话
-description: 学习如何使用 AI SDK 和 Next.js 构建能理解 PDF 的聊天机器人
+title: "与 PDF 对话"
+description: "了解如何使用 AI SDK 和 Next.js 构建一个能够理解 PDF 的聊天机器人"
 tags: ['next', 'pdf', 'multimodal']
 ---
 
 # 与 PDF 对话
 
-一些语言模型（如 Anthropic 的 Claude Sonnet 3.5 和 Google 的 Gemini 2.0）能够理解 PDF 并回答关于其内容的问题。在本示例中，我们将展示如何构建一个支持 PDF 上传的聊天界面。
+一些语言模型（例如 Anthropic 的 Claude Sonnet 5 和 Google 的 Gemini 3.8 Flash）能够理解 PDF 并回答有关其内容的问题。在本示例中，我们将向你展示如何构建一个支持上传 PDF 的聊天界面。
 
 <Note>
-  本示例需要支持 PDF 的提供商，例如 Anthropic 的 Claude 3.7、Google 的 Gemini 2.5 或 OpenAI 的 GPT-4.1。请查看[提供商文档](/providers/ai-sdk-providers)以获取最新的支持信息。
+  本示例需要支持 PDF 的提供商，例如 Anthropic 的 Claude Sonnet 5、Google 的
+  Gemini 3.8 Flash 或 OpenAI 的 GPT-6 Astra。请查看
+  [提供商文档](/providers/ai-sdk-providers) 以获取最新的支持信息。
 </Note>
 
 ## 实现
 
 ### 服务端
 
-创建一个路由处理器，使用 Anthropic 的 Claude 模型处理消息和 PDF：
+创建一个路由处理器，使用 Anthropic 的 Claude 模型来处理消息和 PDF：
 
 ```tsx filename="app/api/chat/route.ts"
 import {
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'anthropic/claude-sonnet-4',
+    model: 'anthropic/claude-sonnet-5',
     messages: await convertToModelMessages(messages),
   });
 
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
 
 ### 客户端
 
-创建一个聊天界面，支持在消息旁上传 PDF：
+创建一个聊天界面，允许在发送消息的同时上传 PDF：
 
 ```tsx filename="app/page.tsx"
 'use client';
@@ -98,7 +100,7 @@ export default function Chat() {
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
       {messages.map(message => (
         <div key={message.id} className="whitespace-pre-wrap">
-          {message.role === 'user' ? '用户: ' : 'AI: '}
+          {message.role === 'user' ? 'User: ' : 'AI: '}
 
           {message.parts.map(part => {
             if (part.type === 'text') {
@@ -147,7 +149,7 @@ export default function Chat() {
         <input
           className="w-full p-2"
           value={input}
-          placeholder="说点什么..."
+          placeholder="Say something..."
           onChange={event => {
             setInput(event.target.value);
           }}
@@ -158,12 +160,12 @@ export default function Chat() {
 }
 ```
 
-代码使用了 `useChat` Hook，它处理了文件上传和消息流式传输。`experimental_attachments` 选项允许你在消息旁发送文件。
+该代码使用了 `useChat` Hook，它负责处理文件上传和消息流式传输。`experimental_attachments` 选项允许你在发送消息的同时发送文件。
 
-确保使用你的 Anthropic API 密钥设置环境变量：
+请确保使用你的 Anthropic API 密钥设置环境变量：
 
 ```env filename=".env.local"
 ANTHROPIC_API_KEY=xxxxxxxxx
 ```
 
-现在你可以上传 PDF 并询问关于其内容的问题。LLM 将分析 PDF 并根据文档内容提供相关回答。
+现在你可以上传 PDF 并询问有关其内容的问题。LLM 将分析 PDF 并根据文档内容提供相关的回答。

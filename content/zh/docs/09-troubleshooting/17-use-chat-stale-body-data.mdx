@@ -1,32 +1,32 @@
 ---
-title: useChat 中的请求体数据陈旧问题
-description: 排查通过 useChat 的 body 参数传递信息时出现的数据陈旧问题
+title: "useChat 中的 body 值过期"
+description: "通过 useChat 的 body 参数传递信息时出现过期值的疑难解答"
 ---
 
-# useChat 中的请求体数据陈旧问题
+# useChat 中的 body 值过期
 
 ## 问题
 
-使用 `useChat` 并通过 Hook 级别的 `body` 参数传递动态信息时，数据会保持陈旧状态，仅反映组件初始渲染时的值。这是因为 body 配置在 Hook 初始化时被捕获一次，后续组件重新渲染时不会更新。
+在使用 `useChat` 并在 Hook 层级通过 `body` 参数传递动态信息时，数据会保持过期状态，仅反映组件初始渲染时的值。这是因为 body 配置在 Hook 初始化时被捕获一次，之后组件重新渲染时不会更新。
 
 ```tsx
-// 问题代码 - body 数据将保持陈旧
+// 有问题的代码 - body 数据会过期
 export default function Chat() {
   const [temperature, setTemperature] = useState(0.7);
   const [userId, setUserId] = useState('user123');
 
-  // 此 body 配置仅捕获一次，不会更新
+  // 此 body 配置只被捕获一次，不会更新
   const { messages, sendMessage } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: {
-        temperature, // 始终为初始值 (0.7)
-        userId, // 始终为初始值 ('user123')
+        temperature, // 始终是初始值 (0.7)
+        userId, // 始终是初始值 ('user123')
       },
     }),
   });
 
-  // 即使 temperature 或 userId 发生变化，请求中的 body 仍使用初始值
+  // 即使 temperature 或 userId 发生变化，请求中的 body 仍会使用初始值
   return (
     <div>
       <input
@@ -34,7 +34,7 @@ export default function Chat() {
         value={temperature}
         onChange={e => setTemperature(parseFloat(e.target.value))}
       />
-      {/* 聊天界面 */}
+      {/* Chat UI */}
     </div>
   );
 }
@@ -42,11 +42,11 @@ export default function Chat() {
 
 ## 背景
 
-Hook 级别的 body 配置在初始渲染时被评估一次，当组件状态发生变化时不会重新评估。
+Hook 层级的 body 配置在初始渲染时被求值一次，当组件状态变化时不会重新求值。
 
 ## 解决方案
 
-将动态变量通过 `sendMessage` 函数的第二个参数传递，而不是在 Hook 级别传递。请求级别的选项会在每次调用时评估，并优先于 Hook 级别的选项。
+通过 `sendMessage` 函数的第二个参数传递动态变量，而不是在 Hook 层级传递。请求级别的选项在每次调用时都会求值，并且优先于 Hook 级别的选项。
 
 ```tsx
 export default function Chat() {
@@ -73,7 +73,7 @@ export default function Chat() {
         onSubmit={event => {
           event.preventDefault();
           if (input.trim()) {
-            // 将动态值作为请求级别选项传递
+            // 将动态值作为请求级别的选项传递
             sendMessage(
               { text: input },
               {
@@ -94,9 +94,9 @@ export default function Chat() {
 }
 ```
 
-### 替代方案：动态 Hook 级别配置
+### 替代方案：动态 Hook 层级配置
 
-如果你需要响应变化的 Hook 级别配置，可以使用返回配置值的函数。但对于组件状态，你需要使用 `useRef` 来访问当前值：
+如果你需要能够响应变化的 Hook 层级配置，可以使用返回配置值的函数。不过，对于组件状态，你需要使用 `useRef` 来访问当前值：
 
 ```tsx
 export default function Chat() {
@@ -107,7 +107,7 @@ export default function Chat() {
       api: '/api/chat',
       body: () => ({
         temperature: temperatureRef.current, // 通过 ref.current 访问
-        sessionId: getCurrentSessionId(), // 函数调用可直接工作
+        sessionId: getCurrentSessionId(), // 函数调用可直接使用
       }),
     }),
   });
@@ -116,11 +116,11 @@ export default function Chat() {
 }
 ```
 
-**建议：** 对于组件状态，请求级别配置更简单且更可靠。当你需要传递在组件生命周期内变化的动态值时，请使用此方式。
+**建议：** 对于组件状态，请求级别的配置更简单也更可靠。当你需要传递在组件生命周期内发生变化的动态值时，请使用它。
 
 ### 服务端处理
 
-在服务端，通过解构请求体来获取自定义字段：
+在服务端，通过解构请求 body 来获取自定义字段：
 
 ```tsx
 // app/api/chat/route.ts
@@ -128,9 +128,9 @@ export async function POST(req: Request) {
   const { messages, temperature, userId } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-5-mini',
+    model: 'openai/gpt-4.1-mini', // 支持动态 temperature 设置
     messages: await convertToModelMessages(messages),
-    temperature, // 使用来自请求的动态 temperature
+    temperature, // 使用请求中的动态 temperature
     // ... 其他配置
   });
 

@@ -1,32 +1,32 @@
 ---
 title: "Latitude"
-description: "使用 Latitude 监控和调试您的 AI SDK 应用程序"
+description: "使用 Latitude 监控和调试你的 AI SDK 应用"
 ---
 
 # Latitude 可观测性
 
-[Latitude](https://latitude.so) ([GitHub](https://github.com/latitude-dev/latitude-llm)) 是一个开源 MIT 许可的平台，用于 AI 智能体可观测性，支持语义追踪搜索和问题跟踪。它与 AI SDK 集成，可捕获：
+[Latitude](https://latitude.so)（[GitHub](https://github.com/latitude-dev/latitude-llm)）是一个开源、MIT 许可的平台，用于 AI 智能体可观测性，支持语义化追踪搜索和问题跟踪。它与 AI SDK 集成以捕获：
 
 - 每次 `generateText`、`streamText` 和工具调用的追踪
-- 每次调用的令牌使用量和延迟
-- 作为重复出现的问题分组的错误和失败模式
+- 每次调用的 token 用量和延迟
+- 按重复出现的问题分组的错误和失败模式
 
 ## 设置
 
-Latitude 的 SDK 注册了一个全局 OpenTelemetry 追踪器。一旦您注册了 AI SDK 的遥测集成，每次 AI SDK 调用都会自动发出跨度。
+Latitude 的 SDK 会注册一个全局 OpenTelemetry tracer。一旦你注册了 AI SDK 的遥测集成，每次 AI SDK 调用都会自动发出 span。
 
 安装这两个包：
 
 <InstallPackages packages="@latitude-data/telemetry @ai-sdk/otel" />
 
-登录 [app.latitude.so](https://app.latitude.so)，从仪表板获取您的 API 密钥和项目 slug。将它们设置在您的环境中：
+在 [app.latitude.so](https://app.latitude.so) 登录，并从仪表盘获取你的 API key 和 project slug。将它们设置到你的环境中：
 
 ```bash filename=".env"
 LATITUDE_API_KEY="..."
 LATITUDE_PROJECT_SLUG="..."
 ```
 
-在启动时初始化 Latitude 并注册遥测。之后，每次 AI SDK 调用都会自动发出追踪：
+在启动时初始化 Latitude 并注册遥测一次。之后，每次 AI SDK 调用都会自动发出追踪：
 
 ```ts
 import { Latitude } from '@latitude-data/telemetry';
@@ -42,7 +42,7 @@ const latitude = new Latitude({
 registerTelemetry(new OpenTelemetry());
 
 const { text } = await generateText({
-  model: openai('gpt-4o'),
+  model: openai('gpt-6-astra'),
   prompt: 'Hello',
 });
 
@@ -56,7 +56,7 @@ import { capture } from '@latitude-data/telemetry';
 
 await capture('generate-support-reply', async () => {
   const { text } = await generateText({
-    model: openai('gpt-4o'),
+    model: openai('gpt-6-astra'),
     prompt: 'Hello',
   });
   return text;

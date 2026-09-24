@@ -1,20 +1,20 @@
 ---
-title: 知识库智能体
-description: 使用 Upstash Search 和 AI SDK 构建一个能够读写知识库的 AI 智能体
-tags: ['node', '检索', '工具']
+title: "知识库智能体"
+description: "使用 Upstash Search 和 AI SDK 构建一个可以从知识库读取和写入的 AI 智能体"
+tags: ['node', 'retrieval', 'tools']
 ---
 
-在本教程中，你将学习如何使用 [Upstash Search](https://upstash.com/docs/search) 构建一个能与知识库交互的 AI 智能体。该智能体能够从知识库中检索信息，也能向其中添加新资源，并充分利用 AI SDK 的工具功能。
+在本教程中，你将学习如何使用 [Upstash Search](https://upstash.com/docs/search) 构建一个可以与知识库交互的 AI 智能体。该智能体将能够从知识库中检索信息，并利用 AI SDK 工具向其中添加新资源。
 
-Upstash Search 提供输入增强、重排序、语义搜索和全文搜索功能，可获取高精度结果。它还内置了嵌入服务，无需单独使用嵌入提供商，非常适合构建和管理简单的知识库。
+Upstash Search 提供输入增强、重排序、语义搜索和全文搜索，以实现高度准确的结果。它还提供内置的嵌入服务，无需单独的嵌入提供商。这使得构建和管理简单的知识库变得非常方便。
 
 本示例使用[以下文章](https://raw.githubusercontent.com/run-llama/llama_index/main/docs/docs/examples/data/paul_graham/paul_graham_essay.txt)作为输入数据（`essay.txt`）。
 
 如需更深入的指南，请查看 [RAG 智能体指南](/cookbook/guides/rag-chatbot)，其中展示了如何使用 [Next.js](https://nextjs.org)、[Drizzle ORM](https://orm.drizzle.team/) 和 [Postgres](https://postgresql.org) 构建 RAG 智能体。
 
-## 开始使用
+## 快速开始
 
-在 [Upstash 控制台](https://console.upstash.com/search) 创建一个 Upstash Search 数据库。创建完成后，你将获得一个 REST URL 和一个令牌。将它们设置为环境变量：
+在 [Upstash Console](https://console.upstash.com/search) 上创建一个 Upstash Search 数据库。创建完成后，你将获得一个 REST URL 和一个 token。将它们设置到环境变量中：
 
 ```bash
 UPSTASH_SEARCH_REST_URL="***"
@@ -23,7 +23,7 @@ UPSTASH_SEARCH_REST_TOKEN="***"
 
 ## 项目设置
 
-为你的项目创建一个新的空目录，并初始化 pnpm：
+为你的项目创建一个新的空目录并初始化 pnpm：
 
 ```bash
 mkdir knowledge-base-agent
@@ -31,7 +31,7 @@ cd knowledge-base-agent
 pnpm init
 ```
 
-安装 AI SDK、OpenAI 提供商、Upstash Search 包，并将 tsx 作为开发依赖项：
+安装 AI SDK、OpenAI 提供商、Upstash Search 包，并将 tsx 作为开发依赖安装：
 
 ```bash
 pnpm i ai zod @ai-sdk/openai @upstash/search
@@ -46,7 +46,7 @@ curl -o essay.txt https://raw.githubusercontent.com/run-llama/llama_index/main/d
 
 ## 设置知识库
 
-接下来，通过读取文件并将其内容上传到 Upstash Search 来设置初始知识库。创建一个名为 `setup.ts` 的脚本：
+接下来，让我们通过读取文件并将其内容上传到 Upstash Search 来设置初始知识库。创建一个名为 `setup.ts` 的脚本：
 
 ```ts filename="setup.ts"
 import fs from 'fs';
@@ -60,7 +60,7 @@ type KnowledgeContent = {
   title?: string;
 };
 
-// 初始化 Upstash Search 客户端
+// Initialize Upstash Search client
 const search = new Search({
   url: process.env.UPSTASH_SEARCH_REST_URL!,
   token: process.env.UPSTASH_SEARCH_REST_TOKEN!,
@@ -69,16 +69,16 @@ const search = new Search({
 const index = search.index<KnowledgeContent>('knowledge-base');
 
 async function setupKnowledgeBase() {
-  // 读取并处理源文件
+  // Read and process the source file
   const content = fs.readFileSync(path.join(__dirname, 'essay.txt'), 'utf8');
 
-  // 将内容分割成有意义的块
+  // Split content into meaningful chunks
   const chunks = content
-    .split(/\n\s*\n/) // 按双换行符（段落）分割
+    .split(/\n\s*\n/) // Split by double line breaks (paragraphs)
     .map(chunk => chunk.trim())
-    .filter(chunk => chunk.length > 50); // 只保留有实质内容的块
+    .filter(chunk => chunk.length > 50); // Only keep substantial chunks
 
-  // 以每批 100 个块的方式上传到 Upstash Search
+  // Upload chunks to Upstash Search in batches of 100
   const batchSize = 100;
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize).map((chunk, j) => ({
@@ -91,12 +91,12 @@ async function setupKnowledgeBase() {
     }));
     await index.upsert(batch);
     console.log(
-      `已上传 ${Math.min(i + batch.length, chunks.length)} 个块，共 ${chunks.length} 个块`,
+      `Upserted ${Math.min(i + batch.length, chunks.length)} chunks out of ${chunks.length} chunks`,
     );
   }
 }
 
-// 运行设置
+// Run setup
 setupKnowledgeBase().catch(console.error);
 ```
 
@@ -106,11 +106,11 @@ setupKnowledgeBase().catch(console.error);
 pnpm tsx setup.ts
 ```
 
-导航到 Upstash 控制台，查看 Search 数据库的数据浏览器。你应该会看到文章已被索引。
+导航到 Upstash Console 并检查你的 Search 数据库的数据浏览器。你应该能看到文章已被索引。
 
 ## 构建知识库智能体
 
-现在，让我们创建一个能与该知识库交互的智能体。创建一个名为 `agent.ts` 的新文件：
+现在让我们创建一个可以与此知识库交互的智能体。创建一个名为 `agent.ts` 的新文件：
 
 ```ts filename="agent.ts"
 import { tool, isStepCount, generateText, generateId } from 'ai';
@@ -134,21 +134,21 @@ const index = search.index<KnowledgeContent>('knowledge-base');
 
 async function main(prompt: string) {
   const { text } = await generateText({
-    model: 'openai/gpt-4o',
+    model: 'openai/gpt-6-astra',
     prompt,
     stopWhen: isStepCount(5),
     tools: {
       addResource: tool({
         description:
-          '向知识库添加新资源或信息片段',
+          'Add a new resource or piece of information to the knowledge base',
         inputSchema: z.object({
           resource: z
             .string()
-            .describe('要添加到知识库的内容或资源'),
+            .describe('The content or resource to add to the knowledge base'),
           title: z
             .string()
             .optional()
-            .describe('资源的可选标题'),
+            .describe('Optional title for the resource'),
         }),
         execute: async ({ resource, title }) => {
           const id = generateId();
@@ -160,20 +160,20 @@ async function main(prompt: string) {
               title: title || `Resource ${id.slice(0, 8)}`,
             },
           });
-          return `已成功将资源 "${title || '未命名'}" 添加到知识库，ID 为：${id}`;
+          return `Successfully added resource "${title || 'Untitled'}" to knowledge base with ID: ${id}`;
         },
       }),
       searchKnowledge: tool({
         description:
-          '搜索知识库以查找回答问题的相关信息',
+          'Search the knowledge base to find relevant information for answering questions',
         inputSchema: z.object({
           query: z
             .string()
-            .describe('用于查找相关信息的搜索查询'),
+            .describe('The search query to find relevant information'),
           limit: z
             .number()
             .optional()
-            .describe('返回的最大结果数（默认：3）'),
+            .describe('Maximum number of results to return (default: 3)'),
         }),
         execute: async ({ query, limit = 3 }) => {
           const results = await index.search({
@@ -183,38 +183,38 @@ async function main(prompt: string) {
           });
 
           if (results.length === 0) {
-            return '在知识库中未找到相关信息。';
+            return 'No relevant information found in the knowledge base.';
           }
 
           return results.map((hit, i) => ({
             resourceId: hit.id,
             rank: i + 1,
-            title: hit.content.title || '未命名',
+            title: hit.content.title || 'Untitled',
             content: hit.content.text || '',
-            section: hit.content.section || '未知',
+            section: hit.content.section || 'unknown',
             score: hit.score,
           }));
         },
       }),
       deleteResource: tool({
-        description: '从知识库中删除资源',
+        description: 'Delete a resource from the knowledge base',
         inputSchema: z.object({
-          resourceId: z.string().describe('要删除的资源的 ID'),
+          resourceId: z.string().describe('The ID of the resource to delete'),
         }),
         execute: async ({ resourceId }) => {
           try {
             await index.delete({ ids: [resourceId] });
-            return `已成功删除 ID 为 ${resourceId} 的资源`;
+            return `Successfully deleted resource with ID: ${resourceId}`;
           } catch (error) {
-            return `删除资源失败：${error instanceof Error ? error.message : '未知错误'}`;
+            return `Failed to delete resource: ${error instanceof Error ? error.message : 'Unknown error'}`;
           }
         },
       }),
     },
-    // 记录中间步骤
+    // log out intermediate steps
     onStepEnd: ({ toolResults }) => {
       if (toolResults.length > 0) {
-        console.log('工具结果：');
+        console.log('Tool results:');
         console.dir(toolResults, { depth: null });
       }
     },
@@ -224,17 +224,17 @@ async function main(prompt: string) {
 }
 
 const question =
-  '我在上大学前主要做了哪两件事？（利用知识库）';
+  'What are the two main things I worked on before college? (utilize knowledge base)';
 
 main(question).then(console.log).catch(console.error);
 ```
 
 ## 运行智能体
 
-现在，让我们运行智能体：
+现在让我们运行智能体：
 
 ```bash
 pnpm tsx agent.ts
 ```
 
-智能体将利用知识库回答问题、添加新资源，并根据需要删除现有资源。你可以修改 `question` 变量来测试不同的查询以及与知识库的交互。
+该智能体将利用知识库来回答问题，并根据需要添加新资源和删除现有资源。你可以修改 `question` 变量来测试不同的查询以及与知识库的交互。

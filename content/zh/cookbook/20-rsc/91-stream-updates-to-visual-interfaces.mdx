@@ -1,12 +1,12 @@
 ---
-title: 流式更新视觉界面
-description: 学习如何使用 AI SDK 和 React 服务端组件生成文本。
-tags: ['rsc', '流式传输', '生成式用户界面']
+title: "将更新流式传输到可视化界面"
+description: "了解如何使用 AI SDK 和 React Server Components 生成文本。"
+tags: ['rsc', 'streaming', 'generative user interface']
 ---
 
-# 流式更新视觉界面
+# 将更新流式传输到可视化界面
 
-在前面的示例中，我们一直在将 React 组件从服务端流式传输到客户端。通过流式传输组件，我们得以根据服务端发生的状态变化来更新这些组件。
+在上一个示例中，我们一直在将 React 组件从服务器流式传输到客户端。通过流式传输组件，我们打开了根据服务器中发生的状态变化来更新这些组件的可能性。
 
 ## 客户端
 
@@ -18,7 +18,7 @@ import { ClientMessage } from './actions';
 import { useActions, useUIState } from '@ai-sdk/rsc';
 import { generateId } from 'ai';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
@@ -59,7 +59,7 @@ export default function Home() {
             ]);
           }}
         >
-          发送消息
+          Send Message
         </button>
       </div>
     </div>
@@ -67,7 +67,7 @@ export default function Home() {
 }
 ```
 
-## 服务端
+## 服务器
 
 ```tsx filename='app/actions.tsx'
 'use server';
@@ -96,7 +96,7 @@ export async function continueConversation(
   const history = getMutableAIState();
 
   const result = await streamUI({
-    model: 'openai/gpt-5.4',
+    model: 'openai/gpt-6-astra',
     messages: [...history.get(), { role: 'user', content: input }],
     text: ({ content, done }) => {
       if (done) {
@@ -110,18 +110,18 @@ export async function continueConversation(
     },
     tools: {
       deploy: {
-        description: '将仓库部署到 Vercel',
+        description: 'Deploy repository to vercel',
         inputSchema: z.object({
           repositoryName: z
             .string()
-            .describe('仓库名称，例如：vercel/ai-chatbot'),
+            .describe('The name of the repository, example: vercel/ai-chatbot'),
         }),
         generate: async function* ({ repositoryName }) {
-          yield <div>正在克隆仓库 {repositoryName}...</div>; // [!code highlight:5]
+          yield <div>Cloning repository {repositoryName}...</div>; // [!code highlight:5]
           await new Promise(resolve => setTimeout(resolve, 3000));
-          yield <div>正在构建仓库 {repositoryName}...</div>;
+          yield <div>Building repository {repositoryName}...</div>;
           await new Promise(resolve => setTimeout(resolve, 2000));
-          return <div>{repositoryName} 已部署！</div>;
+          return <div>{repositoryName} deployed!</div>;
         },
       },
     },

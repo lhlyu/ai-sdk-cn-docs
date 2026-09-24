@@ -1,14 +1,15 @@
 ---
-title: 使用推理模型生成对象
-description: 了解如何使用 AI SDK 和 Node 通过推理模型生成结构化数据
-tags: ['node', '结构化数据', '推理']
+title: "使用推理模型生成对象"
+description: "学习如何使用 AI SDK 和 Node 通过推理模型生成结构化数据"
+tags: ['node', 'structured data', 'reasoning']
 ---
 
 # 使用推理模型生成对象
 
-推理模型，例如 [DeepSeek](/providers/ai-sdk-providers/deepseek) 的 R1，因其理解和生成复杂查询响应的能力优于非推理模型而日益流行。您可能希望使用这些模型来生成结构化数据。然而，大多数模型（如 R1 和 [OpenAI](/providers/ai-sdk-providers/openai) 的 o1）并不支持工具调用或结构化输出。
+推理模型，例如 [DeepSeek 的](/providers/ai-sdk-providers/deepseek) R1，由于能够比非推理模型更好地理解和生成对复杂查询的响应，正变得越来越受欢迎。
+你可能希望使用这些模型来生成结构化数据。然而，大多数模型（例如 R1 和 [OpenAI 的](/providers/ai-sdk-providers/openai) o1）不支持工具调用或结构化输出。
 
-一种解决方案是将推理模型的输出传递给一个能够输出结构化数据的较小模型（如 gpt-4o-mini）。这些轻量级模型能够高效地提取结构化数据，同时在速度和成本方面增加的开销非常小。
+一种解决方案是将推理模型的输出传递给一个能够输出结构化数据的更小的模型（例如 gpt-4o-mini）。这些轻量级模型可以高效地提取结构化数据，同时在速度和成本方面增加的额外开销非常小。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -19,20 +20,20 @@ async function main() {
   const { text: rawOutput } = await generateText({
     model: 'deepseek/deepseek-r1',
     prompt:
-      '预测2050年最大的3个城市。对于每个城市，返回名称、国家、上榜原因以及预估人口（单位：百万）。',
+      'Predict the top 3 largest city by 2050. For each, return the name, the country, the reason why it will on the list, and the estimated population in millions.',
   });
 
   const { output } = await generateText({
-    model: 'openai/gpt-4o-mini',
-    prompt: '从以下文本中提取所需信息：\n' + rawOutput,
+    model: 'openai/gpt-6-luna',
+    prompt: 'Extract the desired information from this text: \n' + rawOutput,
     output: Output.array({
       element: z.object({
-        name: z.string().describe('城市名称'),
-        country: z.string().describe('国家名称'),
+        name: z.string().describe('the name of the city'),
+        country: z.string().describe('the name of the country'),
         reason: z
           .string()
           .describe(
-            '该城市成为2050年最大城市之一的原因',
+            'the reason why the city will be one of the largest cities by 2050',
           ),
         estimatedPopulation: z.number(),
       }),

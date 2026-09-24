@@ -1,16 +1,13 @@
 ---
 title: "文件上传"
-description: "了解如何使用 AI SDK 上传文件并使用提供商引用。"
+description: "了解如何上传文件，并在 AI SDK 中使用提供商引用。"
 ---
 
 # 文件上传
 
-AI SDK 提供了 [`uploadFile`](/docs/reference/ai-sdk-core/upload-file)
-函数，用于将文件上传到提供商，并返回一个 `ProviderReference`，可在后续 API 调用中使用。
+AI SDK 提供了 [`uploadFile`](/docs/reference/ai-sdk-core/upload-file) 函数，用于将文件上传到提供商，并返回一个 `ProviderReference`，可在后续的 API 调用中使用。
 
-在 AI SDK 中，上传的文件通过 `ProviderReference` 标识——这是一个
-`Record<string, string>`，将提供商名称映射到提供商特定的标识符。
-此概念也用于其他提供商特定的资产引用，例如上传的技能。
+在 AI SDK 中，上传的文件通过 `ProviderReference` 来标识——它是一个 `Record<string, string>`，将提供商名称映射到提供商特定的标识符。这一概念也用于其他提供商特定的资源引用，例如上传的技能。
 
 ```ts
 import { uploadFile, generateText } from 'ai';
@@ -24,12 +21,12 @@ const { providerReference } = await uploadFile({
 });
 
 const { text } = await generateText({
-  model: openai.responses('gpt-4o-mini'),
+  model: openai.responses('gpt-6-luna'),
   messages: [
     {
       role: 'user',
       content: [
-        { type: 'text', text: '描述你在图片中看到了什么。' },
+        { type: 'text', text: 'Describe what you see in this image.' },
         { type: 'file', mediaType: 'image', data: providerReference },
       ],
     },
@@ -37,11 +34,11 @@ const { text } = await generateText({
 });
 ```
 
-作为简写，你可以直接将提供商实例传递给 `api`，而无需显式调用 `.files()`——SDK 会为你调用 `.files()`：
+作为一种简写方式，你可以直接将提供商实例传给 `api`，而无需显式调用 `.files()`——SDK 会为你调用 `.files()`：
 
 ```ts highlight="3"
 const { providerReference } = await uploadFile({
-  api: openai, // openai.files() 的简写
+  api: openai, // shorthand for openai.files()
   data: fs.readFileSync('./photo.png'),
   filename: 'photo.png',
 });
@@ -49,14 +46,14 @@ const { providerReference } = await uploadFile({
 
 ## 支持的文件类型
 
-你可以根据提供商上传图片、PDF、文本文件和其他文档。
-当未显式指定媒体类型时，SDK 会根据文件字节自动检测：
+你可以根据提供商的不同，上传图片、PDF、文本文件以及其他文档。
+如果未显式指定，媒体类型会根据文件字节自动检测：
 
 ```ts highlight="4"
 const { providerReference } = await uploadFile({
   api: anthropic.files(),
   data: fs.readFileSync('./document.pdf'),
-  mediaType: 'application/pdf', // 可选，省略时自动检测
+  mediaType: 'application/pdf', // optional, auto-detected if omitted
   filename: 'document.pdf',
 });
 ```
@@ -67,7 +64,7 @@ const { providerReference } = await uploadFile({
 {
   role: 'user',
   content: [
-    { type: 'text', text: '总结这份文档。' },
+    { type: 'text', text: 'Summarize this document.' },
     { type: 'file', data: providerReference, mediaType: 'application/pdf' },
   ],
 }
@@ -75,8 +72,8 @@ const { providerReference } = await uploadFile({
 
 ## 提供商特定选项
 
-某些提供商通过 `providerOptions` 接受额外选项。
-例如，OpenAI 需要 `purpose` 字段：
+某些提供商通过 `providerOptions` 接受额外的选项。
+例如，OpenAI 需要一个 `purpose` 字段：
 
 ```ts highlight="5-9"
 import { openai, type OpenAIFilesOptions } from '@ai-sdk/openai';
@@ -95,8 +92,7 @@ const { providerReference } = await uploadFile({
 ## 流式上传
 
 支持流式上传的提供商（例如 OpenAI、xAI）接受带标签的
-`{ type: 'stream', stream }` 形式，无需在内存中缓冲整个文件即可发送字节。
-不支持流式上传的提供商将以 `UnsupportedFunctionalityError` 拒绝流数据。
+`{ type: 'stream', stream }` 结构，直接发送字节，而无需将整个文件缓冲到内存中。不支持流式传输的提供商会以 `UnsupportedFunctionalityError` 拒绝流数据。
 
 ```ts
 const { providerReference } = await uploadFile({
@@ -107,26 +103,27 @@ const { providerReference } = await uploadFile({
 });
 ```
 
-提供商消费该流：任何失败的上传——包括在发出请求之前的验证失败——都会取消该流，且该流不得重复使用。流数据无法进行嗅探，因此当省略 `mediaType` 时，默认值为 `application/octet-stream`，而基于 multipart 的提供商默认文件名为 `"blob"`。
+提供商会消费该流：任何上传失败——包括在发起请求之前的验证失败——都会取消该流，且该流不得被重用。流数据无法被嗅探，因此省略 `mediaType` 时默认为
+`application/octet-stream`，而基于 multipart 的提供商默认将文件名设为 `"blob"`。
 
-上传可通过 `abortSignal` 取消，并携带请求特定的 `headers`。当提供商报告时，结果包含 `byteSize`、`createdAt` 和 `expiresAt`（提供商应用的保留期限）。
+上传可以通过 `abortSignal` 取消，并携带请求特定的 `headers`。当提供商报告时，结果会包含 `byteSize`、`createdAt` 和 `expiresAt`（提供商应用的保留到期时间）。
 
 ## 提供商引用
 
 `ProviderReference` 是一个 `Record<string, string>`，将提供商名称映射到提供商特定的文件标识符：
 
 ```ts
-// ProviderReference 示例
+// Example ProviderReference
 {
   openai: 'file-abc123',
 }
 ```
 
-当你将 `ProviderReference` 作为消息内容部分的 `data` 或 `image` 字段传递时，提供商会从引用中查找自己的文件 ID。如果引用中不包含当前提供商的条目，则会抛出错误。
+当你将 `ProviderReference` 作为消息内容部分的 `data` 或 `image` 字段传入时，提供商会从引用中查找自己的文件 ID。如果引用中不包含当前提供商的条目，则会抛出错误。
 
 ## 多提供商使用
 
-如果你在对话中途切换提供商（例如，使用 Anthropic 继续由 OpenAI 开始的聊天），你需要将文件上传到两个提供商并合并引用：
+如果你在对话中途切换提供商（例如，使用 Anthropic 继续一个由 OpenAI 开始的聊天），你需要将文件上传到两个提供商，并合并引用：
 
 ```ts
 const openaiResult = await uploadFile({
@@ -149,17 +146,17 @@ const mergedReference = {
 // mergedReference: { openai: 'file-abc123', anthropic: 'file-xyz789' }
 ```
 
-合并后的引用随后可用于消息中，无论哪个提供商处理请求——每个提供商都会找到自己的文件 ID。
+合并后的引用随后可以在消息中使用，无论哪个提供商处理请求——每个提供商都会找到自己的文件 ID。
 
 ## 支持的提供商
 
 以下提供商支持 `files()` 和文件上传：
 
-| 提供商    | 工厂方法             |
-| --------- | -------------------- |
-| Anthropic | `anthropic.files()`  |
-| Google    | `google.files()`     |
-| OpenAI    | `openai.files()`     |
-| xAI       | `xai.files()`        |
+| 提供商    | 工厂方法            |
+| --------- | ------------------- |
+| Anthropic | `anthropic.files()` |
+| Google    | `google.files()`    |
+| OpenAI    | `openai.files()`    |
+| xAI       | `xai.files()`       |
 
 不支持文件上传的提供商如果在消息中遇到提供商引用，将抛出 `UnsupportedFunctionalityError`。

@@ -1,0 +1,72 @@
+---
+title: "experimental_evaluate"
+description: "使用评估模型针对共享状态评估带类型的问题。"
+---
+
+# `experimental_evaluate()`
+
+```ts
+import { experimental_evaluate } from 'ai';
+```
+
+针对一个状态评估由 `choice`、`score` 和 `boolean` 问题组成的非空映射。有关示例和语义，请参阅[评估](/docs/ai-sdk-core/evaluation)。
+
+## 参数
+
+| 参数              | 类型                                               | 描述                                                                                                                                        |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`           | `Experimental_EvaluationModel`                     | 必填的实验性 v4 模型实例，或由 Gateway 解析的字符串 ID，或显式配置的具备评估能力的默认提供商。                                              |
+| `state`           | `string \| object \| array`                        | 必填的 JSON 兼容共享状态。                                                                                                                  |
+| `questions`       | `Record<string, Experimental_EvaluationQuestion>`  | 必填的非空问题映射。                                                                                                                        |
+| `maxRetries`      | `number`                                           | 非负整数；默认为 2。                                                                                                                        |
+| `abortSignal`     | `AbortSignal`                                      | 取消评估。                                                                                                                                  |
+| `headers`         | `Record<string, string>`                           | 附加的 HTTP 请求头。                                                                                                                        |
+| `providerOptions` | `ProviderOptions`                                  | 提供商特定的选项。                                                                                                                          |
+| `telemetry`       | `TelemetryOptions`                                 | 遥测配置，包括每次调用的集成、输入/输出记录以及函数 ID。                                                                                    |
+| `runtimeContext`  | `Record<string, unknown>`                          | 可供生命周期回调使用的上下文，并通过 `telemetry.includeRuntimeContext` 选择性地包含在遥测中。                                              |
+| `onStart`         | `(event: Experimental_EvaluateStartEvent) => void` | 在评估操作开始时调用。                                                                                                                      |
+| `onEnd`           | `(event: Experimental_EvaluateEndEvent) => void`   | 在评估操作成功完成时调用。                                                                                                                  |
+
+有关完整的 `onStart` 和 `onEnd` 事件字段，请参阅[生命周期回调](/docs/ai-sdk-core/lifecycle-callbacks#experimental_evaluate)。
+
+## 结果
+
+返回 `Promise<Experimental_EvaluationResult<QUESTIONS>>`：
+
+- `answers`：每个问题 ID 对应一个带类型的答案，并带有字面量 Choice 选项推断。
+- `usage`：`inputTokens`、`outputTokens` 和 `totalTokens`，每个都可能为 undefined。
+- `warnings`：提供商警告，同时也会传递给 SDK 警告日志记录器。
+- `rounding`：提供商声明的可选小数精度，用于概率和分数。
+- `providerMetadata`：可选的提供商特定元数据。
+- `response`：时间戳、模型 ID，以及可选的响应 ID、请求头和响应体。
+
+## 提供商规范
+
+`Experimental_EvaluationModelV4` 从 `@ai-sdk/provider` 导出，并声明了
+`specificationVersion: 'v4'`、`provider`、`modelId`、`supportedQuestionTypes` 以及
+`doEvaluate(options)`。评估与稳定的 `ProviderV4` 相互隔离。
+
+公开的核心类型有 `Experimental_EvaluationModel`、
+`Experimental_EvaluationQuestion`、`Experimental_EvaluationAnswer` 和
+`Experimental_EvaluationResult`。所有评估特定的类都使用
+`Evaluation` 前缀，并在包边界处提供 `Experimental_` 别名。
+
+## 错误
+
+不支持的类型会在提供商 I/O 之前抛出 `Experimental_EvaluationUnsupportedQuestionTypeError`。
+无效输入会抛出 `InvalidArgumentError`；格式错误的
+答案会抛出 `InvalidResponseDataError`。无效答案不会被重试。
+既不支持部分结果，也不支持缺失概率的合成。
+
+## 模型解析
+
+使用 `registry.evaluationModel('provider:model')` 或
+`customProvider({ evaluationModels: { alias: model } }).evaluationModel('alias')`
+来解析模型。直接传递给 `experimental_evaluate` 的字符串会在可用时使用
+`globalThis.AI_SDK_DEFAULT_PROVIDER.evaluationModel(id)`。评估
+绝不会隐式回退到 Gateway。
+
+解析错误使用现有的 `NoSuchModelError` 和 `NoSuchProviderError`
+类，并带有 `modelType: 'evaluationModel'`。模型实例和已解析的模型
+必须实现 v4；其他版本会抛出 `UnsupportedModelVersionError`。
+请参阅[模型解析示例](/docs/ai-sdk-core/evaluation#model-aliases-and-registries)。

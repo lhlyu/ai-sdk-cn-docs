@@ -1,18 +1,18 @@
 ---
-title: 使用图片提示词流式传输文本
-description: 学习如何使用 AI SDK 和 Next.js 通过图片提示词流式传输文本
+title: "使用图像提示词进行文本流式传输"
+description: "学习如何使用 AI SDK 和 Next.js 通过图像提示词进行文本流式传输"
 tags: ['next', 'streaming', 'multimodal']
 ---
 
-# 使用图片提示词流式传输文本
+# 使用图像提示词进行文本流式传输
 
-像 GPT-4o 这样的视觉模型可以同时处理文本和图片。在本示例中，我们将展示如何使用 `useChat` 将图片 URL 与用户消息一起发送给模型。
+诸如 GPT-6 Astra 之类的视觉模型可以同时处理文本和图像。在本示例中，我们将向你展示如何使用 `useChat` 将图像 URL 连同用户的消息一起发送给模型。
 
-## 使用图片 URL
+## 使用图像 URL
 
 ### 服务端
 
-服务端路由使用 `convertToModelMessages` 来处理从 `UIMessage` 到模型消息的转换，它会自动处理包括图片在内的多模态内容。
+服务端路由使用 `convertToModelMessages` 来处理从 `UIMessage` 到模型消息的转换，它会自动处理包括图像在内的多模态内容。
 
 ```tsx filename='app/api/chat/route.ts' highlight="16,20-22"
 import {
@@ -27,13 +27,13 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  // 调用语言模型
+  // Call the language model
   const result = streamText({
-    model: 'openai/gpt-4.1',
+    model: 'openai/gpt-6-astra',
     messages: await convertToModelMessages(messages),
   });
 
-  // 响应流式数据
+  // Respond with the stream
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({ stream: result.stream }),
   });
@@ -51,7 +51,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState } from 'react';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Chat() {
@@ -67,7 +67,7 @@ export default function Chat() {
     sendMessage({
       role: 'user',
       parts: [
-        // 检查 imageUrl 是否已定义，如果是，则将其添加到消息中
+        // check if imageUrl is defined, if so, add it to the message
         ...(imageUrl.trim().length > 0
           ? [
               {
@@ -89,7 +89,7 @@ export default function Chat() {
       <div>
         {messages.map(m => (
           <div key={m.id}>
-            <span>{m.role === 'user' ? '用户: ' : 'AI: '}</span>
+            <span>{m.role === 'user' ? 'User: ' : 'AI: '}</span>
             <div>
               {m.parts.map((part, i) => {
                 switch (part.type) {
@@ -113,24 +113,24 @@ export default function Chat() {
       </div>
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="image-url">图片 URL:</label>
+          <label htmlFor="image-url">Image URL:</label>
           <input
             id="image-url"
             value={imageUrl}
-            placeholder="输入图片 URL..."
+            placeholder="Enter image URL..."
             onChange={e => setImageUrl(e.currentTarget.value)}
           />
         </div>
         <div>
-          <label htmlFor="image-description">提示词:</label>
+          <label htmlFor="image-description">Prompt:</label>
           <input
             id="image-description"
             value={input}
-            placeholder="图片显示了什么..."
+            placeholder="What does the image show..."
             onChange={e => setInput(e.currentTarget.value)}
           />
         </div>
-        <button type="submit">发送消息</button>
+        <button type="submit">Send Message</button>
       </form>
     </div>
   );

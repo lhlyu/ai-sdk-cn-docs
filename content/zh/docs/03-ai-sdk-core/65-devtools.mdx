@@ -1,6 +1,6 @@
 ---
 title: "DevTools"
-description: "使用 DevTools 调试和检查 AI SDK 应用程序"
+description: "使用 DevTools 调试和检查 AI SDK 应用"
 ---
 
 # DevTools
@@ -9,11 +9,11 @@ description: "使用 DevTools 调试和检查 AI SDK 应用程序"
   AI SDK DevTools 仅用于本地开发。请勿在生产环境中使用。
 </Note>
 
-AI SDK DevTools 让您全面了解通过 [`generateText`](/docs/reference/ai-sdk-core/generate-text)、[`streamText`](/docs/reference/ai-sdk-core/stream-text) 和 [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent) 进行的 AI SDK 调用。它通过基于 Web 的 UI 帮助您调试和检查 LLM 请求、响应、工具调用和多步骤交互。
+AI SDK DevTools 让你能够全面查看通过 [`generateText`](/docs/reference/ai-sdk-core/generate-text)、[`streamText`](/docs/reference/ai-sdk-core/stream-text) 和 [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent) 发起的 AI SDK 调用。它通过基于 Web 的 UI 帮助你调试和检查 LLM 请求、响应、工具调用以及多步交互。
 
 DevTools 由两部分组成：
 
-1. **遥测集成**：通过 [telemetry](/docs/ai-sdk-core/telemetry) 系统捕获 AI SDK 调用的运行和步骤
+1. **遥测集成**：通过[遥测](/docs/ai-sdk-core/telemetry)系统捕获 AI SDK 调用中的运行和步骤
 2. **查看器**：用于检查捕获数据的 Web UI
 
 ## 安装
@@ -26,7 +26,7 @@ pnpm add @ai-sdk/devtools
 
 ## 要求
 
-- AI SDK v7 (`ai@latest`)
+- AI SDK v7（`ai@latest`）
 - 兼容 Node.js 的运行时
 
 ## 使用 DevTools
@@ -42,26 +42,26 @@ import { DevToolsTelemetry } from '@ai-sdk/devtools';
 registerTelemetry(DevToolsTelemetry());
 ```
 
-一旦注册了集成，遥测功能将自动启用——无需进行每次调用的配置：
+注册集成后，遥测会自动启用——无需针对每次调用进行配置：
 
 ```ts
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: openai('gpt-4o'),
-  prompt: '美国有哪些城市？',
+  model: openai('gpt-6-astra'),
+  prompt: 'What cities are in the United States?',
 });
 ```
 
-您也可以将集成传递给单个调用，而不是全局注册：
+你也可以将集成传递给单个调用，而不是全局注册：
 
 ```ts highlight="7-9"
 import { streamText } from 'ai';
 import { DevToolsTelemetry } from '@ai-sdk/devtools';
 
 const result = streamText({
-  model: openai('gpt-4o'),
-  prompt: '你好！',
+  model: openai('gpt-6-astra'),
+  prompt: 'Hello!',
   telemetry: {
     integrations: [DevToolsTelemetry()],
   },
@@ -76,38 +76,38 @@ const result = streamText({
 npx @ai-sdk/devtools@latest
 ```
 
-打开 [http://localhost:4983](http://localhost:4983) 查看您的 AI SDK 交互。
+打开 [http://localhost:4983](http://localhost:4983) 查看你的 AI SDK 交互。
 
 ### 选择查看器主题
 
-查看器默认使用深色主题。使用查看器标题栏中的主题按钮可在深色和浅色主题之间切换。您的选择会存储在浏览器中，下次在同一源打开查看器时会恢复。
+查看器默认使用深色主题。使用查看器标题栏中的主题按钮在深色和浅色主题之间切换。你的选择会存储在浏览器中，下次在同一源打开查看器时会恢复。
 
-### Monorepo 使用
+### Monorepo 用法
 
-如果您使用 monorepo 设置（例如 Turborepo、Nx），请在运行 AI SDK 代码的同一工作区中启动 DevTools。
+如果你使用 monorepo 设置（例如 Turborepo、Nx），请从运行 AI SDK 代码的同一工作区启动 DevTools。
 
-例如，如果您的 API 位于 `apps/api` 中，请运行：
+例如，如果你的 API 位于 `apps/api`，请运行：
 
 ```bash
 cd apps/api
 npx @ai-sdk/devtools@latest
 ```
 
-显式的 `@latest` 标签确保 `npx` 安装可执行副本，而不是选择其二进制文件未链接到工作区中的传递依赖项。
+显式的 `@latest` 标签确保 `npx` 安装可执行副本，而不是选择一个其二进制文件未链接到工作区的传递依赖项。
 
 ## 捕获的数据
 
-DevTools 从您的 AI SDK 调用中捕获以下信息：
+DevTools 会从你的 AI SDK 调用中捕获以下信息：
 
 - **输入参数和提示词**：查看发送给 LLM 的完整输入
 - **输出内容和工具调用**：检查生成的文本、工具调用和工具结果
 - **媒体预览**：查看提示词、工具输入和工具输出中包含的图像、音频和视频
-- **Token 使用量和计时**：监控资源消耗和性能
-- **原始提供商数据**：启用请求体保留时，访问提供商的请求和响应负载
+- **Token 用量和耗时**：监控资源消耗和性能
+- **原始提供商数据**：在启用请求体保留时访问提供商的请求和响应负载
 
 ### 媒体预览
 
-DevTools 识别当前的 `file` 内容部分以及已弃用的 `image-*`、`file-*` 和 `media` 工具结果别名。内联图像、音频和视频数据会直接预览，而捕获的 JSON 结构和元数据仍可供检查。查看器每个值最多显示 8 个预览，最多遍历 12 层嵌套，并嵌入最多 5 MiB 的内联预览。较长的 JSON 字符串会在查看器中被截断，以避免重复大型 base64 负载。可识别媒体字段中的二进制值会以 base64 形式持久化，以便保持可预览性；不相关的二进制值则保留其正常的 JSON 表示。
+DevTools 可识别当前的 `file` 内容部分，以及已弃用的 `image-*`、`file-*` 和 `media` 工具结果别名。内联图像、音频和视频数据会直接预览，同时捕获的 JSON 结构和元数据仍可供检查。查看器每个值最多显示 8 个预览，最多遍历 12 层嵌套，并嵌入最大 5 MiB 的内联预览。较长的 JSON 字符串会在查看器中截断，以避免重复大型 base64 负载。已识别媒体字段中的二进制值会以 base64 形式持久化，以便保持可预览；无关的二进制值保留其常规 JSON 表示。
 
 例如，工具可以通过 `toModelOutput` 返回媒体：
 
@@ -134,14 +134,14 @@ const captureScreenshot = tool({
 });
 ```
 
-远程 `http` 和 `https` 媒体不会自动加载。在查看器中选择 **加载预览** 以使用匿名 CORS 且不带 referrer 的方式获取。跨源浏览器凭据会被省略，但浏览器可能仍会包含同源浏览器凭据。包含嵌入用户名或密码的 URL 会被拒绝。不支持的媒体、提供商引用、格式错误的值、不安全的 URL 方案以及超过预览限制的内联值会保留其 JSON 和元数据回退，而不显示嵌入预览。
+远程 `http` 和 `https` 媒体不会自动加载。在查看器中选择 **Load preview**，以匿名 CORS 且无 referrer 的方式获取它。跨源浏览器凭据会被省略，但同源浏览器凭据仍可能被浏览器包含。包含内嵌用户名或密码的 URL 会被拒绝。不支持的媒体、提供商引用、格式错误的值、不安全的 URL 方案以及超过预览限制的内联值，会保留其 JSON 和元数据回退，而不嵌入预览。
 
-遥测会自动启用，但 AI SDK 7 默认从步骤结果中排除原始请求和响应体。要使其可供 DevTools 用于 `generateText`，请在调用中启用请求体保留：
+遥测会自动启用，但 AI SDK 7 默认从步骤结果中排除原始请求和响应体。要让 DevTools 为 `generateText` 提供这些数据，请在调用中启用请求体保留：
 
 ```ts highlight="4-7"
 const result = await generateText({
-  model: openai('gpt-4o'),
-  prompt: '你好！',
+  model: openai('gpt-6-astra'),
+  prompt: 'Hello!',
   include: {
     requestBody: true,
     responseBody: true,
@@ -155,22 +155,23 @@ const result = await generateText({
 
 DevTools 将捕获的数据组织为运行和步骤：
 
-- **运行**：完整的多步骤 AI 交互，按初始提示词分组
-- **步骤**：运行中的单个 LLM 调用（例如，一次 `generateText` 或 `streamText` 调用）
+- **运行**：一次完整的多步 AI 交互，按初始提示词分组
+- **步骤**：运行中的单次 LLM 调用（例如一次 `generateText` 或 `streamText` 调用）
 
-多步骤交互（例如由工具调用或智能体循环创建的交互）会作为包含多个步骤的单个运行进行分组。嵌套的子智能体调用会链接到其父运行，从而轻松追踪完整的执行树。
+多步交互（例如由工具调用或智能体循环创建的交互）会作为包含多个步骤的单个运行分组在一起。嵌套的子智能体调用会链接到其父运行，从而便于追踪完整的执行树。
 
 ## 工作原理
 
-`DevToolsTelemetry` 集成挂接到 AI SDK [telemetry](/docs/ai-sdk-core/telemetry) 生命周期，以捕获所有 `generateText`、`streamText`、`generateObject` 和 `streamObject` 调用。捕获的数据本地存储在 JSON 文件（`.devtools/generations.json`）中，并通过使用 Hono 和 React 构建的 Web UI 提供服务。
+`DevToolsTelemetry` 集成挂接到 AI SDK [遥测](/docs/ai-sdk-core/telemetry)生命周期，以捕获所有 `generateText`、`streamText`、`generateObject` 和 `streamObject` 调用。捕获的数据会本地存储在 JSON 文件（`.devtools/generations.json`）中，并通过使用 Hono 和 React 构建的 Web UI 提供服务。
 
 <Note type="warning">
-  该集成会自动将 `.devtools` 添加到您的 `.gitignore` 文件中。请验证 `.devtools` 是否在您的 `.gitignore` 中，以确保您不会将敏感的 AI 交互数据提交到仓库中。
+  该集成会自动将 `.devtools` 添加到你的 `.gitignore` 文件中。
+  请确认 `.devtools` 已包含在你的 `.gitignore` 中，以确保不会将敏感的 AI 交互数据提交到仓库。
 </Note>
 
 ## 安全注意事项
 
-DevTools 将所有 AI 交互以纯文本文件形式本地存储，包括：
+DevTools 会将所有 AI 交互以明文文件形式存储在本地，包括：
 
 - 用户提示词和消息
 - LLM 响应

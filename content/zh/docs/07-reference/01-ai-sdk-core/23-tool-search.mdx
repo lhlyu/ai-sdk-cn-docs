@@ -1,0 +1,51 @@
+---
+title: "toolSearch"
+description: "按需搜索延迟工具并加载其定义，以便直接调用或使用代码模式。"
+---
+
+# `toolSearch()`
+
+创建一个工具，用于按名称和描述搜索当前生成过程中的延迟工具。该工厂函数不接受任何参数。可与 `generateText`、`streamText`、`ToolLoopAgent` 或来自 `@ai-sdk/workflow` 的 `WorkflowAgent` 一起使用。`WorkflowAgent` 支持直接工具调用。其他 API 还支持通过 `toolDiscovery: 'conversation'` 配置的代码模式。
+
+```ts
+import { toolSearch } from 'ai';
+
+const search = toolSearch();
+```
+
+有关直接调用和代码模式的示例，请参阅[工具搜索指南](/docs/ai-sdk-core/tool-search)，其中包括代码模式如何保留工具定义缓存。
+
+## 模型输入
+
+模型向搜索工具提供以下输入：
+
+```json
+{ "query": "weather forecast" }
+```
+
+`query` 是必需的、非空的搜索关键词字符串。搜索是本地且不区分大小写的，匹配工具名称和描述中的单词。驼峰式命名会被拆分为单词。名称匹配的排名高于描述匹配；得分相同时保留注册顺序。函数描述会使用当前工具上下文和沙箱进行解析。不使用嵌入服务或额外的模型调用。
+
+## 输出
+
+```ts
+{
+  tools: [
+    { name: 'getForecast', description: 'Get the weather forecast for a city.' },
+  ],
+}
+```
+
+结果最多包含五个匹配的工具，包括其名称和可选描述。不包含 schema。没有匹配时返回 `{ tools: [] }`。每个返回的匹配项都会被排队等待发现。新发现的工具只能在下一个模型步骤中调用，即在其定义被提供之后。与搜索在同一响应中的并行调用无法使用新发现的工具。对于代码模式，请完成当前执行并等待能力更新。
+
+## 发现生命周期
+
+在下一个模型步骤之前，SDK 会通过配置的调用方使已发现的工具可用：
+
+- **直接调用：** 提供商收到更新后的工具定义。
+- **代码模式：** SDK 会追加一条包含更新后能力目录的用户消息。提供商可见的代码模式定义保持不变。现有目录保留在对话中；最新目录描述当前可用的完整工具集。
+
+实际的提示词缓存复用取决于提供商。代码模式搜索仍然需要 `toolDiscovery: 'conversation'`；不支持描述发现和提供商调用方。
+
+已发现的工具在本次生成的剩余过程中保持加载状态，受 `activeTools` 约束。搜索无法发现被 `activeTools` 排除的工具。发现状态在生成调用之间是隔离的，包括复用同一智能体或工具实例的调用。
+
+为 `generateText` 和 `streamText` 设置多步骤的 `stopWhen` 条件，以便模型可以搜索、使用已发现的工具并作答。

@@ -5,14 +5,14 @@ description: "了解如何使用 AI SDK 对文档进行重排序。"
 
 # 重排序
 
-重排序是一种通过根据文档与查询的相关性重新排序文档集来提高搜索相关性的技术。
-与基于嵌入的相似性搜索不同，重排序模型经过专门训练，能够理解查询与文档之间的关系，
+重排序是一种通过根据文档与查询的相关性重新排列一组文档来提高搜索相关性的技术。
+与基于嵌入的相似性搜索不同，重排序模型经过专门训练以理解查询与文档之间的关系，
 通常能产生更准确的相关性分数。
 
 ## 重排序文档
 
 AI SDK 提供了 [`rerank`](/docs/reference/ai-sdk-core/rerank) 函数，用于根据文档与查询的相关性对文档进行重排序。
-你可以将其与重排序模型一起使用，例如 `cohere.reranking('rerank-v3.5')` 或 `bedrock.reranking('cohere.rerank-v3-5:0')`。
+你可以将其与重排序模型一起使用，例如 `cohere.reranking('rerank-v4.0-pro')` 或 `bedrock.reranking('cohere.rerank-v3-5:0')`。
 
 ```tsx
 import { rerank } from 'ai';
@@ -25,10 +25,10 @@ const documents = [
 ];
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents,
   query: 'talk about rain',
-  topN: 2, // 返回最相关的 2 个文档
+  topN: 2, // Return top 2 most relevant documents
 });
 
 console.log(ranking);
@@ -38,9 +38,9 @@ console.log(ranking);
 // ]
 ```
 
-## 使用对象文档
+## 处理对象文档
 
-重排序也支持结构化文档（JSON 对象），非常适合搜索数据库、电子邮件或其他结构化内容：
+重排序还支持结构化文档（JSON 对象），使其非常适合搜索数据库、电子邮件或其他结构化内容：
 
 ```tsx
 import { rerank } from 'ai';
@@ -60,7 +60,7 @@ const documents = [
 ];
 
 const { ranking, rerankedDocuments } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents,
   query: 'Which pricing did we get from Oracle?',
   topN: 1,
@@ -72,28 +72,28 @@ console.log(rerankedDocuments[0]);
 
 ## 理解结果
 
-`rerank` 函数返回一个全面的结果对象：
+`rerank` 函数返回一个完整的结果对象：
 
 ```ts
 import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking, rerankedDocuments, originalDocuments } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['sunny day at the beach', 'rainy afternoon in the city'],
   query: 'talk about rain',
 });
 
-// ranking: 排序后的数组，包含 { originalIndex, score, document }
-// rerankedDocuments: 按相关性排序的文档（便捷属性）
-// originalDocuments: 原始文档数组
+// ranking: sorted array of { originalIndex, score, document }
+// rerankedDocuments: documents sorted by relevance (convenience property)
+// originalDocuments: original documents array
 ```
 
-`ranking` 数组中的每个项目包含：
+`ranking` 数组中的每一项包含：
 
-- `originalIndex`: 在原始文档数组中的位置
-- `score`: 相关性分数（通常为 0-1，越高越相关）
-- `document`: 原始文档
+- `originalIndex`：在原始文档数组中的位置
+- `score`：相关性分数（通常为 0-1，越高表示越相关）
+- `document`：原始文档
 
 ## 设置
 
@@ -106,28 +106,28 @@ import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['doc1', 'doc2', 'doc3', 'doc4', 'doc5'],
   query: 'relevant information',
-  topN: 3, // 仅返回最相关的 3 个文档
+  topN: 3, // Return only top 3 most relevant documents
 });
 ```
 
 ### 提供商选项
 
-可以使用 `providerOptions` 配置重排序模型的提供商特定参数：
+可以使用 `providerOptions` 为提供商特定参数配置重排序模型设置：
 
 ```ts highlight={"8-12"}
 import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['sunny day at the beach', 'rainy afternoon in the city'],
   query: 'talk about rain',
   providerOptions: {
     cohere: {
-      maxTokensPerDoc: 1000, // 限制每个文档的 token 数量
+      maxTokensPerDoc: 1000, // Limit tokens per document
     },
   },
 });
@@ -144,17 +144,17 @@ import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['sunny day at the beach', 'rainy afternoon in the city'],
   query: 'talk about rain',
-  maxRetries: 0, // 禁用重试
+  maxRetries: 0, // Disable retries
 });
 ```
 
 ### 中止信号与超时
 
-`rerank` 函数接受一个可选的 `abortSignal` 参数，类型为
-[`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
+`rerank` 函数接受一个可选的 `abortSignal` 参数，
+类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
 你可以使用它来中止重排序过程或设置超时。
 
 ```ts highlight={"8"}
@@ -162,10 +162,10 @@ import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['sunny day at the beach', 'rainy afternoon in the city'],
   query: 'talk about rain',
-  abortSignal: AbortSignal.timeout(5000), // 5 秒后中止
+  abortSignal: AbortSignal.timeout(5000), // Abort after 5 seconds
 });
 ```
 
@@ -179,7 +179,7 @@ import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['sunny day at the beach', 'rainy afternoon in the city'],
   query: 'talk about rain',
   headers: { 'X-Custom-Header': 'custom-value' },
@@ -188,14 +188,14 @@ const { ranking } = await rerank({
 
 ## 响应信息
 
-`rerank` 函数返回包含原始提供商响应的响应信息：
+`rerank` 函数返回的响应信息包含提供商的原始响应：
 
 ```ts highlight={"4,10"}
 import { cohere } from '@ai-sdk/cohere';
 import { rerank } from 'ai';
 
 const { ranking, response } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: ['sunny day at the beach', 'rainy afternoon in the city'],
   query: 'talk about rain',
 });
@@ -207,12 +207,14 @@ console.log(response); // { id, timestamp, modelId, headers, body }
 
 多个提供商提供重排序模型：
 
-| 提供商                                                                        | 模型                                 |
-| ----------------------------------------------------------------------------- | ------------------------------------ |
-| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-v3.5`                        |
-| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-english-v3.0`                |
-| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-multilingual-v3.0`           |
-| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#reranking-models) | `amazon.rerank-v1:0`                 |
-| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#reranking-models) | `cohere.rerank-v3-5:0`               |
-| [Together.ai](/providers/ai-sdk-providers/togetherai#reranking-models)        | `Salesforce/Llama-Rank-v1`           |
+| 提供商                                                                      | 模型                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------- |
+| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-v4.0-pro`                     |
+| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-v4.0-fast`                    |
+| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-v3.5`                         |
+| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-english-v3.0`                 |
+| [Cohere](/providers/ai-sdk-providers/cohere#reranking-models)                 | `rerank-multilingual-v3.0`            |
+| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#reranking-models) | `amazon.rerank-v1:0`                  |
+| [Amazon Bedrock](/providers/ai-sdk-providers/amazon-bedrock#reranking-models) | `cohere.rerank-v3-5:0`                |
+| [Together.ai](/providers/ai-sdk-providers/togetherai#reranking-models)        | `Salesforce/Llama-Rank-v1`            |
 | [Together.ai](/providers/ai-sdk-providers/togetherai#reranking-models)        | `mixedbread-ai/Mxbai-Rerank-Large-V2` |

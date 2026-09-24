@@ -5,7 +5,7 @@ description: "ToolLoopAgent 类的 API 参考。"
 
 # `ToolLoopAgent`
 
-创建一个可复用的 AI 智能体，能够生成文本、流式传输响应，并在多个步骤中使用工具（推理与行动循环）。`ToolLoopAgent` 非常适合构建自主的多步骤智能体，这些智能体可以执行操作、调用工具，并对结果进行推理，直到达到停止条件。
+创建一个可复用的 AI 智能体，能够生成文本、流式传输响应，并在多个步骤中调用工具（一个推理与行动的循环）。`ToolLoopAgent` 非常适合构建自主的多步骤智能体，这些智能体可以执行操作、调用工具，并对结果进行推理，直到达到停止条件。
 
 与 `generateText()` 等单步调用不同，智能体可以迭代地调用工具、收集工具结果，并决定下一步操作，直到完成或需要用户批准。
 
@@ -29,18 +29,19 @@ const result = await agent.generate({
 console.log(result.text);
 ```
 
-对于智能体，`runtimeContext` 是在循环中流动的共享运行时状态。有关 `runtimeContext`、`toolsContext`、工具 `context` 以及敏感上下文过滤的指导，请参阅 [运行时与工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
-当工具需要访问命令或代码执行环境时，请将 `experimental_sandbox` 传递给 `generate()` 或 `stream()`。
+对于智能体，`runtimeContext` 是贯穿整个循环的共享运行时状态。有关 `runtimeContext`、`toolsContext`、工具 `context` 以及敏感上下文过滤的指导，请参阅 [Runtime and Tool
+Context](/docs/ai-sdk-core/runtime-and-tool-context)。
+当工具需要访问命令或代码执行环境时，将 `experimental_sandbox` 传递给 `generate()` 或 `stream()`。
 
-要查看 `ToolLoopAgent` 的实际应用，请查看[这些示例](#examples)。
+要查看 `ToolLoopAgent` 的实际运行效果，请查看[这些示例](#examples)。
 
-## 导入
+## Import
 
 <Snippet text={`import { ToolLoopAgent } from "ai"`} prompt={false} />
 
-## 构造函数
+## Constructor
 
-### 参数
+### Parameters
 
 <PropertiesTable
   content={[
@@ -63,7 +64,7 @@ console.log(result.text);
       type: 'boolean',
       isOptional: true,
       description:
-        '是否允许在 `prompt` 或 `messages` 字段中使用 `role: "system"` 消息。未设置时，系统消息会被拒绝，因为它们可能造成提示词注入攻击风险。理想情况下，应使用 `instructions` 选项。设置为 `true` 以允许系统消息，或设置为 `false` 以明确拒绝。',
+        '是否允许在 `prompt` 或 `messages` 字段中出现 `role: "system"` 消息。未设置时，系统消息会被拒绝，因为它们可能带来提示词注入攻击风险。理想情况下，请改用 `instructions` 选项。设置为 `true` 以允许系统消息，或设置为 `false` 以显式拒绝它们。',
     },
     {
       name: 'tools',
@@ -84,49 +85,49 @@ console.log(result.text);
       type: 'StopCondition | StopCondition[]',
       isOptional: true,
       description:
-        '结束智能体循环的条件。默认值：isStepCount(20)。使用 `isLoopFinished()` 让智能体运行直到所有工具调用完成，但要注意可能失控的循环。参见 https://ai-sdk.dev/v7/docs/reference/ai-sdk-core/loop-finished#isloopfinished。',
+        '结束智能体循环的条件。默认值：isStepCount(20)。使用 `isLoopFinished()` 让智能体运行直到所有工具调用完成，但要注意可能出现失控循环。参见 https://ai-sdk.dev/v7/docs/reference/ai-sdk-core/loop-finished#isloopfinished。',
     },
     {
       name: 'activeTools',
       type: 'ActiveTools<TOOLS>',
       isOptional: true,
       description:
-        '限制模型可调用的工具，而不改变结果中的工具调用和结果类型。默认情况下所有工具都处于活动状态。工具名称仅限于工具集的字符串键。',
+        '限制模型可调用的工具，而不会更改结果中的工具调用和结果类型。默认情况下所有工具都是激活的。工具名称被限制为工具集的字符串键。',
     },
     {
       name: 'toolOrder',
       type: 'ToolOrder<TOOLS>',
       isOptional: true,
       description:
-        '控制工具发送给提供商的顺序。列表可以是部分的。未在 `toolOrder` 中列出的工具会按字母顺序排列在列出的工具之后发送。工具名称仅限于工具集的字符串键。',
+        '控制工具发送给提供商的顺序。该列表可以是部分列表。未在 `toolOrder` 中列出的工具会在已列出的工具之后按字母顺序发送。工具名称被限制为工具集的字符串键。',
     },
     {
       name: 'toolApproval',
       type: 'ToolApprovalConfiguration<TOOLS, RUNTIME_CONTEXT>',
       isOptional: true,
       description:
-        "智能体的批准配置。传递一个 `GenericToolApprovalFunction` 以在单个回调中处理所有工具调用，回调包含 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`；或传递一个按工具划分的对象，其中每个键可以是状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、对象形式（如 `{ type: 'denied', reason: 'blocked by policy' }`）或 `SingleToolApprovalFunction`，它接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`（与工具执行选项形状相同，但没有 `abortSignal`，且 `context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与智能体的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined`，效果与 `'not-applicable'` 相同。`'not-applicable'` 是默认执行路径，运行工具时不带批准元数据。当您希望在输出中显式包含自动批准请求/响应部分时，请使用 `'approved'`、`'denied'` 或其对象形式。对象状态可以包含 `reason`：自动批准和拒绝会将其转发到批准响应，而手动用户批准会将其转发给人类审批者的批准请求。此设置优先于工具的 `needsApproval` 默认值。",
+        "智能体的批准配置。传入 `GenericToolApprovalFunction` 以通过一个回调处理所有工具调用，回调接收 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`；或者传入按工具配置的对象，其中每个键可以是状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、对象形式（例如 `{ type: 'denied', reason: 'blocked by policy' }`），或一个 `SingleToolApprovalFunction`，它接收工具输入以及选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`（与工具执行选项形状相同，但没有 `abortSignal`，且 `context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与智能体的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined`，其效果与 `'not-applicable'` 相同。`'not-applicable'` 是默认执行路径，会在没有批准元数据的情况下运行工具。当你希望在输出中显式包含自动批准请求/响应部分时，请使用 `'approved'`、`'denied'` 或它们的对象形式。对象状态可以包含 `reason`：自动批准和拒绝会将其转发到批准响应，而手动用户批准会将其转发到面向人工批准者的批准请求。此设置优先于工具的 `needsApproval` 默认值。",
     },
     {
       name: 'experimental_toolCallers',
       type: 'Experimental_ToolCallers<TOOLS>',
       isOptional: true,
       description:
-        '配置哪些调用方工具可以调用每个工具。传递一个以被调用工具名称为键的对象，其值列出可调用的调用方工具名称。包含来自 `@ai-sdk/code-mode` 的 `DIRECT_TOOL_CALL` 以保持配置的工具可被模型直接调用。仅限本地的被调用工具对直接模型调用隐藏，并在每个智能体步骤中绑定到其本地调用方。提供商调用方名称会转换为提供商原生的允许调用方选项。',
+        '配置哪些调用方工具可以调用每个工具。传入一个以被调用工具名称为键的对象，其值列出具备调用方能力的工具名称。包含来自 `@ai-sdk/code-mode` 的 `DIRECT_TOOL_CALL`，以保持某个已配置工具可由模型直接调用。仅本地的被调用工具会从直接模型调用中隐藏，并在每个智能体步骤中绑定到其本地调用方。提供商调用方名称会转换为提供商原生的允许调用方选项。',
     },
     {
       name: 'output',
       type: 'Output',
       isOptional: true,
       description:
-        '可选的结构化数据输出规范，用于将响应解析为类型安全的数据。',
+        '可选的结构化输出规范，用于将响应解析为类型安全的数据。',
     },
     {
       name: 'prepareStep',
       type: 'PrepareStepFunction',
       isOptional: true,
       description:
-        '可选函数，用于修改每个智能体步骤的步骤设置或注入状态，包括每步模型调用设置，如 temperature、maxOutputTokens、采样控制、惩罚、停止序列、seed 和推理。模型调用设置覆盖仅适用于当前步骤。',
+        '可选函数，用于修改步骤设置或为每个智能体步骤注入状态，包括每步模型调用设置，例如 temperature、maxOutputTokens、采样控制、惩罚、停止序列、seed 和 reasoning。模型调用设置覆盖仅适用于当前步骤。',
     },
     {
       name: 'include',
@@ -147,14 +148,14 @@ console.log(result.text);
       type: 'ToolInputRefinement<TOOLS>',
       isOptional: true,
       description:
-        '可选映射，将工具名称映射到用于优化已解析工具输入的函数。每个函数接收其工具的带类型输入，并且必须返回相同的输入类型形状。优化后的输入用于工具执行、输出部分、生命周期回调和遥测，在 `generate()` 和 `stream()` 中均适用。',
+        '可选的工具名称到函数的映射，用于细化解析后的工具输入。每个函数接收其工具的类型化输入，并且必须返回相同输入类型形状。细化后的输入会用于 `generate()` 和 `stream()` 中的工具执行、输出部分、生命周期回调和遥测。',
     },
     {
       name: 'onStart',
       type: 'GenerateTextOnStartCallback',
       isOptional: true,
       description:
-        '在智能体操作开始时、任何 LLM 调用之前调用的回调。适用于日志记录、分析或初始化状态。如果在 `generate()` 或 `stream()` 中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在智能体操作开始、进行任何 LLM 调用之前调用的回调。适用于日志记录、分析或初始化状态。如果也在 `generate()` 或 `stream()` 中指定，则两个回调都会被调用（先调用构造函数中的）。',
       properties: [
         {
           type: 'GenerateTextStartEvent',
@@ -163,12 +164,13 @@ console.log(result.text);
               name: 'provider',
               type: 'string',
               description:
-                '提供商标识符（例如，"openai"、"anthropic"）。',
+                '提供商标识符（例如 "openai"、"anthropic"）。',
             },
             {
               name: 'modelId',
               type: 'string',
-              description: '具体的模型标识符（例如，"gpt-4o"）。',
+              description:
+                '具体的模型标识符（例如 "gpt-6-astra"）。',
             },
             {
               name: 'instructions',
@@ -194,7 +196,7 @@ console.log(result.text);
               name: 'activeTools',
               type: 'ActiveTools<TOOLS>',
               description:
-                '限制模型可调用的工具。',
+                '限制模型可调用哪些工具。',
             },
             {
               name: 'toolOrder',
@@ -205,7 +207,7 @@ console.log(result.text);
             {
               name: 'maxOutputTokens',
               type: 'number | undefined',
-              description: '要生成的最大令牌数。',
+              description: '要生成的最大 token 数。',
             },
             {
               name: 'temperature',
@@ -225,12 +227,12 @@ console.log(result.text);
             {
               name: 'presencePenalty',
               type: 'number | undefined',
-              description: '生成的在场惩罚。',
+              description: '生成的 presence 惩罚。',
             },
             {
               name: 'frequencyPenalty',
               type: 'number | undefined',
-              description: '生成的频率惩罚。',
+              description: '生成的 frequency 惩罚。',
             },
             {
               name: 'stopSequences',
@@ -240,7 +242,7 @@ console.log(result.text);
             {
               name: 'seed',
               type: 'number | undefined',
-              description: '用于可重现生成的随机种子。',
+              description: '用于可复现生成的随机种子。',
             },
             {
               name: 'maxRetries',
@@ -256,18 +258,18 @@ console.log(result.text);
             {
               name: 'headers',
               type: 'Record<string, string | undefined> | undefined',
-              description: '随请求发送的附加 HTTP 头。',
+              description: '随请求发送的额外 HTTP 头。',
             },
             {
               name: 'providerOptions',
               type: 'ProviderOptions | undefined',
-              description: '附加的提供商特定选项。',
+              description: '额外的提供商特定选项。',
             },
             {
               name: 'output',
               type: 'OUTPUT | undefined',
               description:
-                '结构化数据输出的输出规范（如果已配置）。',
+                '结构化输出的输出规范（如果已配置）。',
             },
             {
               name: 'abortSignal',
@@ -290,7 +292,7 @@ console.log(result.text);
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '通过 `toolsContext` 传递的按工具划分的上下文映射，以工具名称为键。',
+                '通过 `toolsContext` 传入的按工具上下文映射，以工具名称为键。',
             },
           ],
         },
@@ -301,7 +303,7 @@ console.log(result.text);
       type: 'GenerateTextOnStepStartCallback',
       isOptional: true,
       description:
-        '在步骤（LLM 调用）开始时、调用提供商之前调用的回调。每个步骤代表一次 LLM 调用。如果在 `generate()` 或 `stream()` 中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在步骤（LLM 调用）开始、调用提供商之前调用的回调。每个步骤代表一次 LLM 调用。如果也在 `generate()` 或 `stream()` 中指定，则两个回调都会被调用（先调用构造函数中的）。',
       properties: [
         {
           type: 'GenerateTextStepStartEvent',
@@ -310,12 +312,13 @@ console.log(result.text);
               name: 'provider',
               type: 'string',
               description:
-                '提供商标识符（例如，"openai"、"anthropic"）。',
+                '提供商标识符（例如 "openai"、"anthropic"）。',
             },
             {
               name: 'modelId',
               type: 'string',
-              description: '具体的模型标识符（例如，"gpt-4o"）。',
+              description:
+                '具体的模型标识符（例如 "gpt-6-astra"）。',
             },
             {
               name: 'instructions',
@@ -360,7 +363,7 @@ console.log(result.text);
               name: 'providerOptions',
               type: 'ProviderOptions | undefined',
               description:
-                '此步骤的附加提供商特定选项。',
+                '此步骤的额外提供商特定选项。',
             },
             {
               name: 'timeout',
@@ -371,7 +374,7 @@ console.log(result.text);
             {
               name: 'headers',
               type: 'Record<string, string | undefined> | undefined',
-              description: '随请求发送的附加 HTTP 头。',
+              description: '随请求发送的额外 HTTP 头。',
             },
             {
               name: 'stopWhen',
@@ -382,7 +385,7 @@ console.log(result.text);
               name: 'output',
               type: 'OUTPUT | undefined',
               description:
-                '结构化数据输出的输出规范（如果已配置）。',
+                '结构化输出的输出规范（如果已配置）。',
             },
             {
               name: 'abortSignal',
@@ -399,13 +402,13 @@ console.log(result.text);
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '用户定义的共享运行时上下文对象。可以在步骤之间由 prepareStep 更新。',
+                '用户定义的共享运行时上下文对象。可以在步骤之间通过 prepareStep 更新。',
             },
             {
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '按工具划分的上下文映射。可以在步骤之间由 prepareStep 更新。',
+                '按工具上下文映射。可以在步骤之间通过 prepareStep 更新。',
             },
           ],
         },
@@ -416,7 +419,7 @@ console.log(result.text);
       type: 'OnToolExecutionStartCallback',
       isOptional: true,
       description:
-        "在工具的 execute 函数运行之前调用的回调。如果在 `generate()` 或 `stream()` 中也指定了，则两个回调都会被调用（构造函数中的先调用）。",
+        "在工具的 execute 函数运行之前立即调用的回调。如果也在 `generate()` 或 `stream()` 中指定，则两个回调都会被调用（先调用构造函数中的）。",
       properties: [
         {
           type: 'ToolExecutionStartEvent',
@@ -425,25 +428,25 @@ console.log(result.text);
               name: 'callId',
               type: 'string',
               description:
-                '此生成调用的唯一标识符，用于关联事件。',
+                '本次生成调用的唯一标识符，用于关联事件。',
             },
             {
               name: 'toolCall',
               type: 'TypedToolCall<TOOLS>',
               description:
-                '完整的工具调用对象，包含 toolName、toolCallId、input 和元数据。',
+                '完整的工具调用对象，包含 toolName、toolCallId、input 和 metadata。',
             },
             {
               name: 'messages',
               type: 'Array<ModelMessage>',
               description:
-                '发送给语言模型以发起包含工具调用的响应的消息。不包括系统提示词，也不包括包含工具调用的助手响应。',
+                '发送给语言模型以发起包含该工具调用的响应的消息。不包括系统提示词，也不包括包含该工具调用的助手响应。',
             },
             {
               name: 'toolContext',
               type: 'InferToolContext<TOOLS[toolName]>',
               description:
-                '即将执行的工具调用的工具特定上下文对象。限定为单个工具的上下文类型，而不是整个工具集。',
+                '即将执行的工具调用的工具特定上下文对象。收窄为单个工具的上下文类型，而不是整个工具集。',
             },
           ],
         },
@@ -454,7 +457,7 @@ console.log(result.text);
       type: 'OnToolExecutionEndCallback',
       isOptional: true,
       description:
-        "在工具的 execute 函数完成（或出错）后立即调用的回调。`toolOutput` 字段是一个可判别联合：当 `toolOutput.type` 为 `'tool-result'` 时，`output` 字段包含工具结果；当 `toolOutput.type` 为 `'tool-error'` 时，`error` 字段包含错误。如果在 `generate()` 或 `stream()` 中也指定了，则两个回调都会被调用（构造函数中的先调用）。",
+        "在工具的 execute 函数完成（或出错）之后立即调用的回调。`toolOutput` 字段是一个可辨识联合：当 `toolOutput.type` 为 `'tool-result'` 时，`output` 字段包含工具结果；当 `toolOutput.type` 为 `'tool-error'` 时，`error` 字段包含错误。如果也在 `generate()` 或 `stream()` 中指定，则两个回调都会被调用（先调用构造函数中的）。",
       properties: [
         {
           type: 'ToolExecutionEndEvent',
@@ -463,37 +466,37 @@ console.log(result.text);
               name: 'callId',
               type: 'string',
               description:
-                '此生成调用的唯一标识符，用于关联事件。',
+                '本次生成调用的唯一标识符，用于关联事件。',
             },
             {
               name: 'toolCall',
               type: 'TypedToolCall<TOOLS>',
               description:
-                '完整的工具调用对象，包含 toolName、toolCallId、input 和元数据。',
+                '完整的工具调用对象，包含 toolName、toolCallId、input 和 metadata。',
             },
             {
               name: 'toolExecutionMs',
               type: 'number',
               description:
-                '工具执行的墙钟持续时间（毫秒）。',
+                '工具执行的挂钟时长，以毫秒为单位。',
             },
             {
               name: 'messages',
               type: 'Array<ModelMessage>',
               description:
-                '发送给语言模型以发起包含工具调用的响应的消息。不包括系统提示词，也不包括包含工具调用的助手响应。',
+                '发送给语言模型以发起包含该工具调用的响应的消息。不包括系统提示词，也不包括包含该工具调用的助手响应。',
             },
             {
               name: 'toolContext',
               type: 'InferToolContext<TOOLS[toolName]>',
               description:
-                '刚刚完成的工具调用的工具特定上下文对象。限定为单个工具的上下文类型，而不是整个工具集。',
+                '刚刚完成的工具调用的工具特定上下文对象。收窄为单个工具的上下文类型，而不是整个工具集。',
             },
             {
               name: 'toolOutput',
               type: 'ToolOutput<TOOLS>',
               description:
-                "表示工具执行结果的可判别联合。当 `type` 为 `'tool-result'` 时，`output` 字段包含工具的返回值。当 `type` 为 `'tool-error'` 时，`error` 字段包含错误。",
+                "表示工具执行结果的可辨识联合。当 `type` 为 `'tool-result'` 时，`output` 字段包含工具的返回值。当 `type` 为 `'tool-error'` 时，`error` 字段包含错误。",
             },
           ],
         },
@@ -504,21 +507,21 @@ console.log(result.text);
       type: 'GenerateTextOnStepEndCallback',
       isOptional: true,
       description:
-        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。如果在 `generate()` 或 `stream()` 中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。如果也在 `generate()` 或 `stream()` 中指定，则两个回调都会被调用（先调用构造函数中的）。',
     },
     {
       name: 'onStepFinish',
       type: 'GenerateTextOnStepFinishCallback',
       isOptional: true,
       description:
-        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时作为回退使用。',
+        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时用作回退。',
     },
     {
       name: 'onEnd',
       type: 'GenerateTextOnEndCallback',
       isOptional: true,
       description:
-        '当所有智能体步骤完成且响应完成时调用的回调。接收步骤结果、总使用量、共享的 `runtimeContext` 和 `toolsContext`。如果在 `generate()` 或 `stream()` 中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在所有智能体步骤完成且响应完成时调用的回调。接收步骤结果、总用量、共享的 `runtimeContext` 和 `toolsContext`。如果也在 `generate()` 或 `stream()` 中指定，则两个回调都会被调用（先调用构造函数中的）。',
     },
     {
       name: 'onFinish',
@@ -537,7 +540,7 @@ console.log(result.text);
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
       description:
-        '按工具名称键控的按工具划分的上下文映射。当至少一个工具定义了 `contextSchema` 时必需；当没有工具需要上下文时不接受。',
+        '按工具上下文映射，以工具名称为键。当至少一个工具定义了 `contextSchema` 时为必需；当没有工具需要上下文时不接受。',
     },
     {
       name: 'telemetry',
@@ -553,14 +556,14 @@ console.log(result.text);
               type: '{ [KEY in keyof CONTEXT]?: boolean }',
               isOptional: true,
               description:
-                '应包含在遥测中的顶级运行时上下文属性。除非显式设置为 `true`，否则运行时上下文属性会被排除。生命周期回调和返回的结果仍会接收完整的 `runtimeContext`。',
+                '应包含在遥测中的顶层运行时上下文属性。除非显式设置为 `true`，否则运行时上下文属性会被排除。生命周期回调和返回结果仍会收到完整的 `runtimeContext`。',
             },
             {
               name: 'includeToolsContext',
               type: '{ [TOOL_NAME in keyof InferToolSetContext<TOOLS>]?: { [KEY in keyof InferToolSetContext<TOOLS>[TOOL_NAME]]?: boolean } }',
               isOptional: true,
               description:
-                '应包含在遥测中的顶级工具上下文属性，按工具配置。除非显式设置为 `true`，否则工具上下文属性会被排除。生命周期回调和返回的结果仍会接收完整的 `toolsContext`。',
+                '应包含在遥测中的顶层工具上下文属性，按工具配置。除非显式设置为 `true`，否则工具上下文属性会被排除。生命周期回调和返回结果仍会收到完整的 `toolsContext`。',
             },
           ],
         },
@@ -571,52 +574,52 @@ console.log(result.text);
       type: 'DownloadFunction | undefined',
       isOptional: true,
       description:
-        '实验性：用于为工具或模型使用获取文件/URL 的自定义下载函数。默认情况下，如果模型不支持给定媒体类型的 URL，则会下载文件。',
+        '实验性：用于为工具或模型获取文件/URL 的自定义下载函数。默认情况下，如果模型不支持给定媒体类型的 URL，则会下载文件。',
     },
     {
       name: 'maxOutputTokens',
       type: 'number',
       isOptional: true,
-      description: '模型允许生成的最大令牌数。',
+      description: '允许模型生成的最大 token 数。',
     },
     {
       name: 'temperature',
       type: 'number',
       isOptional: true,
       description:
-        '采样温度，控制随机性。传递给模型。',
+        '采样温度，控制随机性。会传递给模型。',
     },
     {
       name: 'topP',
       type: 'number',
       isOptional: true,
       description:
-        'Top-p（核）采样参数。传递给模型。',
+        'Top-p（核）采样参数。会传递给模型。',
     },
     {
       name: 'topK',
       type: 'number',
       isOptional: true,
-      description: 'Top-k 采样参数。传递给模型。',
+      description: 'Top-k 采样参数。会传递给模型。',
     },
     {
       name: 'presencePenalty',
       type: 'number',
       isOptional: true,
-      description: '在场惩罚参数。传递给模型。',
+      description: 'Presence 惩罚参数。会传递给模型。',
     },
     {
       name: 'frequencyPenalty',
       type: 'number',
       isOptional: true,
-      description: '频率惩罚参数。传递给模型。',
+      description: 'Frequency 惩罚参数。会传递给模型。',
     },
     {
       name: 'stopSequences',
       type: 'string[]',
       isOptional: true,
       description:
-        '停止模型输出的自定义令牌序列。传递给模型。',
+        '用于停止模型输出的自定义 token 序列。会传递给模型。',
     },
     {
       name: 'seed',
@@ -634,28 +637,28 @@ console.log(result.text);
       name: 'providerOptions',
       type: 'ProviderOptions',
       isOptional: true,
-      description: '附加的提供商特定配置。',
+      description: '额外的提供商特定配置。',
     },
     {
       name: 'headers',
       type: 'Record<string, string | undefined>',
       isOptional: true,
       description:
-        '随请求发送的附加 HTTP 头。仅适用于基于 HTTP 的提供商。',
+        '随请求发送的额外 HTTP 头。仅适用于基于 HTTP 的提供商。',
     },
     {
       name: 'callOptionsSchema',
       type: 'FlexibleSchema<CALL_OPTIONS>',
       isOptional: true,
       description:
-        '可选的自定义调用选项模式，可在调用 generate() 或 stream() 时传递。',
+        '可选的自定义调用选项 schema，可在调用 generate() 或 stream() 时传入。',
     },
     {
       name: 'prepareCall',
       type: 'PrepareCallFunction',
       isOptional: true,
       description:
-        '可选函数，用于根据调用选项准备调用特定设置。',
+        '可选函数，用于根据调用选项准备调用特定的设置。',
     },
     {
       name: 'id',
@@ -666,7 +669,7 @@ console.log(result.text);
   ]}
 />
 
-## 属性
+## Properties
 
 <PropertiesTable
   content={[
@@ -684,11 +687,11 @@ console.log(result.text);
   ]}
 />
 
-## 方法
+## Methods
 
 ### `generate()`
 
-生成响应并根据需要触发工具调用，运行智能体循环并返回最终结果。返回一个解析为 `GenerateTextResult` 的 Promise。
+生成响应并按需触发工具调用，运行智能体循环并返回最终结果。返回一个解析为 `GenerateTextResult` 的 promise。
 
 ```ts
 const result = await agent.generate({
@@ -720,14 +723,14 @@ const result = await agent.generate({
       type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number }',
       isOptional: true,
       description:
-        '超时时间（毫秒）。可以指定为数字或包含 totalMs、stepMs、firstChunkMs 和/或 chunkMs 属性的对象。firstChunkMs 和 chunkMs 对 generate() 没有影响；它们仅用于流式传输，由 stream() 强制执行。可以与 abortSignal 一起使用。',
+        '超时时间，以毫秒为单位。可以指定为数字，或指定为包含 totalMs、stepMs、firstChunkMs 和/或 chunkMs 属性的对象。firstChunkMs 和 chunkMs 对 generate() 没有影响；它们仅用于流式传输，并由 stream() 强制执行。可以与 abortSignal 一起使用。',
     },
     {
       name: 'experimental_sandbox',
       type: 'Experimental_SandboxSession',
       isOptional: true,
       description:
-        '实验性沙箱环境，传递给 `prepareStep`、工具描述函数和工具执行。工具可以从其描述函数选项和执行选项中访问它。',
+        '实验性沙箱环境，会传递给 `prepareStep`、工具描述函数和工具执行。工具可以从其描述函数选项和执行选项中访问它。',
     },
     {
       name: 'options',
@@ -741,49 +744,49 @@ const result = await agent.generate({
       type: 'GenerateTextOnStartCallback',
       isOptional: true,
       description:
-        '在智能体操作开始时、任何 LLM 调用之前调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在智能体操作开始、进行任何 LLM 调用之前调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。',
     },
     {
       name: 'onStepStart',
       type: 'GenerateTextOnStepStartCallback',
       isOptional: true,
       description:
-        '在步骤（LLM 调用）开始时、调用提供商之前调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在步骤（LLM 调用）开始、调用提供商之前调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。',
     },
     {
       name: 'onToolExecutionStart',
       type: 'OnToolExecutionStartCallback',
       isOptional: true,
       description:
-        "在工具的 execute 函数运行之前调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。",
+        "在工具的 execute 函数运行之前立即调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。",
     },
     {
       name: 'onToolExecutionEnd',
       type: 'OnToolExecutionEndCallback',
       isOptional: true,
       description:
-        "在工具的 execute 函数完成（或出错）后立即调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。",
+        "在工具的 execute 函数完成（或出错）之后立即调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。",
     },
     {
       name: 'onStepEnd',
       type: 'GenerateTextOnStepEndCallback',
       isOptional: true,
       description:
-        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用，然后是这个）。',
+        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的，然后调用此回调）。',
     },
     {
       name: 'onStepFinish',
       type: 'GenerateTextOnStepFinishCallback',
       isOptional: true,
       description:
-        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时作为回退使用。',
+        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时用作回退。',
     },
     {
       name: 'onEnd',
       type: 'GenerateTextOnEndCallback',
       isOptional: true,
       description:
-        '当所有智能体步骤完成且响应完成时调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用，然后是这个）。',
+        '在所有智能体步骤完成且响应完成时调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的，然后调用此回调）。',
     },
     {
       name: 'onFinish',
@@ -794,13 +797,13 @@ const result = await agent.generate({
   ]}
 />
 
-#### 返回值
+#### Returns
 
-`generate()` 方法返回一个 `GenerateTextResult` 对象（有关详细信息，请参阅 [`generateText`](/docs/reference/ai-sdk-core/generate-text#returns)）。
+`generate()` 方法返回一个 `GenerateTextResult` 对象（详情请参阅 [`generateText`](/docs/reference/ai-sdk-core/generate-text#returns)）。
 
 ### `stream()`
 
-从智能体流式传输响应，包括智能体推理和工具调用（发生时）。返回一个 `StreamTextResult`。
+以流式传输智能体的响应，包括智能体推理和工具调用，并在它们发生时进行。返回一个 `StreamTextResult`。
 
 ```ts
 const stream = agent.stream({
@@ -836,14 +839,14 @@ for await (const chunk of stream.textStream) {
       type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number }',
       isOptional: true,
       description:
-        '超时时间（毫秒）。可以指定为数字或包含 totalMs、stepMs、firstChunkMs 和/或 chunkMs 属性的对象。firstChunkMs 限制每个模型调用步骤中等待第一个包含内容的输出的时间。chunkMs 限制后续包含内容的输出块之间的间隔。可以与 abortSignal 一起使用。',
+        '超时时间，以毫秒为单位。可以指定为数字，或指定为包含 totalMs、stepMs、firstChunkMs 和/或 chunkMs 属性的对象。firstChunkMs 限制每个模型调用步骤中等待第一个包含内容的输出的时间。chunkMs 限制后续包含内容的输出块之间的间隔。可以与 abortSignal 一起使用。',
     },
     {
       name: 'experimental_sandbox',
       type: 'Experimental_SandboxSession',
       isOptional: true,
       description:
-        '实验性沙箱环境，传递给 `prepareStep`、工具描述函数和工具执行。工具可以从其描述函数选项和执行选项中访问它。',
+        '实验性沙箱环境，会传递给 `prepareStep`、工具描述函数和工具执行。工具可以从其描述函数选项和执行选项中访问它。',
     },
     {
       name: 'options',
@@ -857,56 +860,56 @@ for await (const chunk of stream.textStream) {
       type: 'StreamTextTransform | Array<StreamTextTransform>',
       isOptional: true,
       description:
-        '可选的流转换。它们按提供的顺序应用，并且必须保持流结构。有关详细信息，请参阅 `streamText` 文档。',
+        '可选的流转换。它们按提供的顺序应用，并且必须保持流结构。详情请参阅 `streamText` 文档。',
     },
     {
       name: 'onStart',
       type: 'GenerateTextOnStartCallback',
       isOptional: true,
       description:
-        '在智能体操作开始时、任何 LLM 调用之前调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在智能体操作开始、进行任何 LLM 调用之前调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。',
     },
     {
       name: 'onStepStart',
       type: 'GenerateTextOnStepStartCallback',
       isOptional: true,
       description:
-        '在步骤（LLM 调用）开始时、调用提供商之前调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。',
+        '在步骤（LLM 调用）开始、调用提供商之前调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。',
     },
     {
       name: 'onToolExecutionStart',
       type: 'OnToolExecutionStartCallback',
       isOptional: true,
       description:
-        "在工具的 execute 函数运行之前调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。",
+        "在工具的 execute 函数运行之前立即调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。",
     },
     {
       name: 'onToolExecutionEnd',
       type: 'OnToolExecutionEndCallback',
       isOptional: true,
       description:
-        "在工具的 execute 函数完成（或出错）后立即调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用）。",
+        "在工具的 execute 函数完成（或出错）之后立即调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的）。",
     },
     {
       name: 'onStepEnd',
       type: 'GenerateTextOnStepEndCallback',
       isOptional: true,
       description:
-        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用，然后是这个）。',
+        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的，然后调用此回调）。',
     },
     {
       name: 'onStepFinish',
       type: 'GenerateTextOnStepFinishCallback',
       isOptional: true,
       description:
-        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时作为回退使用。',
+        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时用作回退。',
     },
     {
       name: 'onEnd',
       type: 'GenerateTextOnEndCallback',
       isOptional: true,
       description:
-        '当所有智能体步骤完成且响应完成时调用的回调。如果在构造函数中也指定了，则两个回调都会被调用（构造函数中的先调用，然后是这个）。',
+        '在所有智能体步骤完成且响应完成时调用的回调。如果也在构造函数中指定，则两个回调都会被调用（先调用构造函数中的，然后调用此回调）。',
     },
     {
       name: 'onFinish',
@@ -917,11 +920,11 @@ for await (const chunk of stream.textStream) {
   ]}
 />
 
-#### 返回值
+#### Returns
 
-`stream()` 方法返回一个 `StreamTextResult` 对象（有关详细信息，请参阅 [`streamText`](/docs/reference/ai-sdk-core/stream-text#returns)）。
+`stream()` 方法返回一个 `StreamTextResult` 对象（详情请参阅 [`streamText`](/docs/reference/ai-sdk-core/stream-text#returns)）。
 
-## 类型
+## Types
 
 ### `ActiveTools`
 
@@ -937,7 +940,7 @@ type ActiveTools<TOOLS extends ToolSet> =
 
 推断给定智能体实例的 UI 消息类型。适用于类型安全的 UI 和消息交换。
 
-#### 基本示例
+#### Basic Example
 
 ```ts
 import { ToolLoopAgent, InferAgentUIMessage } from 'ai';
@@ -950,15 +953,15 @@ const weatherAgent = new ToolLoopAgent({
 type WeatherAgentUIMessage = InferAgentUIMessage<typeof weatherAgent>;
 ```
 
-#### 带消息元数据的示例
+#### Example with Message Metadata
 
-您可以提供第二个类型参数来自定义每条消息的元数据。这对于跟踪智能体返回的丰富元数据（如 createdAt、tokens、finish reason 等）非常有用。
+你可以提供第二个类型参数来自定义每条消息的元数据。这对于跟踪智能体返回的丰富元数据（例如 createdAt、tokens、finish reason 等）非常有用。
 
 ```ts
 import { ToolLoopAgent, InferAgentUIMessage } from 'ai';
 import { z } from 'zod';
 
-// 消息元数据的示例模式
+// Example schema for message metadata
 const exampleMetadataSchema = z.object({
   createdAt: z.number().optional(),
   model: z.string().optional(),
@@ -967,22 +970,22 @@ const exampleMetadataSchema = z.object({
 });
 type ExampleMetadata = z.infer<typeof exampleMetadataSchema>;
 
-// 照常定义智能体
+// Define agent as usual
 const metadataAgent = new ToolLoopAgent({
   model: __MODEL__,
-  // ...其他选项
+  // ...other options
 });
 
-// 带自定义元数据的类型安全 UI 消息类型
+// Type-safe UI message type with custom metadata
 type MetadataAgentUIMessage = InferAgentUIMessage<
   typeof metadataAgent,
   ExampleMetadata
 >;
 ```
 
-## 示例
+## Examples
 
-### 带工具的基本智能体
+### Basic Agent with Tools
 
 ```ts
 import { ToolLoopAgent, isStepCount } from 'ai';
@@ -1003,10 +1006,10 @@ const result = await assistant.generate({
 });
 
 console.log(result.text);
-console.log(result.steps); // 智能体执行的所有步骤数组
+console.log(result.steps); // Array of all steps taken by the agent
 ```
 
-### 流式传输智能体响应
+### Streaming Agent Response
 
 ```ts
 const agent = new ToolLoopAgent({
@@ -1023,7 +1026,7 @@ for await (const chunk of stream.textStream) {
 }
 ```
 
-### 带输出解析的智能体
+### Agent with Output Parsing
 
 ```ts
 import { z } from 'zod';
@@ -1044,10 +1047,10 @@ const result = await analysisAgent.generate({
 });
 
 console.log(result.output);
-// 类型为 { sentiment: 'positive' | 'negative' | 'neutral', score: number, summary: string }
+// Typed as { sentiment: 'positive' | 'negative' | 'neutral', score: number, summary: string }
 ```
 
-### 示例：已批准的工具执行
+### Example: Approved Tool Execution
 
 ```ts
 import { ToolLoopAgent, ModelMessage, ToolApprovalResponse, tool } from 'ai';

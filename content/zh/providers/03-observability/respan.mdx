@@ -1,19 +1,19 @@
 ---
-title: Respan
-description: 使用 Respan 追踪和监控您的 AI SDK 应用
+title: "Respan"
+description: "使用 Respan 追踪和监控你的 AI SDK 应用"
 ---
 
 # Respan 可观测性
 
-[Respan](https://www.respan.ai/)（原 Keywords AI）是一个用于可观测性、评估和网关路由的 LLM 工程平台。Respan 与 AI SDK 集成，提供：
+[Respan](https://www.respan.ai/)（前身为 Keywords AI）是一个用于可观测性、评估和网关路由的 LLM 工程平台。Respan 与 AI SDK 集成，提供：
 
-- 每次 AI SDK 调用的追踪（输入、输出、Token 用量、成本、延迟）
+- 每次 AI SDK 调用的追踪（输入、输出、token 用量、成本、延迟）
 - 工具调用和结构化输出捕获
-- 可选网关路由，通过单一端点访问 250 多个模型
+- 可选的网关路由，通过单一端点访问 250+ 模型
 
 ## 设置
 
-AI SDK 通过 OpenTelemetry 支持追踪。使用 `@respan/instrumentation-vercel` 提供的 `VercelAIInstrumentor`，追踪数据会自动导出到 Respan。
+AI SDK 支持通过 OpenTelemetry 进行追踪。使用来自 `@respan/instrumentation-vercel` 的 `VercelAIInstrumentor`，追踪数据会自动导出到 Respan。
 
 ### 安装
 
@@ -27,7 +27,7 @@ npm install ai @ai-sdk/openai @respan/respan @respan/instrumentation-vercel
 RESPAN_API_KEY="your-respan-api-key"
 ```
 
-从 [platform.respan.ai](https://platform.respan.ai/platform/api/api-keys) 获取您的 API 密钥。
+从 [platform.respan.ai](https://platform.respan.ai/platform/api/api-keys) 获取你的 API 密钥。
 
 ### 初始化 Respan
 
@@ -35,7 +35,7 @@ RESPAN_API_KEY="your-respan-api-key"
 
 <Tab>
 
-在 Next.js 项目根目录创建 `instrumentation.ts`：
+在你的 Next.js 项目根目录创建 `instrumentation.ts`：
 
 ```ts filename="instrumentation.ts"
 import { Respan } from '@respan/respan';
@@ -50,7 +50,7 @@ export async function register() {
 }
 ```
 
-然后在 `next.config.ts` 中将 SDK 包标记为服务器外部包：
+然后在 `next.config.ts` 中将 SDK 包标记为服务端外部依赖：
 
 ```ts filename="next.config.ts"
 import type { NextConfig } from 'next';
@@ -66,7 +66,7 @@ export default nextConfig;
 
 <Tab>
 
-在处理器或入口点顶部初始化 Respan：
+在处理程序或入口点的顶部初始化 Respan：
 
 ```ts
 import { Respan } from '@respan/respan';
@@ -83,24 +83,24 @@ await respan.initialize();
 
 </Tabs>
 
-### 启用遥测生成文本
+### 在启用遥测的情况下生成文本
 
 ```ts
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: openai('gpt-4o-mini'),
+  model: openai('gpt-6-luna'),
   prompt: 'Tell me a joke about AI',
   experimental_telemetry: { isEnabled: true },
 });
 ```
 
-Span 会出现在 [Respan 追踪页面](https://platform.respan.ai/platform/traces)中，包含输入、输出、Token 用量和成本信息。
+Span 会出现在 [Respan 追踪页面](https://platform.respan.ai/platform/traces)中，包含输入、输出、token 用量和成本。
 
 ## 网关路由（可选）
 
-要将 Respan 用作跨提供商的统一网关，请将任何 AI SDK 提供商指向 `https://api.respan.ai/api`，并使用您的 `RESPAN_API_KEY`。提供商密钥在 Respan 中管理；运行时只需 Respan 密钥。
+要将 Respan 用作跨提供商的统一网关，请将任意 AI SDK 提供商指向 `https://api.respan.ai/api`，并使用你的 `RESPAN_API_KEY`。提供商密钥在 Respan 中管理；运行时只需要 Respan 密钥。
 
 ```ts
 import { createOpenAI } from '@ai-sdk/openai';
@@ -112,13 +112,13 @@ const provider = createOpenAI({
 });
 
 const result = await generateText({
-  model: provider('gpt-4.1-nano'),
+  model: provider('gpt-5.4-nano'),
   prompt: 'Tell me a joke about AI',
   experimental_telemetry: { isEnabled: true },
 });
 ```
 
-当与各自的 AI SDK 提供商（`createAnthropic`、`createGoogleGenerativeAI`）以及匹配的基础路径（`/api/anthropic`、`/api/google/gemini`）一起使用时，同一网关端点也支持 Anthropic 和 Google 模型。
+同一个网关端点在使用相应的 AI SDK 提供商（`createAnthropic`、`createGoogleGenerativeAI`）和匹配的基础路径（`/api/anthropic`、`/api/google/gemini`）时，也接受 Anthropic 和 Google 模型。
 
 ## 资源
 

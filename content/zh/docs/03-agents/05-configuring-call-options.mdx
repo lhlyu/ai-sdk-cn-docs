@@ -1,32 +1,32 @@
 ---
-title: 配置调用选项
-description: 传递类型安全的运行时输入，动态配置智能体行为。
+title: "配置调用选项"
+description: "传入类型安全的运行时输入，以动态配置智能体行为。"
 ---
 
 # 配置调用选项
 
-调用选项允许你向智能体传递类型安全的结构化输入。使用它们可以根据特定请求动态修改任何智能体设置。
+调用选项允许你向智能体传入类型安全的结构化输入。使用它们可以根据具体请求动态修改任何智能体设置。
 
 ## 为什么使用调用选项？
 
-当你需要智能体行为根据运行时输入变化时：
+当你需要智能体行为根据运行时输入发生变化时：
 
-- **添加动态上下文** - 将检索到的文档、用户偏好或会话数据注入提示词
-- **动态选择模型** - 根据请求复杂度选择更快或能力更强的模型
+- **添加上下文** - 将检索到的文档、用户偏好或会话数据注入提示词
+- **动态选择模型** - 根据请求复杂度选择更快或更强大的模型
 - **按请求配置工具** - 将用户位置传递给搜索工具或调整工具行为
-- **自定义提供商选项** - 设置推理努力度、温度或其他提供商特定设置
+- **自定义提供商选项** - 设置推理强度、温度或其他提供商特定设置
 
-没有调用选项，你需要创建多个智能体或在智能体外部处理配置逻辑。
+如果没有调用选项，你就需要创建多个智能体，或在智能体外部处理配置逻辑。
 
 ## 工作原理
 
 通过三个步骤定义调用选项：
 
-1. **定义模式** - 使用 `callOptionsSchema` 指定你接受的输入
-2. **使用 `prepareCall` 配置** - 利用这些输入修改智能体设置
-3. **运行时传递选项** - 在调用 `generate()` 或 `stream()` 时提供选项
+1. **定义 schema** - 使用 `callOptionsSchema` 指定你接受哪些输入
+2. **使用 `prepareCall` 进行配置** - 使用这些输入修改智能体设置
+3. **在运行时传入选项** - 在调用 `generate()` 或 `stream()` 时提供选项
 
-## 基本示例
+## 基础示例
 
 在运行时向智能体的提示词添加用户上下文：
 
@@ -41,22 +41,22 @@ const supportAgent = new ToolLoopAgent({
     userId: z.string(),
     accountType: z.enum(['free', 'pro', 'enterprise']),
   }),
-  instructions: '你是一位乐于助人的客户支持智能体。',
+  instructions: 'You are a helpful customer support agent.',
   prepareCall: ({ options, ...settings }) => ({
     ...settings,
     instructions:
       settings.instructions +
-      `\n用户上下文：
-- 账户类型：${options.accountType}
-- 用户 ID：${options.userId}
+      `\nUser context:
+- Account type: ${options.accountType}
+- User ID: ${options.userId}
 
-根据用户的账户级别调整你的回复。`,
+Adjust your response based on the user's account level.`,
   }),
 });
 
-// 使用特定用户上下文调用智能体
+// Call the agent with specific user context
 const result = await supportAgent.generate({
-  prompt: '如何升级我的账户？',
+  prompt: 'How do I upgrade my account?',
   options: {
     userId: 'user_123',
     accountType: 'free',
@@ -64,7 +64,7 @@ const result = await supportAgent.generate({
 });
 ```
 
-现在 `options` 参数是必需的且经过类型检查。如果你不提供它或传递错误的类型，TypeScript 会报错。
+现在 `options` 参数是必需的，并且会进行类型检查。如果你不提供它或传入错误的类型，TypeScript 会报错。
 
 ## 修改智能体设置
 
@@ -80,26 +80,28 @@ __PROVIDER_IMPORT__;
 import { z } from 'zod';
 
 const agent = new ToolLoopAgent({
-  model: __MODEL__, // 默认模型
+  model: __MODEL__, // Default model
   callOptionsSchema: z.object({
     complexity: z.enum(['simple', 'complex']),
   }),
   prepareCall: ({ options, ...settings }) => ({
     ...settings,
     model:
-      options.complexity === 'simple' ? 'openai/gpt-4o-mini' : 'openai/o1-mini',
+      options.complexity === 'simple'
+        ? 'openai/gpt-6-luna'
+        : 'openai/gpt-6-astra',
   }),
 });
 
-// 对简单查询使用更快的模型
+// Use faster model for simple queries
 await agent.generate({
-  prompt: '2+2 等于多少？',
+  prompt: 'What is 2+2?',
   options: { complexity: 'simple' },
 });
 
-// 对复杂推理使用能力更强的模型
+// Use more capable model for complex reasoning
 await agent.generate({
-  prompt: '解释量子纠缠',
+  prompt: 'Explain quantum entanglement',
   options: { complexity: 'complex' },
 });
 ```
@@ -140,10 +142,10 @@ const newsAgent = new ToolLoopAgent({
 });
 
 await newsAgent.generate({
-  prompt: '有哪些本地头条新闻？',
+  prompt: 'What are the top local news stories?',
   options: {
-    userCity: '旧金山',
-    userRegion: '加利福尼亚',
+    userCity: 'San Francisco',
+    userRegion: 'California',
   },
 });
 ```
@@ -158,7 +160,7 @@ import { ToolLoopAgent } from 'ai';
 import { z } from 'zod';
 
 const agent = new ToolLoopAgent({
-  model: 'openai/o3',
+  model: 'openai/gpt-6-astra',
   callOptionsSchema: z.object({
     taskDifficulty: z.enum(['low', 'medium', 'high']),
   }),
@@ -173,7 +175,7 @@ const agent = new ToolLoopAgent({
 });
 
 await agent.generate({
-  prompt: '分析这个复杂场景……',
+  prompt: 'Analyze this complex scenario...',
   options: { taskDifficulty: 'high' },
 });
 ```
@@ -182,7 +184,7 @@ await agent.generate({
 
 ### 检索增强生成（RAG）
 
-获取相关上下文并将其注入提示词：
+获取相关上下文并将其注入到你的提示词中：
 
 ```ts
 import { ToolLoopAgent } from 'ai';
@@ -195,12 +197,12 @@ const ragAgent = new ToolLoopAgent({
     query: z.string(),
   }),
   prepareCall: async ({ options, ...settings }) => {
-    // 获取相关文档（这可以是异步的）
+    // Fetch relevant documents (this can be async)
     const documents = await vectorSearch(options.query);
 
     return {
       ...settings,
-      instructions: `使用以下上下文回答问题：
+      instructions: `Answer questions using the following context:
 
 ${documents.map(doc => doc.content).join('\n\n')}`,
     };
@@ -208,16 +210,16 @@ ${documents.map(doc => doc.content).join('\n\n')}`,
 });
 
 await ragAgent.generate({
-  prompt: '我们的退款政策是什么？',
-  options: { query: '退款政策' },
+  prompt: 'What is our refund policy?',
+  options: { query: 'refund policy' },
 });
 ```
 
-`prepareCall` 函数可以是异步的，使你能够在配置智能体之前获取数据。
+`prepareCall` 函数可以是异步的，这使你能够在配置智能体之前获取数据。
 
 ### 组合多个修改
 
-一起修改多个设置：
+同时修改多个设置：
 
 ```ts
 import { ToolLoopAgent } from 'ai';
@@ -236,21 +238,21 @@ const agent = new ToolLoopAgent({
   },
   prepareCall: ({ options, ...settings }) => ({
     ...settings,
-    // 对紧急请求升级模型
+    // Upgrade model for urgent requests
     model: options.urgency === 'high' ? __MODEL__ : settings.model,
-    // 根据用户角色限制工具
+    // Limit tools based on user role
     activeTools:
       options.userRole === 'admin'
         ? ['readDatabase', 'writeDatabase']
         : ['readDatabase'],
-    // 调整指令
-    instructions: `你是一位 ${options.userRole} 助手。
-${options.userRole === 'admin' ? '你拥有完整的数据库访问权限。' : '你只有只读访问权限。'}`,
+    // Adjust instructions
+    instructions: `You are a ${options.userRole} assistant.
+${options.userRole === 'admin' ? 'You have full database access.' : 'You have read-only access.'}`,
   }),
 });
 
 await agent.generate({
-  prompt: '更新用户记录',
+  prompt: 'Update the user record',
   options: {
     userRole: 'admin',
     urgency: 'high',
@@ -280,7 +282,7 @@ export async function POST(request: Request) {
 }
 ```
 
-## 下一步
+## 后续步骤
 
-- 了解[循环控制](/docs/agents/loop-control)以管理执行
+- 了解[循环控制](/docs/agents/loop-control)以进行执行管理
 - 探索[工作流模式](/docs/agents/workflows)以处理复杂的多步骤流程

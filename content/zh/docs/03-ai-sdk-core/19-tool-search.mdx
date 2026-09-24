@@ -1,0 +1,64 @@
+---
+title: "工具搜索"
+description: "让模型按需发现工具，支持直接调用或保留缓存的代码模式。"
+---
+
+# 工具搜索
+
+`toolSearch()` 让模型能够找到所需的工具，而无需将每个工具的定义加载到初始上下文中。使用 `deferLoading: true` 注册工具；搜索会匹配工具的名称和描述，并在**下一个模型步骤**中使其可用。
+
+可与 `generateText`、`streamText`、`ToolLoopAgent` 或来自 `@ai-sdk/workflow` 的 `WorkflowAgent` 一起使用。该工厂函数不接受参数；由模型提供搜索查询。`WorkflowAgent` 支持直接工具调用；其他 API 还支持保留缓存的代码模式。
+
+## 直接工具调用
+
+模型最初只能看到 `search`。搜索后，匹配的定义会被添加到提供商的工具列表中，模型直接调用这些工具。这会改变工具定义，并可能使缓存的提示词前缀失效。
+
+```ts
+import { generateText, isStepCount, tool, toolSearch } from 'ai';
+import { z } from 'zod/v4';
+
+const weather = tool({
+  deferLoading: true,
+  description: 'Get the weather forecast for a city.',
+  inputSchema: z.object({ city: z.string() }),
+  execute: async ({ city }) => ({ city, forecast: 'Rain tomorrow.' }),
+});
+
+const result = await generateText({
+  model: __MODEL__,
+  tools: { search: toolSearch(), weather },
+  stopWhen: isStepCount(5),
+  prompt: 'Will it rain in Bangalore tomorrow?',
+});
+```
+
+## 代码模式
+
+使用[代码模式](/docs/ai-sdk-core/code-mode)时，模型通过生成的代码来搜索和调用工具。设置 `toolDiscovery: 'conversation'` 可在用户消息中公布已发现的定义，同时保持提供商可见的代码工具不变。**这会在发现工具的过程中保留工具定义缓存。** 实际的提示词缓存复用取决于提供商。
+
+使用上面定义的 `weather` 工具：
+
+```ts
+import { experimental_codeModeTool as codeModeTool } from '@ai-sdk/code-mode';
+
+const result = await generateText({
+  model: __MODEL__,
+  tools: {
+    code: codeModeTool({ toolDiscovery: 'conversation' }),
+    search: toolSearch(),
+    weather,
+  },
+  experimental_toolCallers: {
+    search: ['code'],
+    weather: ['code'],
+  },
+  stopWhen: isStepCount(5),
+  prompt: 'Will it rain in Bangalore tomorrow?',
+});
+```
+
+模型首先运行 `tools.search({ query: 'weather forecast' })`。在下一步中，它会收到更新后的能力目录，并可以调用 `tools.weather({ city: 'Bangalore' })`。
+
+在两种模式下，搜索最多加载五个匹配项，遵循 `activeTools` 和调用方路由，并让已发现的工具在本次生成的剩余过程中保持可用。MCP 客户端工具同样适用：在 `client.tools()` 返回的工具中添加 `deferLoading: true` 即可。
+
+有关输入、输出和匹配的详细信息，请参阅 [`toolSearch()` 参考文档](/docs/reference/ai-sdk-core/tool-search)。

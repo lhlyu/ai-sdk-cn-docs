@@ -1,26 +1,26 @@
 ---
-title: 在聊天中渲染可视化界面
-description: 学习如何使用 AI SDK 和 Next.js 在聊天中渲染可视化界面
-tags: ['next', '生成式用户界面']
+title: "在聊天中渲染可视化界面"
+description: "学习如何使用 AI SDK 和 Next.js 在聊天中渲染可视化界面"
+tags: ['next', 'generative user interface']
 ---
 
 # 在聊天中渲染可视化界面
 
-语言模型能够调用[工具](/docs/ai-sdk-core/tools-and-tool-calling)的一个有趣结果是，这种能力可以通过将 React 组件流式传输到客户端来渲染可视化界面。
+语言模型能够调用[工具](/docs/ai-sdk-core/tools-and-tool-calling)的一个有趣结果是，这种能力可用于通过将 React 组件流式传输到客户端来渲染可视化界面。
 
 <Browser>
   <ChatGeneration
     history={[
-      { role: 'User', content: '最近怎么样？' },
-      { role: 'Assistant', content: '一切都好，有什么可以帮你的吗？' },
+      { role: 'User', content: 'How is it going?' },
+      { role: 'Assistant', content: 'All good, how may I help you?' },
     ]}
     inputMessage={{
       role: 'User',
-      content: '旧金山天气如何？',
+      content: 'What is the weather in San Francisco?',
     }}
     outputMessage={{
       role: 'Assistant',
-      content: '旧金山目前天气晴朗，气温24°C。',
+      content: 'The weather is 24°C and sunny in San Francisco.',
       display: (
         <div className="py-4">
           <WeatherCard
@@ -39,7 +39,7 @@ tags: ['next', '生成式用户界面']
 
 ## 客户端
 
-让我们构建一个助手，通过调用 `getWeatherInformation` 工具来获取任意城市的天气。在工具调用期间，你不会返回文本，而是渲染一个 React 组件，在客户端显示天气信息。
+让我们构建一个助手，通过调用 `getWeatherInformation` 工具来获取任意城市的天气。在工具调用期间，你将渲染一个 React 组件来在客户端显示天气信息，而不是返回文本。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -61,12 +61,12 @@ export default function Chat() {
 
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 
-    // 运行自动执行的客户端工具：
+    // run client-side tools that are automatically executed:
     async onToolCall({ toolCall }) {
       if (toolCall.toolName === 'getLocation') {
         const cities = ['New York', 'Los Angeles', 'Chicago', 'San Francisco'];
 
-        // 无需 await - 避免潜在的死锁
+        // No await - avoids potential deadlocks
         addToolOutput({
           tool: 'getLocation',
           toolCallId: toolCall.toolCallId,
@@ -85,7 +85,7 @@ export default function Chat() {
             switch (part.type) {
               case 'text':
                 return <div key={m.id + i}>{part.text}</div>;
-              // 渲染确认工具（带用户交互的客户端工具）
+              // render confirmation tool (client-side tool with user interaction)
               case 'tool-askForConfirmation':
                 return (
                   <div
@@ -107,7 +107,7 @@ export default function Chat() {
                               })
                             }
                           >
-                            是
+                            Yes
                           </button>
                           <button
                             className="px-4 py-2 font-bold text-white bg-red-500 rounded hover:bg-red-700"
@@ -119,7 +119,7 @@ export default function Chat() {
                               })
                             }
                           >
-                            否
+                            No
                           </button>
                         </>
                       )}
@@ -127,7 +127,7 @@ export default function Chat() {
                   </div>
                 );
 
-              // 其他工具：
+              // other tools:
               case 'tool-getWeatherInformation':
                 if (part.state === 'output-available') {
                   return (
@@ -165,13 +165,13 @@ export default function Chat() {
                       key={part.toolCallId}
                       className="text-gray-500 bg-gray-100 rounded-lg p-4"
                     >
-                      用户位于 {part.output}。
+                      User is in {part.output}.
                     </div>
                   );
                 } else {
                   return (
                     <div key={part.toolCallId} className="text-gray-500">
-                      正在调用 getLocation...
+                      Calling getLocation...
                     </div>
                   );
                 }
@@ -193,7 +193,7 @@ export default function Chat() {
         <input
           className="fixed bottom-0 w-full max-w-md p-2 mb-8 border border-gray-300 rounded shadow-xl"
           value={input}
-          placeholder="说点什么..."
+          placeholder="Say something..."
           onChange={e => setInput(e.currentTarget.value)}
         />
       </form>
@@ -221,7 +221,7 @@ import { z } from 'zod';
 
 const tools = {
   getWeatherInformation: tool({
-    description: '向用户展示指定城市的天气',
+    description: 'show the weather in a given city to the user',
     inputSchema: z.object({ city: z.string() }),
     execute: async ({ city }: { city: string }) => {
       return {
@@ -229,28 +229,28 @@ const tools = {
         value: 24,
         unit: 'celsius',
         weeklyForecast: [
-          { day: '星期一', value: 24 },
-          { day: '星期二', value: 25 },
-          { day: '星期三', value: 26 },
-          { day: '星期四', value: 27 },
-          { day: '星期五', value: 28 },
-          { day: '星期六', value: 29 },
-          { day: '星期日', value: 30 },
+          { day: 'Monday', value: 24 },
+          { day: 'Tuesday', value: 25 },
+          { day: 'Wednesday', value: 26 },
+          { day: 'Thursday', value: 27 },
+          { day: 'Friday', value: 28 },
+          { day: 'Saturday', value: 29 },
+          { day: 'Sunday', value: 30 },
         ],
       };
     },
   }),
-  // 启动用户交互的客户端工具：
+  // client-side tool that starts user interaction:
   askForConfirmation: tool({
-    description: '向用户请求确认。',
+    description: 'Ask the user for confirmation.',
     inputSchema: z.object({
-      message: z.string().describe('用于请求确认的消息。'),
+      message: z.string().describe('The message to ask for confirmation.'),
     }),
   }),
-  // 在客户端自动执行的客户端工具：
+  // client-side tool that is automatically executed on the client:
   getLocation: tool({
     description:
-      '获取用户位置。使用此工具前请务必请求确认。',
+      'Get the user location. Always ask for confirmation before using this tool.',
     inputSchema: z.object({}),
   }),
 } satisfies ToolSet;
@@ -263,7 +263,7 @@ export async function POST(request: Request) {
   const { messages }: { messages: ChatMessage[] } = await request.json();
 
   const result = streamText({
-    model: 'openai/gpt-4.1',
+    model: 'openai/gpt-6-astra',
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: isStepCount(5),

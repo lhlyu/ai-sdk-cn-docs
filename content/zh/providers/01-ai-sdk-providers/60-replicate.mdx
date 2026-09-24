@@ -1,22 +1,22 @@
 ---
 title: "Replicate"
-description: "了解如何将 Replicate 模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用 Replicate 模型。"
 ---
 
 # Replicate 提供商
 
-[Replicate](https://replicate.com/) 是一个运行开源 AI 模型的平台。
+[Replicate](https://replicate.com/) 是一个用于运行开源 AI 模型的平台。
 它是运行图像生成模型的热门选择。
 
-## 安装
+## 设置
 
-Replicate 提供商可通过 `@ai-sdk/replicate` 模块获取。你可以使用以下命令安装它：
+Replicate 提供商可通过 `@ai-sdk/replicate` 模块使用。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/replicate" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/replicate` 导入默认的提供商实例 `replicate`：
+你可以从 `@ai-sdk/replicate` 导入默认提供商实例 `replicate`：
 
 ```ts
 import { replicate } from '@ai-sdk/replicate';
@@ -38,16 +38,16 @@ const replicate = createReplicate({
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
-  默认前缀为 `https://api.replicate.com/v1`。
+  默认前缀是 `https://api.replicate.com/v1`。
 
 - **apiToken** _string_
 
-  通过 `Authorization` 标头发送的 API 令牌。它默认为
+  通过 `Authorization` 请求头发送的 API 令牌。默认使用
   `REPLICATE_API_TOKEN` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -59,9 +59,10 @@ const replicate = createReplicate({
 有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 <Note>
-  不同模型对 `size` 和其他参数的支持情况有所不同。请查看
-  模型在 [Replicate](https://replicate.com/explore) 上的文档，了解支持的选项以及可通过
-  `providerOptions.replicate` 传递的额外参数。
+  模型对 `size` 和其他参数的支持因模型而异。请查看
+  [Replicate](https://replicate.com/explore) 上模型的文档，了解
+  支持的选项以及可通过 `providerOptions.replicate` 传递的
+  其他参数。
 </Note>
 
 ### 支持的图像模型
@@ -98,7 +99,7 @@ Replicate 提供商目前支持以下图像模型：
 - [stability-ai/stable-diffusion-3.5-medium](https://replicate.com/stability-ai/stable-diffusion-3.5-medium)
 - [tstramer/material-diffusion](https://replicate.com/tstramer/material-diffusion)
 
-**修复和图像编辑模型：**
+**图像修复和图像编辑模型：**
 
 - [black-forest-labs/flux-fill-pro](https://replicate.com/black-forest-labs/flux-fill-pro)
 - [black-forest-labs/flux-fill-dev](https://replicate.com/black-forest-labs/flux-fill-dev)
@@ -110,12 +111,12 @@ Replicate 提供商目前支持以下图像模型：
 - [black-forest-labs/flux-2-pro](https://replicate.com/black-forest-labs/flux-2-pro)
 - [black-forest-labs/flux-2-dev](https://replicate.com/black-forest-labs/flux-2-dev)
 
-你也可以使用 [版本化模型](https://replicate.com/docs/topics/models/versions)。
-版本化模型的 ID 是 Replicate 模型 ID 后跟冒号和版本 ID（`$modelId:$versionId`），例如
+你也可以使用[带版本的模型](https://replicate.com/docs/topics/models/versions)。
+带版本模型的 id 是 Replicate 模型 id 后跟一个冒号和版本 ID（`$modelId:$versionId`），例如
 `bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637`。
 
 <Note>
-  如果需要，你也可以将任何可用的 Replicate 模型 ID 作为字符串传递。
+  如有需要，你也可以将任何可用的 Replicate 模型 ID 作为字符串传递。
 </Note>
 
 ### 基本用法
@@ -154,7 +155,7 @@ const { image } = await generateImage({
 });
 ```
 
-### 版本化模型
+### 带版本的模型
 
 ```ts
 import { replicate } from '@ai-sdk/replicate';
@@ -174,7 +175,7 @@ Replicate 通过各种模型支持图像编辑。通过 `prompt.images` 传递�
 
 #### 基本图像编辑
 
-使用文本提示转换现有图像：
+使用文本提示词转换现有图像：
 
 ```ts
 const imageBuffer = readFileSync('./input-image.png');
@@ -194,13 +195,13 @@ const { images } = await generateImage({
 });
 ```
 
-#### 使用遮罩进行修复
+#### 使用蒙版进行图像修复
 
-使用遮罩编辑图像的特定部分。对于 FLUX Fill 模型，遮罩中的白色区域表示应编辑的图像部分：
+使用蒙版编辑图像的特定部分。对于 FLUX Fill 模型，蒙版中的白色区域表示应编辑图像的位置：
 
 ```ts
 const image = readFileSync('./input-image.png');
-const mask = readFileSync('./mask.png'); // 白色 = 修复，黑色 = 保留
+const mask = readFileSync('./mask.png'); // White = inpaint, black = keep
 
 const { images } = await generateImage({
   model: replicate.image('black-forest-labs/flux-fill-pro'),
@@ -240,27 +241,29 @@ const { images } = await generateImage({
 
 <Note>
   Flux-2 模型在内部使用不同的输入格式（`input_image`、
-  `input_image_2` 等），这些格式会自动处理。请注意，Flux-2 模型
-  不支持基于遮罩的修复。
+  `input_image_2` 等），这些格式会被自动处理。请注意，Flux-2 模型
+  不支持基于蒙版的图像修复。
 </Note>
 
 <Note>
-  输入图像可以作为 `Buffer`、`ArrayBuffer`、`Uint8Array` 或
-  base64 编码的字符串提供。不同的 Replicate 模型具有不同的参数名称
-  和功能——请查看模型在
-  [Replicate](https://replicate.com/explore) 上的文档以了解详情。
+  输入图像可以提供为 `Buffer`、`ArrayBuffer`、`Uint8Array` 或
+  base64 编码的字符串。不同的 Replicate 模型具有不同的参数
+  名称和功能——请查看 [Replicate](https://replicate.com/explore)
+  上模型的文档以了解详情。
 </Note>
 
 ### 提供商选项
 
-图像生成的通用提供商选项：
+图像生成的常用提供商选项：
 
-- **maxWaitTimeInSeconds** _number_ - 在同步模式下等待预测完成的最长时间（秒）。默认情况下，Replicate 使用 [同步模式](https://replicate.com/docs/topics/predictions/create-a-prediction#timeout-duration)，超时时间为 60 秒。设置为正数以使用自定义持续时间（例如，`120` 表示 2 分钟）。未指定时，使用默认的 60 秒等待时间。
-- **guidance_scale** _number_ - 无分类器引导的引导比例。较高的值会使输出更紧密地匹配提示词。
+- **maxWaitTimeInSeconds** _number_ - 在同步模式下等待预测完成的最长时间（秒）。默认情况下，Replicate 使用[同步模式](https://replicate.com/docs/topics/predictions/create-a-prediction#timeout-duration)，超时时间为 60 秒。设置为正数可使用自定义时长（例如，`120` 表示 2 分钟）。未指定时，使用默认的 60 秒等待时间。
+- **pollIntervalMillis** _number_ - 当预测未在同步等待时长内完成时，轮询尝试之间的间隔（毫秒）。默认为 500 毫秒。
+- **maxPollAttempts** _number_ - 放弃前的最大轮询尝试次数。默认为 240 次。
+- **guidance_scale** _number_ - 无分类器引导的引导比例。较高的值使输出更贴近提示词。
 - **num_inference_steps** _number_ - 去噪步数。步数越多 = 质量越高但速度越慢。
-- **negative_prompt** _string_ - 负面提示词，用于指导生成中应避免的内容。
+- **negative_prompt** _string_ - 负向提示词，用于引导生成中应避免的内容。
 - **output_format** _'png' | 'jpg' | 'webp'_ - 输出图像格式。
 - **output_quality** _number (1-100)_ - 输出图像质量。仅适用于 jpg 和 webp。
-- **strength** _number (0-1)_ - 图像到图像转换的强度。较低的值会保留更多原始图像。
+- **strength** _number (0-1)_ - img2img 的转换强度。较低的值会保留更多原始图像。
 
-有关更多详细信息，请参阅 [Replicate 模型页面](https://replicate.com/explore)。
+有关更多详情，请参阅 [Replicate 模型页面](https://replicate.com/explore)。

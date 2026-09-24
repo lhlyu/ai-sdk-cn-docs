@@ -1,22 +1,22 @@
 ---
 title: "生命周期回调"
-description: "在 generateText、streamText、embed、embedMany 和 rerank 调用中观察 AI SDK 生命周期事件"
+description: "在 generateText、streamText、embed、embedMany、rerank 和 experimental_evaluate 调用中观察 AI SDK 生命周期事件"
 ---
 
 # 生命周期回调
 
-事件回调让你可以在 AI SDK 调用的关键节点运行自己的代码。
-你可以直接将它们附加到 `generateText`、`streamText`、`embed`、`embedMany` 和 `rerank` 调用上，以观察发生了什么、记录用量、调试多步骤生成，并监控工具执行。
+事件回调让你可以在 AI SDK 调用的重要节点运行自己的代码。
+你可以将它们直接附加到 `generateText`、`streamText`、`embed`、`embedMany`、`rerank` 和 `experimental_evaluate` 调用上，以观察发生了什么、记录用量、调试多步生成以及监控工具执行。
 
-当你希望在调用位置附近实现特定于应用的逻辑时，它们尤其有用：
+当你希望将特定于应用的逻辑放在调用点附近时，它们尤其有用：
 
 - 记录请求使用了哪个模型、提示词结构和设置。
-- 记录令牌用量、延迟、结束原因和警告，用于分析或计费。
-- 理解多步骤工具调用如何从模型响应到工具执行再到最终答案。
+- 记录 token 用量、延迟、结束原因和警告，用于分析或计费。
+- 了解多步工具调用如何从模型响应到工具执行再到最终答案。
 - 跟踪工具输入、工具输出、执行时间和错误。
 - 通过 `runtimeContext` 和 `toolsContext` 附加你自己的请求、用户、租户或工作流标识符。
 
-如需在整个应用中自动进行 OpenTelemetry 检测，请使用 [遥测](/docs/ai-sdk-core/telemetry)。
+如需在整个应用中自动进行 OpenTelemetry 插桩，请使用 [Telemetry](/docs/ai-sdk-core/telemetry)。
 当你希望为特定的 AI SDK 调用运行自定义代码时，请使用事件回调。
 
 ## 基本用法
@@ -45,15 +45,15 @@ const result = await generateText({
 });
 ```
 
-回调可以是同步的，也可以是异步的。如果回调抛出错误，该错误会在内部被捕获，AI SDK 调用会继续执行。
-由于回调是生命周期的一部分，请保持它们快速执行，或将耗时操作放入后台系统处理。
+回调可以是同步的或异步的。如果回调抛出错误，该错误会在内部被捕获，AI SDK 调用会继续执行。
+由于回调是生命周期的一部分，请保持它们快速执行，或将耗时的工作放入后台系统队列中。
 
 ## 使用场景
 
-### 请求日志记录
+### 请求日志
 
 使用 `onStart` 和 `onEnd` 为调用的开始和结束各记录一条应用日志。
-`callId` 在生命周期事件中均可用，因此你可以关联来自同一请求的日志。
+`callId` 在所有生命周期事件中都可用，因此你可以关联同一请求的日志。
 
 ```tsx highlight="8-23"
 import { generateText } from 'ai';
@@ -82,12 +82,12 @@ const result = await generateText({
 });
 ```
 
-这种模式非常适合审计日志、内部仪表板，以及跟踪特定功能的用量。
+这种模式非常适合审计日志、内部仪表盘以及跟踪特定功能的使用情况。
 
-### 衡量模型性能
+### 测量模型性能
 
 `onLanguageModelCallEnd` 在提供商响应被规范化并解析后运行。
-对于 `streamText`，该事件还包含流式传输特有的计时数据，例如首次输出时间和输出块之间的间隔。
+对于 `streamText`，该事件还包含流式传输特定的计时数据，例如首个输出的时间和输出块之间的间隔。
 
 ```tsx highlight="8-19"
 import { streamText } from 'ai';
@@ -127,13 +127,13 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-当你想要专门衡量提供商的工作时，请使用模型调用事件。
-当你想要包含 SDK 管理工作（如本地工具执行）的计时时，请使用步骤事件。
+当你想要专门测量提供商的工作时，请使用模型调用事件。
+当你想要包含 SDK 管理的工作（例如本地工具执行）的计时时，请使用步骤事件。
 
-### 调试多步骤工具调用
+### 调试多步工具调用
 
-当你将工具与 `generateText` 或 `streamText` 一起使用时，单个用户请求可能涉及多次模型调用。
-每次模型调用就是一个步骤。模型可能在一个步骤中调用工具，接收工具结果，然后在下一步骤中生成最终答案。
+当你在 `generateText` 或 `streamText` 中使用工具时，单个用户请求可能涉及多次模型调用。
+每次模型调用是一个步骤。模型可能在一个步骤中调用工具，接收工具结果，然后在下一个步骤中生成最终答案。
 
 ```tsx highlight="17-31"
 import { generateText, isStepCount, tool } from 'ai';
@@ -172,9 +172,9 @@ const result = await generateText({
 
 这有助于回答以下问题：
 
-- 模型是调用了工具还是直接回答了？
-- 请求经历了多少步骤？
-- 哪个步骤使用了最多的令牌？
+- 模型是调用了工具还是直接回答？
+- 请求经过了多少个步骤？
+- 哪个步骤使用了最多的 token？
 - 时间花在了模型响应上还是本地工具执行上？
 
 ### 监控工具执行
@@ -222,12 +222,12 @@ const result = await generateText({
 });
 ```
 
-`toolOutput` 是一个可判别联合。当 `toolOutput.type` 为 `'tool-result'` 时，输出可在 `toolOutput.output` 上获取。当它为 `'tool-error'` 时，错误可在 `toolOutput.error` 上获取。
+`toolOutput` 是一个可辨识联合类型。当 `toolOutput.type` 为 `'tool-result'` 时，输出可通过 `toolOutput.output` 获取。当它为 `'tool-error'` 时，错误可通过 `toolOutput.error` 获取。
 
 ### 观察嵌入和重排序
 
-嵌入和重排序回调更简单：它们在操作周围暴露 `onStart` 和 `onEnd`。
-这对于检索管道非常有用，你可以了解嵌入的频率、嵌入的值的数量，以及重排序如何改变结果集。
+嵌入和重排序回调更简单：它们在操作前后暴露 `onStart` 和 `onEnd`。
+这对于检索管道非常有用，你可以借此了解嵌入的频率、嵌入的值的数量以及重排序如何改变结果集。
 
 ```tsx highlight="10-24,32-37"
 import { embedMany, rerank } from 'ai';
@@ -257,7 +257,7 @@ const { embeddings } = await embedMany({
 });
 
 const { ranking } = await rerank({
-  model: cohere.reranking('rerank-v3.5'),
+  model: cohere.reranking('rerank-v4.0-pro'),
   documents: values,
   query: 'talk about rain',
 
@@ -283,7 +283,7 @@ const { ranking } = await rerank({
 5. `onStepEnd`
 6. `onEnd`
 
-带本地工具执行的多步生成通常按以下方式运行：
+带有本地工具执行的多步生成通常按以下方式运行：
 
 1. `onStart`
 2. `onStepStart`
@@ -297,12 +297,12 @@ const { ranking } = await rerank({
 
 `onStepStart` 和 `onStepEnd` 描述完整的步骤。
 `onLanguageModelCallStart` 和 `onLanguageModelCallEnd` 仅描述该步骤内的模型调用。
-当步骤包含本地工具执行时，这种区别很重要：步骤的持续时间可能比模型响应的持续时间更长。
+当步骤包含本地工具执行时，这一区别很重要：步骤持续时间可能比模型响应持续时间更长。
 
 ## 运行时和工具上下文
 
-生命周期回调会接收流经调用的完整 `runtimeContext` 和 `toolsContext` 值。
-这使得回调在附加应用上下文时非常有用，而无需更改提示词或工具输入。
+生命周期回调接收流经调用的完整 `runtimeContext` 和 `toolsContext` 值。
+这使得回调非常适合附加应用上下文，而无需更改提示词或工具输入。
 
 ```tsx highlight="8-24,26-39"
 import { generateText, tool } from 'ai';
@@ -348,7 +348,7 @@ const result = await generateText({
 ```
 
 <Note>
-  遥测集成可以在导出前过滤 `runtimeContext` 和 `toolsContext`。生命周期回调会接收完整的上下文对象。注意不要从回调中记录机密或敏感的用户数据。
+  Telemetry 集成可以在导出 `runtimeContext` 和 `toolsContext` 之前对其进行过滤。生命周期回调接收完整的上下文对象。请注意不要从回调中记录密钥或敏感用户数据。
 </Note>
 
 ## 可用回调
@@ -361,48 +361,48 @@ const result = await generateText({
       name: 'onStart',
       type: '(event: GenerateTextStartEvent) => void | Promise<void>',
       description:
-        '在生成操作开始时调用一次，在任何模型调用之前。',
+        'Called once when the generation operation begins, before any model calls.',
     },
     {
       name: 'onStepStart',
       type: '(event: GenerateTextStepStartEvent) => void | Promise<void>',
       description:
-        '在每个生成步骤之前调用。每个步骤代表一次模型调用及其周围的 SDK 管理工作。',
+        'Called before each generation step. Each step represents one model call and any SDK-managed work around it.',
     },
     {
       name: 'onLanguageModelCallStart',
       type: '(event: LanguageModelCallStartEvent) => void | Promise<void>',
       description:
-        '在提供商模型调用开始前立即调用。仅限定于模型工作。',
+        'Called immediately before the provider model call begins. Scoped to model work only.',
     },
     {
       name: 'onLanguageModelCallEnd',
       type: '(event: LanguageModelCallEndEvent) => void | Promise<void>',
       description:
-        '在模型响应被规范化并解析后调用，在本地工具执行开始之前。',
+        'Called after the model response has been normalized and parsed, before local tool execution begins.',
     },
     {
       name: 'onToolExecutionStart',
       type: '(event: ToolExecutionStartEvent) => void | Promise<void>',
-      description: "在本地工具的 `execute` 函数运行之前调用。",
+      description: "Called before a local tool's `execute` function runs.",
     },
     {
       name: 'onToolExecutionEnd',
       type: '(event: ToolExecutionEndEvent) => void | Promise<void>',
       description:
-        "在本地工具的 `execute` 函数完成或出错后调用。",
+        "Called after a local tool's `execute` function completes or errors.",
     },
     {
       name: 'onStepEnd',
       type: '(event: GenerateTextStepEndEvent) => void | Promise<void>',
       description:
-        '在每个生成步骤完成后调用。接收步骤结果，包括用量和性能。',
+        'Called after each generation step completes. Receives the step result, including usage and performance.',
     },
     {
       name: 'onEnd',
       type: '(event: GenerateTextEndEvent) => void | Promise<void>',
       description:
-        '在完整生成完成时调用一次。接收最终输出和所有步骤的汇总用量。',
+        'Called once when the full generation completes. Receives final output and aggregated usage across all steps.',
     },
   ]}
 />
@@ -417,13 +417,13 @@ const result = await generateText({
       name: 'onStart',
       type: '(event: EmbedStartEvent) => void | Promise<void>',
       description:
-        '在嵌入操作开始时调用，在调用嵌入模型之前。',
+        'Called when the embedding operation begins, before the embedding model is called.',
     },
     {
       name: 'onEnd',
       type: '(event: EmbedEndEvent) => void | Promise<void>',
       description:
-        '在嵌入操作完成时调用，在嵌入模型返回之后。',
+        'Called when the embedding operation completes, after the embedding model returns.',
     },
   ]}
 />
@@ -436,20 +436,39 @@ const result = await generateText({
       name: 'onStart',
       type: '(event: RerankStartEvent) => void | Promise<void>',
       description:
-        '在重排序操作开始时调用，在调用重排序模型之前。',
+        'Called when the reranking operation begins, before the reranking model is called.',
     },
     {
       name: 'onEnd',
       type: '(event: RerankEndEvent) => void | Promise<void>',
       description:
-        '在重排序操作完成时调用，在重排序模型返回之后。',
+        'Called when the reranking operation completes, after the reranking model returns.',
+    },
+  ]}
+/>
+
+### `experimental_evaluate`
+
+<PropertiesTable
+  content={[
+    {
+      name: 'onStart',
+      type: '(event: Experimental_EvaluateStartEvent) => void | Promise<void>',
+      description:
+        'Called when the evaluation operation begins, before the evaluation model is called.',
+    },
+    {
+      name: 'onEnd',
+      type: '(event: Experimental_EvaluateEndEvent) => void | Promise<void>',
+      description:
+        'Called when the evaluation operation completes successfully.',
     },
   ]}
 />
 
 ## 事件数据参考
 
-确切的事件数据取决于回调。下表总结了你最常使用的字段。
+确切的事件数据取决于回调。下表总结了最常用的字段。
 
 ### 文本生成事件
 
@@ -462,78 +481,78 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'operationId',
       type: 'string',
       description:
-        "操作类型，例如 'ai.generateText' 或 'ai.streamText'。",
+        "Operation type, such as 'ai.generateText' or 'ai.streamText'.",
     },
     {
       name: 'provider',
       type: 'string',
-      description: '已解析模型的提供商标识符。',
+      description: 'Provider identifier for the resolved model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '已解析模型的模型标识符。',
+      description: 'Model identifier for the resolved model.',
     },
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
-      description: '此生成的消息。',
+      description: 'Messages for this generation.',
     },
     {
       name: 'instructions',
       type: 'Instructions | undefined',
-      description: '提供给模型的指令。',
+      description: 'Instructions provided to the model.',
     },
     {
       name: 'tools',
       type: 'ToolSet | undefined',
-      description: '此生成可用的工具。',
+      description: 'Tools available for this generation.',
     },
     {
       name: 'toolChoice',
       type: 'ToolChoice | undefined',
-      description: '此生成的工具选择策略。',
+      description: 'Tool choice strategy for this generation.',
     },
     {
       name: 'activeTools',
       type: 'ActiveTools<TOOLS>',
-      description: '限制模型可调用的工具。',
+      description: 'Limits which tools are available for the model to call.',
     },
     {
       name: 'maxRetries',
       type: 'number',
-      description: '失败请求的最大重试次数。',
+      description: 'Maximum number of retries for failed requests.',
     },
     {
       name: 'timeout',
       type: 'TimeoutConfiguration | undefined',
-      description: '生成的超时配置。',
+      description: 'Timeout configuration for the generation.',
     },
     {
       name: 'headers',
       type: 'Record<string, string | undefined> | undefined',
-      description: '随请求发送的附加 HTTP 头。',
+      description: 'Additional HTTP headers sent with the request.',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions | undefined',
-      description: '提供商特定选项。',
+      description: 'Provider-specific options.',
     },
     {
       name: 'runtimeContext',
       type: 'CONTEXT',
-      description: '用户定义的生成运行时上下文。',
+      description: 'User-defined runtime context for the generation.',
     },
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
-      description: '通过 `toolsContext` 传递的按工具上下文映射。',
+      description: 'Per-tool context map passed via `toolsContext`.',
     },
   ]}
 />
@@ -547,154 +566,154 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'stepNumber',
       type: 'number',
-      description: '当前步骤的从零开始的索引。',
+      description: 'Zero-based index of the current step.',
     },
     {
       name: 'provider',
       type: 'string',
-      description: '已解析模型的提供商标识符。',
+      description: 'Provider identifier for the resolved model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '已解析模型的模型标识符。',
+      description: 'Model identifier for the resolved model.',
     },
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
-      description: '将在此步骤中发送给模型的消息。',
+      description: 'Messages that will be sent to the model for this step.',
     },
     {
       name: 'tools',
       type: 'ToolSet | undefined',
-      description: '此生成可用的工具。',
+      description: 'Tools available for this generation.',
     },
     {
       name: 'activeTools',
       type: 'ActiveTools<TOOLS>',
-      description: '限制此步骤可用的工具。',
+      description: 'Limits which tools are available for this step.',
     },
     {
       name: 'steps',
       type: 'ReadonlyArray<StepResult>',
-      description: '先前步骤的结果。第一步为空。',
+      description: 'Results from previous steps. Empty for the first step.',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions | undefined',
-      description: '此步骤的提供商特定选项。',
+      description: 'Provider-specific options for this step.',
     },
     {
       name: 'runtimeContext',
       type: 'CONTEXT',
       description:
-        '此步骤的运行时上下文。可能在步骤之间由 `prepareStep` 更新。',
+        'Runtime context for this step. May be updated from `prepareStep` between steps.',
     },
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
       description:
-        '此步骤的按工具上下文映射。可能在步骤之间由 `prepareStep` 更新。',
+        'Per-tool context map for this step. May be updated from `prepareStep` between steps.',
     },
   ]}
 />
 
 #### onLanguageModelCallStart
 
-在提供商模型调用开始前立即调用。
+在提供商模型调用开始之前立即调用。
 
 <PropertiesTable
   content={[
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'provider',
       type: 'string',
-      description: '此模型调用的提供商标识符。',
+      description: 'Provider identifier for this model call.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '此模型调用的模型标识符。',
+      description: 'Model identifier for this model call.',
     },
     {
       name: 'instructions',
       type: 'Instructions | undefined',
-      description: '将发送给模型的指令。',
+      description: 'Instructions that will be sent to the model.',
     },
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
-      description: '将发送给模型的消息。',
+      description: 'Messages that will be sent to the model.',
     },
     {
       name: 'tools',
       type: 'ReadonlyArray<Record<string, unknown>> | undefined',
-      description: '为模型调用准备的工具定义（如果有）。',
+      description: 'Prepared tool definitions for the model call, if any.',
     },
   ]}
 />
 
 #### onLanguageModelCallEnd
 
-在提供商响应被规范化并解析后调用，在本地工具执行开始之前。
+在提供商响应被规范化并解析后、本地工具执行开始之前调用。
 
 <PropertiesTable
   content={[
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'provider',
       type: 'string',
-      description: '此模型调用的提供商标识符。',
+      description: 'Provider identifier for this model call.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '提供商返回的此模型调用的模型标识符。',
+      description: 'Provider-returned model identifier for this model call.',
     },
     {
       name: 'finishReason',
       type: 'FinishReason',
-      description: '模型调用结束的统一原因。',
+      description: 'Unified reason why the model call finished.',
     },
     {
       name: 'usage',
       type: 'LanguageModelUsage',
-      description: '模型调用报告的令牌用量。',
+      description: 'Token usage reported by the model call.',
     },
     {
       name: 'content',
       type: 'ReadonlyArray<ContentPart<TOOLS>>',
-      description: '模型调用产生的内容部分。',
+      description: 'Content parts produced by the model call.',
     },
     {
       name: 'responseId',
       type: 'string',
-      description: '提供商返回的此模型调用的响应 ID。',
+      description: 'Provider-returned response ID for this model call.',
     },
     {
       name: 'providerMetadata',
       type: 'ProviderMetadata | undefined',
       description:
-        '提供商返回的此模型调用的提供商特定元数据（如果有）。',
+        'Provider-specific metadata for this model call, when returned by the provider.',
     },
     {
       name: 'performance',
       type: 'LanguageModelCallPerformance',
       description:
-        '计时和吞吐量指标，包括响应时间、每秒令牌数，以及可用时的流式传输计时。',
+        'Timing and throughput metrics, including response time, tokens per second, and streaming timing when available.',
     },
   ]}
 />
@@ -708,24 +727,24 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'toolCall',
       type: 'TypedToolCall',
       description:
-        '即将执行的工具调用，包括 `toolCallId`、`toolName` 和 `input`。',
+        'The tool call that is about to execute, including `toolCallId`, `toolName`, and `input`.',
     },
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
       description:
-        '发送给模型以发起包含工具调用的响应的消息。不包括系统提示词或包含工具调用的助手响应。',
+        'Messages sent to the model to initiate the response that contained the tool call. Does not include the system prompt or the assistant response that contained the tool call.',
     },
     {
       name: 'toolContext',
       type: 'InferToolContext<TOOLS[toolName]>',
-      description: '工具调用的工具特定上下文对象。',
+      description: 'Tool-specific context object for the tool call.',
     },
   ]}
 />
@@ -739,34 +758,34 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'toolCall',
       type: 'TypedToolCall',
-      description: '已完成的工具调用。',
+      description: 'The tool call that completed.',
     },
     {
       name: 'toolExecutionMs',
       type: 'number',
-      description: '工具调用的执行时间（毫秒）。',
+      description: 'Execution time of the tool call in milliseconds.',
     },
     {
       name: 'messages',
       type: 'Array<ModelMessage>',
       description:
-        '发送给模型以发起包含工具调用的响应的消息。不包括系统提示词或包含工具调用的助手响应。',
+        'Messages sent to the model to initiate the response that contained the tool call. Does not include the system prompt or the assistant response that contained the tool call.',
     },
     {
       name: 'toolContext',
       type: 'InferToolContext<TOOLS[toolName]>',
-      description: '已完成的工具调用的工具特定上下文对象。',
+      description: 'Tool-specific context object for the completed tool call.',
     },
     {
       name: 'toolOutput',
       type: "{ type: 'tool-result'; output: unknown } | { type: 'tool-error'; error: unknown }",
       description:
-        '表示成功工具结果或工具错误的可判别联合。',
+        'Discriminated union representing either a successful tool result or a tool error.',
     },
   ]}
 />
@@ -780,80 +799,80 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'stepNumber',
       type: 'number',
-      description: '已完成步骤的从零开始的索引。',
+      description: 'Zero-based index of the completed step.',
     },
     {
       name: 'model',
       type: '{ provider: string; modelId: string }',
-      description: '产生此步骤的模型信息。',
+      description: 'Information about the model that produced this step.',
     },
     {
       name: 'content',
       type: 'Array<ContentPart>',
-      description: '此步骤中生成的内容。',
+      description: 'Content generated in this step.',
     },
     {
       name: 'text',
       type: 'string',
-      description: '此步骤中生成的文本。',
+      description: 'Text generated in this step.',
     },
     {
       name: 'toolCalls',
       type: 'Array<TypedToolCall>',
-      description: '此步骤中进行的工具调用。',
+      description: 'Tool calls made in this step.',
     },
     {
       name: 'toolResults',
       type: 'Array<TypedToolResult>',
-      description: '此步骤中产生的工具结果。',
+      description: 'Tool results produced in this step.',
     },
     {
       name: 'finishReason',
       type: 'FinishReason',
-      description: '步骤结束的统一原因。',
+      description: 'Unified reason why the step finished.',
     },
     {
       name: 'usage',
       type: 'LanguageModelUsage',
-      description: '此步骤的令牌用量。',
+      description: 'Token usage for this step.',
     },
     {
       name: 'performance',
       type: 'StepResultPerformance',
       description:
-        '此步骤的计时和吞吐量指标，包括模型响应时间和工具执行时间。',
+        'Timing and throughput metrics for this step, including model response time and tool execution time.',
     },
     {
       name: 'warnings',
       type: 'CallWarning[] | undefined',
-      description: '来自模型提供商的警告。',
+      description: 'Warnings from the model provider.',
     },
     {
       name: 'request',
       type: 'LanguageModelRequestMetadata',
       description:
-        '请求元数据，包括请求体和请求消息（如果包含）。',
+        'Request metadata, including request body and request messages when included.',
     },
     {
       name: 'response',
       type: 'LanguageModelResponseMetadata',
       description:
-        '响应元数据，包括响应头、响应体和响应消息（如果包含）。',
+        'Response metadata, including response headers, body, and messages when included.',
     },
     {
       name: 'runtimeContext',
       type: 'CONTEXT',
-      description: '此步骤的运行时上下文。',
+      description: 'Runtime context for this step.',
     },
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
-      description: '此步骤的按工具上下文映射。',
+      description: 'Per-tool context map for this step.',
     },
   ]}
 />
@@ -867,57 +886,57 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此生成调用的唯一标识符。',
+      description: 'Unique identifier for this generation call.',
     },
     {
       name: 'steps',
       type: 'Array<StepResult>',
-      description: '生成中所有步骤的结果。',
+      description: 'Results from all steps in the generation.',
     },
     {
       name: 'finalStep',
       type: 'StepResult',
-      description: '最终步骤。这是 `steps.at(-1)` 的快捷方式。',
+      description: 'The final step. This is a shortcut for `steps.at(-1)`.',
     },
     {
       name: 'responseMessages',
       type: 'Array<ResponseMessage>',
-      description: '调用期间生成的响应消息。',
+      description: 'Response messages generated during the call.',
     },
     {
       name: 'content',
       type: 'Array<ContentPart>',
-      description: '跨所有步骤生成的内容。',
+      description: 'Content generated across all steps.',
     },
     {
       name: 'text',
       type: 'string',
-      description: '最终步骤中生成的文本。',
+      description: 'Text generated in the final step.',
     },
     {
       name: 'toolCalls',
       type: 'Array<TypedToolCall>',
-      description: '跨所有步骤进行的工具调用。',
+      description: 'Tool calls made across all steps.',
     },
     {
       name: 'toolResults',
       type: 'Array<TypedToolResult>',
-      description: '跨所有步骤产生的工具结果。',
+      description: 'Tool results produced across all steps.',
     },
     {
       name: 'finishReason',
       type: 'FinishReason',
-      description: '最终步骤结束的统一原因。',
+      description: 'Unified reason why the final step finished.',
     },
     {
       name: 'usage',
       type: 'LanguageModelUsage',
-      description: '跨所有步骤的汇总令牌用量。',
+      description: 'Aggregated token usage across all steps.',
     },
     {
       name: 'warnings',
       type: 'CallWarning[] | undefined',
-      description: '跨所有步骤来自模型提供商的警告。',
+      description: 'Warnings from the model provider across all steps.',
     },
   ]}
 />
@@ -935,42 +954,42 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此嵌入调用的唯一标识符。',
+      description: 'Unique identifier for this embedding call.',
     },
     {
       name: 'operationId',
       type: 'string',
-      description: "操作类型，例如 'ai.embed' 或 'ai.embedMany'。",
+      description: "Operation type, such as 'ai.embed' or 'ai.embedMany'.",
     },
     {
       name: 'provider',
       type: 'string',
-      description: '嵌入模型的提供商标识符。',
+      description: 'Provider identifier for the embedding model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '嵌入模型标识符。',
+      description: 'Embedding model identifier.',
     },
     {
       name: 'value',
       type: 'string | Array<string>',
-      description: '正在嵌入的值或值数组。',
+      description: 'Value or values being embedded.',
     },
     {
       name: 'maxRetries',
       type: 'number',
-      description: '失败请求的最大重试次数。',
+      description: 'Maximum number of retries for failed requests.',
     },
     {
       name: 'headers',
       type: 'Record<string, string | undefined> | undefined',
-      description: '随请求发送的附加 HTTP 头。',
+      description: 'Additional HTTP headers sent with the request.',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions | undefined',
-      description: '提供商特定选项。',
+      description: 'Provider-specific options.',
     },
   ]}
 />
@@ -982,53 +1001,53 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此嵌入调用的唯一标识符。',
+      description: 'Unique identifier for this embedding call.',
     },
     {
       name: 'operationId',
       type: 'string',
-      description: "操作类型，例如 'ai.embed' 或 'ai.embedMany'。",
+      description: "Operation type, such as 'ai.embed' or 'ai.embedMany'.",
     },
     {
       name: 'provider',
       type: 'string',
-      description: '嵌入模型的提供商标识符。',
+      description: 'Provider identifier for the embedding model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '嵌入模型标识符。',
+      description: 'Embedding model identifier.',
     },
     {
       name: 'value',
       type: 'string | Array<string>',
-      description: '已嵌入的值或值数组。',
+      description: 'Value or values that were embedded.',
     },
     {
       name: 'embedding',
       type: 'Embedding | Array<Embedding>',
-      description: '生成的嵌入或嵌入数组。',
+      description: 'Resulting embedding or embeddings.',
     },
     {
       name: 'usage',
       type: 'EmbeddingModelUsage',
-      description: '嵌入操作的令牌用量。',
+      description: 'Token usage for the embedding operation.',
     },
     {
       name: 'warnings',
       type: 'Array<Warning>',
-      description: '来自嵌入模型的警告。',
+      description: 'Warnings from the embedding model.',
     },
     {
       name: 'providerMetadata',
       type: 'ProviderMetadata | undefined',
-      description: '可选的提供商特定元数据。',
+      description: 'Optional provider-specific metadata.',
     },
     {
       name: 'response',
       type: '{ headers?: Record<string, string>; body?: unknown } | Array<{ headers?: Record<string, string>; body?: unknown } | undefined> | undefined',
       description:
-        '响应数据。对于 `embedMany`，每个块可以有一个响应。',
+        'Response data. For `embedMany`, this can be one response per chunk.',
     },
   ]}
 />
@@ -1042,52 +1061,52 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此重排序调用的唯一标识符。',
+      description: 'Unique identifier for this rerank call.',
     },
     {
       name: 'operationId',
       type: 'string',
-      description: "操作类型，'ai.rerank'。",
+      description: "Operation type, 'ai.rerank'.",
     },
     {
       name: 'provider',
       type: 'string',
-      description: '重排序模型的提供商标识符。',
+      description: 'Provider identifier for the reranking model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '重排序模型标识符。',
+      description: 'Reranking model identifier.',
     },
     {
       name: 'documents',
       type: 'Array<JSONObject | string>',
-      description: '正在重排序的文档。',
+      description: 'Documents being reranked.',
     },
     {
       name: 'query',
       type: 'string',
-      description: '用于对文档进行重排序的查询。',
+      description: 'Query to rerank the documents against.',
     },
     {
       name: 'topN',
       type: 'number | undefined',
-      description: '要返回的顶部文档数量。',
+      description: 'Number of top documents to return.',
     },
     {
       name: 'maxRetries',
       type: 'number',
-      description: '失败请求的最大重试次数。',
+      description: 'Maximum number of retries for failed requests.',
     },
     {
       name: 'headers',
       type: 'Record<string, string | undefined> | undefined',
-      description: '随请求发送的附加 HTTP 头。',
+      description: 'Additional HTTP headers sent with the request.',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions | undefined',
-      description: '提供商特定选项。',
+      description: 'Provider-specific options.',
     },
   ]}
 />
@@ -1099,53 +1118,156 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: '此重排序调用的唯一标识符。',
+      description: 'Unique identifier for this rerank call.',
     },
     {
       name: 'operationId',
       type: 'string',
-      description: "操作类型，'ai.rerank'。",
+      description: "Operation type, 'ai.rerank'.",
     },
     {
       name: 'provider',
       type: 'string',
-      description: '重排序模型的提供商标识符。',
+      description: 'Provider identifier for the reranking model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: '重排序模型标识符。',
+      description: 'Reranking model identifier.',
     },
     {
       name: 'documents',
       type: 'Array<JSONObject | string>',
-      description: '已重排序的文档。',
+      description: 'Documents that were reranked.',
     },
     {
       name: 'query',
       type: 'string',
-      description: '文档被重排序所依据的查询。',
+      description: 'Query the documents were reranked against.',
     },
     {
       name: 'ranking',
       type: 'Array<{ originalIndex: number; score: number; document: JSONObject | string }>',
       description:
-        '按相关性分数降序排列的重排序结果。',
+        'Reranked results sorted by relevance score in descending order.',
     },
     {
       name: 'warnings',
       type: 'Array<Warning>',
-      description: '来自重排序模型的警告。',
+      description: 'Warnings from the reranking model.',
     },
     {
       name: 'providerMetadata',
       type: 'ProviderMetadata | undefined',
-      description: '可选的提供商特定元数据。',
+      description: 'Optional provider-specific metadata.',
     },
     {
       name: 'response',
       type: '{ id?: string; timestamp: Date; modelId: string; headers?: Record<string, string>; body?: unknown }',
-      description: '响应数据，包括响应头和响应体。',
+      description: 'Response data including headers and body.',
+    },
+  ]}
+/>
+
+### 评估事件
+
+评估回调是实验性的。它们导出的类型是
+`Experimental_EvaluateStartEvent` 和 `Experimental_EvaluateEndEvent`。
+
+#### onStart
+
+<PropertiesTable
+  content={[
+    {
+      name: 'callId',
+      type: 'string',
+      description: 'Unique identifier for this evaluation call.',
+    },
+    {
+      name: 'operationId',
+      type: "'ai.evaluate'",
+      description: 'Evaluation operation identifier.',
+    },
+    {
+      name: 'runtimeContext',
+      type: 'RUNTIME_CONTEXT',
+      description: 'Full user-defined runtime context.',
+    },
+    {
+      name: 'provider',
+      type: 'string',
+      description: 'Provider identifier for the evaluation model.',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description: 'Evaluation model identifier.',
+    },
+    {
+      name: 'state',
+      type: 'string | object | array',
+      description: 'Shared state being evaluated.',
+    },
+    {
+      name: 'questions',
+      type: 'Readonly<Record<string, Experimental_EvaluationQuestion>>',
+      description: 'Questions being evaluated against the shared state.',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      description: 'Maximum number of retries for the model call.',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string> | undefined',
+      description: 'Additional HTTP headers sent with the request.',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      description: 'Provider-specific options.',
+    },
+  ]}
+/>
+
+#### onEnd
+
+包含 `onStart` 的每个字段，外加：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'answers',
+      type: 'Record<string, Experimental_EvaluationAnswer>',
+      description: 'Exactly one typed answer per question ID.',
+    },
+    {
+      name: 'usage',
+      type: '{ inputTokens: number | undefined; outputTokens: number | undefined; totalTokens: number | undefined }',
+      description: 'Token usage for the evaluation operation.',
+    },
+    {
+      name: 'warnings',
+      type: 'Array<Warning>',
+      description: 'Warnings from the evaluation model.',
+    },
+    {
+      name: 'rounding',
+      type: '{ probabilityDecimals?: number; scoreDecimals?: number } | undefined',
+      description:
+        'Provider-declared decimal precision for probabilities and scores.',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      description: 'Optional provider-specific metadata.',
+    },
+    {
+      name: 'response',
+      type: '{ id?: string; timestamp: Date; modelId: string; headers?: Record<string, string>; body?: unknown }',
+      description:
+        'Response metadata including the resolved model and timestamp.',
     },
   ]}
 />

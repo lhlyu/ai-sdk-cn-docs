@@ -5,9 +5,9 @@ description: "使用 Raindrop 监控 AI SDK 调用和智能体追踪"
 
 # Raindrop 可观测性
 
-[Raindrop](https://www.raindrop.ai/) 为 AI 应用提供可观测性。其 AI SDK 集成可记录 `generateText`、`streamText`、`generateObject`、`streamObject`、模型调用、工具调用、错误、延迟和令牌用量的事件和追踪。
+[Raindrop](https://www.raindrop.ai/) 为 AI 应用提供可观测性。其 AI SDK 集成会记录 `generateText`、`streamText`、`generateObject`、`streamObject`、模型调用、工具调用、错误、延迟和 token 用量的事件与追踪。
 
-Raindrop 直接支持 AI SDK v7 遥测接口，因此您可以直接使用 `registerTelemetry` 和 `telemetry` 选项，而无需额外配置 OpenTelemetry。
+Raindrop 直接支持 AI SDK v7 遥测接口，因此你可以使用 `registerTelemetry` 和 `telemetry` 选项，而无需额外配置 OpenTelemetry。
 
 ## 设置
 
@@ -15,13 +15,13 @@ Raindrop 直接支持 AI SDK v7 遥测接口，因此您可以直接使用 `regi
 
 <InstallPackages packages="@raindrop-ai/ai-sdk" />
 
-设置您的 Raindrop 写入密钥（在 [Raindrop 仪表盘](https://www.raindrop.ai/) 中创建一个）：
+设置你的 Raindrop write key（在 [Raindrop 仪表盘](https://www.raindrop.ai/) 中创建一个）：
 
 ```bash filename=".env.local"
 RAINDROP_WRITE_KEY="..."
 ```
 
-然后在应用启动时注册 Raindrop。`raindrop()` 会自动读取 `RAINDROP_WRITE_KEY`，无需 `@ai-sdk/otel` 或 OpenTelemetry 设置：
+然后在应用启动时注册一次 Raindrop。`raindrop()` 会自动读取 `RAINDROP_WRITE_KEY`，无需 `@ai-sdk/otel` 或 OpenTelemetry 配置：
 
 ```ts filename="instrumentation.ts"
 import { registerTelemetry } from 'ai';
@@ -30,7 +30,7 @@ import { raindrop } from '@raindrop-ai/ai-sdk';
 registerTelemetry(raindrop());
 ```
 
-## 使用
+## 用法
 
 注册后，AI SDK 调用会自动发出遥测数据。使用 `telemetry` 选项进行函数级设置，例如 `functionId`：
 
@@ -39,19 +39,19 @@ import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 const { text } = await generateText({
-  model: openai('gpt-5-mini'),
-  prompt: '为新用户写一条简短的欢迎消息。',
+  model: openai('gpt-6-luna'),
+  prompt: 'Write a short welcome message for a new user.',
   telemetry: {
     functionId: 'welcome-message',
   },
 });
 ```
 
-Raindrop 在 `userId` 可用时记录事件，因此请设置 Raindrop `context` 以将调用归因到用户。您可以在注册时全局提供（`raindrop({ context: { userId } })`），或通过 `telemetry.integrations` 按请求提供（见下文）。如果没有 `userId`，Raindrop 仍会记录调用的追踪，但不会发出事件。
+Raindrop 会在 `userId` 可用时记录事件，因此请设置 Raindrop `context` 以将调用归属到某个用户。你可以在注册时全局提供（`raindrop({ context: { userId } })`），也可以通过 `telemetry.integrations` 按请求提供（见下文）。如果没有 `userId`，Raindrop 仍会为该调用记录追踪，但不会发出事件。
 
 ## 请求特定的 Raindrop 上下文
 
-如果 Raindrop 事件字段（如 `userId`、`convoId` 或 `eventName`）随请求变化，请通过 `telemetry.integrations` 为该调用传递 Raindrop 集成：
+如果 Raindrop 事件字段（如 `userId`、`convoId` 或 `eventName`）会随请求变化，请为该调用通过 `telemetry.integrations` 传入一个 Raindrop 集成：
 
 ```ts highlight="8-10,15-19,21"
 import { generateText } from 'ai';
@@ -66,8 +66,8 @@ const raindropTelemetry = raindrop({
 });
 
 const { text } = await generateText({
-  model: openai('gpt-5-mini'),
-  prompt: '总结最新的支持工单。',
+  model: openai('gpt-6-luna'),
+  prompt: 'Summarize the latest support ticket.',
   telemetry: {
     functionId: 'support-summary',
     integrations: [raindropTelemetry],
@@ -78,12 +78,12 @@ await raindropTelemetry.flush();
 ```
 
 <Note>
-  每次调用的 `telemetry.integrations` 会替换该调用的全局注册集成。如果您还使用其他遥测集成，请将其包含在同一个 `integrations` 数组中。
+  按调用传入的 `telemetry.integrations` 会替换该调用中全局注册的集成。如果你还使用了其他遥测集成，请将其包含在同一个 `integrations` 数组中。
 </Note>
 
 ## 流式传输
 
-流式调用以相同方式工作。对于 AI SDK UI 路由，返回 v7 流辅助函数，并在流完成时刷新 Raindrop：
+流式传输调用的工作方式相同。对于 AI SDK UI 路由，返回 v7 流辅助函数，并在流结束时刷新 Raindrop：
 
 ```ts filename="app/api/chat/route.ts" highlight="15-27"
 import {
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
   });
 
   const result = streamText({
-    model: openai('gpt-5-mini'),
+    model: openai('gpt-6-luna'),
     messages: await convertToModelMessages(messages),
     telemetry: {
       functionId: 'chat-route',
@@ -127,12 +127,12 @@ export async function POST(req: Request) {
 
 ## 隐私控制
 
-`recordInputs` 和 `recordOutputs` 控制提示词和响应是否附加到**追踪跨度**：
+`recordInputs` 和 `recordOutputs` 控制提示词和响应是否附加到 **追踪 span**：
 
 ```ts
 const result = await generateText({
-  model: openai('gpt-5-mini'),
-  prompt: '总结这份私人文档。',
+  model: openai('gpt-6-luna'),
+  prompt: 'Summarize this private document.',
   telemetry: {
     recordInputs: false,
     recordOutputs: false,
@@ -140,13 +140,13 @@ const result = await generateText({
 });
 ```
 
-这些标志仅影响跨度属性。Raindrop 的事件负载仍会记录输入（最后一条用户消息）和输出（最终文本）。要完全将敏感内容排除在 Raindrop 之外，请禁用事件捕获，以便仅记录追踪：
+这些标志仅影响 span 属性。Raindrop 的事件负载仍会记录输入（最后一条用户消息）和输出（最终文本）。若要将敏感内容完全排除在 Raindrop 之外，请禁用事件捕获，这样只记录追踪：
 
 ```ts
 registerTelemetry(raindrop({ events: { enabled: false } }));
 ```
 
-提供商选项中类似凭证的值默认会从追踪中剥离；您可以使用 `traces.transformSpan` 或 `traces.disableDefaultRedaction` 自定义此行为。
+提供商选项中形似凭据的值默认会从追踪中剥离；可通过 `traces.transformSpan` 或 `traces.disableDefaultRedaction` 自定义此行为。
 
 ## 资源
 

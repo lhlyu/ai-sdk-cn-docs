@@ -1,27 +1,27 @@
 ---
 title: "LangSmith"
-description: "使用 LangSmith 监控和评估您的 AI SDK 应用程序"
+description: "使用 LangSmith 监控和评估你的 AI SDK 应用"
 ---
 
 # LangSmith 可观测性
 
-[LangSmith](https://docs.langchain.com/langsmith/) 是一个用于构建生产级 LLM 应用程序的平台。
-它允许您密切监控和评估您的应用程序，从而快速且自信地交付。
+[LangSmith](https://docs.langchain.com/langsmith/) 是一个用于构建生产级 LLM 应用的平台。
+它允许你密切监控和评估你的应用，从而让你能够快速且自信地发布。
 
-使用 LangChain 的开源框架并非必需。
+无需使用 LangChain 的开源框架。
 
 <Note>
-  本指南的一个版本也提供在 [LangSmith
-  文档](https://docs.langchain.com/langsmith/trace-with-vercel-ai-sdk) 中。
-  如果您使用的是 AI SDK v4 或旧版本的 `langsmith` 客户端，请参阅该页面链接的旧版指南。
+  本指南的另一个版本也可在 [LangSmith
+  文档](https://docs.langchain.com/langsmith/trace-with-vercel-ai-sdk)中找到。
+  如果你使用的是 AI SDK v4 以及较旧版本的 `langsmith` 客户端，请参阅该页面链接的旧版指南。
 </Note>
 
 ## 设置
 
-<Note>本指南中的步骤假设您使用的是 `langsmith>=0.3.63.`。</Note>
+<Note>本指南中的步骤假设你使用的是 `langsmith>=0.3.63.`。</Note>
 
-安装 [AI SDK 模型提供商](/providers/ai-sdk-providers) 和 [LangSmith 客户端 SDK](https://npmjs.com/package/langsmith)。
-下面的代码片段将使用 [AI SDK 的 OpenAI 提供商](/providers/ai-sdk-providers/openai)，但您也可以使用任何 [其他支持的提供商](/providers/ai-sdk-providers)。
+安装一个 [AI SDK 模型提供商](/providers/ai-sdk-providers) 以及 [LangSmith 客户端 SDK](https://npmjs.com/package/langsmith)。
+下面的代码片段将使用 [AI SDK 的 OpenAI 提供商](/providers/ai-sdk-providers/openai)，但你也可以使用任何 [其他受支持的提供商](/providers/ai-sdk-providers)。
 
 <InstallPackages packages="@ai-sdk/openai langsmith" />
 
@@ -31,12 +31,12 @@ description: "使用 LangSmith 监控和评估您的 AI SDK 应用程序"
 export LANGCHAIN_TRACING=true
 export LANGCHAIN_API_KEY=<your-api-key>
 
-export OPENAI_API_KEY=<your-openai-api-key> # 示例使用 OpenAI（替换为您选择的提供商）
+export OPENAI_API_KEY=<your-openai-api-key> # The examples use OpenAI (replace with your selected provider)
 ```
 
 ## 追踪日志记录
 
-要开始追踪，您需要在代码开头导入并调用 `wrapAISDK` 方法：
+要开始追踪，你需要在代码开头导入并调用 `wrapAISDK` 方法：
 
 ```ts highlight="6"
 import { openai } from '@ai-sdk/openai';
@@ -47,14 +47,14 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 const { generateText, streamText } = wrapAISDK(ai);
 
 await generateText({
-  model: openai('gpt-5-nano'),
-  prompt: '为 4 人写一份素食千层面食谱。',
+  model: openai('gpt-5.4-nano'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
 
-您应该在 LangSmith 仪表板中看到一条追踪记录，[类似于这个](https://smith.langchain.com/public/4f0e689e-c801-44d3-8857-93b47ab100cc/r)。
+你应该会在 LangSmith 仪表盘中看到一条[像这样的追踪记录](https://smith.langchain.com/public/4f0e689e-c801-44d3-8857-93b47ab100cc/r)。
 
-您也可以追踪包含工具调用的运行：
+你也可以追踪带有工具调用的运行：
 
 ```ts
 import * as ai from 'ai';
@@ -67,39 +67,39 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 const { generateText, streamText } = wrapAISDK(ai);
 
 await generateText({
-  model: openai('gpt-5-nano'),
+  model: openai('gpt-5.4-nano'),
   messages: [
     {
       role: 'user',
-      content: '我的订单有哪些，它们在哪里？我的用户 ID 是 123',
+      content: 'What are my orders and where are they? My user ID is 123',
     },
   ],
   tools: {
     listOrders: tool({
-      description: '列出所有订单',
+      description: 'list all orders',
       inputSchema: z.object({ userId: z.string() }),
       execute: async ({ userId }) =>
-        `用户 ${userId} 有以下订单：1`,
+        `User ${userId} has the following orders: 1`,
     }),
     viewTrackingInformation: tool({
-      description: '查看特定订单的追踪信息',
+      description: 'view tracking information for a specific order',
       inputSchema: z.object({ orderId: z.string() }),
       execute: async ({ orderId }) =>
-        `这是 ${orderId} 的追踪信息`,
+        `Here is the tracking information for ${orderId}`,
     }),
   },
   stopWhen: isStepCount(5),
 });
 ```
 
-这将产生一条追踪记录，[类似于这个](https://smith.langchain.com/public/6075fa2c-d255-4885-a66a-4fc798afaa9f/r)。
+这会生成一条[像这样的追踪记录](https://smith.langchain.com/public/6075fa2c-d255-4885-a66a-4fc798afaa9f/r)。
 
-您可以像往常一样使用其他 AI SDK 方法。
+你可以像平常一样使用其他 AI SDK 方法。
 
-### 使用 `traceable`
+### 配合 `traceable` 使用
 
-您可以在 AI SDK 调用周围或 AI SDK 工具调用内部包裹 `traceable` 调用。如果您想
-在 LangSmith 中将运行分组在一起，这将非常有用：
+你可以将 `traceable` 调用包裹在 AI SDK 调用之外，或放在 AI SDK 工具调用内部。如果你想
+在 LangSmith 中将多次运行分组在一起，这会很有用：
 
 ```ts
 import * as ai from 'ai';
@@ -115,7 +115,7 @@ const { generateText, streamText } = wrapAISDK(ai);
 const wrapper = traceable(
   async (input: string) => {
     const { text } = await generateText({
-      model: openai('gpt-5-nano'),
+      model: openai('gpt-5.4-nano'),
       messages: [
         {
           role: 'user',
@@ -124,16 +124,16 @@ const wrapper = traceable(
       ],
       tools: {
         listOrders: tool({
-          description: '列出所有订单',
+          description: 'list all orders',
           inputSchema: z.object({ userId: z.string() }),
           execute: async ({ userId }) =>
-            `用户 ${userId} 有以下订单：1`,
+            `User ${userId} has the following orders: 1`,
         }),
         viewTrackingInformation: tool({
-          description: '查看特定订单的追踪信息',
+          description: 'view tracking information for a specific order',
           inputSchema: z.object({ orderId: z.string() }),
           execute: async ({ orderId }) =>
-            `这是 ${orderId} 的追踪信息`,
+            `Here is the tracking information for ${orderId}`,
         }),
       },
       stopWhen: isStepCount(5),
@@ -145,23 +145,22 @@ const wrapper = traceable(
   },
 );
 
-await wrapper('我的订单有哪些，它们在哪里？我的用户 ID 是 123。');
+await wrapper('What are my orders and where are they? My user ID is 123.');
 ```
 
-生成的追踪记录将[类似于这个](https://smith.langchain.com/public/ff25bc26-9389-4798-8b91-2bdcc95d4a8e/r)。
+生成的追踪记录将[像这样](https://smith.langchain.com/public/ff25bc26-9389-4798-8b91-2bdcc95d4a8e/r)。
 
-## 在无服务器环境中进行追踪
+## 在无服务器环境中追踪
 
-在无服务器环境中进行追踪时，您必须等待所有运行刷新完毕，然后您的环境
-才能关闭。有关示例，请参阅 LangSmith 文档的[此部分](https://docs.langchain.com/langsmith/trace-with-vercel-ai-sdk#tracing-in-serverless-environments)。
+在无服务器环境中追踪时，你必须在环境关闭之前等待所有运行刷新完成。有关示例，请参阅 LangSmith 文档的[这一节](https://docs.langchain.com/langsmith/trace-with-vercel-ai-sdk#tracing-in-serverless-environments)。
 
 ## 延伸阅读
 
-有关更多示例以及在特定环境中设置追踪的说明，请参阅以下链接：
+有关在特定环境中设置追踪的更多示例和说明，请参阅以下链接：
 
 - [LangSmith 文档](https://docs.langchain.com/langsmith/)
 - [LangSmith 关于使用 AI SDK 进行追踪的指南](https://docs.langchain.com/langsmith/trace-with-vercel-ai-sdk)
 
-一旦您为项目设置了 LangSmith 追踪，请尝试收集数据集并进行评估：
+在你为项目设置好 LangSmith 追踪之后，试着收集一个数据集并对其进行评估：
 
 - [LangSmith 评估](https://docs.langchain.com/langsmith/evaluation)

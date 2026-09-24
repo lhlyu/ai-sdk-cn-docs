@@ -21,7 +21,7 @@ Kling AI 提供商位于 `@ai-sdk/klingai` 模块中。你可以使用以下命�
 import { klingai } from '@ai-sdk/klingai';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/klingai` 导入 `createKlingAI` 并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/klingai` 导入 `createKlingAI`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createKlingAI } from '@ai-sdk/klingai';
@@ -36,17 +36,17 @@ const klingai = createKlingAI({
 - **apiKey** _string_
 
   Kling AI API 密钥。默认为 `KLINGAI_API_KEY` 环境变量。
-  在 [Kling AI 开发者控制台](https://kling.ai/dev/api-key)中创建一个。
+  可在 [Kling AI 开发者控制台](https://kling.ai/dev/api-key)中创建。
 
 - **accessKey** _string_
 
   Kling AI 访问密钥。默认为 `KLINGAI_ACCESS_KEY` 环境变量。
-  旧版身份验证——建议使用 `apiKey`。
+  旧版身份验证方式——建议优先使用 `apiKey`。
 
 - **secretKey** _string_
 
   Kling AI 密钥。默认为 `KLINGAI_SECRET_KEY` 环境变量。
-  旧版身份验证——建议使用 `apiKey`。
+  旧版身份验证方式——建议优先使用 `apiKey`。
 
 - **baseURL** _string_
 
@@ -61,14 +61,14 @@ const klingai = createKlingAI({
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   你可以将其用作中间件来拦截请求，
-  或提供自定义的 fetch 实现，例如用于测试。
+  或为测试等场景提供自定义 fetch 实现。
 
 ## 身份验证
 
 Kling AI 支持两种身份验证方案：
 
-- **API 密钥**（推荐）。作为 bearer token 发送的单个密钥。在
-  [Kling AI 开发者控制台](https://kling.ai/dev/api-key)中创建一个，
+- **API 密钥**（推荐）。作为 bearer token 发送的单个密钥。可在
+  [Kling AI 开发者控制台](https://kling.ai/dev/api-key)中创建，
   并将其设置为 `KLINGAI_API_KEY`，或通过 `apiKey` 设置传入。
 - **访问密钥 / 密钥**（旧版）。提供商使用该密钥对为每个请求
   签名一个短期 JWT。设置 `KLINGAI_ACCESS_KEY` 和
@@ -86,13 +86,12 @@ Kling AI 支持两种身份验证方案：
 你可以使用 `.video()` 工厂方法创建 Kling AI 视频模型。
 有关使用 AI SDK 进行视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
 
-此提供商目前支持四种视频生成模式：文本转视频、图像转视频、参考转视频（多图像）和动作控制。
+该提供商目前支持四种视频生成模式：文本转视频、图像转视频、参考转视频（多图像）和动作控制。
 
 <Note>
-  并非所有选项都被每个模型版本和模式组合支持。请参阅
-  [KlingAI 能力
-  映射](https://app.klingai.com/global/dev/document-api/apiReference/model/skillsMap)
-  了解各模型的详细兼容性。
+  并非所有选项都受每个模型版本和模式组合支持。有关各模型的详细兼容性，
+  请参阅 [KlingAI 能力
+  映射表](https://app.klingai.com/global/dev/document-api/apiReference/model/skillsMap)。
 </Note>
 
 ### 文本转视频
@@ -104,7 +103,7 @@ import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
 import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { videos } = await generateVideo({
-  model: klingai.video('kling-v2.6-t2v'),
+  model: klingai.video('kling-v3.0-t2v'),
   prompt: 'A chicken flying into the sunset in the style of 90s anime.',
   aspectRatio: '16:9',
   duration: 5,
@@ -118,14 +117,14 @@ const { videos } = await generateVideo({
 
 ### 图像转视频
 
-根据起始帧图像和可选的文本提示词生成视频。流行的起始+结束帧功能可通过 `imageTail` 选项使用：
+根据起始帧图像和可选的文本提示词生成视频。流行的起始帧+结束帧功能可通过 `imageTail` 选项使用：
 
 ```ts
 import { klingai, type KlingAIVideoModelOptions } from '@ai-sdk/klingai';
 import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { videos } = await generateVideo({
-  model: klingai.video('kling-v2.6-i2v'),
+  model: klingai.video('kling-v3.0-i2v'),
   prompt: {
     image: 'https://example.com/start-frame.png',
     text: 'The cat slowly turns its head and blinks',
@@ -183,7 +182,7 @@ const { videos } = await generateVideo({
 });
 ```
 
-多镜头也可与图像转视频配合使用，通过将起始帧图像与每个镜头的提示词组合。
+多镜头也可与图像转视频结合使用，将起始帧图像与每个镜头的提示词组合在一起。
 
 ### 参考转视频（多图像）
 
@@ -240,35 +239,35 @@ const { videos } = await generateVideo({
 
 对于文本转视频、图像转视频、多图像转视频和动作控制，
 使用 `experimental_startVideo({ model, prompt, webhookUrl })` 注册一个
-应用自有的回调接收器。SDK 会将 `webhookUrl` 作为
+由应用程序拥有的回调接收器。SDK 会将 `webhookUrl` 作为
 `callback_url` 转发，其优先级高于 `providerOptions.klingai.callback_url`。
 当省略 `webhookUrl` 时，原始的 `callback_url` 会原样传递。
 
 KlingAI 会发送进度通知（`task_status: 'submitted'` 或
 `'processing'`）以及终止通知（`'succeed'` 或 `'failed'`）。
-你的接收器必须过滤进度通知，并将回调与
-任务关联。使用 `experimental_getVideoStatus(model, { operation })`，
-传入 `experimental_startVideo` 返回的 operation，以在收到终止通知后
-检查状态并获取结果。
+你的接收器必须过滤进度通知，并将回调与任务关联起来。使用
+`experimental_getVideoStatus(model, { operation })`，并传入
+`experimental_startVideo` 返回的 operation，以在收到终止通知后检查状态并获取
+结果。
 
 这些模型有意不暴露 `handleWebhookOption`，因为它们的
 回调协议需要一个能感知进度的接收器。核心
 [`generateVideo({ webhook })`](/docs/reference/ai-sdk-core/generate-video)
-会回退到轮询，而不调用 webhook 工厂。普通的
-`generateVideo()` 也会轮询。Workflow 现有的原生 webhook 能力
+会回退到轮询，而不会调用 webhook 工厂。普通的
+`generateVideo()` 也会进行轮询。Workflow 现有的原生 webhook 能力
 检查会拒绝这些直接提供商模型用于基于 webhook 的生成；
 请使用显式的 start/status 流程来实现调用方管理的回调。
 
 ### 视频提供商选项
 
-以下提供商选项可通过 `providerOptions.klingai` 使用。选项因模式而异——请参阅
-[KlingAI 能力映射](https://app.klingai.com/global/dev/document-api/apiReference/model/skillsMap)了解各模型的支持情况。
+以下提供商选项可通过 `providerOptions.klingai` 使用。选项因模式而异——有关各模型的支持情况，
+请参阅 [KlingAI 能力映射表](https://app.klingai.com/global/dev/document-api/apiReference/model/skillsMap)。
 
 #### 通用选项
 
 - **mode** _'std' | 'pro'_
 
-  视频生成模式。`'std'` 具有成本效益。`'pro'` 生成更高质量
+  视频生成模式。`'std'` 更具成本效益。`'pro'` 生成质量更高
   但耗时更长。
 
 - **pollIntervalMs** _number_
@@ -303,25 +302,25 @@ KlingAI 会发送进度通知（`task_status: 'submitted'` 或
 
 - **multiShot** _boolean_
 
-  启用多镜头视频生成（Kling v3.0+）。当为 true 时，视频被拆分为最多 6 个分镜镜头，每个镜头有各自的提示词和时长。
+  启用多镜头视频生成（Kling v3.0+）。当为 true 时，视频会被拆分为最多 6 个分镜镜头，每个镜头有各自的提示词和时长。
 
 - **shotType** _'customize' | 'intelligence'_
 
-  多镜头生成的分镜方法。`'customize'` 使用 `multiPrompt` 定义用户自定义镜头。`'intelligence'` 让模型根据主提示词自动分段。当 `multiShot` 为 true 时必填。
+  多镜头生成的分镜方式。`'customize'` 使用 `multiPrompt` 来定义用户自定义镜头。`'intelligence'` 让模型根据主提示词自动分段。当 `multiShot` 为 true 时必填。
 
 - **multiPrompt** _Array&lt;\{index, prompt, duration\}&gt;_
 
-  多镜头生成的每个镜头详情。每个镜头有一个 `index`（数字）、`prompt`（字符串，最多 512 个字符）和 `duration`（字符串，以秒为单位）。镜头时长之和必须等于总时长。当 `multiShot` 为 true 且 `shotType` 为 `'customize'` 时必填。
+  多镜头生成的每个镜头详情。每个镜头包含 `index`（数字）、`prompt`（字符串，最多 512 个字符）和 `duration`（字符串，以秒为单位）。各镜头时长之和必须等于总时长。当 `multiShot` 为 true 且 `shotType` 为 `'customize'` 时必填。
 
 - **voiceList** _Array&lt;\{voice_id: string\}&gt;_
 
-  用于语音控制的语音参考（Kling v3.0+）。最多 2 个语音。在提示词中通过 `<<<voice_1>>>` 模板语法引用。需要 `sound: 'on'`。在 I2V 端点上不能与 `elementList` 共存。
+  用于语音控制的语音引用（Kling v3.0+）。最多 2 个语音。在提示词中通过 `<<<voice_1>>>` 模板语法引用。需要 `sound: 'on'`。在 I2V 端点上不能与 `elementList` 共存。
 
 #### 仅图像转视频选项
 
 - **imageTail** _string_
 
-  用于起始+结束帧控制的结束帧图像。接受图像 URL 或原始 base64 编码数据。大多数模型需要 `mode: 'pro'`。
+  用于起始帧+结束帧控制的结束帧图像。接受图像 URL 或原始 base64 编码数据。大多数模型需要 `mode: 'pro'`。
 
 - **staticMask** _string_
 
@@ -346,8 +345,8 @@ KlingAI 会发送进度通知（`task_status: 'submitted'` 或
 - **characterOrientation** _'image' | 'video'_（必填）
 
   生成视频中角色的方向。
-  `'image'` 匹配参考图像方向（视频最长 10 秒）。
-  `'video'` 匹配参考视频方向（视频最长 30 秒）。
+  `'image'` 匹配参考图像的方向（视频最长 10 秒）。
+  `'video'` 匹配参考视频的方向（视频最长 30 秒）。
 
 - **keepOriginalSound** _'yes' | 'no'_
 
@@ -355,9 +354,9 @@ KlingAI 会发送进度通知（`task_status: 'submitted'` 或
 
 <Note>
   视频生成是一个异步过程，可能需要几分钟。
-  建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）以确保
-  可靠运行。状态轮询在首次请求时信任配置的 Kling AI API 源，
-  并在跟随重定向到其他源之前验证每个重定向。
+  为确保可靠运行，建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）。
+  状态轮询在首次请求时信任配置的 Kling AI API 源，
+  并在跟随重定向到其他源之前验证每一次重定向。
 </Note>
 
 ### 视频模型能力
@@ -368,10 +367,10 @@ KlingAI 会发送进度通知（`task_status: 'submitted'` 或
 | ----------------------- | ----------------------------------------------------- |
 | `kling-v3.0-t2v`        | 最新 v3.0，多镜头、语音控制、声音（3-15 秒）          |
 | `kling-v2.6-t2v`        | V2.6，pro 模式下支持声音                              |
-| `kling-v2.5-turbo-t2v`  | 针对速度优化，std 和 pro                              |
+| `kling-v2.5-turbo-t2v`  | 针对速度优化，支持 std 和 pro                         |
 | `kling-v2.1-master-t2v` | 高质量生成，仅 pro                                    |
-| `kling-v2-master-t2v`   | 大师级质量生成                                        |
-| `kling-v1.6-t2v`        | V1.6 生成，std 和 pro                                 |
+| `kling-v2-master-t2v`   | Master 级质量生成                                     |
+| `kling-v1.6-t2v`        | V1.6 生成，支持 std 和 pro                            |
 | `kling-v1-t2v`          | 原始 V1 模型，支持摄像机控制（std）                   |
 
 #### 图像转视频
@@ -383,17 +382,17 @@ KlingAI 会发送进度通知（`task_status: 'submitted'` 或
 | `kling-v2.5-turbo-i2v`  | 针对速度优化，pro 模式下支持结束帧                            |
 | `kling-v2.1-master-i2v` | 高质量生成，仅 pro                                            |
 | `kling-v2.1-i2v`        | V2.1 生成，pro 模式下支持结束帧                               |
-| `kling-v2-master-i2v`   | 大师级质量生成                                                |
+| `kling-v2-master-i2v`   | Master 级质量生成                                             |
 | `kling-v1.6-i2v`        | V1.6 生成，pro 模式下支持结束帧                               |
 | `kling-v1.5-i2v`        | V1.5 生成，pro 模式下支持结束帧和运动笔刷                     |
 | `kling-v1-i2v`          | 原始 V1 模型，std/pro 模式下支持结束帧和运动笔刷              |
 
 #### 动作控制
 
-| 模型                        | 描述                                                          |
-| --------------------------- | ------------------------------------------------------------ |
-| `kling-v3.0-motion-control` | 最新 v3.0，通过元素绑定增强面部一致性                         |
-| `kling-v2.6-motion-control` | 将参考视频中的动作迁移到角色图像                              |
+| 模型                        | 描述                                                       |
+| --------------------------- | ---------------------------------------------------------- |
+| `kling-v3.0-motion-control` | 最新 v3.0，通过元素绑定增强面部一致性                      |
+| `kling-v2.6-motion-control` | 将参考视频中的动作迁移到角色图像                           |
 
 <Note>
   如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传入。

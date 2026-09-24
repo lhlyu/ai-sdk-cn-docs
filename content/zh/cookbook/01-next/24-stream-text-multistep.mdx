@@ -1,19 +1,19 @@
 ---
-title: "streamText 多步骤操作手册"
-description: "了解如何创建具有不同设置的多个 streamText 步骤"
+title: "streamText 多步骤 Cookbook"
+description: "了解如何使用不同的设置创建多个 streamText 步骤"
 tags: ['next', 'streaming']
 ---
 
 # streamText 多步骤智能体
 
-您可能希望在流中设置不同的步骤，每个步骤具有不同的设置，
+你可能希望在流中拥有不同的步骤，每个步骤具有不同的设置，
 例如模型、工具或系统提示词。
 
 通过 `createUIMessageStream` 以及合并到 `UIMessageStream` 时的 `sendFinish` / `sendStart` 选项，
-您可以控制何时将完成和开始事件发送到客户端，
-从而在单个助手 UI 消息中实现不同的步骤。
+你可以控制 finish 和 start 事件何时发送到客户端，
+从而在单个助手 UI 消息中拥有不同的步骤。
 
-## 服务器端
+## 服务端
 
 ```typescript filename='app/api/chat/route.ts'
 import {
@@ -31,42 +31,42 @@ export async function POST(req: Request) {
 
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
-      // 步骤 1 示例：强制工具调用
+      // step 1 example: forced tool call
       const result1 = streamText({
-        model: 'openai/gpt-4o-mini',
-        instructions: '从对话中提取用户目标。',
+        model: 'openai/gpt-6-luna',
+        instructions: 'Extract the user goal from the conversation.',
         messages,
-        toolChoice: 'required', // 强制模型调用工具
+        toolChoice: 'required', // force the model to call a tool
         tools: {
           extractGoal: tool({
             inputSchema: z.object({ goal: z.string() }),
-            execute: async ({ goal }) => goal, // 无操作提取工具
+            execute: async ({ goal }) => goal, // no-op extract tool
           }),
         },
       });
 
-      // 将初始结果转发给客户端，但不发送完成事件：
+      // forward the initial result to the client without the finish event:
       writer.merge(
         toUIMessageStream({ stream: result1.stream, sendFinish: false }),
       );
 
-      // 注意：您可以在此处使用任何编程结构，例如 if-else、循环等。
-      // 使用这种方法，工作流编程就是普通的编程。
+      // note: you can use any programming construct here, e.g. if-else, loops, etc.
+      // workflow programming is normal programming with this approach.
 
-      // 示例：使用上一步的强制工具调用继续流
+      // example: continue stream with forced tool call from previous step
       const result2 = streamText({
-        // 不同的系统提示词、不同的模型、无工具：
-        model: 'openai/gpt-4o',
+        // different system prompt, different model, no tools:
+        model: 'openai/gpt-6-astra',
         instructions:
-          '您是一个具有不同系统提示词的乐于助人的助手。请在回答中重复提取的用户目标。',
-        // 使用上一步的消息继续工作流流：
+          'You are a helpful assistant with a different system prompt. Repeat the extract user goal in your answer.',
+        // continue the workflow stream with the messages from the previous step:
         messages: [
           ...convertToModelMessages(messages),
           ...(await result1.response).messages,
         ],
       });
 
-      // 将第二个结果转发给客户端（包括完成事件）：
+      // forward the 2nd result to the client (incl. the finish event):
       writer.merge(
         toUIMessageStream({ stream: result2.stream, sendStart: false }),
       );

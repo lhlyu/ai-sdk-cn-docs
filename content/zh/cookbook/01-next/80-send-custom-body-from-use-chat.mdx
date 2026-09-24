@@ -1,32 +1,31 @@
 ---
-title: 从 useChat 发送自定义请求体
-description: 学习如何使用 AI SDK 和 Next.js 从 useChat Hook 发送自定义请求体
+title: "从 useChat 发送自定义 Body"
+description: "了解如何使用 AI SDK 和 Next.js 从 useChat Hook 发送自定义 Body"
 tags: ['next', 'chat']
 ---
 
-# 从 useChat 发送自定义请求体
+# 从 useChat 发送自定义 Body
 
 <Note>
-  如果你希望随每条消息发送自定义值，请查看
-  [聊天机器人请求配置
-  文档](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot#request-configuration)。
+  如果你想在每条消息旁边发送自定义值，请查看
+  [聊天机器人请求配置文档](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot#request-configuration)。
 </Note>
 
-默认情况下，`useChat` 会将所有消息以及请求信息发送到服务器。
-然而，通常需要控制发送到服务器的整个请求体内容，例如：
+默认情况下，`useChat` 会将所有消息以及请求中的信息发送到服务器。
+然而，通常需要控制发送到服务器的整个 body 内容，例如：
 
-- 仅发送最后一条消息
-- 随消息发送附加数据
-- 更改请求体的结构
+- 只发送最后一条消息
+- 随消息一起发送额外数据
+- 更改请求 body 的结构
 
-`prepareSendMessagesRequest` 选项允许你自定义发送到服务器的整个请求体内容。
-该函数接收消息列表、请求数据以及来自 append 调用的请求体。
-它应返回将发送到服务器的请求体内容。
+`prepareSendMessagesRequest` 选项允许你自定义发送到服务器的整个 body 内容。
+该函数接收消息列表、请求数据以及来自 append 调用的请求 body。
+它应返回将要发送到服务器的 body 内容。
 
 ## 示例
 
-此示例演示如何仅将最后一条消息的文本发送到服务器。
-这在希望减少发送到服务器的数据量时非常有用。
+此示例展示了如何仅将最后一条消息的文本发送到服务器。
+如果你想减少发送到服务器的数据量，这会很有用。
 
 ### 客户端
 
@@ -56,7 +55,7 @@ export default function Chat() {
     <div>
     {messages.map((message, index) => (
       <div key={index}>
-        {message.role === 'user' ? '用户: ' : 'AI: '}
+        {message.role === 'user' ? 'User: ' : 'AI: '}
         {message.parts.map((part) => {
           switch (part.type) {
             case "text":
@@ -80,8 +79,8 @@ export default function Chat() {
 
 ### 服务器
 
-我们需要调整服务器，使其能够接收包含聊天 ID 和最后一条消息的自定义请求格式。
-其余消息历史可以从存储中加载。
+我们需要调整服务器以接收包含聊天 ID 和最后一条消息的自定义请求格式。
+其余的消息历史记录可以从存储中加载。
 
 ```tsx filename='app/api/chat/route.ts' highlight="12,15-16,21"
 import {
@@ -91,23 +90,23 @@ import {
   toUIMessageStream,
 } from 'ai';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const { id, message } = await req.json();
 
-  // 加载现有消息并添加新消息
+  // Load existing messages and add the new one
   const messages = await loadMessages(id);
   messages.push(message);
 
-  // 调用语言模型
+  // Call the language model
   const result = streamText({
-    model: 'openai/gpt-4.1',
+    model: 'openai/gpt-6-astra',
     messages: await convertToModelMessages(messages),
   });
 
-  // 以流式响应
+  // Respond with the stream
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({
       stream: result.stream,

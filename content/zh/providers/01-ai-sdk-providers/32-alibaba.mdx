@@ -1,29 +1,29 @@
 ---
 title: "Alibaba"
-description: "了解如何将阿里云百炼（Qwen）模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用阿里云百炼（Qwen）模型。"
 ---
 
 # Alibaba 提供商
 
 [阿里云百炼](https://modelstudio.console.alibabacloud.com/) 提供对 Qwen 模型系列的访问，包括高级推理能力。
 
-API 密钥可以从[控制台](https://modelstudio.console.alibabacloud.com/)获取。
+API 密钥可从 [控制台](https://modelstudio.console.alibabacloud.com/) 获取。
 
 ## 设置
 
-Alibaba 提供商可通过 `@ai-sdk/alibaba` 模块获得。你可以使用以下命令安装：
+Alibaba 提供商通过 `@ai-sdk/alibaba` 模块提供。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/alibaba" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/alibaba` 导入默认的提供商实例 `alibaba`：
+你可以从 `@ai-sdk/alibaba` 导入默认提供商实例 `alibaba`：
 
 ```ts
 import { alibaba } from '@ai-sdk/alibaba';
 ```
 
-对于自定义配置，你可以导入 `createAlibaba` 并使用你的设置创建一个提供商实例：
+如需自定义配置，你可以导入 `createAlibaba` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createAlibaba } from '@ai-sdk/alibaba';
@@ -43,23 +43,23 @@ const alibaba = createAlibaba({
 - **videoBaseURL** _string_
 
   为视频生成 API 调用使用不同的 URL 前缀。视频 API 使用 DashScope
-  原生端点（非 OpenAI 兼容端点）。
+  原生端点（而非 OpenAI 兼容端点）。
   默认前缀为 `https://dashscope-intl.aliyuncs.com`。
 
 - **embeddingBaseURL** _string_
 
   为嵌入 API 调用使用不同的 URL 前缀。嵌入 API 使用 DashScope
-  原生端点（非 OpenAI 兼容端点）。
+  原生端点（而非 OpenAI 兼容端点）。
   默认前缀为 `https://dashscope-intl.aliyuncs.com/api/v1`。
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认为
+  通过 `Authorization` 请求头发送的 API 密钥。默认使用
   `ALIBABA_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -67,7 +67,7 @@ const alibaba = createAlibaba({
 
 - **includeUsage** _boolean_
 
-  在流式传输响应中包含使用信息。启用后，令牌使用情况将包含在最终块中。
+  在流式传输响应中包含用量信息。启用后，token 用量将包含在最后一个数据块中。
   默认为 `true`。
 
 ## 语言模型
@@ -80,7 +80,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: alibaba('qwen-plus'),
-  prompt: '写一份供4人食用的素食千层面食谱。',
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
 
@@ -88,23 +88,32 @@ const { text } = await generateText({
 
 ```ts
 const model = alibaba.chatModel('qwen-plus');
-// 或
+// or
 const model = alibaba.languageModel('qwen-plus');
 ```
 
 Alibaba 语言模型可用于 `streamText` 函数
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
-Alibaba 模型提供以下可选的提供商选项：
+Alibaba 模型可使用以下可选提供商选项：
 
 - **enableThinking** _boolean_
 
-  为支持的模型启用思考/推理模式。启用后，模型在响应之前生成推理内容。
+  为支持的模型启用思考/推理模式。启用后，模型会在响应之前生成推理内容。
   默认为 `false`。
 
 - **thinkingBudget** _number_
 
-  要生成的最大推理令牌数。限制思考内容的长度。
+  要生成的推理 token 最大数量。限制思考内容的长度。
+
+- **preserveThinking** _boolean_
+
+  为支持的模型保留之前助手消息中的推理内容。
+  启用后，推理内容会作为 Alibaba 的 `reasoning_content` 单独发送，并且
+  会启用 `preserve_thinking`。对于支持保留思考的模型，默认为 `true`；
+  设置为 `false` 可选择退出。继续对话时，请原样追加 AI SDK 的 `responseMessages`。
+  有关支持的模型列表，请参阅 Alibaba 的
+  [保留思考文档](https://docs.qwencloud.com/developer-guides/text-generation/thinking#preserve-thinking-in-multi-turn)。
 
 - **parallelToolCalls** _boolean_
 
@@ -127,14 +136,69 @@ const { text, reasoning } = await generateText({
       thinkingBudget: 2048,
     } satisfies AlibabaLanguageModelChatOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  prompt: 'How many "r"s are in the word "strawberry"?',
 });
 
-console.log('推理过程：', reasoning);
-console.log('答案：', text);
+console.log('Reasoning:', reasoning);
+console.log('Answer:', text);
 ```
 
-对于纯思考模型（如 `qwen3-235b-a22b-thinking-2507`），思考模式默认启用。
+对于仅支持思考的模型（如 `qwen3-235b-a22b-thinking-2507`），思考模式默认启用。
+
+### 多轮对话中的保留思考
+
+对于支持保留思考的模型，AI SDK 默认会将之前助手消息中的推理内容作为
+Alibaba 的 `reasoning_content` 重放，以便模型能够基于其先前的思考过程继续构建：
+
+```ts
+import { alibaba, type AlibabaLanguageModelChatOptions } from '@ai-sdk/alibaba';
+import { generateText, type ModelMessage } from 'ai';
+
+const providerOptions = {
+  alibaba: {
+    enableThinking: true,
+    thinkingBudget: 2048,
+  } satisfies AlibabaLanguageModelChatOptions,
+};
+
+const opening: ModelMessage = {
+  role: 'user',
+  content: 'Is Kafka or RocketMQ a better fit for transactional messages?',
+};
+
+const first = await generateText({
+  model: alibaba('qwen3.7-max'),
+  messages: [opening],
+  providerOptions,
+});
+
+const second = await generateText({
+  model: alibaba('qwen3.7-max'),
+  messages: [
+    opening,
+    ...first.responseMessages, // append unchanged to keep the reasoning parts
+    { role: 'user', content: 'Which tradeoff mattered most?' },
+  ],
+  providerOptions,
+});
+```
+
+继续对话时，请原样追加 `responseMessages`。如果你仅根据可见文本
+重建助手历史记录，推理部分会在提供商将其序列化为 `reasoning_content` 之前被丢弃。
+设置 `preserveThinking: false` 可选择退出重放，并注意以下事项：
+
+- `preserveThinking` 本身不会启用思考。请将其与
+  `enableThinking`/`thinkingBudget` 或顶层 `reasoning` 选项搭配使用。
+- 仅对 Alibaba 文档中说明支持保留思考的模型默认启用；
+  对于其他模型，除非你显式设置该选项，否则不会发送 `preserve_thinking`。有关当前支持的模型列表，
+  请参阅 Alibaba 的
+  [保留思考文档](https://docs.qwencloud.com/developer-guides/text-generation/thinking#preserve-thinking-in-multi-turn)。
+- 当前工具调用轮次（最后一条用户消息之后）的推理内容
+  始终会随工具结果一起发送回去，这是 Alibaba 推荐的做法；该选项仅
+  控制更早轮次的推理内容。
+- 保留的推理内容会增加输入 token 用量和计费。
+- 历史推理内容与可见的助手文本保持分离；它绝不会
+  合并到 `content` 中。
 
 ### 工具调用
 
@@ -149,9 +213,9 @@ const { text } = await generateText({
   model: alibaba('qwen-plus'),
   tools: {
     weather: tool({
-      description: '获取某个位置的天气',
+      description: 'Get the weather in a location',
       inputSchema: z.object({
-        location: z.string().describe('要获取天气的位置'),
+        location: z.string().describe('The location to get the weather for'),
       }),
       execute: async ({ location }) => ({
         location,
@@ -159,15 +223,15 @@ const { text } = await generateText({
       }),
     }),
   },
-  prompt: '旧金山的天气怎么样？',
+  prompt: 'What is the weather in San Francisco?',
 });
 ```
 
 ### 提示词缓存
 
-Alibaba 支持隐式和显式提示词缓存，以减少重复提示词的成本。
+Alibaba 同时支持隐式和显式提示词缓存，以降低重复提示词的成本。
 
-**隐式缓存** 自动工作——提供商无需任何配置即可缓存适当的内容。为了获得更多控制，你可以使用 **显式缓存**，通过为特定消息标记 `cacheControl`：
+**隐式缓存**会自动工作——提供商会缓存适当的内容，无需任何配置。如需更多控制，你可以通过使用 `cacheControl` 标记特定消息来使用**显式缓存**：
 
 ### 单条消息缓存控制
 
@@ -180,7 +244,7 @@ const { text, usage } = await generateText({
   messages: [
     {
       role: 'system',
-      content: '你是一个有用的助手。 [... 长系统提示词 ...]',
+      content: 'You are a helpful assistant. [... long system prompt ...]',
       providerOptions: {
         alibaba: {
           cacheControl: { type: 'ephemeral' },
@@ -197,7 +261,7 @@ const { text, usage } = await generateText({
 import { alibaba } from '@ai-sdk/alibaba';
 import { generateText } from 'ai';
 
-const longDocument = '... 大型文档内容 ...';
+const longDocument = '... large document content ...';
 
 const { text, usage } = await generateText({
   model: alibaba('qwen-plus'),
@@ -207,7 +271,7 @@ const { text, usage } = await generateText({
       content: [
         {
           type: 'text',
-          text: '上下文：请分析此文档。',
+          text: 'Context: Please analyze this document.',
         },
         {
           type: 'text',
@@ -224,12 +288,12 @@ const { text, usage } = await generateText({
 });
 ```
 
-**注意：** 缓存块的最小内容长度为 1,024 个令牌。
+**注意：** 缓存块的最小内容长度为 1,024 个 token。
 
 ## 嵌入模型
 
 你可以使用 `.embedding()` 工厂方法创建文本嵌入模型。
-有关 AI SDK 嵌入的更多信息，请参见 [`embed()`](/docs/reference/ai-sdk-core/embed)
+有关 AI SDK 中嵌入的更多信息，请参阅 [`embed()`](/docs/reference/ai-sdk-core/embed)
 和 [`embedMany()`](/docs/reference/ai-sdk-core/embed-many)。
 
 ```ts
@@ -244,7 +308,7 @@ import { embed } from 'ai';
 
 const { embedding, usage } = await embed({
   model: alibaba.embedding('text-embedding-v4'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
   providerOptions: {
     alibaba: {
       textType: 'document',
@@ -255,8 +319,8 @@ const { embedding, usage } = await embed({
 });
 ```
 
-使用 `embedMany` 嵌入多个文本值。Alibaba 文本嵌入模型支持
-每次 API 调用最多 10 个值；更大的批次由 `embedMany` 自动拆分。
+使用 `embedMany` 嵌入多个文本值。Alibaba 文本嵌入模型每次 API 调用
+最多支持 10 个值；更大的批次会由 `embedMany` 自动拆分。
 
 ```ts
 import { alibaba, type AlibabaEmbeddingModelOptions } from '@ai-sdk/alibaba';
@@ -265,9 +329,9 @@ import { embedMany } from 'ai';
 const { embeddings } = await embedMany({
   model: alibaba.embedding('text-embedding-v4'),
   values: [
-    '阳光明媚的海滩日',
-    '城市里的雨夜',
-    '山中的雪夜',
+    'sunny day at the beach',
+    'rainy afternoon in the city',
+    'snowy night in the mountains',
   ],
   providerOptions: {
     alibaba: {
@@ -278,11 +342,11 @@ const { embeddings } = await embedMany({
 });
 ```
 
-Alibaba 嵌入模型支持可通过 `providerOptions.alibaba` 传递的额外提供商选项：
+Alibaba 嵌入模型支持通过 `providerOptions.alibaba` 传递的额外提供商选项：
 
 - **textType** _'query' | 'document'_
 
-  区分查询文本和文档文本，用于非对称检索任务。
+  为非对称检索任务区分查询文本和文档文本。
   默认为 `document`。
 
 - **dimension** _number_
@@ -293,28 +357,33 @@ Alibaba 嵌入模型支持可通过 `providerOptions.alibaba` 传递的额外提
 - **outputType** _'dense' | 'sparse' | 'dense&sparse'_
 
   指定输出向量类型。默认为 `dense`。
-  AI SDK 嵌入接口返回密集的 `number[]` 向量，因此不支持仅稀疏输出，否则会抛出错误。使用 `dense&sparse` 可在 `embedding`/`embeddings` 中接收密集嵌入，并在 `providerMetadata.alibaba.sparseEmbeddings` 中接收稀疏向量。
+  AI SDK 嵌入接口返回稠密 `number[]` 向量，因此不支持仅稀疏
+  输出，否则会抛出错误。使用 `dense&sparse` 可在
+  `embedding`/`embeddings` 中接收稠密嵌入，并在
+  `providerMetadata.alibaba.sparseEmbeddings` 中接收稀疏向量。
 
 ### 嵌入模型能力
 
-| 模型                | 默认维度 | 灵活维度                                   | 每次调用最大值 |
-| ------------------- | ------------------ | ---------------------------------------- | ------------------- |
-| `text-embedding-v4` | 1024               | 64, 128, 256, 512, 768, 1024, 1536, 2048 | 10                  |
-| `text-embedding-v3` | 1024               | 512, 768, 1024                           | 10                  |
+| 模型                | 默认维度 | 灵活维度                                 | 每次调用最大数量 |
+| ------------------- | -------- | ---------------------------------------- | ---------------- |
+| `text-embedding-v4` | 1024     | 64, 128, 256, 512, 768, 1024, 1536, 2048 | 10               |
+| `text-embedding-v3` | 1024     | 512, 768, 1024                           | 10               |
 
 <Note>
-  上表列出了当前文档记录的 Alibaba 文本嵌入模型。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  上表列出了当前有文档记录的 Alibaba 文本嵌入模型。如有需要，
+  你也可以将任何可用的提供商模型 ID 作为字符串传入。
 </Note>
 
 ## 视频模型
 
-你可以使用 `.video()` 工厂方法创建调用阿里云 DashScope API 的 [Wan](https://www.alibabacloud.com/help/en/model-studio/use-video-generation) 视频模型。有关 AI SDK 视频生成的更多信息，请参见 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
+你可以使用 `.video()` 工厂方法创建调用阿里云 DashScope API 的
+[Wan](https://www.alibabacloud.com/help/en/model-studio/use-video-generation) 视频模型。有关 AI SDK 中视频生成的更多信息，请参阅 [generateVideo()](/docs/reference/ai-sdk-core/generate-video)。
 
-Alibaba 支持三种视频生成模式：文本转视频、图像转视频（首帧）和参考转视频。
+Alibaba 支持三种视频生成模式：文本生成视频、图像生成视频（首帧）和参考生成视频。
 
-### 文本转视频
+### 文本生成视频
 
-从文本提示词生成视频：
+根据文本提示词生成视频：
 
 ```ts
 import { alibaba, type AlibabaVideoModelOptions } from '@ai-sdk/alibaba';
@@ -322,34 +391,36 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.6-t2v'),
-  prompt: '日落时分宁静的山间湖泊，水面泛起微微涟漪。',
+  prompt: 'A serene mountain lake at sunset with gentle ripples on the water.',
   resolution: '1280x720',
   duration: 5,
   providerOptions: {
     alibaba: {
       promptExtend: true,
-      pollTimeoutMs: 600000, // 10 分钟
+      pollTimeoutMs: 600000, // 10 minutes
     } satisfies AlibabaVideoModelOptions,
   },
 });
 ```
 
-`wan2.7` 模型额外支持 `aspectRatio` 选项（映射到 API 的 `ratio` 参数）并始终生成音频。多镜头结构直接在提示词中描述，而不是使用 `shotType` 选项：
+`wan2.7` 模型还额外支持 `aspectRatio` 选项（映射到 API 的 `ratio` 参数），
+并且始终生成音频。多镜头结构直接在提示词中描述，
+而不是通过 `shotType` 选项：
 
 ```ts
 const { video } = await generateVideo({
   model: alibaba.video('wan2.7-t2v'),
   prompt:
-    '日落时分宁静的山间湖泊。镜头在水面上平移，然后切换到涟漪捕捉光线的特写。',
+    'A serene mountain lake at sunset. The camera pans across the water, then cuts to a close-up of ripples catching the light.',
   resolution: '1920x1080',
   aspectRatio: '16:9',
   duration: 5,
 });
 ```
 
-### 图像转视频
+### 图像生成视频
 
-从首帧图像和可选的文本提示词生成视频：
+根据首帧图像和可选文本提示词生成视频：
 
 ```ts
 import { alibaba, type AlibabaVideoModelOptions } from '@ai-sdk/alibaba';
@@ -359,18 +430,18 @@ const { video } = await generateVideo({
   model: alibaba.video('wan2.6-i2v'),
   prompt: {
     image: 'https://example.com/landscape.jpg',
-    text: '镜头缓慢地扫过风景',
+    text: 'Camera slowly pans across the landscape',
   },
   duration: 5,
   providerOptions: {
     alibaba: {
-      pollTimeoutMs: 600000, // 10 分钟
+      pollTimeoutMs: 600000, // 10 minutes
     } satisfies AlibabaVideoModelOptions,
   },
 });
 ```
 
-你也可以使用顶层的 `frameImages` 选项传递首帧：
+你也可以使用顶层 `frameImages` 选项传入首帧：
 
 ```ts
 import { alibaba, type AlibabaVideoModelOptions } from '@ai-sdk/alibaba';
@@ -378,7 +449,7 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.6-i2v'),
-  prompt: '镜头缓慢地扫过风景',
+  prompt: 'Camera slowly pans across the landscape',
   frameImages: [
     {
       image: 'https://example.com/landscape.jpg',
@@ -388,17 +459,18 @@ const { video } = await generateVideo({
   duration: 5,
   providerOptions: {
     alibaba: {
-      pollTimeoutMs: 600000, // 10 分钟
+      pollTimeoutMs: 600000, // 10 minutes
     } satisfies AlibabaVideoModelOptions,
   },
 });
 ```
 
-### 参考转视频
+### 参考生成视频
 
 使用参考图像和/或视频生成视频，以保持角色一致性。
 
-对于 `wan2.6` 模型，在提示词中使用角色标识符（`character1`、`character2` 等）来引用它们。引用必须是公共 URL：
+对于 `wan2.6` 模型，请在提示词中使用角色标识符（`character1`、`character2` 等）
+来引用它们。引用必须是公开 URL：
 
 ```ts
 import { alibaba, type AlibabaVideoModelOptions } from '@ai-sdk/alibaba';
@@ -406,19 +478,21 @@ import { experimental_generateVideo as generateVideo } from 'ai';
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.6-r2v-flash'),
-  prompt: 'character1 走过一个美丽的花园，并向镜头挥手',
+  prompt: 'character1 walks through a beautiful garden and waves at the camera',
   resolution: '1280x720',
   duration: 5,
   inputReferences: ['https://example.com/character-reference.jpg'],
   providerOptions: {
     alibaba: {
-      pollTimeoutMs: 600000, // 10 分钟
+      pollTimeoutMs: 600000, // 10 minutes
     } satisfies AlibabaVideoModelOptions,
   },
 });
 ```
 
-对于 `wan2.7` 模型，在提示词中使用 `Image 1`、`Image 2`、`Video 1` 等（图像和视频按引用顺序分别计数）。图像引用可以是公共 URL 或内联文件数据；视频引用必须是公共 URL：
+对于 `wan2.7` 模型，请在提示词中使用 `Image 1`、`Image 2`、`Video 1` 等
+（图像和视频分别计数，按引用顺序）。图像引用
+可以是公开 URL 或内联文件数据；视频引用必须是公开 URL：
 
 ```ts
 import { alibaba, type AlibabaVideoModelOptions } from '@ai-sdk/alibaba';
@@ -429,28 +503,30 @@ const imageBytes = await readFile('./character.png');
 
 const { video } = await generateVideo({
   model: alibaba.video('wan2.7-r2v'),
-  prompt: 'Image 1 走过 Image 2 中展示的场景。',
+  prompt: 'Image 1 walks through the scene shown in Image 2.',
   resolution: '1920x1080',
   duration: 5,
   inputReferences: [
-    imageBytes, // 内联图像数据，作为 base64 数据 URI 发送
+    imageBytes, // inline image data, sent as base64 data URI
     'https://example.com/background.png',
   ],
   providerOptions: {
     alibaba: {
       ratio: '16:9',
-      pollTimeoutMs: 600000, // 10 分钟
+      pollTimeoutMs: 600000, // 10 minutes
     } satisfies AlibabaVideoModelOptions,
   },
 });
 ```
 
-为了完全控制 `wan2.7` 的媒体数组（例如语音参考或显式媒体类型），请使用 `media` 提供商选项，它会覆盖从 `inputReferences` 和 `frameImages` 的自动映射：
+如需完全控制 `wan2.7` 的 media 数组（例如语音引用或显式
+媒体类型），请使用 `media` 提供商选项，它会覆盖从 `inputReferences` 和 `frameImages`
+的自动映射：
 
 ```ts
 const { video } = await generateVideo({
   model: alibaba.video('wan2.7-r2v'),
-  prompt: 'Video 1 走进房间。Image 1 抬头打招呼。',
+  prompt: 'Video 1 walks into the room. Image 1 looks up and says hello.',
   providerOptions: {
     alibaba: {
       media: [
@@ -469,11 +545,11 @@ const { video } = await generateVideo({
 
 ### 视频提供商选项
 
-以下提供商选项可通过 `providerOptions.alibaba` 获得：
+以下提供商选项可通过 `providerOptions.alibaba` 使用：
 
 - **negativePrompt** _string_
 
-  对生成视频中应避免的内容的描述（最多 500 个字符）。
+  对生成视频中要避免的内容的描述（最多 500 个字符）。
 
 - **audioUrl** _string_
 
@@ -485,11 +561,11 @@ const { video } = await generateVideo({
 
 - **shotType** `'single'` | `'multi'`
 
-  视频生成的镜头类型。`'multi'` 启用多镜头电影叙事（仅限 wan2.6 模型）。
+  视频生成的镜头类型。`'multi'` 启用多镜头电影化叙事（仅限 wan2.6 模型）。
 
 - **watermark** _boolean_
 
-  是否向生成的视频添加水印。默认为 `false`。
+  是否为生成的视频添加水印。默认为 `false`。
 
 - **audio** _boolean_
 
@@ -497,18 +573,20 @@ const { video } = await generateVideo({
 
 - **referenceUrls** _string[]_
 
-  用于参考转视频模式的参考图像/视频 URL 数组（`wan2.6` 模型）。支持 0-5 张图像和 0-3 个视频，总共最多 5 个。
-  传递参考图像时，优先使用顶层的 `inputReferences` 选项。
+  用于参考生成视频模式的参考图像/视频 URL 数组（`wan2.6` 模型）。支持 0-5 张图像和 0-3 个视频，总计最多 5 个。
+  传入参考图像时，优先使用顶层 `inputReferences` 选项。
 
 - **media** _Array&lt;\{ type, url, referenceVoice? \}&gt;_
 
-  用于参考转视频模式的显式媒体数组（`wan2.7` 模型）。每个项目都有一个 `type`（`'reference_image'`、`'reference_video'` 或 `'first_frame'`）、一个 `url`（公共 URL，或图像的 `data:{mime};base64,{data}` URI）以及一个可选的 `referenceVoice` 音频 URL。
+  用于参考生成视频模式的显式 media 数组（`wan2.7` 模型）。每个项都有一个 `type`
+  （`'reference_image'`、`'reference_video'` 或 `'first_frame'`）、一个 `url`（公开 URL，或图像的
+  `data:{mime};base64,{data}` URI），以及可选的 `referenceVoice` 音频 URL。
   覆盖从 `inputReferences` 和 `frameImages` 的自动映射。
 
 - **ratio** `'16:9'` | `'9:16'` | `'1:1'` | `'4:3'` | `'3:4'`
 
-  宽高比（`wan2.7` 文本转视频和参考转视频模型）。
-  顶层的 `aspectRatio` 选项会自动映射到此参数。
+  宽高比（`wan2.7` 文本生成视频和参考生成视频模型）。
+  顶层 `aspectRatio` 选项会自动映射到此参数。
 
 - **pollIntervalMs** _number_
 
@@ -519,40 +597,44 @@ const { video } = await generateVideo({
   视频生成的最大等待时间（毫秒）。默认为 600000（10 分钟）。
 
 <Note>
-  视频生成是一个异步过程，可能需要几分钟。考虑将 `pollTimeoutMs` 设置为至少 10 分钟（600000 毫秒）以确保可靠运行。
+  视频生成是一个异步过程，可能需要几分钟。
+  为确保可靠运行，建议将 `pollTimeoutMs` 设置为至少 10 分钟（600000ms）。
 </Note>
 
 ### 视频模型能力
 
-#### 文本转视频
+#### 文本生成视频
 
-| 模型                    | 音频 | 分辨率        | 时长 |
-| ----------------------- | ----- | ----------------- | -------- |
-| `wan2.6-t2v`            | 是   | 720P, 1080P       | 2-15s    |
-| `wan2.5-t2v-preview`    | 是   | 480P, 720P, 1080P | 5s, 10s  |
-| `wan2.7-t2v`            | 是   | 720P, 1080P       | 2-15s    |
-| `wan2.7-t2v-2026-06-12` | 是   | 720P, 1080P       | 2-15s    |
+| 模型                    | 音频 | 分辨率            | 时长    |
+| ----------------------- | ---- | ----------------- | ------- |
+| `wan2.6-t2v`            | 是   | 720P, 1080P       | 2-15s   |
+| `wan2.5-t2v-preview`    | 是   | 480P, 720P, 1080P | 5s, 10s |
+| `wan2.7-t2v`            | 是   | 720P, 1080P       | 2-15s   |
+| `wan2.7-t2v-2026-06-12` | 是   | 720P, 1080P       | 2-15s   |
 
-#### 图像转视频（首帧）
+#### 图像生成视频（首帧）
 
-| 模型               | 音频    | 分辨率  | 时长 |
-| ------------------ | -------- | ----------- | -------- |
-| `wan2.6-i2v-flash` | 可选 | 720P, 1080P | 2-15s    |
-| `wan2.6-i2v`       | 是      | 720P, 1080P | 2-15s    |
+| 模型               | 音频 | 分辨率      | 时长  |
+| ------------------ | ---- | ----------- | ----- |
+| `wan2.6-i2v-flash` | 可选 | 720P, 1080P | 2-15s |
+| `wan2.6-i2v`       | 是   | 720P, 1080P | 2-15s |
 
-#### 参考转视频
+#### 参考生成视频
 
-| 模型                    | 音频    | 分辨率  | 时长                      |
-| ----------------------- | -------- | ----------- | ----------------------------- |
+| 模型                    | 音频 | 分辨率      | 时长                          |
+| ----------------------- | ---- | ----------- | ----------------------------- |
 | `wan2.6-r2v-flash`      | 可选 | 720P, 1080P | 2-10s                         |
-| `wan2.6-r2v`            | 是      | 720P, 1080P | 2-10s                         |
-| `wan2.7-r2v`            | 是      | 720P, 1080P | 2-10s（带视频参考），2-15s |
-| `wan2.7-r2v-2026-06-12` | 是      | 720P, 1080P | 2-10s（带视频参考），2-15s |
+| `wan2.6-r2v`            | 是   | 720P, 1080P | 2-10s                         |
+| `wan2.7-r2v`            | 是   | 720P, 1080P | 2-10s（含视频引用），2-15s    |
+| `wan2.7-r2v-2026-06-12` | 是   | 720P, 1080P | 2-10s（含视频引用），2-15s    |
 
 <Note>
-  上表列出了新加坡国际区域可用的模型。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+  上表列出了新加坡国际区域可用的模型。
+  如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传入。
 </Note>
 
 ## 模型能力
 
-请参阅[阿里云百炼文档](https://www.alibabacloud.com/help/en/model-studio/models)以获取可用模型的完整列表。如果需要，你也可以将任何可用的提供商模型 ID 作为字符串传递。
+有关可用模型的完整列表，请参阅 [阿里云百炼文档](https://www.alibabacloud.com/help/en/model-studio/models)。
+如有需要，你也可以将任何可用的提供商模型 ID 作为
+字符串传入。

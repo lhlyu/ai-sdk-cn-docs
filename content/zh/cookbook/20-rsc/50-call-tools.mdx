@@ -1,26 +1,26 @@
 ---
 title: "调用工具"
-description: "了解如何使用 AI SDK 和 React 服务器组件调用工具。"
+description: "了解如何使用 AI SDK 和 React Server Components 调用工具。"
 tags: ['rsc', 'tool use']
 ---
 
 # 调用工具
 
-某些模型允许开发者提供一组工具，这些工具可以在生成过程中的任何时间被调用。这对于扩展语言模型的能力非常有用，使其能够利用逻辑或数据与模型外部的系统进行交互。
+一些模型允许开发者提供一组工具，这些工具可以在生成过程中的任意时刻被调用。这对于扩展语言模型的能力非常有用，使其能够使用逻辑或数据与模型外部的系统进行交互。
 
 <Browser>
   <ChatGeneration
     history={[
-      { role: 'User', content: '最近怎么样？' },
-      { role: 'Assistant', content: '一切都好，有什么可以帮您的吗？' },
+      { role: 'User', content: 'How is it going?' },
+      { role: 'Assistant', content: 'All good, how may I help you?' },
     ]}
     inputMessage={{
       role: 'User',
-      content: '24摄氏度等于多少华氏度？',
+      content: 'What is 24 celsius in fahrenheit?',
     }}
     outputMessage={{
       role: 'Assistant',
-      content: '24°C 等于 75.20°F',
+      content: '24°C is 75.20°F',
     }}
   />
 </Browser>
@@ -35,7 +35,7 @@ tags: ['rsc', 'tool use']
 import { useState } from 'react';
 import { Message, continueConversation } from './actions';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
@@ -70,7 +70,7 @@ export default function Home() {
             setConversation(messages);
           }}
         >
-          发送消息
+          Send Message
         </button>
       </div>
     </div>
@@ -78,11 +78,11 @@ export default function Home() {
 }
 ```
 
-## 服务器
+## 服务端
 
-现在，让我们实现 `continueConversation` 操作，使用 `generateText` 来生成对用户问题的响应。我们将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数来指定我们自己的函数 `celsiusToFahrenheit`，该函数将把用户给定的摄氏温度值转换为华氏温度。
+现在，让我们实现 `continueConversation` action，它使用 `generateText` 来生成对用户问题的响应。我们将使用 [`tools`](/docs/reference/ai-sdk-core/generate-text#tools) 参数来指定我们自己的函数 `celsiusToFahrenheit`，该函数会将用户给定的摄氏度值转换为华氏度。
 
-我们将使用 zod 来指定 `celsiusToFahrenheit` 函数参数的架构。
+我们将使用 zod 来指定 `celsiusToFahrenheit` 函数参数的结构。
 
 ```tsx filename='app/actions.ts'
 'use server';
@@ -99,19 +99,19 @@ export async function continueConversation(history: Message[]) {
   'use server';
 
   const { text, toolResults } = await generateText({
-    model: 'openai/gpt-5.4',
-    instructions: '你是一位友好的助手！',
+    model: 'openai/gpt-6-astra',
+    instructions: 'You are a friendly assistant!',
     messages: history,
     tools: {
       celsiusToFahrenheit: {
-        description: '将摄氏温度转换为华氏温度',
+        description: 'Converts celsius to fahrenheit',
         inputSchema: z.object({
-          value: z.string().describe('摄氏温度值'),
+          value: z.string().describe('The value in celsius'),
         }),
         execute: async ({ value }) => {
           const celsius = parseFloat(value);
           const fahrenheit = celsius * (9 / 5) + 32;
-          return `${celsius}°C 是 ${fahrenheit.toFixed(2)}°F`;
+          return `${celsius}°C is ${fahrenheit.toFixed(2)}°F`;
         },
       },
     },

@@ -1,32 +1,32 @@
 ---
-title: 使用聊天提示词生成图像
-description: 学习如何使用 AI SDK 和 Next.js 通过聊天提示词生成图像
-tags: ['next', '流式传输', '聊天', '图像生成', '工具']
+title: "使用聊天提示词生成图像"
+description: "学习如何使用 AI SDK 和 Next.js 通过聊天提示词生成图像"
+tags: ['next', 'streaming', 'chat', 'image generation', 'tools']
 ---
 
 # 使用聊天提示词生成图像
 
-在构建聊天机器人时，您可能希望允许用户生成图像。这可以通过创建一个工具来实现，该工具使用 AI SDK 中的 [`generateImage`](/docs/reference/ai-sdk-core/generate-image) 函数来生成图像。
+在构建聊天机器人时，你可能希望允许用户生成图像。这可以通过创建一个工具来实现，该工具使用 AI SDK 中的 [`generateImage`](/docs/reference/ai-sdk-core/generate-image) 函数来生成图像。
 
 ## 服务端
 
-让我们在 `/api/chat` 创建一个端点，根据对话历史生成助手的响应。您还将定义一个名为 `generateImage` 的工具，该工具将根据助手的响应生成图像。
+让我们在 `/api/chat` 创建一个端点，根据对话历史生成助手的响应。你还需要定义一个名为 `generateImage` 的工具，它将根据助手的响应生成图像。
 
 ```typescript filename='tools/generate-image.ts'
 import { generateImage, tool } from 'ai';
 import z from 'zod';
 
 export const generateImageTool = tool({
-  description: '生成图像',
+  description: 'Generate an image',
   inputSchema: z.object({
-    prompt: z.string().describe('用于生成图像的提示词'),
+    prompt: z.string().describe('The prompt to generate the image from'),
   }),
   execute: async ({ prompt }) => {
     const { image } = await generateImage({
       model: openai.imageModel('dall-e-3'),
       prompt,
     });
-    // 在生产环境中，将此图像保存到 blob 存储并返回 URL
+    // in production, save this image to blob storage and return a URL
     return { image: image.base64, prompt };
   },
 });
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
+    model: 'openai/gpt-6-astra',
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
     tools,
@@ -68,12 +68,12 @@ export async function POST(request: Request) {
 ```
 
 <Note>
-  在生产环境中，您应将生成的图像保存到 blob 存储并返回 URL，而不是 base64 图像数据。如果不这样做，base64 图像数据将被发送到模型，可能导致生成失败。
+  在生产环境中，你应该将生成的图像保存到 blob 存储中，并返回 URL，而不是 base64 图像数据。如果不这样做，base64 图像数据将被发送到模型，这可能会导致生成失败。
 </Note>
 
 ## 客户端
 
-让我们使用 `useChat` 创建一个简单的聊天界面。您将调用 `/api/chat` 端点来生成助手的响应。如果助手的响应包含 `generateImage` 工具调用，您将使用 Next 的 `Image` 组件显示工具结果（base64 格式的图像和提示词）。
+让我们使用 `useChat` 创建一个简单的聊天界面。你将调用 `/api/chat` 端点来生成助手的响应。如果助手的响应包含 `generateImage` 工具调用，你将使用 Next 的 `Image` 组件显示工具结果（base64 格式的图像和提示词）。
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -133,7 +133,7 @@ export default function Chat() {
                   if (state === 'input-available') {
                     return (
                       <div key={`${message.id}-part-${partIndex}`}>
-                        正在生成图像...
+                        Generating image...
                       </div>
                     );
                   }
@@ -162,7 +162,7 @@ export default function Chat() {
         <input
           className="fixed bottom-0 w-full max-w-md p-2 mb-8 border border-gray-300 rounded shadow-xl"
           value={input}
-          placeholder="说点什么..."
+          placeholder="Say something..."
           onChange={handleInputChange}
         />
       </form>

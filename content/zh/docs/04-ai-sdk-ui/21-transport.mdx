@@ -1,24 +1,24 @@
 ---
-title: "传输"
-description: "了解如何将自定义传输与useChat一起使用。"
+title: "Transport"
+description: "了解如何在 useChat 中使用自定义 transport。"
 ---
 
-# 传输
+# Transport
 
-`useChat` 传输系统提供了对消息如何发送到 API 端点以及响应如何处理的细粒度控制。这对于 WebSocket 等替代通信协议、自定义身份验证模式或专门的集成后端特别有用。
+`useChat` 的 transport 系统让你可以精细控制消息如何发送到 API 端点以及响应如何处理。这对于 WebSockets 等替代通信协议、自定义认证模式或专门的后端集成特别有用。
 
-## 默认传输
+## 默认 Transport
 
 默认情况下，`useChat` 使用 HTTP POST 请求将消息发送到 `/api/chat`：
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
 
-// 使用默认 HTTP 传输
+// Uses default HTTP transport
 const { messages, sendMessage } = useChat();
 ```
 
-这等同于：
+这等价于：
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -31,9 +31,9 @@ const { messages, sendMessage } = useChat({
 });
 ```
 
-## 自定义传输配置
+## 自定义 Transport 配置
 
-使用自定义选项配置默认传输：
+使用自定义选项配置默认 transport：
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -53,7 +53,7 @@ const { messages, sendMessage } = useChat({
 
 ### 动态配置
 
-您还可以提供返回配置值的函数。这对于需要刷新的身份验证令牌或依赖于运行时条件的配置非常有用：
+你也可以提供返回配置值的函数。这对于需要刷新的认证令牌，或依赖于运行时条件的配置非常有用：
 
 ```tsx
 const { messages, sendMessage } = useChat({
@@ -86,7 +86,7 @@ const { messages, sendMessage } = useChat({
           'X-Session-ID': id,
         },
         body: {
-          messages: messages.slice(-10), // 仅发送最后 10 条消息
+          messages: messages.slice(-10), // Only send last 10 messages
           trigger,
           messageId,
         },
@@ -96,15 +96,15 @@ const { messages, sendMessage } = useChat({
 });
 ```
 
-## 直接智能体传输
+## 直接智能体 Transport
 
-对于希望直接与 [智能体](/docs/reference/ai-sdk-core/agent) 通信而无需通过 HTTP 的场景，可以使用 `DirectChatTransport`。此传输直接调用智能体的 `stream()` 方法在进程内执行。
+对于希望直接与 [智能体](/docs/reference/ai-sdk-core/agent) 通信而不经过 HTTP 的场景，你可以使用 `DirectChatTransport`。该 transport 会在进程内直接调用智能体的 `stream()` 方法。
 
 这适用于：
 
-- **服务端渲染**：在服务器上运行智能体，无需 API 端点
+- **服务端渲染**：在服务端运行智能体，无需 API 端点
 - **测试**：无需网络请求即可测试聊天功能
-- **单进程应用**：客户端和智能体一起运行的桌面或 CLI 应用
+- **单进程应用**：客户端与智能体运行在同一进程中的桌面或 CLI 应用
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -113,7 +113,7 @@ __PROVIDER_IMPORT__;
 
 const agent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: '你是一个乐于助人的助手。',
+  instructions: 'You are a helpful assistant.',
   tools: {
     weather: weatherTool,
   },
@@ -129,38 +129,39 @@ const { messages, sendMessage } = useChat({
 与发送 HTTP 请求的 `DefaultChatTransport` 不同：
 
 1. `DirectChatTransport` 验证传入的 UI 消息
-2. 使用 `convertToModelMessages` 将其转换为模型消息
+2. 使用 `convertToModelMessages` 将它们转换为模型消息
 3. 直接调用智能体的 `stream()` 方法
 4. 通过 `toUIMessageStream()` 将结果作为 UI 消息流返回
 
 ### 配置选项
 
-您可以传递其他选项来自定义流输出：
+你可以传入额外选项来自定义流输出：
 
 ```tsx
 const transport = new DirectChatTransport({
   agent,
-  // 将选项传递给智能体
+  // Pass options to the agent
   options: { customOption: 'value' },
-  // 配置发送到客户端的内容
+  // Configure what's sent to the client
   sendReasoning: true,
   sendSources: true,
 });
 ```
 
 <Note>
-  `DirectChatTransport` 不支持流重连，因为没有持久的服务端流。`reconnectToStream()` 方法始终返回 `null`。
+  `DirectChatTransport` 不支持流重连，因为不存在持久的服务端流。`reconnectToStream()` 方法始终返回
+  `null`。
 </Note>
 
-有关完整的 API 详情，请参阅 [DirectChatTransport 参考](/docs/reference/ai-sdk-ui/direct-chat-transport)。
+完整的 API 详情，请参阅 [DirectChatTransport 参考](/docs/reference/ai-sdk-ui/direct-chat-transport)。
 
-## 工作流传输
+## 工作流 Transport
 
-对于基于 [Workflow SDK](/docs/agents/workflow-agent) 构建的聊天应用，`@ai-sdk/workflow` 中的 `WorkflowChatTransport` 提供了自动流重连功能。它处理了工作流函数在流传输中途超时的常见场景——传输检测到缺失的 `finish` 事件并重新连接以从中断处恢复。
+对于基于 [Workflow SDK](/docs/agents/workflow-agent) 构建的聊天应用，来自 `@ai-sdk/workflow` 的 `WorkflowChatTransport` 提供了自动流重连功能。它处理工作流函数在流中途超时这一常见场景——该 transport 会检测到缺失的 `finish` 事件，并重新连接以从中断处继续。
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
-import { WorkflowChatTransport } from '@ai-sdk/workflow';
+import { WorkflowChatTransport } from '@ai-sdk/workflow/client';
 import { useMemo } from 'react';
 
 export default function Chat() {
@@ -170,7 +171,7 @@ export default function Chat() {
         api: '/api/chat',
         maxConsecutiveErrors: 5,
         onChatEnd: ({ chatId, chunkIndex }) => {
-          console.log(`聊天完成：${chunkIndex} 个块`);
+          console.log(`Chat complete: ${chunkIndex} chunks`);
         },
       }),
     [],
@@ -178,34 +179,34 @@ export default function Chat() {
 
   const { messages, sendMessage } = useChat({ transport });
 
-  // ... 渲染聊天 UI
+  // ... render chat UI
 }
 ```
 
 主要特性：
 
-- **自动重连**：检测中断的流（没有 `finish` 事件）并通过 GET 请求重连到 `{api}/{runId}/stream`
-- **页面刷新恢复**：`initialStartIndex` 控制初始重连开始的位置
+- **自动重连**：检测中断的流（没有 `finish` 事件），并通过 GET 请求 `{api}/{runId}/stream` 重新连接
+- **页面刷新恢复**：`initialStartIndex` 控制初始重连从何处开始
 - **可配置重试**：`maxConsecutiveErrors` 控制可容忍的连续重连失败次数
 - **生命周期回调**：`onChatSendMessage` 和 `onChatEnd` 用于跟踪聊天状态
 
-当持久化服务端流已经存储了 `UIMessageChunk` 对象时，负的 `initialStartIndex` 值可以仅获取尾部数据。对于原始 `WorkflowAgent` 流，请使用非负游标并遵循 WorkflowAgent 指南中的服务端转换。
+当持久化的服务端流已经存储了 `UIMessageChunk` 对象时，负的 `initialStartIndex` 值可以只获取尾部数据。对于原始的 `WorkflowAgent` 流，请使用非负游标，并遵循 WorkflowAgent 指南中的服务端转换方式。
 
-有关完整的 API 参考，请参阅 [`WorkflowChatTransport`](/docs/reference/ai-sdk-workflow/workflow-chat-transport)。有关服务端端点设置，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent#resumable-streaming-with-workflowchattransport)。
+完整的 API 参考，请参阅 [`WorkflowChatTransport`](/docs/reference/ai-sdk-workflow/workflow-chat-transport)。服务端端点设置，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent#resumable-streaming-with-workflowchattransport)。
 
-## 构建自定义传输
+## 构建自定义 Transport
 
-要了解如何构建自己的传输，请参考默认实现的源代码：
+要了解如何构建你自己的 transport，请参考默认实现的源代码：
 
-- **[DefaultChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/default-chat-transport.ts)** - 完整的默认 HTTP 传输实现
-- **[HttpChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/http-chat-transport.ts)** - 具有请求处理功能的基础 HTTP 传输
-- **[ChatTransport 接口](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat-transport.ts)** - 您需要实现的传输接口
+- **[DefaultChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/default-chat-transport.ts)** - 完整的默认 HTTP transport 实现
+- **[HttpChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/http-chat-transport.ts)** - 带有请求处理的基础 HTTP transport
+- **[ChatTransport Interface](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat-transport.ts)** - 你需要实现的 transport 接口
 
-这些实现精确地展示了如何：
+这些实现向你展示了如何：
 
 - 处理 `sendMessages` 方法
 - 处理 UI 消息流
 - 转换请求和响应
 - 处理错误和连接管理
 
-传输系统为您提供了对聊天应用通信方式的完全控制，支持与任何后端协议或服务集成。
+transport 系统让你完全控制聊天应用的通信方式，从而能够与任何后端协议或服务集成。

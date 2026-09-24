@@ -1,263 +1,178 @@
 ---
-title: Confident AI
-description: 使用 Confident AI 追踪和评估您的 LLM 应用
+title: "Confident AI"
+description: "使用 Confident AI 追踪和监控你的 AI SDK 应用"
 ---
 
 # Confident AI 可观测性
 
-[Confident AI](https://confident-ai.com/) 是一个 LLM 可观测性和评估平台，帮助团队在开发和生产环境中构建可靠的 AI 应用。
+[Confident AI](https://confident-ai.com/) 是一个 LLM 可观测性与评估平台，面向在开发和生产环境中构建可靠 AI 应用的团队。
 
-`deepeval-ts` 包与 AI SDK 集成，提供追踪、在线评估和会话分析功能。
+[`confident-trace`](https://github.com/confident-ai/confident-trace) 是 Confident AI 的 OpenTelemetry 原生追踪 SDK，无需更改你的调用即可追踪 AI SDK 应用——每次 `generateText` 和 `streamText` 调用都会在 [Observatory](https://www.confident-ai.com/docs/llm-tracing/introduction) 中显示为一条 trace，包含智能体、步骤、模型和工具 span，因此你可以看到应用选择了哪些工具、每次模型调用的成本，并对结果运行评估。
+
+Confident AI 与 AI SDK 集成，提供：
+
+- [Traces](https://www.confident-ai.com/docs/llm-tracing/introduction)，包含完整的智能体、步骤、模型和工具层级
+- 每次模型调用的[Token 用量与成本](https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost)
+- [Threads](https://www.confident-ai.com/docs/llm-tracing/features/threads)，将一次对话的多轮交互归为一个单元
+- [在线评估](https://www.confident-ai.com/docs/llm-tracing/online-evals)，在 trace 被摄取时对其进行评分
 
 ## 设置
 
-要启用追踪功能，请安装 `deepeval-ts`，配置您的 API 密钥，并全局注册 Confident AI 集成。
+追踪需要 Node.js 22 或更高版本，以及 AI SDK `>=7.0.93 <8`。
 
-### 1. 安装 deepeval-ts
+### 1. 安装 confident-trace
 
 ```bash
-npm install deepeval-ts @ai-sdk/otel
+npm install confident-trace @ai-sdk/otel
 ```
 
-### 2. 设置环境变量
+### 2. 设置你的 API Key
 
-注册或登录 [Confident AI](https://app.confident-ai.com) 获取您的 API 密钥，然后将其设置为环境变量：
+注册或登录 [Confident AI](https://app.confident-ai.com) 获取你的项目 API key，然后将其设置为环境变量：
 
-```bash
+```bash filename=".env"
 CONFIDENT_API_KEY="YOUR-PROJECT-API-KEY"
 ```
 
-### 3. 注册 OpenTelemetry 集成
+<Note>
+  对于欧盟地区的用户，请设置
+  `CONFIDENT_OTEL_ENDPOINT="https://eu.otel.confident-ai.com/v1/traces"`
+</Note>
 
-在应用启动时全局注册 `LegacyOpenTelemetry`，以便 AI SDK 发出 Confident AI 可以收集的 OpenTelemetry spans：
+### 3. 注册遥测集成
 
-```typescript
+`createVercelAITracer()` 函数返回一个 tracer，将 AI SDK span 映射到
+Confident AI 的 span 类型。将其传给 `OpenTelemetry`，并在应用启动时、任何 AI SDK 调用之前注册一次。`init()` 会设置将 span 发送到你的项目的 exporter：
+
+```ts filename="instrumentation.ts"
 import { registerTelemetry } from 'ai';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
+import { OpenTelemetry } from '@ai-sdk/otel';
+import { init } from 'confident-trace';
+import { createVercelAITracer } from 'confident-trace/vercel-ai';
 
-configureAiSdkTracing();
-registerTelemetry(new LegacyOpenTelemetry());
-```
-
-## 追踪您的应用
-
-现在，您可以将 `tracer` 对象传递给任何 AI SDK 调用的 `telemetry` 字段，从而在 Confident AI 平台上获取追踪数据。
-
-以下是一些使用 Confident AI 的 tracer 追踪各种 AI SDK 函数的示例：
-
-### 生成文本
-
-```typescript
-import { generateText } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
-
-const tracer = configureAiSdkTracing();
-
-const { text } = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'What are LLMs?',
-  telemetry: {
-    integrations: new LegacyOpenTelemetry({ tracer }),
-  },
-});
-```
-
-### 流式传输文本
-
-```typescript
-import { streamText } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
-
-const tracer = configureAiSdkTracing();
-
-const result = streamText({
-  model: openai('gpt-4o'),
-  prompt: 'Invent a new holiday and describe its traditions.',
-  telemetry: {
-    integrations: new LegacyOpenTelemetry({ tracer }),
-  },
-});
-
-for await (const textPart of result.textStream) {
-  console.log(textPart);
+export function register() {
+  init();
+  registerTelemetry(new OpenTelemetry({ tracer: createVercelAITracer() }));
 }
 ```
 
-### 使用工具调用生成文本
+在 Next.js 中，将此文件放在项目根目录的 `instrumentation.ts` 中——Next.js 会为你调用
+`register()`。对于不使用 Next.js 的 Node.js 应用，在入口文件的顶层运行同样的两行代码：
 
-```typescript
-import { generateText, tool, isStepCount } from 'ai';
+```ts filename="index.ts"
+import { generateText, registerTelemetry } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
+import { OpenTelemetry } from '@ai-sdk/otel';
+import { init } from 'confident-trace';
+import { createVercelAITracer } from 'confident-trace/vercel-ai';
 
-const tracer = configureAiSdkTracing();
+const runtime = init();
+registerTelemetry(new OpenTelemetry({ tracer: createVercelAITracer() }));
 
-const result = await generateText({
-  model: openai('gpt-4o'),
-  tools: {
-    weather: tool({
-      description: 'Get the weather in a location',
-      inputSchema: z.object({
-        location: z.string().describe('The location to get the weather for'),
-      }),
-      execute: async ({ location }) => ({
-        location,
-        temperature: 72 + Math.floor(Math.random() * 21) - 10,
-      }),
-    }),
-  },
-  stopWhen: isStepCount(5),
-  prompt: 'What is the weather in San Francisco?',
-  telemetry: {
-    integrations: new LegacyOpenTelemetry({ tracer }),
-  },
-});
+try {
+  const { text } = await generateText({
+    model: openai('gpt-6-astra'),
+    prompt: 'How do you make the best coffee?',
+  });
+  console.log(text);
+} finally {
+  await runtime.shutdown();
+}
 ```
 
-### 生成结构化输出
+你的 AI SDK 调用保持原样不变。每个 span 都带有 `Vercel AI SDK` 集成标签，嵌套在调用发生时处于活动状态的 span 之下，并捕获：
 
-```typescript
-import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
-
-const tracer = configureAiSdkTracing();
-
-const { object } = await generateObject({
-  model: openai('gpt-4o'),
-  schema: z.object({
-    recipe: z.object({
-      name: z.string(),
-      ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
-      steps: z.array(z.string()),
-    }),
-  }),
-  prompt: 'Generate a lasagna recipe.',
-  telemetry: {
-    integrations: new LegacyOpenTelemetry({ tracer }),
-  },
-});
-```
-
-以下示例展示了从上述代码片段生成的追踪数据：
-
-- [生成文本](https://app.confident-ai.com/share/traces/6629a1f0-ab5e-50a0-a7ac-62cd0d64cd63)
-- [流式传输文本](https://app.confident-ai.com/share/traces/a5ab4eea-b29b-578a-9151-afb988dd61d8)
-- [使用工具调用生成文本](https://app.confident-ai.com/share/traces/c34935e2-f1b7-5507-a7ae-46e4db2a64bc)
-- [生成结构化输出](https://app.confident-ai.com/share/traces/e718d3d4-53cb-51b5-b3c7-89593f7cd8bc)
-
-## 配置
-
-您可以通过向 `configureAiSdkTracing` 传递选项来自定义追踪分组和评估行为。这允许您：
-
-- 对相关追踪进行分组（例如，聊天会话）
-- 将提示词版本与追踪关联
-- 在 span 和 trace 级别启用在线评估
-
-### 设置追踪属性
-
-您可以传递 `name`、`threadId`、`userId` 和 `environment` 等属性，以便更轻松地查找和筛选追踪数据。
-
-```typescript
-import { registerTelemetry, generateText } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
-
-const tracer = configureAiSdkTracing({
-  name: 'AI SDK Confident AI Tracing',
-  threadId: 'thread-123',
-  userId: 'user-456',
-  environment: 'production',
-});
-
-registerTelemetry(new LegacyOpenTelemetry({ tracer }));
-
-const { text } = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'How do you make the best coffee?',
-});
-```
-
-### 记录托管提示词
-
-如果您使用 Confident AI 提示词管理，可以将追踪与特定提示词版本关联。将 `Prompt` 对象传递给 `configureAiSdkTracing`，以将追踪与运行时使用的提示词版本关联。
-
-```typescript
-import { registerTelemetry, generateText } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing, Prompt } from 'deepeval-ts';
-
-const prompt = new Prompt({ alias: 'my-prompt-alias' });
-await prompt.pull();
-
-const tracer = configureAiSdkTracing({
-  confidentPrompt: prompt,
-});
-registerTelemetry(new LegacyOpenTelemetry({ tracer }));
-
-const { text } = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'How do you make the best coffee?',
-});
-```
-
-记录提示词可以让您监控生产环境中运行的提示词以及哪些提示词长期表现最佳：
-
-![Confident AI 上的提示词可观测性](https://confident-docs.s3.us-east-1.amazonaws.com/llm-tracing:prompt-logging.png)
+- **智能体和步骤 span** —— 一个 span 对应整个 `generateText` 或 `streamText` 调用，多步骤运行中每个步骤再对应一个 span。
+- **模型调用** —— [LLM span](https://www.confident-ai.com/docs/llm-tracing/features/span-types#llm-spans)，包含模型名称、[token 用量](https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost)、结束原因以及规范化后的输入/输出消息，包括模型请求的工具调用。
+- **工具调用** —— [工具 span](https://www.confident-ai.com/docs/llm-tracing/features/span-types#tool-spans)，包含工具名称、其输入和结果，嵌套在运行它们的步骤之下。
+- **内容** —— 提示词和响应文本，默认捕获且无大小限制（除非你配置了限制），并受[内容策略](https://www.confident-ai.com/docs/llm-tracing/features/masking)约束。
 
 <Note>
-  在将提示词传递给 `configureAiSdkTracing` 之前，请确保**先 `pull` 该提示词**。如果不先拉取，提示词版本将无法在 Confident AI 上显示。
+  推理和二进制内容部分会被标记但不会导出，原始请求头、任意 SDK 元数据和异常消息也不会包含在内。
+  嵌入、重排序以及图像和音频 API 不在此集成的范围内。
 </Note>
 
-## 在线评估
+<Note>
+  初始化一次，关闭一次。在长时间运行的服务器中，在启动时调用 `init()`，并在优雅关闭期间、进行中的请求和流完成之后调用 `runtime.shutdown()`——绝不要按请求调用。在无服务器函数中，改为在处理程序末尾、任何流完成后调用 `runtime.flush()`，以便在函数冻结之前导出 span。
+</Note>
 
-Confident AI 支持通过传递项目中定义的指标集合来自动对追踪进行在线评估。要启用在线评估：
+## 高级功能
 
-1. 在 Confident AI 平台中[创建一个指标集合](https://www.confident-ai.com/docs/metrics/metric-collections)
-2. 在 `configureAiSdkTracing` 选项中传递您的指标集合名称
-3. 您可以为 trace、LLM span 和 tool span 级别传递不同的指标集合
+### 在线评估
 
-以下是如何将指标集合附加到追踪的示例：
+你可以在 Confident AI 的[工作流页面](https://www.confident-ai.com/docs/llm-tracing/workflows)配置传入 trace 的处理方式。
 
-```typescript
-import { registerTelemetry, generateText } from 'ai';
+![Confident AI 工作流页面](https://confident-docs.s3.us-east-1.amazonaws.com/confident-trace-workflows.png)
+
+以下是你可以配置的工作流：
+
+- **评估规则** —— 根据[指标集合](https://www.confident-ai.com/docs/metrics/metric-collections)评估传入的 trace。
+- **分类器** —— 按问题、情感或你定义的任何维度为 trace 打标签，以便之后对其进行分组或筛选。
+- **队列摄取** —— 将生产 trace 路由到标注队列，供内部审核团队手动标注。
+- **数据集摄取** —— 将生产 trace 摄取到数据集中，作为测试用例复用，并迭代结果以持续改进。
+
+你可以根据需要为不同的数据模型（如 trace、span 和 thread）分别创建自定义工作流。
+
+要手动评估某个组件或 trace，请通过 `updateTrace` 传入指标集合——参见[在线评估](https://www.confident-ai.com/docs/llm-tracing/online-evals)。
+
+### Trace 属性
+
+使用 [trace 上下文](https://www.confident-ai.com/docs/llm-tracing/features/trace-context)附加你在调用开始前已知的属性。它不会创建额外的 span——由 `generateText()` 启动的 trace 会继承你传入的所有内容：
+
+```ts
+import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { LegacyOpenTelemetry } from '@ai-sdk/otel';
-import { configureAiSdkTracing } from 'deepeval-ts';
+import { traceContext } from 'confident-trace';
 
-const tracer = configureAiSdkTracing({
-  metricCollection: 'my-trace-metrics',
-  llmMetricCollection: 'my-llm-metrics',
-  toolMetricCollection: 'my-tool-metrics',
-});
-registerTelemetry(new LegacyOpenTelemetry({ tracer }));
-
-const { text } = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'How do you make the best coffee?',
-});
+const { text } = await traceContext(
+  {
+    tags: ['support'],
+    metadata: { release: '2026-09' },
+    userId: 'user-456',
+    environment: 'production',
+  },
+  () =>
+    generateText({
+      model: openai('gpt-6-astra'),
+      prompt: 'How do you make the best coffee?',
+    }),
+);
 ```
 
-所有传入的追踪现在将自动进行评估。评估结果将在 Confident AI Observatory 中与您的追踪一起显示。
+### 将 Trace 分组为 Thread
 
-您可以在 [Confident AI 文档此处](https://www.confident-ai.com/docs/integrations/third-party/vercel-ai-sdk)找到关于使用 `deepeval-ts` 进行 AI SDK 追踪的更全面指南。
+`confident-trace` 提供了 `turn()` 方法，你可以用它把两次连续的 AI SDK 调用归为一次 turn。在后续 turn 中复用相同的 thread ID，即可将它们归为一个 thread，你可以在 Confident AI 上查看和评估：
+
+```ts
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { turn, updateTrace } from 'confident-trace';
+
+async function chat(prompt: string, threadId: string) {
+  return turn({ name: 'chat', threadId }, async () => {
+    const { text } = await generateText({
+      model: openai('gpt-6-astra'),
+      prompt,
+    });
+    updateTrace({ input: prompt, output: text });
+    return text;
+  });
+}
+```
+
+## 故障排查
+
+- **完全没有 trace：** 确认 `registerTelemetry()` 在第一次 AI SDK 调用之前运行。在 Next.js 中，这意味着 `instrumentation.ts` 要放在项目根目录，而不是路由内部。不注册任何遥测集成会完全禁用 AI SDK 遥测。
+- **Trace 在运行中途停止：** 进程在导出队列排空之前退出了。在退出时调用 `runtime.shutdown()`，或在无服务器处理程序末尾调用 `runtime.flush()`。
+- **流式调用到达时不完整：** 在 flush 或关闭之前完成消费或中止流。
+- **Trace 缺少内容：** 检查 AI SDK 的 `recordInputs` 和 `recordOutputs`，以及 `init()` 上的 `captureContent`。
+
+其他问题请参阅 [Confident AI 的故障排查指南](https://www.confident-ai.com/docs/llm-tracing/troubleshooting)。
 
 ## 了解更多
 
-- [Confident AI 文档](https://www.confident-ai.com/docs)
-- [LLM 追踪](https://www.confident-ai.com/docs/llm-tracing/introduction)
+- [Confident AI 上的 AI 可观测性](https://www.confident-ai.com/docs/llm-tracing/introduction)
+- [完整的 AI SDK 集成指南](https://www.confident-ai.com/docs/integrations/third-party/vercel-ai-sdk)
 - [在线评估](https://www.confident-ai.com/docs/llm-tracing/online-evals)
-- [提示词管理](https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts)
-- [DeepEval Discord](https://discord.gg/a3K9c8GRGt)
+- [需要集成帮助？与真人交流。](https://www.confident-ai.com/book-a-demo)
 - [AI SDK 遥测文档](/docs/ai-sdk-core/telemetry)

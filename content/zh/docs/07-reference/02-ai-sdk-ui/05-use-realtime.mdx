@@ -1,31 +1,155 @@
 ---
-title: experimental_useRealtime
-description: experimental_useRealtime Hook 的 API 参考文档。
+title: "experimental_useRealtime"
+description: "experimental_useRealtime Hook 的 API 参考。"
 ---
 
 # `experimental_useRealtime()`
 
 <Note type="warning">
-  `experimental_useRealtime` 是一个实验性功能。
+  `experimental_useRealtime` 是一项实验性功能。
 </Note>
 
-创建一个浏览器端实时会话，用于与实时提供商模型进行双向音频和文本对话。
+创建一个浏览器端的实时会话，用于与实时提供商模型进行双向音频和文本对话。
 
-该 Hook 使用来自设置端点的短期令牌连接到实时 WebSocket，以 `UIMessage[]` 形式返回消息，并提供音频捕获、播放、文本输入和工具输出的控制。
+该 Hook 支持基于令牌的提供商 WebSocket、应用自有的 WebSocket 中继，以及在模型声明支持时可选的 WebRTC。它提供采集和播放控制，以及基于轮次的文本输入和工具输出。基于轮次的对话消息使用 `UIMessage[]`；连续的转录片段保留在 `session` 中。
 
 ```tsx
 import { openai } from '@ai-sdk/openai';
 import { experimental_useRealtime } from '@ai-sdk/react';
 
-const realtime = experimental_useRealtime({
-  model: openai.experimental_realtime('gpt-realtime'),
-  api: {
-    token: '/api/realtime/setup',
+const model = openai.experimental_realtime('gpt-realtime');
+
+function Conversation() {
+  const realtime = experimental_useRealtime({
+    model,
+    api: { token: '/api/realtime/setup' },
+  });
+  return <button onClick={realtime.connect}>Connect</button>;
+}
+```
+
+对于 AI Gateway，将 `gateway.experimental_realtime(...)` 作为模型传入，并将 `api.token` 指向一个服务端设置端点，该端点调用 `gateway.experimental_realtime.getToken()`。
+
+请保持模型和会话配置在多次渲染之间稳定，可使用模块作用域或 `useMemo`。替换任一对象都会替换该 Hook 的会话。
+
+## 连续对话
+
+对于 OpenAI Live，使用 `openai.experimental_realtime('gpt-live-1')` 和应用自有的 WebSocket 中继。该中继提供服务器凭据并转发提供商的原始文本帧；它必须在接受连接之前对客户端进行身份验证。在生产环境中使用 `wss:`，将提供商凭据保留在服务端，并对中继连接应用你的应用程序的身份验证。
+
+```tsx
+import {
+  openai,
+  type Experimental_OpenAIRealtimeModelLiveOptions,
+} from '@ai-sdk/openai';
+import { experimental_useRealtime } from '@ai-sdk/react';
+
+const model = openai.experimental_realtime('gpt-live-1');
+const sessionConfig = {
+  instructions: 'Be a concise, friendly assistant.',
+  providerOptions: {
+    openai: {
+      delegation: { type: 'client' },
+    } satisfies Experimental_OpenAIRealtimeModelLiveOptions,
   },
+};
+
+function LiveConversation() {
+  const realtime = experimental_useRealtime({
+    model,
+    api: { websocket: 'wss://your-app.example/live' },
+    sessionConfig,
+  });
+  return (
+    <>
+      <button onClick={realtime.connect}>Connect microphone</button>
+      <button onClick={() => realtime.close()}>End conversation</button>
+      <p>
+        {realtime.status}: {realtime.session?.usage?.seconds} seconds
+      </p>
+    </>
+  );
+}
+```
+
+当前的连续浏览器运行时支持 JSON/PCM16 WebSocket 中继媒体配置文件。仅凭连续对话语义并不能保证支持所有编解码器或传输方式。拥有自己音频管道的应用程序可以使用底层提供商来支持其他受支持的编解码器。OpenAI 特定的设置位于 `providerOptions.openai` 下，使用 camelCase 字段；提供商会将它们转换为传输名称。
+
+### 应用处理的客户端委托
+
+Live 通过 `session.delegations` 和规范化事件报告客户端委托元数据。应用程序负责所有文本对话、智能体上下文、工具执行和结果验证。SDK 不会为 Live 运行通用智能体执行器，Live 委托也不会调用 `onToolCall`。
+
+使用 `sendEvent` 追加上下文或结果。将 `delegationId` 设置为当前会话中已知的客户端委托，或设置为 `null` 表示会话范围的上下文：
+
+```tsx
+await realtime.sendEvent({
+  type: 'context-append',
+  delegationId: null,
+  content: 'The application has confirmed that the appointment is at 3 PM.',
+  providerOptions: { openai: { channel: 'commentary' } },
 });
 ```
 
-对于 AI Gateway，将 `gateway.experimental_realtime(...)` 作为模型传入，并将 `api.token` 指向一个调用 `gateway.experimental_realtime.getToken()` 的服务端设置端点。
+该示例使用应用程序提供的内容，而非从委托元数据推断的任务参数。OpenAI 的上下文通道为 `commentary`、`thinking` 和 `instructions`；请将 `instructions` 保留给受信任的应用程序指令。发送成功仅确认本地提交，而非提供商接受或可听送达。
+
+### 可选的 WebRTC
+
+对于浏览器直连的 Live 音频，将 `api.websocket` 替换为 `api: { session: '/api/realtime-live' }`。该 Hook 向该应用程序端点发送 JSON `{ sdp, sessionConfig }`，并期望返回 JSON `{ sdp, sessionId }`。在服务端，对应用程序用户进行身份验证，并验证 offer 和允许的设置。
+
+使用通过应用程序会话 cookie 进行身份验证的同源代理。内置的设置请求使用浏览器的默认同源凭据；`api.session` 不接受自定义授权头、自定义 fetch 或跨源凭据选项。因此，仅使用 bearer 令牌或跨源 cookie 的代理需要在其前面放置一个应用自有的同源端点。应答必须包含非空的 `sdp` 和 `sessionId` 字符串（验证时需去除首尾空白），且 JSON 响应正文限制为 1 MiB。
+
+使用服务端持有的提供商密钥交换 SDP：
+
+```ts
+const answer = await openai
+  .experimental_realtime('gpt-live-1')
+  .doCreateWebRTCSession({
+    sdp,
+    sessionConfig: {
+      providerOptions: {
+        openai: {
+          delegation: { type: 'client' },
+          client: {
+            dataChannel: {
+              allowedClientEvents: ['session.close', 'session.thinking.append'],
+              allowedServerEvents: [
+                { type: 'session.started' },
+                { type: 'session.closed' },
+                { type: 'session.usage.updated' },
+                { type: 'session.delegation.created' },
+                { type: 'session.input_transcript.delta' },
+                { type: 'session.output_transcript.delta' },
+                { type: 'session.thinking.appended' },
+                { type: 'error' },
+              ],
+            },
+          },
+        },
+      },
+    },
+  });
+// Return Response.json(answer) from the application endpoint.
+```
+
+权限由服务端拥有；覆盖浏览器提供的委托和数据通道策略。允许你的 UI 所需的生命周期、字幕、委托、命令确认和错误事件。`examples/ai-e2e-next` 中可运行的 `/realtime-live` 示例添加了协议静音和全部三个上下文通道。
+
+WebRTC 通过 SDP 协商音频，因此请省略固定音频格式和仅限 PCM 的 `maxPlaybackBufferSeconds`。音频以媒体形式传输，而非 JSON 音频命令。`connect({ capture: false })` 在不进行麦克风采集的情况下启动，并保留一个可复用的音频发送器；`resumeAudioCapture()` 可以在之后附加麦克风。麦克风访问需要浏览器权限和安全上下文。自动播放可能需要用户手势，随后调用 `resumePlayback()`。
+
+每次附加仅选择一个实时音频轨道，优先选择已启用且未静音的轨道。`isCapturing` 跟随该发送器轨道，包括静音和结束事件；它绝不会自动切换轨道。调用方拥有的轨道会被分离，但不会被停止或禁用。采集控制会串行化发送器变更；只有在分离成功或对端关闭后才会报告停止。如果分离失败，则关闭对端以停止传输，同时保持借用的轨道不受影响。无论使用哪种传输方式，客户端委托仍由应用程序处理，且 Live 会话更新仍不受支持。
+
+## 生命周期和故障处理
+
+使用 `status === 'connected'` 作为就绪信号；`connect()` 并不承诺等待提供商就绪。运行时的启动错误通过 `onError` 和 `status` 报告；保留了旧有的 resolve-and-report 行为。
+
+`close()` 停止本地采集和提交，然后排空事件，直到提供商确认最终用量或关闭截止时间到期。关闭命令发送失败时，使用较短的已接受事件排空，而不是等待对未发送命令的确认。请读取 `session.finalization`：已完成的 close promise 本身并不确认用量。`disconnect()` 和卸载会立即释放资源。
+
+Hook 控制项在多次渲染和提供商事件之间保持稳定的标识。保留的控制项针对当前**已提交**的会话，包括在模型或端点更改之后。未提交的渲染无法替换活动会话或其回调。仅回调的更新在提交时生效，无需重新连接。
+
+卸载后，`connect`、`close`、`resumeAudioCapture` 和 `resumePlayback` 会以已挂载 Hook 错误拒绝。其他控制项会同步抛出该错误，包括 `sendEvent`，它保留同步验证，并为已接受的提交返回一个 promise。保留的控制项无法重新打开已卸载的会话。
+
+命令拒绝和播放失败是可恢复的，不会将健康的协议连接标记为失败。不可恢复的传输故障和协议队列溢出会停止提交和采集，排空已接受的事件前缀，并进行清理。在继续使用不可靠状态时，事件绝不会被任意丢弃。在替换连接上，不会透明地重放任何命令或具有副作用的工具。
+
+连续 Live WebSocket 会话具有 128 KiB 的出站线帧限制和 128 KiB 的组合缓冲发送预算，包括下一帧和 JSON/base64 编码开销。过大的控制消息会被拒绝，而不会被静默拆分为多个命令。请将 Live 上下文提交保持在此预算内；示例中继的 128 KiB `maxPayload` 与帧限制一致。这些字节上限不适用于保留其 Live 之前无限制字节策略的旧版基于轮次的会话，也不适用于可选的 WebRTC 传输。
+
+连续 WebSocket PCM 播放预算限制了本地延迟和内存。溢出时，过期的排队音频会被丢弃，播放暂停，`onError` 报告可听见的间隙。连接保持存活；`resumePlayback()` 从实时边缘的新音频恢复。字幕和委托工作的完成并不能证明相应的音频已被听到。
 
 ## 导入
 
@@ -47,9 +171,9 @@ const realtime = experimental_useRealtime({
     },
     {
       name: 'api',
-      type: '{ token: string }',
+      type: '{ token: string } | { websocket: string; protocols?: string[] } | { session: string }',
       description:
-        '实时会话使用的 API 端点。token 端点通过 POST 请求调用以创建实时设置响应。',
+        '选择一种受支持的连接机制：令牌设置、WebSocket 中继或 WebRTC SDP 端点。对话语义和连接能力相互独立。',
       properties: [
         {
           type: 'Object',
@@ -57,8 +181,30 @@ const realtime = experimental_useRealtime({
             {
               name: 'token',
               type: 'string',
+              isOptional: true,
               description:
                 '返回 Experimental_RealtimeSetupResponse 的设置端点。',
+            },
+            {
+              name: 'session',
+              type: 'string',
+              isOptional: true,
+              description:
+                '应用程序 WebRTC 设置端点。接受 JSON { sdp, sessionConfig } 并返回 JSON { sdp, sessionId }。',
+            },
+            {
+              name: 'websocket',
+              type: 'string',
+              isOptional: true,
+              description:
+                '应用自有的原始协议中继 URL。在生产环境中使用 wss；切勿将提供商凭据放入 URL。',
+            },
+            {
+              name: 'protocols',
+              type: 'string[]',
+              isOptional: true,
+              description:
+                '可选的中继子协议，仅在 websocket 下受支持。',
             },
           ],
         },
@@ -69,34 +215,62 @@ const realtime = experimental_useRealtime({
       type: 'Partial<Experimental_RealtimeSessionConfig>',
       isOptional: true,
       description:
-        '与提供商无关的会话配置，例如指令、语音、音频格式、输入音频转录、语音活动检测、工具和 providerOptions。',
+        '提供商中立的会话配置，例如 instructions、voice、音频格式、输入音频转录、轮次检测、工具和 providerOptions。',
     },
     {
       name: 'sampleRate',
       type: 'number',
       isOptional: true,
       description:
-        '当 inputAudioFormat.rate 或 outputAudioFormat.rate 未指定时使用的默认音频采样率。默认为 24000。',
+        '当未指定 inputAudioFormat.rate 或 outputAudioFormat.rate 时使用的默认音频采样率。默认为 24000。',
     },
     {
       name: 'maxEvents',
       type: 'number',
       isOptional: true,
       description:
-        'events 数组中保留的最大提供商事件数量。默认为 500。',
+        'events 数组中保留的提供商事件最大数量。默认为 500。',
+    },
+    {
+      name: 'startupTimeoutMs',
+      type: 'number',
+      isOptional: true,
+      description:
+        '就绪截止时间，包括传输设置。默认为 30000。',
+    },
+    {
+      name: 'closeTimeoutMs',
+      type: 'number',
+      isOptional: true,
+      description:
+        '优雅关闭后确认提供商最终化的截止时间。默认为 15000。',
+    },
+    {
+      name: 'rtcDisconnectTimeoutMs',
+      type: 'number',
+      isOptional: true,
+      description:
+        'WebRTC 对端断开恢复宽限期。默认为 5000。ICE 失败会立即终止。',
+    },
+    {
+      name: 'maxPlaybackBufferSeconds',
+      type: 'number',
+      isOptional: true,
+      description:
+        '在报告可恢复间隙并暂停播放之前的连续 WebSocket PCM 播放预算。默认为 2。WebRTC 不支持。',
     },
     {
       name: 'onToolCall',
       type: '(options: { toolCall: { toolCallId: string; toolName: string; args: unknown } }) => unknown | Promise<unknown> | undefined',
       isOptional: true,
       description:
-        '当提供商请求工具调用时调用。返回一个值以自动将其作为工具输出提交，或返回 undefined 并在稍后手动调用 addToolOutput。',
+        '仅限基于轮次的工具。返回一个值以自动将其作为工具输出提交，或返回 undefined 并在之后手动调用 addToolOutput。Live 客户端委托通过会话元数据和事件由应用程序处理。',
     },
     {
       name: 'onEvent',
       type: '(event: Experimental_RealtimeServerEvent) => void',
       isOptional: true,
-      description: '为每个标准化后的实时服务器事件调用。',
+      description: '对每个规范化的实时服务器事件调用。',
     },
     {
       name: 'onError',
@@ -113,25 +287,26 @@ const realtime = experimental_useRealtime({
   content={[
     {
       name: 'status',
-      type: "'disconnected' | 'connecting' | 'connected' | 'error'",
+      type: "'disconnected' | 'connecting' | 'connected' | 'closing' | 'error'",
       description: '当前连接状态。',
     },
     {
       name: 'messages',
       type: 'UIMessage[]',
       description:
-        '从实时文本、转录和工具事件中组装的消息。',
+        '从基于轮次的响应文本、转录和工具事件组装的消息。连续 Live 转录片段通过 session.transcripts 单独暴露。',
     },
     {
       name: 'events',
       type: 'Experimental_RealtimeServerEvent[]',
       description:
-        '最近的标准化提供商事件，用于检查或调试 UI。',
+        '最近的规范化提供商事件，用于检查或调试 UI。',
     },
     {
       name: 'isCapturing',
       type: 'boolean',
-      description: '麦克风音频捕获是否处于活动状态。',
+      description:
+        '通过 SDK 控制项和所选音频轨道上的事件观察到的采集状态。对借用轨道的外部更改可能需要显式刷新；请参阅采集所有权。',
     },
     {
       name: 'isPlaying',
@@ -139,101 +314,146 @@ const realtime = experimental_useRealtime({
       description: '模型音频播放是否处于活动状态。',
     },
     {
-      name: 'connect',
-      type: '() => Promise<void>',
+      name: 'session',
+      type: 'Experimental_RealtimeSessionState | undefined',
       description:
-        '获取设置令牌并打开提供商 WebSocket 连接。',
+        '在支持的情况下提供会话生命周期元数据：sessionId、转录片段、客户端委托元数据、累计语音用量、输入静音、terminationReason 以及待处理/已确认/未确认的最终化。转录片段可能重叠或延迟到达；它们不是完整的轮次。',
+    },
+    {
+      name: 'connect',
+      type: '(options?: { stream?: MediaStream; capture?: boolean }) => Promise<void>',
+      description:
+        '启动所选连接。连续浏览器会话默认采集麦克风音频；capture: false 可选择退出。提供的 Live 流仍归调用方所有。零参数重载仍可用作事件处理器。',
+    },
+    {
+      name: 'close',
+      type: '(options?: { eventId?: string }) => Promise<void>',
+      description:
+        '停止采集/提交，并在支持的情况下等待有界的优雅最终化。检查 session.finalization 以确认；没有确认关闭的模型会立即断开连接。',
     },
     {
       name: 'disconnect',
       type: '() => void',
-      description: '关闭提供商 WebSocket 连接。',
+      description:
+        '立即释放传输和自有媒体。除非收到终止性提供商事件，否则将最新用量保留为未确认。',
     },
     {
       name: 'addToolOutput',
       type: '(callId: string, result: unknown) => void',
       description:
-        '将工具调用的结果提交回实时提供商。',
+        '仅限基于轮次：将工具结果提交回实时提供商。连续 Live 会话拒绝此控制项；请改用 sendEvent 追加应用程序处理的客户端委托结果。',
     },
     {
       name: 'sendEvent',
-      type: '(event: Experimental_RealtimeClientEvent) => void',
-      description: '发送一个标准化的实时客户端事件。',
+      type: '(event: Experimental_RealtimeClientEvent) => Promise<void>',
+      description:
+        '按顺序发送规范化命令。在本地序列化/提交时 resolve，而非提供商接受时。验证可能同步抛出；异步发送失败会 reject 并通过 onError 报告。Live 上下文/结果使用 context-append，并带有已知的客户端委托 ID 或 null。',
     },
     {
       name: 'sendTextMessage',
       type: '(text: string) => void',
-      description: '发送用户文本消息并请求响应。',
+      description:
+        '仅限基于轮次：发送用户文本并请求响应。连续 Live 会话拒绝此控制项。应用程序拥有其文本对话，并通过 sendEvent 提供 Live 上下文。',
     },
     {
       name: 'sendAudio',
       type: '(base64Audio: string) => void',
       description:
-        '将 base64 编码的音频块发送到提供商输入音频缓冲区。',
+        '通过 WebSocket 向提供商输入音频缓冲区发送 base64 编码的音频块。WebRTC 使用媒体轨道并拒绝 JSON 音频命令。',
     },
     {
       name: 'commitAudio',
       type: '() => void',
-      description: '提交提供商输入音频缓冲区。',
+      description: '仅限基于轮次：提交提供商输入音频缓冲区。',
     },
     {
       name: 'clearAudioBuffer',
       type: '() => void',
-      description: '清除提供商输入音频缓冲区。',
+      description: '仅限基于轮次：清除提供商输入音频缓冲区。',
     },
     {
       name: 'requestResponse',
       type: '(options?: { modalities?: string[] }) => void',
-      description: '请求新的模型响应。',
+      description: '仅限基于轮次：请求新的模型响应。',
     },
     {
       name: 'cancelResponse',
       type: '() => void',
-      description: '取消当前活动的模型响应。',
+      description: '仅限基于轮次：取消活动的模型响应。',
     },
     {
       name: 'startAudioCapture',
       type: '(stream: MediaStream) => void',
       description:
-        '开始从提供的 MediaStream 捕获麦克风音频。',
+        '使用提供的 MediaStream 启动或替换采集。Live 路径借用轨道；现有的旧版采集 API 保留对其提供的流的所有权。异步附加失败通过 onError 报告。',
     },
     {
       name: 'stopAudioCapture',
       type: '() => void',
-      description: '停止麦克风音频捕获。',
+      description:
+        '停止本地采集并释放 SDK 自有的麦克风轨道。调用方自有的 Live 轨道仅被分离。不会更改提供商输入静音状态。',
+    },
+    {
+      name: 'resumeAudioCapture',
+      type: '() => Promise<void>',
+      description:
+        '重新启动采集，复用提供的 Live 流或获取新的 SDK 自有麦克风。不会重新连接提供商。',
     },
     {
       name: 'stopPlayback',
       type: '() => void',
-      description: '停止已排队的模型音频播放。',
+      description: '停止排队的模型音频播放。',
+    },
+    {
+      name: 'resumePlayback',
+      type: '() => Promise<void>',
+      description:
+        '在中断、挂起或缓冲区溢出后重试浏览器播放。已丢弃的过期音频不会被重放。',
     },
   ]}
 />
 
 ## 工具调用
 
-实时工具执行由客户端驱动。使用 `onToolCall` 处理工具调用并返回工具输出：
+对于诸如 `gpt-realtime` 之类的基于轮次的模型，工具执行由客户端驱动。使用 `onToolCall` 处理工具调用并返回工具输出。在回调更新之间保持模型稳定：
 
 ```tsx
-const realtime = experimental_useRealtime({
-  model: openai.experimental_realtime('gpt-realtime'),
-  api: {
-    token: '/api/realtime/setup',
-  },
-  onToolCall: async ({ toolCall }) => {
-    if (toolCall.toolName === 'getWeather') {
-      const response = await fetch('/api/weather', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toolCall.args),
-      });
+const model = openai.experimental_realtime('gpt-realtime');
 
-      return response.json();
-    }
-  },
-});
+function WeatherConversation() {
+  const realtime = experimental_useRealtime({
+    model,
+    api: { token: '/api/realtime/setup' },
+    onToolCall: async ({ toolCall }) => {
+      if (toolCall.toolName === 'getWeather') {
+        const response = await fetch('/api/weather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(toolCall.args),
+        });
+
+        return response.json();
+      }
+    },
+  });
+  return <button onClick={realtime.connect}>Connect</button>;
+}
 ```
 
-对于需要用户交互的工具，从 `onToolCall` 返回 `undefined`，并在稍后调用 `addToolOutput`。
+对于需要用户交互的工具，从 `onToolCall` 返回 `undefined`，并在之后调用 `addToolOutput`。
 
-有关包含服务端应用特定工具端点的完整示例，请参阅 [Realtime](/docs/ai-sdk-core/realtime#tool-calling)。
+基于轮次的提供商保留其自动继续行为。Live 使用上述应用程序处理的客户端委托流程，而非这些工具回调或轮次控制项。
+
+未完成的命令与保留的最近 ID 历史独立受限。已完成的工作不会施加生命周期命令配额。请使用新的 ID，并在应用程序中保持持久操作去重；有界历史并不承诺会话级的恰好一次执行。
+
+## 采集所有权
+
+SDK 获取的轨道会在本地采集停止或清理时被停止。调用方自有的 Live 轨道会被分离，但不会被停止或禁用。`stopAudioCapture()` 控制本地硬件采集；提供商 `input-audio-mute` 控制远程音频处理，并通过其确认进行跟踪。这些是独立的操作：协议静音不会释放麦克风，恢复本地采集也不会取消提供商输入的静音。使用 `resumeAudioCapture()` 复用调用方提供的流或获取新的 SDK 自有麦克风，而无需重新连接。应用程序仍负责在使用完毕后停止自己的轨道。
+
+`isCapturing` 反映 SDK 采集控制项和所选音频轨道上的事件；它不会持续观察调用方自有的媒体。设置 `track.enabled` 不会发出事件，调用 `track.stop()` 也不会发出 `ended` 事件。在外部更改借用轨道后，调用 `startAudioCapture(stream)` 或 `resumeAudioCapture()` 以刷新采集状态并按需重新附加。如果轨道已被停止，请提供一个带有活动音频轨道的流；已停止的轨道无法重新启动。SDK 不会轮询外部轨道状态。
+
+## 实验性兼容性
+
+本次更新添加了显式中继选项，并将实验性的 `sendEvent` 更改为返回 promise。现有的令牌设置和无参数 `connect` 调用仍然受支持。新的会话状态使用 `session`，而非提供商品牌的 state 对象。通用实时模型的使用者必须在调用可选连接方法之前检查它们。模型接口和事件联合类型是实验性的；详尽的外部 switch 可能需要处理新增的事件。OpenAI 对 Realtime 和 Live 模型都使用 `experimental_realtime`，并为未知或早期访问的 Live 模型 ID 提供特定于提供商的 `{ api: 'live' }` 覆盖。此工厂选项选择提供商 API；Hook 的 `api.websocket` 选项选择应用程序的传输端点。OpenAI Live 启动选项导出为 `Experimental_OpenAIRealtimeModelLiveOptions`。
+
+有关带有服务端支持的应用程序特定工具端点的完整示例，请参阅 [Realtime](/docs/ai-sdk-core/realtime#tool-calling)。
