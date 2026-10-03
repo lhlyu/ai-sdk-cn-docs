@@ -66,6 +66,10 @@ const aliasPages: AdditionalPage[] = [
   aliasPage('/examples/next-app/state-management/ai-ui-states', '/docs/ai-sdk-rsc/generative-ui-state', 'AI UI States'),
   aliasPage('/examples/next-app/state-management/save-and-restore-states', '/docs/ai-sdk-rsc/saving-and-restoring-states', 'Save and Restore States'),
   aliasPage('/examples/providers/intercepting-fetch-requests', '/cookbook/node/intercept-fetch-requests', 'Intercept Fetch Requests'),
+  aliasPage('/examples/next-app/tools/call-tool', '/cookbook/next/call-tools', 'Call Tool'),
+  aliasPage('/examples/node/generating-text/generate-text-with-chat-prompt', '/cookbook/node/generate-text-with-chat-prompt', 'Generate Text with Chat Prompt'),
+  aliasPage('/examples/next-app/chat/stream-chat-completion', '/cookbook/next/stream-text-with-chat-prompt', 'Stream Chat Completion'),
+  aliasPage('/examples/node/generating-text/stream-text-with-chat-prompt', '/cookbook/node/stream-text-with-chat-prompt', 'Stream Text with Chat Prompt'),
 ];
 const zhCnI18n: Record<string, string> = {
   languagesText: '语言',
@@ -259,10 +263,23 @@ function homeSyncStatus(info: SyncInfo | undefined): string[] {
   return [
     `<div className="doc-sync-status">`,
     `<span>最近同步</span>`,
-    `<time dateTime="${info.syncedAt}">${info.displayTime}</time>`,
-    info.shortSourceCommit ? `<code>${info.shortSourceCommit}</code>` : '',
+    `<time dateTime="${escapeHtml(info.syncedAt)}">${escapeHtml(info.displayTime)}</time>`,
+    info.shortSourceCommit ? `<code>${escapeHtml(info.shortSourceCommit)}</code>` : '',
     `</div>`,
   ].filter(Boolean);
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return entities[character] ?? character;
+  });
 }
 
 function formatSyncTime(value: string): string {
