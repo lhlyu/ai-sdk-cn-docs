@@ -1,48 +1,48 @@
 ---
-title: 概述
-description: 了解 AI SDK 工具集是什么，以及它们如何融入 AI SDK。
+title: "概述"
+description: "了解什么是 AI SDK harness，以及它们如何融入 AI SDK。"
 ---
 
-# AI SDK 工具集
+# AI SDK Harness
 
-AI SDK 工具集抽象层让你能够通过统一的 AI SDK 接口运行成熟的智能体工具集。工具集是一个完整的智能体运行时，例如 Claude Code、Codex 或 Pi。它拥有超越模型调用的能力：工作空间访问、内置编码工具、原生会话状态、压缩、权限流程以及运行时特定的配置。此外，所有 AI SDK 智能体工具集都在沙箱中运行，确保宿主环境的安全。
+AI SDK harness 抽象让你能够通过单一的 AI SDK 接口运行现有的智能体 harness。harness 是一个完整的智能体运行时，例如 Claude Code、Codex 或 Pi。它拥有的能力远超一次模型调用：工作区访问、内置编码工具、原生会话状态、压缩、权限流程以及运行时特定的配置。harness 适配器可以在沙箱中运行该运行时，但其执行环境因适配器而异；使用前请查阅适配器的运行时位置和安全指南。
 
-AI SDK 工具集抽象层与提供商/模型抽象层是分离的。提供商向 AI SDK 核心函数（如 `generateText` 和 `streamText`）暴露模型。工具集则向 `HarnessAgent` 暴露智能体运行时。
+AI SDK harness 抽象与提供商/模型抽象是分开的。提供商将模型暴露给 AI SDK Core 函数，例如 `generateText` 和 `streamText`。harness 将智能体运行时暴露给 `HarnessAgent`。
 
-使用工具集并不意味着放弃定制化。`HarnessAgent` 允许你提供自己的指令、技能、AI SDK 工具、权限设置、沙箱设置 Hook 以及适配器特定的配置，同时保留使每个工具集功能强大的运行时行为。
+使用 harness 并不意味着放弃自定义。`HarnessAgent` 允许你提供自己的指令、技能、AI SDK 工具、权限设置、沙箱设置 Hook 以及适配器特定的配置，同时保留让每个 harness 强大的运行时行为。
 
-这两个抽象层是解耦的，但它们在可能的情况下使用兼容的原语。工具集的输出会被投影到 AI SDK 的流和响应类型中，因此消费 AI SDK 模型流的界面也可以消费工具集流。例如，你可以将 `HarnessAgent` 流传递给 `toUIMessageStream`，并使用 `useChat` 渲染它。该 API 的设计旨在让 AI SDK 用户感到熟悉，但工具集运行时与底层语言模型有不同的概念。配置在适用时遵循 AI SDK 的模式，在工具集运行时行为不同时则有所偏离。
+这两种抽象是解耦的，但在可能的情况下使用兼容的原语。harness 输出被投射为 AI SDK 流和响应类型，因此消费 AI SDK 模型流的接口也可以消费 harness 流。例如，你可以将 `HarnessAgent` 流传递给 `toUIMessageStream`，并使用 `useChat` 渲染它。该 API 的设计旨在让 AI SDK 用户感到熟悉，但 harness 运行时与底层语言模型有着不同的概念。配置在合适的地方遵循 AI SDK 模式，在 harness 运行时行为不同的地方则有所差异。
 
 <Note>
-  工具集包是**实验性的**。随着这个早期 API 的进一步完善，预计版本之间会有破坏性变更。
+  Harness 包目前处于**实验阶段**。随着这一早期 API 的进一步完善，版本之间可能会出现破坏性变更。
 </Note>
 
-## 何时使用工具集
+## 何时使用 Harness
 
-当你希望由现有的智能体运行时驱动任务时，请使用工具集：
+当你希望由现有的智能体运行时来驱动任务时，请使用 harness：
 
-- 能够检查并修改沙箱工作空间的编码智能体。
+- 能够检查和修改沙箱工作区的编码智能体。
 - 拥有自己内置工具和权限模型的智能体运行时。
-- 由运行时负责管理对话历史的多轮会话。
-- 应保留原生工具集行为而非通过工具循环重新创建的工作流。
+- 由运行时拥有对话历史的多轮会话。
+- 应保留原生 harness 行为而非通过工具循环重新创建工作流。
 
 当你希望直接控制模型调用、工具循环、模型设置、结构化输出或自定义智能体架构时，请使用提供商和模型。
 
 ## 核心概念
 
-工具集有四个主要部分：
+Harness 有四个主要部分：
 
 - `HarnessAgent`：你在应用程序代码中使用的 AI SDK 智能体实现。
-- 工具集适配器：连接到运行时的包，例如 `@ai-sdk/harness-claude-code`。
-- 沙箱提供商：工具集运行的隔离文件系统和进程环境。
-- 会话：工具集运行的实时对话和工作空间状态。
+- Harness 适配器：连接到运行时的包，例如 `@ai-sdk/harness-claude-code`。
+- 沙箱提供商：harness 运行所在的隔离文件系统和进程环境。
+- 会话：harness 运行的实时对话和工作区状态。
 
 ## 兼容的流
 
-`HarnessAgent.generate()` 返回一个 AI SDK 的 `GenerateTextResult`。
-`HarnessAgent.stream()` 返回一个 AI SDK 的 `StreamTextResult`。
+`HarnessAgent.generate()` 返回 AI SDK 的 `GenerateTextResult`。
+`HarnessAgent.stream()` 返回 AI SDK 的 `StreamTextResult`。
 
-这意味着你可以使用熟悉的字段：
+这意味着你可以消费熟悉的字段：
 
 - `result.text`
 - `result.stream`
@@ -50,11 +50,11 @@ AI SDK 工具集抽象层与提供商/模型抽象层是分离的。提供商向
 - `result.usage`
 - `result.responseMessages`
 
-工具集特定的事件会被转换为兼容的流部分。文本、推理、工具调用、工具结果、使用情况和完成原因在可能的情况下使用相同的 AI SDK 形状。没有一等 AI SDK 部分的事件，例如工作空间文件更改和压缩，会作为动态的提供商执行工具部分呈现。
+harness 特定的事件会被转换为兼容的流部分。文本、推理、工具调用、工具结果、用量和完成原因在可能的情况下使用相同的 AI SDK 结构。没有一等 AI SDK 部分的事件，例如工作区文件变更和压缩，会以动态的提供商执行的工具部分呈现。
 
 ## 会话很重要
 
-与语言模型调用不同，工具集会话拥有状态。会话携带工具集运行时、沙箱、工作目录、原生对话历史以及待处理的审批。
+与语言模型调用不同，harness 会话拥有状态。会话携带 harness 运行时、沙箱、工作目录、原生对话历史以及待处理的审批。
 
 在运行轮次之前创建会话：
 
@@ -64,7 +64,7 @@ const session = await agent.createSession();
 try {
   const result = await agent.generate({
     session,
-    prompt: '检查仓库并总结测试设置。',
+    prompt: 'Inspect the repository and summarize the test setup.',
   });
 
   console.log(result.text);
@@ -73,13 +73,13 @@ try {
 }
 ```
 
-对于服务器路由，请使用稳定的 `sessionId`，并持久化由 `session.detach()` 或 `session.stop()` 返回的恢复状态。
+对于服务器路由，请使用稳定的 `sessionId`，并持久化 `session.detach()` 或 `session.stop()` 返回的恢复状态。
 
-## 下一步
+## 后续步骤
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent) 了解主要 API。
 - [技能](/docs/ai-sdk-harnesses/skills) 了解可复用的指令包。
-- [工具集适配器](/docs/ai-sdk-harnesses/harness-adapters) 了解已实现的运行时。
-- [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 了解持久的长时间运行轮次。
+- [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 了解已实现的运行时。
+- [工作流工具](/docs/ai-sdk-harnesses/workflow-utilities) 了解持久化的长时间运行轮次。
 - [UI](/docs/ai-sdk-harnesses/ui) 了解 `useChat` 路由。
 - [终端 UI](/docs/ai-sdk-harnesses/terminal-ui) 了解 `@ai-sdk/tui`。

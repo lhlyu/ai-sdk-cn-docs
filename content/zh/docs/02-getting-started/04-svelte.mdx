@@ -5,9 +5,9 @@ description: "学习如何使用 AI SDK 和 Svelte 构建你的第一个智能�
 
 # Svelte 快速开始
 
-AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动的应用程序。
+AI SDK 是一个功能强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动的应用程序。
 
-在本快速开始教程中，你将构建一个带有流式传输聊天用户界面的简单智能体。在此过程中，你将学习一些关键概念和技术，这些都是在自己的项目中使用该 SDK 的基础。
+在本快速开始教程中，你将构建一个带有流式传输聊天用户界面的简单智能体。在此过程中，你将学习一些关键概念和技术，这些是你在自己的项目中使用该 SDK 的基础。
 
 如果你对[提示词工程](/docs/advanced/prompt-engineering)和 [HTTP 流式传输](/docs/foundations/streaming)的概念不熟悉，可以选择先阅读这些文档。
 
@@ -15,7 +15,7 @@ AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动
 
 要跟随本快速开始，你需要：
 
-- 本地开发机器上安装了 Node.js 22+ 和 pnpm。
+- 在本地开发机器上安装 Node.js 22+ 和 pnpm。
 - 一个 [Vercel AI Gateway](https://vercel.com/ai-gateway) API 密钥。
 
 如果你还没有获得 Vercel AI Gateway API 密钥，可以在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)获取。
@@ -32,10 +32,10 @@ AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动
 
 ### 安装依赖
 
-安装 `ai` 和 `@ai-sdk/svelte`，即 AI 包和 AI SDK 的 Svelte 绑定。AI SDK 的 [Vercel AI Gateway 提供商](/providers/ai-sdk-providers/ai-gateway)随 `ai` 包一起提供。你还需要安装 `zod`，这是一个用于定义工具输入的 schema 验证库。
+安装 `ai` 和 `@ai-sdk/svelte`，即 AI 包和 AI SDK 的 Svelte 绑定。AI SDK 的 [Vercel AI Gateway 提供商](/providers/ai-sdk-providers/ai-gateway)随 `ai` 包一起提供。你还需要安装 `zod`，这是一个用于定义工具输入的模式验证库。
 
 <Note>
-  本指南使用 Vercel AI Gateway 提供商，这样你就可以用一个 API 密钥访问来自不同提供商的数百个模型，但你也可以通过安装相应的包来切换到任何提供商或模型。查看可用的 [AI SDK 提供商](/providers/ai-sdk-providers)以获取更多信息。
+  本指南使用 Vercel AI Gateway 提供商，这样你可以使用一个 API 密钥访问来自不同提供商的数百个模型，但你也可以通过安装相应的包来切换到任何提供商或模型。查看可用的 [AI SDK 提供商](/providers/ai-sdk-providers)以获取更多信息。
 </Note>
 <InstallPackages packages="ai @ai-sdk/svelte zod" dev />
 
@@ -54,7 +54,7 @@ AI_GATEWAY_API_KEY=xxxxxxxxx
 将 `xxxxxxxxx` 替换为你实际的 Vercel AI Gateway API 密钥。
 
 <Note className="mb-4">
-  AI SDK 的 Vercel AI Gateway 提供商默认使用 `AI_GATEWAY_API_KEY` 环境变量。Vite 不会自动将环境变量加载到 `process.env` 上，因此你需要在代码中从 `$env/static/private` 导入 `AI_GATEWAY_API_KEY`（见下文）。
+  AI SDK 的 Vercel AI Gateway 提供商将默认使用 `AI_GATEWAY_API_KEY` 环境变量。Vite 不会自动将环境变量加载到 `process.env` 上，因此你需要在代码中从 `$env/static/private` 导入 `AI_GATEWAY_API_KEY`（见下文）。
 </Note>
 
 ## 创建 API 路由
@@ -81,7 +81,7 @@ export async function POST({ request }) {
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const result = streamText({
-    model: gateway('anthropic/claude-sonnet-5'),
+    model: gateway('anthropic/claude-sonnet-5.5'),
     messages: await convertToModelMessages(messages),
   });
 
@@ -97,7 +97,7 @@ export async function POST({ request }) {
 
 让我们看看这段代码中发生了什么：
 
-1. 使用 `ai` 包中的 `createGateway` 函数创建一个 gateway 提供商实例。
+1. 使用 `ai` 包中的 `createGateway` 函数创建一个网关提供商实例。
 2. 定义一个 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和聊天机器人之间的对话历史，为聊天机器人提供进行下一次生成所需的上下文。`messages` 的类型为 UIMessage，专为应用程序 UI 设计——它们包含完整的消息历史以及相关元数据，如时间戳。
 3. 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text)。此函数接受一个配置对象，其中包含 `model` 提供商（在第 1 步中定义）和 `messages`（在第 2 步中定义）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。`messages` 键期望一个 `ModelMessage[]` 数组。此类型与 `UIMessage` 不同，因为它不包含元数据，例如时间戳或发送者信息。为了在这些类型之间转换，我们使用 `convertToModelMessages` 函数，它会剥离 UI 特定的元数据，并将 `UIMessage[]` 数组转换为模型期望的 `ModelMessage[]` 格式。
 4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建一个流式响应对象。
@@ -113,16 +113,16 @@ AI SDK 通过[第一方](/providers/ai-sdk-providers)、[OpenAI 兼容](/provide
 model: __MODEL__;
 ```
 
-你也可以通过另外两种等效方式显式导入并使用 gateway 提供商：
+你也可以通过另外两种等效方式显式导入并使用网关提供商：
 
 ```ts
 // 选项 1：从 'ai' 包导入（默认包含）
 import { gateway } from 'ai';
-model: gateway('anthropic/claude-sonnet-5');
+model: gateway('anthropic/claude-sonnet-5.5');
 
 // 选项 2：安装并从 '@ai-sdk/gateway' 包导入
 import { gateway } from '@ai-sdk/gateway';
-model: gateway('anthropic/claude-sonnet-5');
+model: gateway('anthropic/claude-sonnet-5.5');
 ```
 
 ### 使用其他提供商
@@ -139,13 +139,13 @@ model: openai('gpt-6-astra');
 
 #### 更新全局提供商
 
-你可以更改默认的全局提供商，以便字符串模型引用在应用程序的任何地方都使用你首选的提供商。在[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)中了解更多信息。
+你可以更改默认的全局提供商，以便字符串模型引用在应用程序的任何地方都使用你首选的提供商。了解更多关于[提供商管理](/docs/ai-sdk-core/provider-management#global-provider-configuration)的信息。
 
-选择最符合你在应用程序中管理提供商方式的方法。
+选择最符合你希望在应用程序中管理提供商方式的方法。
 
 ## 连接 UI
 
-现在你有了一个可以查询 LLM 的 API 路由，是时候设置前端了。AI SDK 的 [UI](/docs/ai-sdk-ui) 包将聊天界面的复杂性抽象为一个类 `Chat`。
+现在你有了一个可以查询 LLM 的 API 路由，是时候设置前端了。AI SDK 的 [UI](/docs/ai-sdk-ui) 包将聊天界面的复杂性抽象为一个类：`Chat`。
 它的属性和 API 与 React 的 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 大致相同。
 
 使用以下代码更新你的根页面（`src/routes/+page.svelte`），以显示聊天消息列表并提供用户消息输入：
@@ -188,12 +188,12 @@ model: openai('gpt-6-astra');
 
 此页面使用 `Chat` 类，默认情况下，它将使用你之前创建的 `POST` 路由处理程序。该类提供了用于处理用户输入和表单提交的函数和状态。`Chat` 类提供了多个实用函数和状态变量：
 
-- `messages` - 当前聊天消息（一个包含 `id`、`role` 和 `parts` 属性的对象数组）。
+- `messages` - 当前的聊天消息（一个包含 `id`、`role` 和 `parts` 属性的对象数组）。
 - `sendMessage` - 一个向聊天 API 发送消息的函数。
 
 该组件使用本地状态来管理输入字段的值，并通过使用输入文本调用 `sendMessage` 然后清空输入字段来处理表单提交。
 
-LLM 的响应通过消息的 `parts` 数组访问。每条消息包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理 token，以及你稍后将看到的更多内容。`parts` 数组保留了模型输出的顺序，允许你按生成的顺序显示或处理每个组件。
+LLM 的响应通过消息的 `parts` 数组访问。每条消息包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理 token 以及你稍后将看到的更多内容。`parts` 数组保留了模型输出的顺序，允许你按生成的顺序显示或处理每个组成部分。
 
 ## 运行你的应用程序
 
@@ -205,17 +205,17 @@ LLM 的响应通过消息的 `parts` 数组访问。每条消息包含一个有�
 
 ## 使用工具增强你的聊天机器人
 
-虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这就是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
+虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这正是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
 
-工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一个响应中考虑。
+工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一个响应中加以考虑。
 
-例如，如果用户询问当前天气，没有工具的话，模型只能根据其训练数据提供一般信息。但有了天气工具，它就可以获取并提供最新的、特定位置的天气信息。
+例如，如果用户询问当前天气，在没有工具的情况下，模型只能根据其训练数据提供一般信息。但有了天气工具，它就可以获取并提供最新的、特定位置的天气信息。
 
 让我们通过添加一个简单的天气工具来增强你的聊天机器人。
 
 ### 更新你的 API 路由
 
-修改你的 `src/routes/api/chat/+server.ts` 文件以包含新的天气工具：
+修改你的 `src/routes/api/chat/+server.ts` 文件，以包含新的天气工具：
 
 ```tsx filename="src/routes/api/chat/+server.ts" highlight="5-8,25-39"
 import {
@@ -240,7 +240,7 @@ export async function POST({ request }) {
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const result = streamText({
-    model: gateway('anthropic/claude-sonnet-5'),
+    model: gateway('anthropic/claude-sonnet-5.5'),
     messages: await convertToModelMessages(messages),
     tools: {
       weather: tool({
@@ -265,17 +265,17 @@ export async function POST({ request }) {
 }
 ```
 
-在这段更新的代码中：
+在这段更新后的代码中：
 
-1. 你从 `ai` 包导入 `tool` 函数，从 `zod` 导入 `z` 用于 schema 验证。
+1. 你从 `ai` 包导入 `tool` 函数，并从 `zod` 导入 `z` 用于模式验证。
 2. 你定义了一个包含 `weather` 工具的 `tools` 对象。此工具：
    - 有一个描述，帮助模型理解何时使用它。
-   - 使用 Zod schema 定义 `inputSchema`，指定它需要一个 `location` 字符串来执行此工具。模型将尝试从对话上下文中提取此输入。如果无法提取，它将向用户询问缺失的信息。
-   - 定义一个 `execute` 函数，模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
+   - 使用 Zod 模式定义 `inputSchema`，指定它需要一个 `location` 字符串来执行此工具。模型将尝试从对话上下文中提取此输入。如果无法提取，它将向用户询问缺失的信息。
+   - 定义一个 `execute` 函数，用于模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
 
 现在你的聊天机器人可以"获取"用户询问的任何位置的天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后 `execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
 
-尝试询问类似"纽约的天气怎么样？"这样的问题，看看模型如何使用新工具。
+尝试询问类似"纽约的天气怎么样？"的问题，看看模型如何使用新工具。
 
 注意到 UI 中的空白响应了吗？这是因为模型没有生成文本响应，而是生成了一个工具调用。你可以在客户端通过 `message.parts` 数组的 `tool-weather` 部分访问工具调用和后续的工具结果。
 
@@ -331,13 +331,13 @@ export async function POST({ request }) {
 
 ## 启用多步工具调用
 
-你可能已经注意到，虽然工具现在在聊天界面中可见，但模型并没有使用这些信息来回答你的原始查询。这是因为一旦模型生成了工具调用，它在技术上就完成了生成。
+你可能已经注意到，虽然工具现在在聊天界面中可见，但模型并没有使用这些信息来回答你最初的问题。这是因为一旦模型生成了工具调用，它在技术上就完成了生成。
 
-为了解决这个问题，你可以使用 `stopWhen` 启用多步工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当有工具结果时，生成会在第一步之后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身以触发额外的生成，直到满足你指定的停止条件。在本例中，你希望模型继续生成，以便它可以使用天气工具结果来回答你的原始问题。
+要解决此问题，你可以使用 `stopWhen` 启用多步工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当有工具结果时，生成会在第一步之后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身以触发额外的生成，直到满足你指定的停止条件。在本例中，你希望模型继续生成，以便它可以使用天气工具的结果来回答你最初的问题。
 
 ### 更新你的 API 路由
 
-修改你的 `src/routes/api/chat/+server.ts` 文件以包含 `stopWhen` 条件：
+修改你的 `src/routes/api/chat/+server.ts` 文件，以包含 `stopWhen` 条件：
 
 ```ts filename="src/routes/api/chat/+server.ts" highlight="25"
 import {
@@ -362,7 +362,7 @@ export async function POST({ request }) {
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const result = streamText({
-    model: gateway('anthropic/claude-sonnet-5'),
+    model: gateway('anthropic/claude-sonnet-5.5'),
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
     tools: {
@@ -388,13 +388,13 @@ export async function POST({ request }) {
 }
 ```
 
-回到浏览器并询问某个位置的天气。你现在应该会看到模型使用天气工具结果来回答你的问题。
+回到浏览器并询问某个位置的天气。你现在应该会看到模型使用天气工具的结果来回答你的问题。
 
 通过设置 `stopWhen: isStepCount(5)`，你允许模型在任何给定的生成中使用最多 5 个"步骤"。这可以实现更复杂的交互，并允许模型在需要时跨多个步骤收集和处理信息。你可以通过添加另一个将温度从华氏度转换为摄氏度的工具来看到它的实际效果。
 
 ### 添加另一个工具
 
-更新你的 `src/routes/api/chat/+server.ts` 文件，添加一个新工具来将温度从华氏度转换为摄氏度：
+更新你的 `src/routes/api/chat/+server.ts` 文件，以添加一个将温度从华氏度转换为摄氏度的新工具：
 
 ```tsx filename="src/routes/api/chat/+server.ts" highlight="40-53"
 import {
@@ -419,7 +419,7 @@ export async function POST({ request }) {
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const result = streamText({
-    model: gateway('anthropic/claude-sonnet-5'),
+    model: gateway('anthropic/claude-sonnet-5.5'),
     messages: await convertToModelMessages(messages),
     stopWhen: isStepCount(5),
     tools: {
@@ -461,7 +461,7 @@ export async function POST({ request }) {
 
 ### 更新你的前端
 
-通过修改工具部分处理来更新你的 UI，以处理新的温度转换工具：
+通过修改工具部分的处理方式，更新你的 UI 以处理新的温度转换工具：
 
 ```svelte filename="src/routes/+page.svelte" highlight="23-24"
 <script lang="ts">
@@ -501,27 +501,27 @@ export async function POST({ request }) {
 </main>
 ```
 
-此更新处理新的 `tool-convertFahrenheitToCelsius` 部分类型，在 UI 中显示温度转换工具调用和结果。
+此更新处理新的 `tool-convertFahrenheitToCelsius` 部分类型，在 UI 中显示温度转换工具调用及其结果。
 
 现在，当你询问"纽约的天气是多少摄氏度？"时，你应该会看到更完整的交互：
 
-1. 模型将为纽约调用天气工具。
+1. 模型将调用纽约的天气工具。
 2. 你将看到显示的工具输出。
 3. 然后它将调用温度转换工具，将温度从华氏度转换为摄氏度。
-4. 模型将使用该信息提供关于纽约天气的自然语言响应。
+4. 模型随后将使用该信息提供关于纽约天气的自然语言响应。
 
-这种多步方法允许模型收集信息并使用它来提供更准确和更具上下文相关性的响应，使你的聊天机器人更加实用。
+这种多步方法允许模型收集信息并使用它来提供更准确、更具上下文相关性的响应，使你的聊天机器人更加实用。
 
 这个简单的示例演示了工具如何扩展模型的能力。你可以创建更复杂的工具来与真实 API、数据库或任何其他外部系统集成，允许模型实时访问和处理真实世界的数据。工具弥合了模型知识截止日期与当前信息之间的差距。
 
 ## `@ai-sdk/svelte` 与 `@ai-sdk/react` 有何不同？
 
-表面上的区别是 Svelte 使用类来管理状态，而 React 使用 Hook，因此 React 中的 `useChat` 在 Svelte 中就是 `Chat`。除此之外，还有几点需要注意：
+表面上的区别是 Svelte 使用类来管理状态，而 React 使用 Hook，因此 React 中的 `useChat` 在 Svelte 中是 `Chat`。除此之外，还有几点需要注意：
 
 ### 1. 类的参数默认不是响应式的
 
-与 React 中 Hook 在包含组件失效时重新运行不同，Svelte 组件 `script` 块中的代码仅在组件创建时运行一次。
-这意味着，如果你希望类的参数是响应式的，你需要确保向类传递的是_引用_，而不是值：
+与 React 中每当包含 Hook 的组件失效时 Hook 就会重新运行不同，Svelte 组件 `script` 块中的代码在组件创建时只运行一次。
+这意味着，如果你希望类的参数是响应式的，你需要确保传入类的是一个_引用_，而不是一个值：
 
 ```svelte
 <script>
@@ -541,7 +541,7 @@ export async function POST({ request }) {
 </script>
 ```
 
-请记住，这通常无关紧要；你传递给 Chat 类的大多数参数都是静态的（例如，你通常不会期望你的 `onError` 处理程序发生变化）。
+请记住，这通常无关紧要；你传入 Chat 类的大多数参数都是静态的（例如，你通常不会期望你的 `onError` 处理程序发生变化）。
 
 ### 2. 你不能解构类的属性
 
@@ -572,10 +572,10 @@ Svelte 中的类也是如此：
 </script>
 ```
 
-### 3. 实例同步需要 context
+### 3. 实例同步需要上下文
 
-在 React 中，具有相同 `id` 的 Hook 实例是同步的——因此，如果两个 `useChat` 实例具有相同的 `id`，它们将拥有相同的 `messages`、`status` 等。
-对于大多数用例，你可能不需要此行为——但如果你需要，可以使用 `createAIContext` 在根布局文件中创建一个 context：
+在 React 中，具有相同 `id` 的 Hook 实例是同步的——因此如果两个 `useChat` 实例具有相同的 `id`，它们将拥有相同的 `messages`、`status` 等。
+对于大多数用例，你可能不需要此行为——但如果你需要，可以使用 `createAIContext` 在根布局文件中创建一个上下文：
 
 ```svelte
 <script>
@@ -585,7 +585,7 @@ Svelte 中的类也是如此：
 
   createAIContext();
   // 在此之后创建的或在作为此组件子组件的组件中创建的所有 Hook
-  // 将具有同步的状态
+  // 都将具有同步的状态
 </script>
 
 {@render children()}
@@ -596,6 +596,6 @@ Svelte 中的类也是如此：
 你已经使用 AI SDK 构建了一个 AI 聊天机器人！从这里开始，你有几条路径可以探索：
 
 - 要了解有关 AI SDK 的更多信息，请阅读[文档](/docs)。
-- 如果你有兴趣通过指南深入学习，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot)和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
+- 如果你有兴趣通过指南深入了解，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot)和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
 - 要快速启动你的第一个 AI 项目，请探索可用的[模板](https://vercel.com/templates?type=ai)。
 - 要了解有关 Svelte 的更多信息，请查看[官方文档](https://svelte.dev/docs/svelte)。

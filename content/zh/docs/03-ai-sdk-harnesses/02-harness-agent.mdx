@@ -11,11 +11,11 @@ description: "创建并运行 AI SDK HarnessAgent 会话。"
 
 ## 安装
 
-安装核心 harness 包、一个 harness 适配器以及一个沙箱提供商：
+安装核心 harness 包、harness 适配器和沙箱适配器：
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-claude-code @ai-sdk/sandbox-vercel" />
 
-由 bridge 支持的 harness（如 Claude Code 和 Codex）需要使用真实的网络沙箱，
+由桥接支持的 harness（如 Claude Code 和 Codex）需要使用真实的网络沙箱，
 例如 `@ai-sdk/sandbox-vercel`。宿主运行时 harness（如 Pi）也可以使用
 `@ai-sdk/sandbox-just-bash` 运行，因为它们不需要沙箱暴露端口。
 
@@ -24,15 +24,10 @@ description: "创建并运行 AI SDK HarnessAgent 会话。"
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { claudeCode } from '@ai-sdk/harness-claude-code';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
 
 export const agent = new HarnessAgent({
   harness: claudeCode,
   model: 'claude-sonnet-4-6',
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   instructions:
     'You are a careful coding assistant. Prefer small changes and explain tradeoffs.',
 });
@@ -40,6 +35,17 @@ export const agent = new HarnessAgent({
 
 在模块作用域中构造智能体。它持有配置，而不是活动会话。
 活动状态属于 `HarnessAgentSession`。
+单独创建沙箱会话并将其传递给 `agent.createSession()`：
+
+```ts
+import { createVercelNetworkSandboxSession } from '@ai-sdk/sandbox-vercel';
+
+const sandboxSession = await createVercelNetworkSandboxSession({
+  runtime: 'node24',
+  ports: [4000],
+  template: await agent.getSandboxTemplate(),
+});
+```
 
 设置 `model` 以选择 harness 运行时使用的模型。模型标识符
 因每个 harness 而异。省略时，harness 使用其默认模型。
@@ -50,7 +56,7 @@ export const agent = new HarnessAgent({
 ## 运行一轮
 
 ```ts
-const session = await agent.createSession();
+const session = await agent.createSession({ sandboxSession });
 
 let exitCode = 0;
 try {
@@ -65,16 +71,17 @@ try {
   console.error(err);
 } finally {
   await session.destroy();
+  await sandboxSession.destroy();
   process.exit(exitCode);
 }
 ```
 
-`generate()` 会耗尽该轮次并返回一个 `GenerateTextResult`。
+`generate()` 会耗尽该轮次并返回 `GenerateTextResult`。
 
 使用 `stream()` 获取增量输出：
 
 ```ts
-const session = await agent.createSession();
+const session = await agent.createSession({ sandboxSession });
 
 let exitCode = 0;
 try {
@@ -93,6 +100,7 @@ try {
   console.error(err);
 } finally {
   await session.destroy();
+  await sandboxSession.destroy();
   process.exit(exitCode);
 }
 ```
@@ -105,7 +113,6 @@ try {
 ```ts
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox,
   tools: { weather },
   onStart: event => console.log('call started', event.callId),
   onStepStart: event => console.log('step started', event.stepNumber),
@@ -122,17 +129,52 @@ const agent = new HarnessAgent({
 ```
 
 在单个 `generate()` 和 `stream()` 调用上配置的回调会
-在设置回调之外额外被调用，设置回调先被调用。回调错误会被忽略，不会改变智能体执行。
+在设置回调之外额外被调用，设置回调先被调用。
+回调错误会被忽略，不会改变智能体执行。
 
 Harness 运行时在内部执行其内置工具。对于这些工具，
-`onToolExecutionStart` 和 `onToolExecutionEnd` 描述的是运行时报告结果后的逻辑工具
-生命周期。这些回调仍然会在工具结果发布到结果流之前被传递。
+`onToolExecutionStart` 和 `onToolExecutionEnd` 描述运行时报告结果后的
+逻辑工具生命周期。回调仍然会在工具结果发布到结果流之前
+被传递。
+
+## 运行时上下文
+
+在 `HarnessAgent` 上设置 `runtimeContext`，使应用上下文可用于
+每一轮。使用 `prepareCall` 为每个新的提示词轮次替换它。准备好的
+上下文可通过 `generate()` 和 `stream()` 获取，并在使用
+`continueGenerate()` 和 `continueStream()` 进行内存中延续期间保持不变。
+生命周期回调接收完整上下文，它也可在每个结果的 `finalStep.runtimeContext`
+上获取。
+
+```ts
+const agent = new HarnessAgent({
+  harness: claudeCode,
+  runtimeContext: {
+    conversationId: 'conversation-123',
+    userId: 'user-456',
+  },
+  telemetry: {
+    includeRuntimeContext: {
+      conversationId: true,
+    },
+  },
+  onEnd: ({ runtimeContext }) => {
+    console.log(runtimeContext.userId);
+  },
+});
+```
+
+运行时上下文默认从遥测中排除。使用
+`telemetry.includeRuntimeContext` 将各个顶层属性加入允许列表；
+只有设置为 `true` 的属性才会发送到遥测集成。生命周期
+回调和结果仍然接收完整上下文，因此避免存储那些消费者
+不应访问的机密。
 
 ## 生成结构化输出
 
 在构造 `HarnessAgent` 时设置 `output`，以要求每一轮都产生相同的类型化输出。
-智能体会将输出规范转换为 JSON Schema 供 harness 适配器使用，验证完成的响应，并通过
-`result.output` 返回解析后的值。
+智能体会将输出规范转换为 JSON Schema 供 harness 适配器使用，验证
+完成的响应，并通过 `result.output` 返回解析后的值。
 
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
@@ -141,7 +183,6 @@ import { z } from 'zod';
 
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox,
   output: Output.object({
     schema: z.object({
       recipe: z.object({
@@ -159,7 +200,7 @@ const agent = new HarnessAgent({
   }),
 });
 
-const session = await agent.createSession();
+const session = await agent.createSession({ sandboxSession });
 try {
   const result = await agent.generate({
     session,
@@ -184,28 +225,48 @@ Harness 结构化输出需要 schema。无 schema 的 `Output.json()` 以及
 ## 消息与历史
 
 harness 会话拥有其原生对话历史。当你传递 `messages`
-或消息数组形式的 `prompt` 时，`HarnessAgent` 会将最新的用户消息作为
-该轮的新输入。它不会将完整的先前对话重放到 harness 中。
+或消息数组形式的 `prompt` 时，`HarnessAgent` 会将最新的用户消息作为该轮次的
+新输入。它不会将完整的先前对话重放到 harness 中。
 
 尾随的工具消息处理方式不同：工具审批响应和
 客户端提供的工具结果会继续产生相应请求或工具调用的未完成 harness 轮次。
 
-这与模型调用不同，在模型调用中应用程序通常会发送完整的
+这与模型调用不同，模型调用中应用通常发送完整的
 消息历史。在聊天路由中，应持久化并恢复 harness 会话，而不是依赖消息重放。
+
+### 读取运行时自身的历史
+
+运行时的对话可能在你的进程之外增长——例如，同一
+对话在智能体自己的 CLI 中交互式继续——而实时事件流永远不会看到这些交换。
+能够访问其运行时存储的适配器通过 `session.readHistory()` 暴露它们：
+
+```ts
+const { messages, cursor } = await session.readHistory();
+// Messages use role/content shapes. Adapter-specific details, including the
+// runtime's raw record, are available under harnessMetadata.
+
+// Later: read only what was recorded since.
+const delta = await session.readHistory({ since: cursor });
+```
+
+历史读取是适配器特定的；在调用此方法之前，请参阅适配器能力表。
+当适配器未实现历史读取时，`readHistory()` 抛出 `HarnessCapabilityUnsupportedError`；
+当适配器实现了但无法从此环境访问运行时存储时（例如，
+存储位于远程沙箱内），抛出 `HarnessHistoryUnavailableError`。尚无记录消息的对话
+不是错误；它会解析为空 `messages` 数组。
 
 ## 会话生命周期
 
 显式结束每个会话：
 
 - `session.destroy()` 停止运行时并丢弃可恢复性。
-- `session.detach()` 停放运行时和沙箱，返回恢复状态，并
-  保持沙箱热状态以供稍后附加。如果该轮未完成，
-  恢复状态会包含继续状态。
-- `session.stop()` 保存恢复状态，然后停止运行时和沙箱。如果
-  该轮未完成，恢复状态会包含继续状态。
-- `session.suspendTurn()` 用于跨进程边界的高级活动轮次继续。
+- `session.detach()` 停放运行时，返回恢复状态，并让提供的沙箱
+  继续运行以供稍后附加。如果轮次未完成，恢复状态包含延续状态。
+- `session.stop()` 保存恢复状态，然后停止运行时。如果
+  轮次未完成，恢复状态包含延续状态。
+- `session.suspendTurn()` 用于跨进程边界的高级活动轮次延续。
 - `session.hasUnfinishedTurn()` 报告当前轮次是否必须在会话接受新提示词之前
-  继续或挂起。
+  被继续或挂起。
 
 对于一次性脚本和测试，使用 `destroy()`。对于需要多轮连续性的
 HTTP 路由，使用 `detach()` 或 `stop()`。
@@ -213,7 +274,7 @@ HTTP 路由，使用 `detach()` 或 `stop()`。
 ## 在轮次之间更改设置
 
 使用 `callOptionsSchema` 和 `prepareCall` 为每个新轮次派生 `model`、`skills`、
-`instructions` 和 `tools`。这遵循与 `ToolLoopAgent` 相同的
+`instructions`、`tools` 和 `runtimeContext`。这遵循与 `ToolLoopAgent` 相同的
 调用选项模式：
 
 ```ts
@@ -229,7 +290,6 @@ const getPolicy = tool({
 
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox,
   tools: { getPolicy },
   callOptionsSchema: z.object({
     area: z.enum(['frontend', 'backend']),
@@ -240,12 +300,13 @@ const agent = new HarnessAgent({
     ...call,
     model: options.useCheaperModel ? 'claude-haiku-4-5' : undefined,
     instructions: `Work as the ${options.area} specialist.`,
+    runtimeContext: { area: options.area },
     skills: [options.area === 'frontend' ? frontendSkill : backendSkill],
     tools: options.enablePolicyTool ? { getPolicy } : undefined,
   }),
 });
 
-const session = await agent.createSession();
+const session = await agent.createSession({ sandboxSession });
 try {
   await agent.generate({
     session,
@@ -271,16 +332,16 @@ try {
 }
 ```
 
-`prepareCall` 会在其自定义 `options` 验证通过后为新提示词运行。
-其设置随后会在整个轮次中固定。如果该轮因工具结果、审批、停止条件或进程交接而暂停，
-其继续会复用相同的设置，并且不会再次调用 `prepareCall`。
-这可以防止设置在中途更改。
+`prepareCall` 在其自定义 `options` 被验证后，为新提示词运行。
+其设置随后在该整个轮次中固定。如果轮次因工具结果、审批、停止条件或
+进程交接而暂停，其延续会重用相同的设置，不会再次调用 `prepareCall`。
+这防止设置在轮次中途更改。
 
-更改 `model` 不会创建新的 harness 会话。每个适配器会在下一个提示词之前切换或
-重新配置其运行时，同时保留会话的对话历史。
+更改 `model` 不会创建新的 harness 会话。每个适配器会在下一个提示词之前
+切换或重新配置其运行时，同时保留会话的对话历史。
 
 当 Codex 适配器的 skills、instructions 或工具目录发生变化时，它会启动一个全新的原生 Codex 线程，
-因为 `codex exec resume` 会保留原始原生线程引导。harness 会话仍然可用，
+因为 `codex exec resume` 保留原始原生线程引导。harness 会话仍然可用，
 但先前的原生对话上下文不会跨越该设置更改边界。
 设置未更改的轮次会继续现有的原生线程。
 
@@ -289,12 +350,15 @@ try {
 智能体上，因为其响应格式与智能体的输出 schema 绑定。
 
 当你将 `sandboxSession` 传递给 `agent.createSession()` 时，调用方保留
-对该沙箱的所有权。`session.stop()` 和 `session.destroy()` 仍会结束
-harness 运行时，但不会停止或销毁所提供的沙箱会话。
+该沙箱的所有权。`session.stop()` 和 `session.destroy()` 仍然结束
+harness 运行时，但不会停止或销毁提供的沙箱会话。
 在这种情况下，智能体不需要在其构造函数中提供 `sandbox` 提供商。
 
 ```ts
-const session = await agent.createSession({ sessionId: chatId });
+const session = await agent.createSession({
+  sessionId: chatId,
+  sandboxSession,
+});
 
 try {
   const result = await agent.stream({ session, messages });
@@ -315,24 +379,42 @@ try {
 
 ## 恢复
 
-持久化不透明的恢复状态，并将其与原始 `sessionId` 一起传回：
+持久化不透明的恢复状态。在此示例中，harness 的 `sessionId` 是
+`chatId`，沙箱 ID 从同一已知 ID 派生。如果你的
+应用无法派生沙箱 ID，请改为将 `sandboxSession.id` 与 harness 的
+`sessionId` 和恢复状态一起持久化。在要求智能体恢复之前重新附加沙箱。
+当你在创建时选择 `sandboxId` 时，它命名一个**新的**
+活动沙箱，绝不会查找现有沙箱。如果命名的沙箱已存在，使用该 ID 与创建器一起使用会失败；
+只有恢复函数执行查找。
 
 ```ts
 const resumeState = await loadResumeState({ chatId });
+const sandboxId = `chat-${chatId}`;
+
+const sandboxSession = resumeState
+  ? await resumeVercelNetworkSandboxSession({ sandboxId })
+  : await createVercelNetworkSandboxSession({
+      sandboxId,
+      ports: [4000],
+      template: await agent.getSandboxTemplate(),
+    });
 
 const session = await agent.createSession(
   resumeState
-    ? { sessionId: chatId, resumeFrom: resumeState }
-    : { sessionId: chatId },
+    ? { sessionId: chatId, resumeFrom: resumeState, sandboxSession }
+    : { sessionId: chatId, sandboxSession },
 );
 ```
 
-`HarnessAgent` 会在将恢复状态交给运行时之前，验证它是由同一个 harness
-适配器生成的。如果恢复状态包含未完成的轮次，请在发送新提示词之前调用 `continueStream()` 或 `continueGenerate()`。
+`HarnessAgent` 在将恢复状态交给运行时之前，会验证它是由同一 harness
+适配器生成的。如果恢复状态包含未完成的轮次，请在发送新提示词之前调用
+`continueStream()` 或 `continueGenerate()`。Vercel 恢复函数会重新附加沙箱，
+无论沙箱是在 `detach()` 后仍在运行，还是通过可恢复快照停止。在
+`sandboxSession.destroy()` 删除它之后，该 ID 无法恢复。
 
 ## 继续挂起的轮次
 
-对于必须在进程边界之间交接活动轮次的高级工作流，请挂起该轮次并持久化继续状态：
+对于必须在进程边界交接活动轮次的高级工作流，挂起该轮次并持久化延续状态：
 
 ```ts
 if (session.hasUnfinishedTurn()) {
@@ -341,48 +423,48 @@ if (session.hasUnfinishedTurn()) {
 }
 ```
 
-当你只有来自 `suspendTurn()` 的原始继续状态时，使用
+当你只有来自 `suspendTurn()` 的原始延续状态时，使用
 `continueFrom` 恢复，然后在不发送新提示词的情况下继续该轮次：
 
 ```ts
 const session = await agent.createSession({
   sessionId: chatId,
   continueFrom: continuationState,
+  sandboxSession,
   // Rebind this when the suspended turn used host-only tool context:
   toolsContext,
+  runtimeContext,
 });
 
 const result = await agent.continueStream({ session });
 ```
 
 使用 `continueStream()` 获取增量输出，或使用 `continueGenerate()` 耗尽
-继续的轮次并返回一个 `GenerateTextResult`。
+继续的轮次并返回 `GenerateTextResult`。
 
-`toolsContext` 有意不存储在继续状态中，因为它可能
-包含凭据或不可序列化的宿主对象。当挂起的轮次
-使用了静态或 `prepareCall` 派生的工具上下文时，请将相同的按工具映射传递给
-`createSession`，以便在继续该轮次的进程中重新绑定它。
+`toolsContext` 和 `runtimeContext` 有意不存储在
+延续状态中，因为它们可能包含凭据或不可序列化的
+宿主对象。当挂起的轮次使用了由 `prepareCall` 派生的上下文时，
+将相同的值传递给 `createSession`，以在继续该轮次的进程中重新绑定它们。
+在未重新绑定的进程恢复后，延续使用智能体构造函数级别的
+`runtimeContext` 和 `toolsContext`。
 
 ## 在 Harness 步骤后停止
 
-使用 `stopWhen` 选择启用语义步骤边界。谓词会在真实的
+使用 `stopWhen` 选择加入语义步骤边界。谓词在真实的
 harness 工具步骤之后运行，这些步骤可以继续进入另一个模型步骤，并接收
 当前调用的已完成步骤。当谓词匹配时，返回的结果会完成，而底层轮次仍未完成。
-终端纯文本步骤则会消费该轮次的 `finish` 事件并自然完成。
+终端纯文本步骤则消耗轮次的 `finish` 事件并自然完成。
 
 ```ts
 import { isStepCount } from 'ai';
 
 const steppedAgent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   stopWhen: isStepCount(1),
 });
 
-const session = await steppedAgent.createSession();
+const session = await steppedAgent.createSession({ sandboxSession });
 const result = await steppedAgent.generate({
   session,
   prompt: 'Create a short TODO.md for this repository.',
@@ -395,32 +477,28 @@ if (session.hasUnfinishedTurn()) {
 ```
 
 `stopWhen` 没有默认值。省略时，`HarnessAgent` 会继续运行，直到
-该轮次自然完成或因宿主输入而暂停，从而保留没有步骤控制的智能体的行为。
-传递一个谓词或一个数组；匹配任何谓词都会完成当前结果切片。使用
-`createSession({ continueFrom })` 和 `continueStream()` 或
-`continueGenerate()` 恢复已停止的轮次。
+轮次自然完成或因宿主输入而暂停，保持没有步骤控制的智能体的行为。
+传递一个谓词或一个数组；匹配任何谓词都会完成当前结果切片。
+使用 `createSession({ continueFrom })` 和 `continueStream()` 或
+`continueGenerate()` 恢复停止的轮次。
 
 ## 准备沙箱
 
-使用 `sandboxConfig` 在 harness 启动前准备沙箱。
+使用 `sandboxConfig` 在 harness 启动之前准备沙箱。
 
 `sandboxConfig.onBootstrap` 在沙箱模板创建期间运行，在
-harness 适配器自身的 bootstrap 之后、支持快照的提供商发布
-快照之前。将其用于应被未来会话复用的昂贵设置。
-当你提供 `onBootstrap` 时，还要提供 `bootstrapHash`；每当 bootstrap 输出应使可复用快照失效时，
-更改该哈希。
+harness 适配器自身的引导之后，在支持快照的提供商发布
+快照之前。将其用于应由未来会话重用的昂贵设置。
+当你提供 `onBootstrap` 时，还要提供 `bootstrapHash`；每当引导输出
+应使可重用快照失效时，更改哈希。
 
 `sandboxConfig.onSession` 在获取每个沙箱会话且其
-工作目录存在后运行，包括恢复的会话。将其用于按会话
+工作目录存在之后运行，包括恢复的会话。将其用于每会话
 文件或轻量级配置。
 
 ```ts
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   sandboxConfig: {
     workDir: 'repo',
     bootstrapHash: 'ripgrep-v1',
@@ -446,80 +524,60 @@ const agent = new HarnessAgent({
 ```
 
 `workDir` 是可选的。提供时，它必须相对于沙箱的
-默认工作目录，并用作会话工作目录。省略时，常规会话使用默认的
+默认工作目录，并用作会话工作目录。将其设置为 `'.'` 以使用
+沙箱的默认工作目录本身。省略时，常规会话使用默认的
 `<harnessId>-<sessionId>` 目录，而 `onBootstrap` 接收沙箱的默认工作目录。
 
-## 准备可复用沙箱
+## 准备可重用沙箱
 
-当你希望沙箱提供商提前为一个 harness 创建或刷新其可复用模板时，
-使用 `prepareHarnessSandboxTemplate()`：
-
-```ts
-import { prepareHarnessSandboxTemplate } from '@ai-sdk/harness/agent';
-
-await prepareHarnessSandboxTemplate({
-  harness: claudeCode,
-  sandboxProvider: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
-  sandboxConfig: {
-    bootstrapHash: 'ripgrep-v1',
-    onBootstrap: async ({ session, abortSignal }) => {
-      await session.run({
-        command:
-          'command -v rg >/dev/null || (apt-get update && apt-get install -y ripgrep)',
-        abortSignal,
-      });
-    },
-  },
-});
-```
-
-当你拥有原生沙箱生命周期并希望自行对准备好的沙箱进行快照时，
-使用 `prepareSandboxForHarness()`。它会应用所选 harness
-bootstrap 配方和 `sandboxConfig.onBootstrap`，然后返回准备
-元数据。它不会停止或快照沙箱。
+使用 `agent.getSandboxTemplate()` 在创建沙箱之前解析一个 harness 的引导配方和
+`sandboxConfig.onBootstrap`。模板的身份
+在沙箱创建之前已知。Vercel 持久化准备好的快照并
+从中创建活动沙箱；相同的调用会重用该快照：
 
 ```ts
-import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
-import { Sandbox } from '@vercel/sandbox';
-
-const nativeSandbox = await Sandbox.create({
+const sandboxSession = await createVercelNetworkSandboxSession({
   runtime: 'node24',
   ports: [4000],
+  template: await agent.getSandboxTemplate(),
 });
-const sandboxProvider = createVercelSandbox({ sandbox: nativeSandbox });
-const session = await sandboxProvider.createSession();
 
-const preparation = await prepareSandboxForHarness({
-  session: session.restricted(),
+const session = await agent.createSession({ sandboxSession });
+try {
+  await agent.generate({ session, prompt: 'Inspect this repository.' });
+} finally {
+  await session.destroy();
+  await sandboxSession.destroy();
+}
+```
+
+对于共享调用方引导 hook 的多个 harness，从
+所有适配器构建一个模板。对于重复的 `harnessId` 值，最后一个适配器胜出，并且
+配方身份在哈希之前排序。`onSession` 不属于
+模板，会在每个获取的会话上单独运行。
+
+```ts
+import { createHarnessSandboxTemplate } from '@ai-sdk/harness/agent';
+
+const template = await createHarnessSandboxTemplate({
   harnesses: [claudeCode, codex],
   sandboxConfig,
 });
+console.log(template?.identity);
 
-const { snapshot } = await nativeSandbox.stop();
-if (snapshot == null) {
-  throw new Error('Prepared sandbox did not create a snapshot.');
-}
-
-const sandboxFromSnapshot = await Sandbox.create({
-  source: {
-    type: 'snapshot',
-    snapshotId: snapshot.id,
-  },
+const sandboxSession = await createVercelNetworkSandboxSession({
+  source: { type: 'snapshot', snapshotId: baseSnapshotId },
   ports: [4000],
+  template,
 });
-
-const agent = new HarnessAgent({
-  harness: claudeCode,
-  sandbox: createVercelSandbox({ sandbox: sandboxFromSnapshot }),
-  sandboxConfig,
-});
-
-console.log(preparation.identity);
 ```
+
+派生的模板在其缓存键中包含源快照 ID，因此
+使用相同源和模板的重复调用会重用准备好的快照。
+在依赖缓存模板时，固定可变的 Git 修订、镜像标签和源 URL。
+`sandboxId` 命名活动沙箱，而不是其可重用模板。
+现有的原生 `name` 选项仍然命名活动沙箱；如果两者都
+提供，它们的值必须匹配。
 
 ## 设置
 
@@ -528,57 +586,58 @@ console.log(preparation.identity);
 - `harness`：适配器实例。
 - `model`：可选的 harness 特定模型标识符。省略时，
   harness 使用其默认模型。
-- `sandbox`：一个 `HarnessV1SandboxProvider`。
 - `id`：可选稳定的智能体标识符。
 - `instructions`：在支持时追加到运行时的系统或开发者
-  提示词，否则前置到用户提示词。
+  提示词的指令，否则前置到用户提示词。
 - `headers`：随模型请求发送的额外标头。标头在
-  构造时固定。不允许使用 `authorization`、`x-api-key`、`user-agent` 和
+  构造时固定。不允许 `authorization`、`x-api-key`、`user-agent` 和
   `x-client-app`。
-- `callOptionsSchema` 和 `prepareCall`：验证自定义调用选项，并为每个新轮次派生
+- `callOptionsSchema` 和 `prepareCall`：验证自定义调用选项并为每个新轮次派生
   model、skills、instructions 和 tools。
 - `output`：应用于每一轮的类型化输出规范。
-- `stopWhen`：在完成可继续进入另一个模型步骤的 harness 工具步骤后，
-  完成结果切片的条件。
+- `stopWhen`：在完成的 harness 工具步骤之后完成结果切片的条件，
+  该步骤可以继续进入另一个模型步骤。
 - `tools`：当 harness 调用时由宿主执行的 AI SDK 工具。
-- `activeTools`：harness 可以调用的内置工具和宿主执行工具的允许列表。
-- `inactiveTools`：harness 不能调用的内置工具和宿主执行工具的拒绝列表。
+- `runtimeContext`：每轮转发给生命周期回调和
+  结果的应用上下文；`prepareCall` 可以为新的提示词轮次替换它。
+- `activeTools`：harness 可以调用的内置工具和宿主执行工具的
+  允许列表。
+- `inactiveTools`：harness 不能调用的内置工具和宿主执行工具的
+  拒绝列表。
 - `skills`：适配器呈现的指令包。
 - `permissionMode`：内置工具权限模式。
 - `toolApproval`：宿主执行工具的审批状态映射。
-- `sandboxConfig`：沙箱工作目录和生命周期 Hook 配置。
-- `telemetry`、`debug` 和 `onLog`：可观测性和诊断。
+- `sandboxConfig`：沙箱工作目录和生命周期 hook 配置。
+- `telemetry`、`debug` 和 `onLog`：可观测性和诊断。使用
+  `telemetry.includeRuntimeContext` 将运行时上下文属性加入允许列表以供
+  遥测。
 
-Telemetry 报告每一轮解析后的模型、instructions 和活动的
+遥测报告每轮解析后的模型、指令和活动的
 宿主定义工具。Skills 是适配器上下文，没有对应的
-AI SDK telemetry 字段，因此不包含在标准 telemetry 事件中。
+AI SDK 遥测字段，因此不包含在标准遥测事件中。
 
-适配器特定设置应放在适配器工厂上，例如
+适配器特定设置属于适配器工厂，例如
 `createCodex({ reasoningEffort: 'high' })`。
 
 ## 自定义沙箱编排
 
-当你的应用程序自行创建和管理沙箱时，请先准备网络
-沙箱会话，然后将同一个会话传递给 `agent.createSession()`。
-智能体不需要沙箱提供商，也不会停止或销毁调用方拥有的沙箱。
+当你的应用自行创建和管理沙箱时，先准备网络
+沙箱会话，然后将同一会话传递给 `agent.createSession()`。
+智能体不会创建沙箱，也不会停止或销毁
+调用方拥有的沙箱。
 
 ```ts
-import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
+import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { claudeCode } from '@ai-sdk/harness-claude-code';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { createVercelNetworkSandboxSessionFromNativeSandbox } from '@ai-sdk/sandbox-vercel';
 import { Sandbox } from '@vercel/sandbox';
 
 const sandbox = await Sandbox.create({
   runtime: 'node24',
   ports: [4000],
 });
-const sandboxProvider = createVercelSandbox({ sandbox });
-const sandboxSession = await sandboxProvider.createSession();
-
-await prepareSandboxForHarness({
-  session: sandboxSession.restricted(),
-  harnesses: [claudeCode],
-});
+const sandboxSession =
+  createVercelNetworkSandboxSessionFromNativeSandbox(sandbox);
 
 const agent = new HarnessAgent({ harness: claudeCode });
 const session = await agent.createSession({ sandboxSession });
@@ -596,43 +655,43 @@ try {
   }
 } finally {
   await session.destroy();
-  await sandbox.stop();
+  await sandboxSession.destroy();
 }
 ```
 
 ### 无网络控制的基本沙箱会话
 
 以下示例演示基本会话 API 如何工作。如果你的
-项目可以暴露完整的网络沙箱会话，强烈建议传递该会话。仅当你的项目
-无法暴露完整网络会话时，才传递受限的基本会话。
+项目可以暴露完整的网络沙箱会话，强烈建议传递该会话。
+仅当你的项目无法暴露完整网络会话时，才传递受限的基本会话。
 
 基本沙箱会话仅暴露文件系统和进程 API。智能体
-仍将沙箱生命周期留给调用方。对于由 bridge 支持的 harness，
-请在适配器上配置 bridge 端口及其外部可达端点，因为基本会话无法解析它们。
+仍然将沙箱生命周期留给调用方。对于桥接支持的 harness，
+在适配器上配置桥接端口及其外部可达端点，
+因为基本会话无法解析它们。
 
 ```ts
-import { HarnessAgent, prepareSandboxForHarness } from '@ai-sdk/harness/agent';
+import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { createClaudeCode } from '@ai-sdk/harness-claude-code';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import {
+  createVercelNetworkSandboxSessionFromNativeSandbox,
+  createVercelSandboxSessionFromNativeSandbox,
+} from '@ai-sdk/sandbox-vercel';
 import { Sandbox } from '@vercel/sandbox';
 
 const sandbox = await Sandbox.create({
   runtime: 'node24',
   ports: [4000],
 });
-const sandboxProvider = createVercelSandbox({ sandbox });
-const sandboxSession = await sandboxProvider.createSession();
+const sandboxSession =
+  createVercelNetworkSandboxSessionFromNativeSandbox(sandbox);
 const portEndpoint = await sandboxSession.getPortEndpoint({
   port: 4000,
   protocol: 'ws',
 });
-const restrictedSandboxSession = sandboxSession.restricted();
+const restrictedSandboxSession =
+  createVercelSandboxSessionFromNativeSandbox(sandbox);
 const claudeCode = createClaudeCode({ port: 4000, portEndpoint });
-
-await prepareSandboxForHarness({
-  session: restrictedSandboxSession,
-  harnesses: [claudeCode],
-});
 
 const agent = new HarnessAgent({ harness: claudeCode });
 const session = await agent.createSession({
@@ -652,14 +711,14 @@ try {
   }
 } finally {
   await session.destroy();
-  await sandbox.stop();
+  await sandboxSession.destroy();
 }
 ```
 
 ## 后续步骤
 
 - [工具](/docs/ai-sdk-harnesses/tools) 了解内置工具和宿主执行工具。
-- [Skills](/docs/ai-sdk-harnesses/skills) 了解可复用指令包。
+- [Skills](/docs/ai-sdk-harnesses/skills) 了解可重用指令包。
 - [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters) 了解适配器特定
   设置。
 - [工作流实用工具](/docs/ai-sdk-harnesses/workflow-utilities) 了解持久

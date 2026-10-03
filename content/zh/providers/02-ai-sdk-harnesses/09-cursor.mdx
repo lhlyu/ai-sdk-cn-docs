@@ -18,7 +18,7 @@ Cursor harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` �
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-cursor @ai-sdk/sandbox-vercel" />
 
-创建一个 Cursor 用户 API 密钥并设置 `CURSOR_API_KEY`。无论 Cursor 如何向模型提供商进行身份验证，该密钥都用于在沙箱中对 Cursor CLI 进行身份验证。
+创建一个 Cursor 用户 API 密钥并设置 `CURSOR_API_KEY`。无论 Cursor 如何向模型提供商进行身份验证，该密钥都会在沙箱中对 Cursor CLI 进行身份验证。
 
 当第一个会话启动时，适配器会使用 Cursor 官方安装命令在沙箱内安装 Cursor CLI。
 
@@ -35,18 +35,19 @@ import { createCursor, cursor } from '@ai-sdk/harness-cursor';
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { cursor } from '@ai-sdk/harness-cursor';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { createVercelNetworkSandboxSession } from '@ai-sdk/sandbox-vercel';
 
 const agent = new HarnessAgent({
   harness: cursor,
   model: 'gpt-5.6-luna',
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
 });
 
-const session = await agent.createSession();
+const sandboxSession = await createVercelNetworkSandboxSession({
+  runtime: 'node24',
+  ports: [4000],
+  template: await agent.getSandboxTemplate(),
+});
+const session = await agent.createSession({ sandboxSession });
 
 try {
   const result = await agent.generate({
@@ -56,10 +57,11 @@ try {
   console.log(result.text);
 } finally {
   await session.destroy();
+  await sandboxSession.destroy();
 }
 ```
 
-要在 Vercel Sandbox 中使用此智能体，请在宿主环境中提供 `VERCEL_OIDC_TOKEN` 和
+要将此智能体与 Vercel Sandbox 一起使用，请在宿主环境中提供 `VERCEL_OIDC_TOKEN` 和
 `CURSOR_API_KEY`。
 
 ## 适配器设置
@@ -76,8 +78,8 @@ const harness = createCursor({
 
 设置项：
 
-- `auth`：接受共享的 ACP 模式 `auto`、`direct` 或 `ai-gateway`，或为 `CURSOR_API_KEY` 提供隔离的身份验证环境。这无法更改 Cursor 的提供商身份验证路由。显式指定 `direct` 和 `ai-gateway` 值会发出配置提醒；`auto` 不会，因为它未声明预期的路由。
-- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在宿主进程中可以发现、读取或以其他方式访问哪些凭据。
+- `auth`：接受共享的 ACP 模式 `auto`、`direct` 或 `ai-gateway`，或为 `CURSOR_API_KEY` 提供隔离的身份验证环境。这无法更改 Cursor 的提供商身份验证路由。显式的 `direct` 和 `ai-gateway` 值会发出配置提醒；`auto` 不会，因为它未声明预期的路由。
+- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在宿主进程中能够发现、读取或以其他方式访问哪些凭据。
 - `mcpServers`：以服务器名称为键的 MCP 服务器定义。
 - `port`：ACP 桥接端口覆盖。
 - `startupTimeoutMs`：等待 ACP 桥接启动的最长时间。
@@ -90,7 +92,7 @@ const harness = createCursor({
 
 Cursor 有两个独立的身份验证层：
 
-1. `CURSOR_API_KEY` 用于向 Cursor 账户验证 Cursor CLI 的身份。无论使用哪种 `auth` 模式，harness 都需要此密钥。
+1. `CURSOR_API_KEY` 将 Cursor CLI 身份验证到 Cursor 账户。harness 在每种 `auth` 模式下都需要此密钥。
 2. Cursor 的账户设置决定 Cursor 如何向模型提供商进行身份验证。harness 无法读取或更改此设置。
 
 如果未设置适用的凭据环境变量，除非选择了 AI Gateway 身份验证，否则适配器会尝试从宿主系统解析原生订阅。
@@ -99,7 +101,7 @@ Cursor 有两个独立的身份验证层：
 `https://ai-gateway.vercel.sh/cursor/v1`。Cursor 会从其账户配置中解析该凭据；harness 不会使用
 `AI_GATEWAY_API_KEY` 或 `VERCEL_OIDC_TOKEN` 进行模型提供商身份验证。
 
-显式指定 `direct` 和 `ai-gateway` 值会发出警告，提示所选路由必须在 Cursor 中配置。`auto` 会被接受且不会发出警告：
+显式的 `direct` 和 `ai-gateway` 值会发出警告，提示所选路由必须在 Cursor 中配置。`auto` 会被接受且不会发出警告：
 
 ```ts
 const automaticHarness = createCursor({ auth: 'auto' });
@@ -123,9 +125,10 @@ Cursor 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少�
 `@ai-sdk/sandbox-vercel`：
 
 ```ts
-const sandbox = createVercelSandbox({
+const sandboxSession = await createVercelNetworkSandboxSession({
   runtime: 'node24',
   ports: [4000],
+  template: await agent.getSandboxTemplate(),
 });
 ```
 
@@ -138,22 +141,22 @@ const sandbox = createVercelSandbox({
 `task`，以及 Cursor 的规划、MCP、浏览器和环境工具。
 
 Cursor 宿主工具调用使用 ACP MCP 传输。适配器会识别 Cursor 的
-MCP 负载，并将调用与宿主侧的工具执行相关联。
+MCP 负载，并将调用与宿主侧的工具执行关联起来。
 
 ## 已知限制
 
 - Cursor 的模型提供商身份验证路由必须在 Cursor 中配置。
   `auth` 适配器设置无法以编程方式切换它。
-- ACP v1 不暴露模型步骤边界或每步用量。当 Cursor 不提供总量时，适配器会推断边界并报告未知的每步用量。
-- ACP v1 没有可移植的手动压缩或回合中途引导 API。
+- ACP v1 不暴露模型步骤边界或每步用量。当 Cursor 不提供总计数据时，适配器会推断边界并报告未知的每步用量。
+- ACP v1 没有可移植的手动压缩或回合中引导 API。
 - ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 Cursor 内置工具会抛出不支持的能力错误。
 - Cursor 目前不支持内置工具审批请求。请在此适配器中使用
   `permissionMode: 'allow-all'`。宿主执行的 AI SDK 工具审批仍然有效。
 - Cursor ACP 不暴露结构化输出元数据映射，因此不支持基于 schema 的
   结构化输出。
-- 原生不支持自定义 `headers`，只能通过沙箱外部请求转换来应用。因此，当提供的沙箱不具备该能力时，无法传递自定义 `headers`，它们会被忽略。
+- 自定义 `headers` 不受原生支持，只能通过沙箱外部请求转换来应用。当提供的沙箱不具备该能力时，自定义 `headers` 因此无法传递并被忽略。
 
-## 相关
+## 相关内容
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [Harness tools](/docs/ai-sdk-harnesses/tools)

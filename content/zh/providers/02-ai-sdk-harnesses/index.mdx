@@ -5,7 +5,7 @@ description: "了解如何使用 AI SDK harness 适配器。"
 
 # AI SDK Harnesses
 
-AI SDK harness 适配器将 `HarnessAgent` 连接到现有的智能体运行时。
+AI SDK harness 适配器将 `HarnessAgent` 连接到已有的智能体运行时。
 它们与模型提供商相互独立，但会暴露 AI SDK 兼容的流式传输
 和响应原语。
 
@@ -67,21 +67,32 @@ AI SDK harness 适配器将 `HarnessAgent` 连接到现有的智能体运行时�
 
 ## 用法
 
-所有 harness 适配器均与 `HarnessAgent` 搭配使用：
+所有 harness 适配器都与 `HarnessAgent` 一起使用：
 
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { codex } from '@ai-sdk/harness-codex';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { createVercelNetworkSandboxSession } from '@ai-sdk/sandbox-vercel';
 
 const agent = new HarnessAgent({
   harness: codex,
   model: 'gpt-5.6-luna',
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
 });
+
+const sandboxSession = await createVercelNetworkSandboxSession({
+  runtime: 'node24',
+  ports: [4000],
+  template: await agent.getSandboxTemplate(),
+});
+const session = await agent.createSession({ sandboxSession });
+try {
+  console.log(
+    (await agent.generate({ session, prompt: 'Inspect this project.' })).text,
+  );
+} finally {
+  await session.destroy();
+  await sandboxSession.destroy();
+}
 ```
 
 阅读 [Harnesses](/docs/ai-sdk-harnesses) 文档，了解会话、

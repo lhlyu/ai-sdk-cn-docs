@@ -5,27 +5,26 @@ description: "了解如何使用 AI SDK 生成结构化数据。"
 
 # 生成结构化数据
 
-虽然文本生成可能很有用，但您的用例很可能需要生成结构化数据。
-例如，您可能希望从文本中提取信息、对数据进行分类或生成合成数据。
+虽然文本生成很有用，但你的用例很可能需要生成结构化数据。
+例如，你可能想从文本中提取信息、对数据进行分类，或生成合成数据。
 
-许多语言模型能够生成结构化数据，通常定义为使用“JSON 模式”或“工具”。
-但是，您需要手动提供模式，然后验证生成的数据，因为 LLM 可能会生成不正确或不完整的结构化数据。
+许多语言模型都能够生成结构化数据，通常通过使用 "JSON 模式" 或 "工具" 来实现。
+然而，你需要手动提供 schema，然后验证生成的数据，因为 LLM 可能会产生不正确或不完整的结构化数据。
 
 AI SDK 通过 [`generateText`](/docs/reference/ai-sdk-core/generate-text)
 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 上的 `output` 属性，
-标准化了跨模型提供商的结构化对象生成。
-您可以使用 [Zod 模式](/docs/reference/ai-sdk-core/zod-schema)、[Valibot](/docs/reference/ai-sdk-core/valibot-schema) 或 [JSON 模式](/docs/reference/ai-sdk-core/json-schema) 来指定所需数据的形状，
+统一了跨模型提供商的结构化对象生成。
+你可以使用 [Zod schema](/docs/reference/ai-sdk-core/zod-schema)、[Valibot](/docs/reference/ai-sdk-core/valibot-schema) 或 [JSON schema](/docs/reference/ai-sdk-core/json-schema) 来指定你想要的数据结构，
 AI 模型将生成符合该结构的数据。
 
 <Note>
-  结构化输出生成是 `generateText` 和 `streamText`
-  流程的一部分。这意味着您可以在同一请求中将其与工具调用结合使用。
+  结构化输出生成是 `generateText` 和 `streamText` 流程的一部分。这意味着你可以在同一个请求中将其与工具调用结合使用。
 </Note>
 
 ## 生成结构化输出
 
-使用带有 `Output.object()` 的 `generateText` 从提示词生成结构化数据。
-该模式还用于验证生成的数据，确保类型安全和正确性。
+使用 `generateText` 搭配 `Output.object()` 从提示词生成结构化数据。
+该 schema 还用于验证生成的数据，确保类型安全和正确性。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -45,20 +44,20 @@ const { output } = await generateText({
       }),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
 <Note>
-  结构化输出生成在 AI SDK 的多轮执行模型中计为一个步骤（每次模型调用或工具执行即为一个步骤）。当与工具结合使用时，请在 `stopWhen` 配置中考虑这一点。
+  结构化输出生成在 AI SDK 的多轮执行模型中算作一个步骤（其中每次模型调用或工具执行都是一个步骤）。当与工具结合使用时，请在 `stopWhen` 配置中考虑这一点。
 </Note>
 
 ### 访问响应头和响应体
 
-有时您需要访问模型提供商的完整响应，
+有时你需要访问来自模型提供商的完整响应，
 例如访问某些提供商特定的响应头或响应体内容。
 
-您可以使用 `response` 属性访问原始响应头和响应体：
+你可以使用 `response` 属性访问原始响应头和响应体：
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -74,8 +73,8 @@ console.log(JSON.stringify(result.response.body, null, 2));
 
 ## 流式传输结构化输出
 
-考虑到返回结构化数据带来的额外复杂性，模型的响应时间对于您的交互式用例来说可能无法接受。
-使用 `streamText` 和 `output`，您可以在模型生成结构化响应时对其进行流式传输。
+考虑到返回结构化数据的额外复杂性，模型响应时间对于你的交互式用例来说可能难以接受。
+使用 `streamText` 和 `output`，你可以在模型生成结构化响应时对其进行流式传输。
 
 ```ts
 import { streamText, Output } from 'ai';
@@ -95,22 +94,22 @@ const { partialOutputStream } = streamText({
       }),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 
-// 将 partialOutputStream 用作异步可迭代对象
+// use partialOutputStream as an async iterable
 for await (const partialObject of partialOutputStream) {
   console.log(partialObject);
 }
 ```
 
-您可以在客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 来消费结构化输出。
+你可以在客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 来消费结构化输出。
 
 ### 流中的错误处理
 
 `streamText` 会立即开始流式传输。当流式传输过程中发生错误时，它们会成为流的一部分，而不是抛出异常（以防止流崩溃）。
 
-要处理错误，请提供 `onError` 回调：
+要处理错误，请提供一个 `onError` 回调：
 
 ```tsx highlight="6-8"
 import { streamText, Output } from 'ai';
@@ -119,20 +118,20 @@ const result = streamText({
   // ...
   output: Output.object({ schema }),
   onError({ error }) {
-    console.error(error); // 记录到您的错误跟踪服务
+    console.error(error); // log to your error tracking service
   },
 });
 ```
 
-有关使用 `generateText` 的非流式错误处理，请参阅下面的 [错误处理](#错误处理) 部分。
+有关 `generateText` 的非流式错误处理，请参阅下面的[错误处理](#error-handling)部分。
 
 ## 输出类型
 
-AI SDK 支持通过 `Output` 对象以多种方式指定生成数据的预期结构。您可以从多种结构化/文本生成和验证策略中进行选择。
+AI SDK 支持通过 `Output` 对象以多种方式指定生成数据的预期结构。你可以从多种结构化/文本生成和验证策略中进行选择。
 
 ### `Output.text()`
 
-使用 `Output.text()` 从模型生成纯文本。此选项不对结果强制执行任何模式：您只需将模型的文本作为字符串接收。这是未指定 `output` 时的默认行为。
+使用 `Output.text()` 从模型生成纯文本。此选项不对结果强制执行任何 schema：你只会收到模型输出的字符串文本。这是未指定 `output` 时的默认行为。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -140,14 +139,14 @@ import { generateText, Output } from 'ai';
 const { output } = await generateText({
   // ...
   output: Output.text(),
-  prompt: '给我讲个笑话。',
+  prompt: 'Tell me a joke.',
 });
-// output 将是一个字符串（笑话）
+// output will be a string (the joke)
 ```
 
 ### `Output.object()`
 
-使用 `Output.object({ schema })` 基于模式（例如，Zod 模式）生成结构化对象。输出经过类型验证，以确保返回的结果与模式匹配。
+使用 `Output.object({ schema })` 基于 schema（例如 Zod schema）生成结构化对象。输出会进行类型验证，以确保返回的结果符合 schema。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -162,19 +161,18 @@ const { output } = await generateText({
       labels: z.array(z.string()),
     }),
   }),
-  prompt: '为测试用户生成信息。',
+  prompt: 'Generate information for a test user.',
 });
-// output 将是一个符合上述模式的对象
+// output will be an object matching the schema above
 ```
 
 <Note>
-  通过 `streamText` 流式传输的部分输出无法根据您提供的模式进行验证，
-  因为不完整的数据可能尚不符合预期的结构。
+  通过 `streamText` 流式传输的部分输出无法根据你提供的 schema 进行验证，因为不完整的数据可能尚不符合预期的结构。
 </Note>
 
 ### `Output.array()`
 
-使用 `Output.array({ element, minItems, maxItems })` 指定您期望从模型获得一个类型化对象数组。每个元素必须符合 `element` 模式，可选的边界约束元素数量。
+使用 `Output.array({ element, minItems, maxItems })` 来指定你期望从模型获得一个类型化对象数组。每个元素必须符合 `element` schema，可选的边界约束元素的数量。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -191,18 +189,18 @@ const { output } = await generateText({
     minItems: 2,
     maxItems: 2,
   }),
-  prompt: '列出旧金山和巴黎的天气。',
+  prompt: 'List the weather for San Francisco and Paris.',
 });
-// output 将是一个对象数组，例如：
+// output will be an array of objects like:
 // [
 //   { location: 'San Francisco', temperature: 70, condition: 'Sunny' },
 //   { location: 'Paris', temperature: 65, condition: 'Cloudy' },
 // ]
 ```
 
-`minItems` 和 `maxItems` 必须是非负整数，且 `minItems` 不能大于 `maxItems`。对两个选项使用相同的值以要求精确的长度。当提供商支持时，这些边界会作为结构化输出模式的一部分发送给提供商，并且 AI SDK 会独立验证最终输出。
+`minItems` 和 `maxItems` 必须是非负整数，且 `minItems` 不能大于 `maxItems`。对两个选项使用相同的值来要求精确的长度。在支持的情况下，这些边界会作为结构化输出 schema 的一部分发送给提供商，AI SDK 会独立验证最终输出。
 
-当使用 `streamText` 流式传输数组时，您可以使用 `elementStream` 在每个完整元素生成时接收它：
+使用 `streamText` 流式传输数组时，你可以使用 `elementStream` 在生成每个完整元素时接收它：
 
 ```ts
 import { streamText, Output } from 'ai';
@@ -217,21 +215,21 @@ const { elementStream } = streamText({
       description: z.string(),
     }),
   }),
-  prompt: '为奇幻角色扮演游戏生成 3 个英雄描述。',
+  prompt: 'Generate 3 hero descriptions for a fantasy role playing game.',
 });
 
 for await (const hero of elementStream) {
-  console.log(hero); // 每个英雄都是完整且经过验证的
+  console.log(hero); // Each hero is complete and validated
 }
 ```
 
 <Note>
-  `elementStream` 发出的每个元素都是完整且根据您的元素模式验证过的。这与 `partialOutputStream` 不同，后者会流式传输整个部分数组，包括不完整的元素。如果模型生成的数量超过 `maxItems`，`elementStream` 会在发出第一个多余元素之前报错。这不会自动中止提供商的生成，并且最终的 `output` Promise 会被拒绝。
+  `elementStream` 发出的每个元素都是完整的，并已根据你的元素 schema 进行验证。这与 `partialOutputStream` 不同，后者流式传输整个部分数组，包括不完整的元素。如果模型生成的元素超过 `maxItems`，`elementStream` 会在发出第一个多余元素之前报错。这不会自动中止提供商的生成，最终的 `output` promise 会被拒绝。
 </Note>
 
 ### `Output.choice()`
 
-当您期望模型从一组特定的字符串选项中进行选择时（例如用于分类或固定枚举答案），请使用 `Output.choice({ options })`。
+当你期望模型从一组特定的字符串选项中进行选择时（例如用于分类或固定枚举答案），使用 `Output.choice({ options })`。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -241,18 +239,18 @@ const { output } = await generateText({
   output: Output.choice({
     options: ['sunny', 'rainy', 'snowy'],
   }),
-  prompt: '今天天气是晴天、雨天还是雪天？',
+  prompt: 'Is the weather sunny, rainy, or snowy today?',
 });
-// output 将是以下之一：'sunny'、'rainy' 或 'snowy'
+// output will be one of: 'sunny', 'rainy', or 'snowy'
 ```
 
-您可以提供任何字符串选项集合，输出将始终是与指定选项之一匹配的单个字符串值。AI SDK 会验证结果是否与您的选项之一匹配，如果模型返回无效内容则会抛出错误。
+你可以提供任意一组字符串选项，输出将始终是匹配指定选项之一的单个字符串值。AI SDK 会验证结果是否匹配你的某个选项，如果模型返回无效内容则会抛出错误。
 
-这对于进行分类式生成或为 API 兼容性强制有效值特别有用。
+这对于进行分类式生成或为 API 兼容性强制使用有效值特别有用。
 
 ### `Output.json()`
 
-当您想要从模型生成和解析非结构化的 JSON 值，而无需强制执行特定模式时，请使用 `Output.json()`。如果您想捕获任意对象、灵活结构，或者想依赖模型的自然输出而不是严格的验证，这很有用。
+当你想要从模型生成并解析非结构化 JSON 值而不强制执行特定 schema 时，使用 `Output.json()`。如果你想捕获任意对象、灵活的结构，或者想依赖模型的自然输出而不是严格的验证，这会很有用。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -261,23 +259,23 @@ const { output } = await generateText({
   // ...
   output: Output.json(),
   prompt:
-    '对于每个城市，以 JSON 对象的形式返回当前温度和天气状况。',
+    'For each city, return the current temperature and weather condition as a JSON object.',
 });
 
-// output 可以是任何有效的 JSON，例如：
+// output could be any valid JSON, for example:
 // {
 //   "San Francisco": { "temperature": 70, "condition": "Sunny" },
 //   "Paris": { "temperature": 65, "condition": "Cloudy" }
 // }
 ```
 
-使用 `Output.json`，AI SDK 仅检查响应是否为有效的 JSON；它不验证值的结构或类型。如果您需要模式验证，请改用 `.object` 或 `.array` 输出。
+使用 `Output.json` 时，AI SDK 只检查响应是否为有效的 JSON；它不会验证值的结构或类型。如果你需要 schema 验证，请改用 `.object` 或 `.array` 输出。
 
 有关更高级的验证或不同的结构，请参阅 [Output API 参考](/docs/reference/ai-sdk-core/output)。
 
 ## 使用工具生成结构化输出
 
-将结构化输出与 `generateText` 和 `streamText` 结合使用的一个关键优势是能够将其与工具调用结合。
+将结构化输出与 `generateText` 和 `streamText` 结合使用的主要优势之一是能够将其与工具调用结合。
 
 ```ts
 import { generateText, Output, tool, isStepCount } from 'ai';
@@ -288,10 +286,10 @@ const { output } = await generateText({
   model: __MODEL__,
   tools: {
     weather: tool({
-      description: '获取某个地点的天气',
+      description: 'Get the weather for a location',
       inputSchema: z.object({ location: z.string() }),
       execute: async ({ location }) => {
-        // 获取天气数据
+        // fetch weather data
         return { temperature: 72, condition: 'sunny' };
       },
     }),
@@ -303,17 +301,17 @@ const { output } = await generateText({
     }),
   }),
   stopWhen: isStepCount(5),
-  prompt: '今天在旧金山我应该穿什么？',
+  prompt: 'What should I wear in San Francisco today?',
 });
 ```
 
 <Note>
-  当将工具与结构化输出结合使用时，请记住生成结构化输出计为一个步骤。配置 `stopWhen` 以允许足够的步骤来完成工具执行和输出生成。
+  在将工具与结构化输出结合使用时，请记住生成结构化输出算作一个步骤。配置 `stopWhen` 以允许足够的步骤用于工具执行和输出生成。
 </Note>
 
 ## 属性描述
 
-您可以向各个模式属性添加 `.describe("...")`，以给模型提示每个属性的用途。这有助于提高生成的结构化数据的质量和准确性：
+你可以为单个 schema 属性添加 `.describe("...")`，为模型提供关于每个属性用途的提示。这有助于提高生成的结构化数据的质量和准确性：
 
 ```ts highlight="9,16,19-20"
 import { generateText, Output } from 'ai';
@@ -324,25 +322,25 @@ const { output } = await generateText({
   model: __MODEL__,
   output: Output.object({
     schema: z.object({
-      name: z.string().describe('食谱的名称'),
+      name: z.string().describe('The name of the recipe'),
       ingredients: z
         .array(
           z.object({
             name: z.string(),
             amount: z
               .string()
-              .describe('配料的用量（克或毫升）'),
+              .describe('The amount of the ingredient (grams or ml)'),
           }),
         )
-        .describe('带用量的配料列表'),
-      steps: z.array(z.string()).describe('分步烹饪说明'),
+        .describe('List of ingredients with amounts'),
+      steps: z.array(z.string()).describe('Step-by-step cooking instructions'),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
-属性描述对于以下情况特别有用：
+属性描述特别适用于：
 
 - 澄清模糊的属性名称
 - 指定预期的格式或约定
@@ -350,7 +348,7 @@ const { output } = await generateText({
 
 ## 输出名称和描述
 
-您可以选择为输出指定 `name` 和 `description`。一些提供商使用这些信息进行额外的 LLM 指导，例如通过工具或模式名称。
+你可以选择为输出指定 `name` 和 `description`。某些提供商使用它们来提供额外的 LLM 指导，例如通过工具或 schema 名称。
 
 ```ts highlight="8-9"
 import { generateText, Output } from 'ai';
@@ -361,14 +359,14 @@ const { output } = await generateText({
   model: __MODEL__,
   output: Output.object({
     name: 'Recipe',
-    description: '一道菜的食谱。',
+    description: 'A recipe for a dish.',
     schema: z.object({
       name: z.string(),
       ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
       steps: z.array(z.string()),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 ```
 
@@ -381,7 +379,7 @@ const { output } = await generateText({
 
 ## 访问推理过程
 
-您可以通过结果上的 `reasoning` 属性访问语言模型用于生成对象的推理过程。该属性包含一个字符串，其中包含模型的思考过程（如果可用）。
+你可以通过结果上的 `reasoningText` 属性访问语言模型用于生成对象的推理过程。如果可用，该属性包含模型思维过程的字符串。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -389,7 +387,7 @@ __PROVIDER_IMPORT__;
 import { z } from 'zod';
 
 const result = await generateText({
-  model: __MODEL__, // 必须是推理模型
+  model: __MODEL__, // must be a reasoning model
   output: Output.object({
     schema: z.object({
       recipe: z.object({
@@ -404,7 +402,7 @@ const result = await generateText({
       }),
     }),
   }),
-  prompt: '生成一个千层面食谱。',
+  prompt: 'Generate a lasagna recipe.',
 });
 
 console.log(result.reasoningText);
@@ -414,22 +412,22 @@ console.log(result.reasoningText);
 
 `generateText` 可以通过两种方式报告结构化输出失败：
 
-- 如果模型响应无法根据模式进行解析或验证，
+- 如果模型响应无法解析或无法根据 schema 进行验证，
   `generateText` 会以
   [`AI_NoObjectGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-object-generated-error) 拒绝。
 - 如果 `generateText` 返回的结果没有输出，访问 `result.output`
   会抛出
   [`AI_NoOutputGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-output-generated-error)。
-  当最后一步不是以 `stop` 原因结束时，可能会发生这种情况，例如当它以 `tool-calls` 结束时。
+  当最后一步没有以 `stop` 原因结束时（例如以 `tool-calls` 结束时），可能会发生这种情况。
 
 `output` 属性是一个 getter，因此解构它也会触发此访问。
 
-`NoObjectGeneratedError` 保留以下信息以帮助您记录问题：
+`NoObjectGeneratedError` 保留以下信息以帮助你记录问题：
 
-- `text`：模型生成的文本。根据对象生成模式，这可以是原始文本或工具调用文本。
-- `response`：关于语言模型响应的元数据，包括响应 ID、时间戳和模型。
-- `usage`：请求的令牌使用量。
-- `cause`：错误的原因（例如 JSON 解析错误）。您可以使用它进行更详细的错误处理。
+- `text`：模型生成的文本。根据对象生成模式，这可能是原始文本或工具调用文本。
+- `response`：关于语言模型响应的元数据，包括响应 id、时间戳和模型。
+- `usage`：请求 token 使用量。
+- `cause`：错误的原因（例如 JSON 解析错误）。你可以使用它进行更详细的错误处理。
 
 ```ts
 import {
@@ -462,45 +460,45 @@ try {
 
 ## 更多示例
 
-您可以在以下示例中看到使用各种框架的结构化输出生成的实际应用：
+你可以在以下示例中使用各种框架查看结构化输出生成的实际效果：
 
-### 带 Output 的 `generateText`
+### 使用 Output 的 `generateText`
 
 <ExampleLinks
   examples={[
     {
-      title: '了解如何在 Node.js 中生成结构化数据',
+      title: 'Learn to generate structured data in Node.js',
       link: '/examples/node/generating-structured-data/generate-object',
     },
     {
       title:
-        '了解如何在 Next.js 中使用路由处理程序生成结构化数据（AI SDK UI）',
+        'Learn to generate structured data in Next.js with Route Handlers (AI SDK UI)',
       link: '/examples/next-pages/basics/generating-object',
     },
     {
       title:
-        '了解如何在 Next.js 中使用服务器操作生成结构化数据（AI SDK RSC）',
+        'Learn to generate structured data in Next.js with Server Actions (AI SDK RSC)',
       link: '/examples/next-app/basics/generating-object',
     },
   ]}
 />
 
-### 带 Output 的 `streamText`
+### 使用 Output 的 `streamText`
 
 <ExampleLinks
   examples={[
     {
-      title: '了解如何在 Node.js 中流式传输结构化数据',
+      title: 'Learn to stream structured data in Node.js',
       link: '/examples/node/streaming-structured-data/stream-object',
     },
     {
       title:
-        '了解如何在 Next.js 中使用路由处理程序流式传输结构化数据（AI SDK UI）',
+        'Learn to stream structured data in Next.js with Route Handlers (AI SDK UI)',
       link: '/examples/next-pages/basics/streaming-object-generation',
     },
     {
       title:
-        '了解如何在 Next.js 中使用服务器操作流式传输结构化数据（AI SDK RSC）',
+        'Learn to stream structured data in Next.js with Server Actions (AI SDK RSC)',
       link: '/examples/next-app/basics/streaming-object-generation',
     },
   ]}

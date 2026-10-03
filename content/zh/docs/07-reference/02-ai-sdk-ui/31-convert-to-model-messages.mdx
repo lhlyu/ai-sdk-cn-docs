@@ -72,26 +72,22 @@ export async function POST(req: Request) {
 
 ## 已弃用的 `rawInput` 字段
 
-处于 `output-error` 状态的工具部分应将其工具参数存储在
-`input` 中。旧版的 `rawInput` 字段对于已持久化的消息仍然受支持，
-但当 `convertToModelMessages` 遇到已定义的值时，会发出 AI SDK 弃用警告。
+处于 `output-error` 状态的工具部分应将其工具参数存储在 `input` 中。旧版的 `rawInput` 字段对于已持久化的消息仍然受支持，但当 `convertToModelMessages` 遇到已定义的值时会发出 AI SDK 弃用警告。
 
-当两个字段同时存在时，如果 `input` 非空，则优先使用 `input`。
-为了向后兼容，当 `input` 为 `null` 或 `undefined` 时，`rawInput` 仍作为回退。
-请在下个主版本（届时 `rawInput` 将被移除）之前将已存储的消息迁移到 `input`。
+当两个字段同时存在时，如果 `input` 非空，则优先使用 `input`。为了向后兼容，当 `input` 为 `null` 或 `undefined` 时，`rawInput` 仍作为回退。请在下一个主版本发布之前将存储的消息迁移到 `input`，届时 `rawInput` 将被移除。
 
 ## 工具审批状态
 
-`convertToModelMessages` 在将 UI 消息转换回 `ModelMessage` 以供后续 `generateText` 或 `streamText` 调用时，会保留工具审批状态。
+`convertToModelMessages` 在将 UI 消息转换回 `ModelMessage` 以供后续的 `generateText` 或 `streamText` 调用使用时，会保留工具审批状态。
 
 - 带有审批元数据的工具部分会生成 `tool-approval-request` 内容部分。当存在 `approval.requestReason` 时，会将其作为请求的 `reason` 转发。
 - 处于 `approval-responded` 状态的工具部分也会成为 `tool-approval-response` 内容部分。当存在单独的响应 `reason` 时，会将其转发。
-- 自动审批元数据通过将 `approval.isAutomatic` 转发到 `tool-approval-request` 部分来保留。
-- 被拒绝的工具审批还会生成一个合成的 `tool-result`，其 `output: { type: 'execution-denied', reason?: string }`，这样模型就能收到完整的工具生命周期，并可在下一步中对拒绝做出响应。
+- 通过将 `approval.isAutomatic` 转发到 `tool-approval-request` 部分，自动审批元数据得以保留。
+- 被拒绝的工具审批还会生成一个合成的 `tool-result`，其中包含 `output: { type: 'execution-denied', reason?: string }`，以便模型接收到完整的工具生命周期，并能在下一步中对拒绝做出响应。
 
 ## 多模态工具响应
 
-`convertToModelMessages` 函数支持可返回多模态内容的工具。当工具需要返回图像等非文本内容时，这非常有用。
+`convertToModelMessages` 函数支持能够返回多模态内容的工具。当工具需要返回图像等非文本内容时，这非常有用。
 
 ```ts
 import { tool } from 'ai';
@@ -108,7 +104,7 @@ const screenshotTool = tool({
 
 const result = streamText({
   model: __MODEL__,
-  messages: convertToModelMessages(messages, {
+  messages: await convertToModelMessages(messages, {
     tools: {
       screenshot: screenshotTool,
     },
@@ -116,15 +112,15 @@ const result = streamText({
 });
 ```
 
-工具可以实现可选的 `toModelOutput` 方法，将其结果转换为多模态内容。该内容是一个内容部分数组，其中每个部分都有一个 `type`（例如 'text'、'image'）以及相应的数据。
+工具可以实现可选的 `toModelOutput` 方法，将其结果转换为多模态内容。内容是一个内容部分数组，其中每个部分都有一个 `type`（例如 'text'、'image'）和相应的数据。
 
 ## 自定义数据部分转换
 
-`convertToModelMessages` 函数支持转换附加到用户消息上的自定义数据部分。当用户需要在消息中包含额外上下文（URL、代码文件、JSON 配置）时，这非常有用。
+`convertToModelMessages` 函数支持转换附加到用户消息的自定义数据部分。当用户需要在消息中包含额外上下文（URL、代码文件、JSON 配置）时，这非常有用。
 
 ### 基本用法
 
-默认情况下，用户消息中的数据部分在转换过程中会被过滤掉。要包含它们，请提供一个 `convertDataPart` 回调，将数据部分转换为模型可以理解的文本或文件部分：
+默认情况下，用户消息中的数据部分在转换过程中会被过滤掉。要包含它们，请提供一个 `convertDataPart` 回调，将数据部分转换为模型能够理解的文本或文件部分：
 
 ```ts filename="app/api/chat/route.ts"
 import {
@@ -132,6 +128,7 @@ import {
   createUIMessageStreamResponse,
   streamText,
   toUIMessageStream,
+  type UIMessage,
 } from 'ai';
 
 type CustomUIMessage = UIMessage<
@@ -147,7 +144,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: __MODEL__,
-    messages: convertToModelMessages<CustomUIMessage>(messages, {
+    messages: await convertToModelMessages<CustomUIMessage>(messages, {
       convertDataPart: part => {
         // Convert URL attachments to text
         if (part.type === 'data-url') {
@@ -179,7 +176,7 @@ export async function POST(req: Request) {
 ### 使用场景
 
 **附加 URL 内容**
-允许用户将 URL 附加到他们的消息中，并获取内容并为模型格式化：
+允许用户将 URL 附加到他们的消息中，内容会被获取并为模型格式化：
 
 ```ts
 // Client side
@@ -213,11 +210,11 @@ convertDataPart: part => {
 ```
 
 **选择性包含**
-只有当你返回文本或文件模型消息部分时，对应的数据部分才会被包含，
+只有你为其返回文本或文件模型消息部分的数据部分才会被包含，
 所有其他数据部分都会被忽略。
 
 ```ts
-const result = convertToModelMessages<
+const result = await convertToModelMessages<
   UIMessage<
     unknown,
     {
@@ -235,14 +232,14 @@ const result = convertToModelMessages<
       };
     }
 
-    // data-code and data-node are ignored
+    // data-code and data-note are ignored
   },
 });
 ```
 
 ### 类型安全
 
-泛型参数可确保自定义数据部分具有完整的类型安全：
+泛型参数可确保自定义数据部分的完整类型安全：
 
 ```ts
 type MyUIMessage = UIMessage<

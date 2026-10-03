@@ -1,26 +1,26 @@
 ---
-title: "ACP (Agent Client Protocol)"
+title: "ACP（Agent Client Protocol）"
 description: "AI SDK 的 ACP 提供商"
 ---
 
-# ACP (Agent Client Protocol)
+# ACP（Agent Client Protocol）
 
-[ACP (Agent Client Protocol)](https://agentclientprotocol.com/) 是一个开放协议，可实现 AI 智能体与客户端应用之间的无缝通信。
+[ACP（Agent Client Protocol）](https://agentclientprotocol.com/) 是一种开放协议，可实现 AI 智能体与客户端应用程序之间的无缝通信。
 
-ACP 提供商通过 Agent Client Protocol 与 ACP 智能体（如 Claude Code、Gemini CLI、Codex CLI 以及 **[更多](https://agentclientprotocol.com/overview/agents)**）进行通信，并通过 `LanguageModel` 接口将其暴露给 AI SDK，使您能够使用 ACP 智能体构建 Web 应用和 Node.js 服务。
+ACP 提供商通过 Agent Client Protocol 与 ACP 智能体（如 Claude Code、Gemini CLI、Codex CLI 以及**[更多智能体](https://agentclientprotocol.com/overview/agents)**）进行通信，并通过 `LanguageModel` 接口将其暴露出来，从而将 ACP 智能体桥接到 AI SDK，使你能够使用 ACP 智能体构建 Web 应用程序和 Node.js 服务。
 
 ## 主要特性
 
-- **多智能体支持**：适用于 Claude Code、Gemini CLI、Codex CLI 及其他兼容 ACP 的智能体
-- **MCP 服务器集成**：连接 MCP (Model Context Protocol) 服务器以增强智能体能力
-- **工具执行**：智能体可通过 AI SDK 接口执行工具并报告结果
-- **进程管理**：智能体进程的自动生成与生命周期管理
+- **多智能体支持**：可与 Claude Code、Gemini CLI、Codex CLI 以及其他兼容 ACP 的智能体配合使用
+- **MCP 服务器集成**：连接 MCP（Model Context Protocol）服务器以增强智能体能力
+- **工具执行**：智能体可以通过 AI SDK 接口执行工具并报告结果
+- **进程管理**：自动启动和管理智能体进程的生命周期
 
-在 [Agent Client Protocol 文档](https://agentclientprotocol.com) 中了解更多关于 ACP 的信息。
+在 [Agent Client Protocol 文档](https://agentclientprotocol.com)中了解更多关于 ACP 的信息。
 
-## 安装
+## 设置
 
-ACP 提供商位于 `@mcpc-tech/acp-ai-provider` 模块中。您可以通过以下命令安装：
+ACP 提供商位于 `@mcpc-tech/acp-ai-provider` 模块中。你可以使用以下命令安装：
 
 <InstallPackages packages="@mcpc-tech/acp-ai-provider" />
 
@@ -43,39 +43,39 @@ const provider = createACPProvider({
 
 ### 配置选项
 
-该提供商接受以下配置：
+提供商接受以下配置：
 
-- **command** _string_ (必需)
+- **command** _string_（必填）
 
-  执行 ACP 智能体的命令（例如 `'gemini'`、`'claude-code-acp'`、`'codex-acp'`）。
+  要执行的 ACP 智能体命令（例如 `'gemini'`、`'claude-code-acp'`、`'codex-acp'`）。
 
-- **args** _string[]_ (可选)
+- **args** _string[]_（可选）
 
   传递给命令的参数（例如 `['--experimental-acp']`）。
 
-- **env** _Record&lt;string, string&gt;_ (可选)
+- **env** _Record&lt;string, string&gt;_（可选）
 
   智能体进程的环境变量。
 
-- **session** _ACPSessionConfig_ (必需)
+- **session** _ACPSessionConfig_（必填）
 
   会话配置，包括：
   - `cwd`：智能体的工作目录
   - `mcpServers`：为智能体提供工具的 MCP 服务器配置数组
 
-- **authMethodId** _string_ (可选)
+- **authMethodId** _string_（可选）
 
   如果 ACP 智能体要求，则使用的身份验证方法 ID。
 
 ## 语言模型
 
-ACP 提供商暴露一个单一的语言模型，代表已配置的 ACP 智能体：
+ACP 提供商暴露一个表示已配置 ACP 智能体的单一语言模型：
 
 ```typescript
 const model = provider.languageModel();
 ```
 
-> **注意**：目前，您无法选择特定模型。有关更多详细信息，请参阅[限制](#限制)。
+> **注意**：目前你无法选择特定的模型。更多详情请参阅[限制](#limitations)。
 
 ## 示例
 
@@ -96,7 +96,7 @@ const provider = createACPProvider({
 
 const { text } = await generateText({
   model: provider.languageModel(),
-  prompt: '什么是 Agent Client Protocol？',
+  prompt: 'What is the Agent Client Protocol?',
 });
 
 console.log(text);
@@ -118,7 +118,7 @@ const provider = createACPProvider({
 
 const { textStream } = streamText({
   model: provider.languageModel(),
-  prompt: '编写一个简单的 Hello World 程序',
+  prompt: 'Write a simple Hello World program',
 });
 
 for await (const chunk of textStream) {
@@ -126,9 +126,9 @@ for await (const chunk of textStream) {
 }
 ```
 
-### 与 MCP 服务器（工具）一起使用
+### 与 MCP 服务器（工具）配合使用
 
-工具通过 MCP (Model Context Protocol) 服务器提供给 ACP 智能体，而不是通过 AI SDK 的 `tools` 参数：
+工具通过 MCP（Model Context Protocol）服务器提供给 ACP 智能体，而不是通过 AI SDK 的 `tools` 参数：
 
 ```javascript
 import { createACPProvider } from '@mcpc-tech/acp-ai-provider';
@@ -152,20 +152,20 @@ const provider = createACPProvider({
 
 const result = await generateText({
   model: provider.languageModel(),
-  prompt: '列出 /tmp 中的文件',
+  prompt: 'List files in /tmp',
 });
 ```
 
 ## 使用工具
 
-ACP 提供商通过提供商定义的工具处理工具执行。工具由 ACP 智能体调用和执行，结果通过 AI SDK 的流式接口报告回来。
+ACP 提供商通过提供商定义的工具来处理工具执行。工具由 ACP 智能体调用和执行，结果通过 AI SDK 的流式传输接口报告回来。
 
-要流式传输工具调用，请将提供商工具传递给 AI SDK：
+要启用工具调用，请将提供商工具传递给 AI SDK：
 
 ```javascript
 const result = await generateText({
   model: provider.languageModel(),
-  prompt: '列出 /tmp 中的文件',
+  prompt: 'List files in /tmp',
   tools: provider.tools,
 });
 ```
@@ -174,22 +174,22 @@ const result = await generateText({
 
 ```typescript
 {
-  toolCallId: string; // 工具调用的唯一 ID
-  toolName: string; // 被调用工具的名称
-  args: Record<string, unknown>; // 输入参数
+  toolCallId: string; // Unique ID of the tool call
+  toolName: string; // Name of the tool being called
+  args: Record<string, unknown>; // Input arguments
 }
 ```
 
-## 高级特性
+## 高级功能
 
 ### 多智能体支持
 
-ACP 提供商适用于各种兼容 ACP 的智能体：
+ACP 提供商可与各种兼容 ACP 的智能体配合使用：
 
 - **Gemini CLI**：使用 `command: 'gemini'` 和 `args: ['--experimental-acp']`
 - **Claude Code**：使用 `command: 'claude-code-acp'`
 - **Codex CLI**：使用 `command: 'codex-acp'`
-- **[以及更多...](https://agentclientprotocol.com/overview/agents)**：请参阅官方 ACP 智能体页面以获取支持的智能体完整列表
+- **[以及更多...](https://agentclientprotocol.com/overview/agents)**：查看官方 ACP 智能体页面以获取支持的智能体完整列表
 
 ### 自定义身份验证
 
@@ -229,10 +229,10 @@ const provider = createACPProvider({
 ## 限制
 
 - **工具定义**：工具必须通过会话配置中的 MCP 服务器提供，而不是通过 AI SDK 的 `tools` 参数
-- **进程生命周期**：每个语言模型实例会生成一个新的智能体进程；请确保正确清理
-- **仅限 Node.js**：目前仅支持具有子进程能力的 Node.js 环境
+- **进程生命周期**：每个语言模型实例都会启动一个新的智能体进程；请确保正确清理
+- **仅限 Node.js**：目前支持具有子进程能力的 Node.js 环境
 - **文件操作**：通过 ACP 的客户端接口提供基本的文件操作支持
-- **模型选择**：目前尚不支持模型选择。请参阅 https://github.com/agentclientprotocol/agent-client-protocol/pull/182 以获取此功能的更新
+- **模型选择**：目前尚不支持模型选择。有关此功能的更新，请参阅 https://github.com/agentclientprotocol/agent-client-protocol/pull/182
 
 ## 其他资源
 

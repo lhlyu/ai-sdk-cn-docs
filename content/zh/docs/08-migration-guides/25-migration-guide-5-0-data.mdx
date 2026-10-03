@@ -1,41 +1,41 @@
 ---
-title: 将数据迁移至 AI SDK 5.0
-description: 了解如何将持久化消息和聊天数据从 AI SDK 4.x 迁移到 5.0。
+title: "将你的数据迁移到 AI SDK 5.0"
+description: "了解如何将持久化的消息和聊天数据从 AI SDK 4.x 迁移到 5.0。"
 ---
 
-# 将数据迁移至 AI SDK 5.0
+# 将你的数据迁移到 AI SDK 5.0
 
-AI SDK 5.0 引入了消息结构和持久化模式的变更。与通常可以通过 codemod 自动化的代码迁移不同，数据迁移取决于你具体的持久化方法、数据库架构和应用程序需求。
+AI SDK 5.0 引入了消息结构和持久化模式的变更。与通常可以通过 codemod 自动化的代码迁移不同，数据迁移取决于你具体的持久化方式、数据库 schema 和应用程序需求。
 
-**本指南首先帮助你使用运行时转换层让应用程序在 AI SDK 5.0 上运行**。这让你可以立即更新应用，而不会因数据库迁移受阻。然后你可以按照自己的节奏迁移数据模式。
+**本指南帮助你首先让应用程序在 AI SDK 5.0 上运行起来**，使用运行时转换层。这使你能够立即更新应用，而不会被数据库迁移所阻塞。之后你可以按照自己的节奏迁移数据 schema。
 
 ## 推荐的迁移流程
 
-请遵循以下两阶段方法进行安全迁移：
+按照这个两阶段方法进行安全迁移：
 
 ### 阶段 1：让应用运行起来（运行时转换）
 
-**目标：** 在不触及数据库的情况下，将应用程序更新到 AI SDK 5.0。
+**目标：** 在不改动数据库的情况下，将应用程序更新到 AI SDK 5.0。
 
-1. 更新依赖项（在 v5 旁边安装 v4 类型）
-2. 添加转换函数，用于在 v4 和 v5 消息格式之间进行转换
+1. 更新依赖（在安装 v5 的同时安装 v4 类型）
+2. 添加转换函数，在 v4 和 v5 消息格式之间进行转换
 3. 更新数据获取逻辑，在从数据库读取时转换消息
 4. 将应用程序的其余代码更新到 AI SDK 5.0（参见[主迁移指南](/docs/migration-guides/migration-guide-5-0)）
 
-在阶段 1 期间，你的数据库模式保持不变。你只需添加一个在运行时转换消息的转换层。
+在阶段 1 期间，你的数据库 schema 保持不变。你只是添加了一个在运行时转换消息的转换层。
 
 **时间线：** 可以在数小时或数天内完成。
 
-### 阶段 2：迁移到 V5 模式（推荐）
+### 阶段 2：迁移到 V5 Schema（推荐）
 
-**目标：** 将数据迁移到兼容 v5 的模式，消除运行时转换开销。
+**目标：** 将数据迁移到兼容 v5 的 schema，消除运行时转换开销。
 
-虽然阶段 1 能让你立即运行，但建议在完成阶段 1 后尽快迁移模式。此阶段采用并排迁移方法，使用等效的 v5 模式：
+虽然阶段 1 能让你立即运行起来，但在完成阶段 1 后应尽快迁移 schema。此阶段使用并行迁移方法，配合一个等效的 v5 schema：
 
 1. 在现有 `messages` 表旁边创建 `messages_v5` 表
-2. 开始向两个表进行双写（带转换）
+2. 开始双写（带转换）到两个表
 3. 运行后台迁移以转换现有消息
-4. 将读取切换到 v5 模式
+4. 将读取切换到 v5 schema
 5. 从路由处理器中移除转换
 6. 移除双写（仅写入 v5）
 7. 删除旧表
@@ -46,35 +46,35 @@ AI SDK 5.0 引入了消息结构和持久化模式的变更。与通常可以通
 
 - 消除运行时转换开销
 - 尽早消除技术债务
-- 使用 v5 消息格式实现类型安全
+- 使用 v5 消息格式获得类型安全
 - 更易于维护和扩展
 
 ## 理解变更
 
-在开始之前，请了解 AI SDK 5.0 中与持久化相关的主要变更：
+在开始之前，请理解 AI SDK 5.0 中与持久化相关的主要变更：
 
 **AI SDK 4.0：**
 
-- 文本使用 `content` 字段
-- `reasoning` 作为顶级属性
-- `toolInvocations` 作为顶级属性
+- 用于文本的 `content` 字段
+- `reasoning` 作为顶层属性
+- `toolInvocations` 作为顶层属性
 - `parts`（可选）有序数组
 
 **AI SDK 5.0：**
 
 - `parts` 数组是唯一数据源
-- `content` 被移除（已弃用），通过 `text` 部分访问
-- `reasoning` 被移除，替换为 `reasoning` 部分
-- `toolInvocations` 被移除，替换为带有 `input`/`output`（从 `args`/`result` 重命名）的 `tool-${toolName}` 部分
-- `data` 角色被移除（改用 data 部分）
+- `content` 被移除（已弃用），通过 `text` part 访问
+- `reasoning` 被移除，替换为 `reasoning` part
+- `toolInvocations` 被移除，替换为 `tool-${toolName}` parts，带有 `input`/`output`（从 `args`/`result` 重命名）
+- `data` role 被移除（改用 data parts）
 
 ## 阶段 1：运行时转换模式
 
-这将创建一个转换层，而无需更改数据库模式。
+这会创建一个转换层，而不对数据库 schema 做任何更改。
 
-### 步骤 1：更新依赖项
+### 步骤 1：更新依赖
 
-为了获得 v4 消息的正确 TypeScript 类型，请使用 npm 别名在 v5 旁边安装 v4 包：
+为了获得 v4 消息的正确 TypeScript 类型，使用 npm 别名在 v5 旁边安装 v4 包：
 
 ```json filename="package.json"
 {
@@ -115,7 +115,7 @@ export type MyUIMessage = UIMessage<unknown, { custom: any }, UITools>;
 type V4Part = NonNullable<V4Message['parts']>[number];
 type V5Part = MyUIMessage['parts'][number];
 
-// V4 部分的类型定义
+// Type definitions for V4 parts
 type V4ToolInvocationPart = Extract<V4Part, { type: 'tool-invocation' }>;
 
 type V4ReasoningPart = Extract<V4Part, { type: 'reasoning' }>;
@@ -124,9 +124,10 @@ type V4SourcePart = Extract<V4Part, { type: 'source' }>;
 
 type V4FilePart = Extract<V4Part, { type: 'file' }>;
 
-// 类型守卫
+// Type guards
 function isV4Message(msg: V4Message | MyUIMessage): msg is V4Message {
   return (
+    msg?.parts == null ||
     'toolInvocations' in msg ||
     (msg?.parts?.some(p => p.type === 'tool-invocation') ?? false) ||
     msg?.role === 'data' ||
@@ -181,7 +182,7 @@ function isV4FilePart(part: unknown): part is V4FilePart {
   );
 }
 
-// 状态映射
+// State mapping
 const V4_TO_V5_STATE_MAP = {
   'partial-call': 'input-streaming',
   call: 'input-available',
@@ -194,7 +195,7 @@ function convertToolInvocationState(
   return V4_TO_V5_STATE_MAP[v4State] ?? 'output-available';
 }
 
-// 工具转换
+// Tool conversion
 function convertV4ToolInvocationToV5ToolUIPart(
   toolInvocation: ToolInvocation,
 ): ToolUIPart {
@@ -208,7 +209,7 @@ function convertV4ToolInvocationToV5ToolUIPart(
   };
 }
 
-// 部分转换器
+// Part converters
 function convertV4ToolInvocationPart(part: V4ToolInvocationPart): V5Part {
   return convertV4ToolInvocationToV5ToolUIPart(part.toolInvocation);
 }
@@ -247,11 +248,11 @@ function convertPart(part: V4Part | V5Part): V5Part {
   if (isV4FilePart(part)) {
     return convertV4FilePart(part);
   }
-  // 已经是 V5 格式
+  // Already V5 format
   return part;
 }
 
-// 消息转换
+// Message conversion
 function createBaseMessage(
   msg: V4Message | MyUIMessage,
   index: number,
@@ -318,7 +319,7 @@ export function convertV4MessageToV5(
   return { ...base, parts };
 }
 
-// V5 到 V4 的转换
+// V5 to V4 conversion
 function convertV5ToolUIPartToV4ToolInvocation(
   part: ToolUIPart,
 ): ToolInvocation {
@@ -422,27 +423,27 @@ export function convertV5MessageToV4(msg: MyUIMessage): LegacyUIMessage {
 
 在从数据库加载消息时应用转换：
 
-<Note type="warning">请根据你的具体数据库和 ORM 调整此代码。</Note>
+<Note type="warning">请根据你具体的数据库和 ORM 调整此代码。</Note>
 
 ```tsx
 import { convertV4MessageToV5, type MyUIMessage } from './conversion';
 
 export async function loadChat(chatId: string): Promise<MyUIMessage[]> {
-  // 从数据库获取消息（伪代码 - 根据你的数据访问层更新）
+  // Fetch messages from your database (pseudocode - update based on your data access layer)
   const rawMessages = await db
     .select()
     .from(messages)
     .where(eq(messages.chatId, chatId))
     .orderBy(messages.createdAt);
 
-  // 读取时转换
+  // Convert on read
   return rawMessages.map((msg, index) => convertV4MessageToV5(msg, index));
 }
 ```
 
 ### 步骤 4：保存时转换消息
 
-在阶段 1，你的应用程序运行在 v5 上，但你的数据库存储的是 v4 格式。在路由处理器中内联转换消息，然后再传递给数据库函数：
+在阶段 1 中，你的应用程序运行在 v5 上，但数据库存储的是 v4 格式。在路由处理器中内联转换消息，然后再传递给数据库函数：
 
 ```tsx
 import {
@@ -458,22 +459,21 @@ export async function POST(req: Request) {
   const { message, chatId }: { message: MyUIMessage; chatId: string } =
     await req.json();
 
-  // 转换并保存传入的用户消息（v5 到 v4 内联）
+  // Convert and save incoming user message (v5 to v4 inline)
   await upsertMessage({
     chatId,
     id: message.id,
-    message: convertV5MessageToV4(message), // 转换为 v4
+    message: convertV5MessageToV4(message), // convert to v4
   });
 
-  // 加载之前的消息（已经是 v5 格式）
-  const previousMessages = await loadChat(chatId);
-  const messages = [...previousMessages, message];
+  // Load all messages, including the one just saved (already in v5 format)
+  const messages = await loadChat(chatId);
 
   const result = streamText({
     model: __MODEL__,
     messages: convertToModelMessages(messages),
     tools: {
-      // 你的工具在这里
+      // Your tools here
     },
   });
 
@@ -481,7 +481,7 @@ export async function POST(req: Request) {
     generateMessageId: generateId,
     originalMessages: messages,
     onFinish: async ({ responseMessage }) => {
-      // 转换并保存助手响应（v5 到 v4 内联）
+      // Convert and save assistant response (v5 to v4 inline)
       await upsertMessage({
         chatId,
         id: responseMessage.id,
@@ -492,35 +492,35 @@ export async function POST(req: Request) {
 }
 ```
 
-保持你的 `upsertMessage`（或等效函数）不变，以继续处理 v4 消息。
+保持你的 `upsertMessage`（或等效）函数不变，以继续处理 v4 消息。
 
 完成步骤 3 和 4 后，你就拥有了一个双向转换层：
 
 - **读取：** v4（数据库）→ v5（应用程序）
 - **写入：** v5（应用程序）→ v4（数据库）
 
-你的数据库模式保持不变，但你的应用程序现在使用 v5 格式。
+你的数据库 schema 保持不变，但应用程序现在使用 v5 格式。
 
-**下一步：** 按照主迁移指南更新应用程序的其余代码到 AI SDK 5.0，包括 API 路由、组件和其他使用 AI SDK 的代码。然后进入阶段 2。
+**下一步：** 按照主迁移指南将应用程序的其余代码更新到 AI SDK 5.0，包括 API 路由、组件以及其他使用 AI SDK 的代码。然后进入阶段 2。
 
-有关更多 API 变更详情，请参阅[主迁移指南](/docs/migration-guides/migration-guide-5-0)。
+详情请参见[主迁移指南](/docs/migration-guides/migration-guide-5-0)。
 
-## 阶段 2：并排模式迁移
+## 阶段 2：并行 Schema 迁移
 
-现在你的应用程序已更新到 AI SDK 5.0，并且通过阶段 1 的运行时转换层正常工作，你拥有了一个功能完整的系统。但是，**转换函数只是临时解决方案**。你的数据库仍然以 v4 格式存储消息，这意味着：
+现在你的应用程序已更新到 AI SDK 5.0，并使用阶段 1 的运行时转换层运行，你拥有了一个功能完整的系统。但是，**转换函数只是一个临时解决方案**。你的数据库仍然以 v4 格式存储消息，这意味着：
 
 - 每次读取操作都需要运行时转换开销
-- 你无限期地维护向后兼容代码
-- 未来功能需要处理遗留模式
+- 你需要无限期地维护向后兼容代码
+- 未来的功能需要与旧 schema 一起工作
 
-**阶段 2 将你的消息历史迁移到 v5 模式**，消除转换层，实现更好的性能和长期可维护性。
+**阶段 2 将你的消息历史迁移到 v5 schema**，消除转换层，实现更好的性能和长期可维护性。
 
-此阶段采用简化方法：创建一个新的 `messages_v5` 表，其结构与当前 `messages` 表相同，但存储 v5 格式的消息部分。
+此阶段使用简化的方法：创建一个新的 `messages_v5` 表，结构与当前的 `messages` 表相同，但存储 v5 格式的消息 parts。
 
 <Note type="warning">
 **根据你的设置调整阶段 2 示例**
 
-这些代码示例演示了迁移模式。你的实现将根据你的数据库（Postgres、MySQL、SQLite）、ORM（Drizzle、Prisma、原始 SQL）、模式设计和数据持久化模式而有所不同。
+这些代码示例演示了迁移模式。你的实现将因数据库（Postgres、MySQL、SQLite）、ORM（Drizzle、Prisma、原生 SQL）、schema 设计和数据持久化模式而有所不同。
 
 将这些示例作为指南，然后根据你的具体设置进行调整。
 
@@ -529,21 +529,21 @@ export async function POST(req: Request) {
 ### 概述：迁移策略
 
 1. **创建 `messages_v5` 表**，与现有 `messages` 表并存
-2. **双写**新消息到两个模式（带转换）
+2. **双写**新消息到两个 schema（带转换）
 3. **后台迁移**以转换现有消息
 4. **验证**数据完整性
-5. **更新读取函数**以使用 `messages_v5` 模式
+5. **更新读取函数**以使用 `messages_v5` schema
 6. **从路由处理器中移除转换**
 7. **移除双写**（仅写入 `messages_v5`）
 8. **清理**旧表
 
-这确保你的应用程序在整个迁移过程中持续运行，且无数据丢失风险。
+这确保你的应用程序在整个迁移过程中持续运行，且没有数据丢失风险。
 
-### 步骤 1：在 V4 旁边创建 V5 模式
+### 步骤 1：在 V4 旁边创建 V5 Schema
 
-创建一个新的 `messages_v5` 表，其结构与现有表相同，但设计用于存储 v5 消息部分：
+创建一个新的 `messages_v5` 表，结构与现有表相同，但设计用于存储 v5 消息 parts：
 
-**现有 v4 模式（保持运行）：**
+**现有 v4 Schema（保持运行）：**
 
 ```typescript
 import { UIMessage } from 'ai-legacy';
@@ -561,7 +561,7 @@ export const messages = pgTable('messages', {
 });
 ```
 
-**新 v5 模式（并排创建）：**
+**新的 v5 Schema（在旁边创建）：**
 
 ```typescript
 import { MyUIMessage } from './conversion';
@@ -588,7 +588,7 @@ pnpm drizzle-kit migrate
 
 ### 步骤 2：为新消息实现双写
 
-在迁移期间更新你的保存函数，以写入两个模式。这确保新消息在两种格式中都可用：
+更新保存函数，在迁移期间写入两个 schema。这确保新消息在两种格式中都可用：
 
 ```typescript
 import { convertV4MessageToV5 } from './conversion';
@@ -602,10 +602,10 @@ export const upsertMessage = async ({
 }: {
   id: string;
   chatId: string;
-  message: UIMessage; // 仍然接受 v4 格式
+  message: UIMessage; // Still accepts v4 format
 }) => {
   return await db.transaction(async tx => {
-    // 写入 v4 模式（现有）
+    // Write to v4 schema (existing)
     const [result] = await tx
       .insert(messages)
       .values({
@@ -623,7 +623,7 @@ export const upsertMessage = async ({
       })
       .returning();
 
-    // 转换并写入 v5 模式（新）
+    // Convert and write to v5 schema (new)
     const v5Message = convertV4MessageToV5(
       {
         ...message,
@@ -655,7 +655,7 @@ export const upsertMessage = async ({
 
 ### 步骤 3：迁移现有消息
 
-创建一个脚本，将现有消息从 v4 模式迁移到 v5 模式：
+创建一个脚本，将现有消息从 v4 迁移到 v5 schema：
 
 ```typescript
 import { convertV4MessageToV5 } from './conversion';
@@ -663,9 +663,9 @@ import { db } from './db';
 import { messages, messages_v5 } from './db/schema';
 
 async function migrateExistingMessages() {
-  console.log('开始迁移现有消息...');
+  console.log('Starting migration of existing messages...');
 
-  // 获取所有尚未迁移的 v4 消息
+  // Get all v4 messages that haven't been migrated yet
   const migratedIds = await db.select({ id: messages_v5.id }).from(messages_v5);
 
   const migratedIdSet = new Set(migratedIds.map(m => m.id));
@@ -673,7 +673,7 @@ async function migrateExistingMessages() {
   const allMessages = await db.select().from(messages);
   const unmigrated = allMessages.filter(msg => !migratedIdSet.has(msg.id));
 
-  console.log(`找到 ${unmigrated.length} 条待迁移消息`);
+  console.log(`Found ${unmigrated.length} messages to migrate`);
 
   let migrated = 0;
   let errors = 0;
@@ -685,7 +685,7 @@ async function migrateExistingMessages() {
     await db.transaction(async tx => {
       for (const msg of batch) {
         try {
-          // 将消息转换为 v5 格式
+          // Convert message to v5 format
           const v5Message = convertV4MessageToV5(
             {
               id: msg.id,
@@ -697,7 +697,7 @@ async function migrateExistingMessages() {
             0,
           );
 
-          // 插入到 v5 消息表
+          // Insert into v5 messages table
           await tx.insert(messages_v5).values({
             id: v5Message.id,
             chatId: msg.chatId,
@@ -708,19 +708,19 @@ async function migrateExistingMessages() {
 
           migrated++;
         } catch (error) {
-          console.error(`迁移消息 ${msg.id} 时出错：`, error);
+          console.error(`Error migrating message ${msg.id}:`, error);
           errors++;
         }
       }
     });
 
-    console.log(`进度：已迁移 ${migrated}/${unmigrated.length} 条消息`);
+    console.log(`Progress: ${migrated}/${unmigrated.length} messages migrated`);
   }
 
-  console.log(`迁移完成：已迁移 ${migrated} 条，错误 ${errors} 个`);
+  console.log(`Migration complete: ${migrated} migrated, ${errors} errors`);
 }
 
-// 运行迁移
+// Run migration
 migrateExistingMessages().catch(console.error);
 ```
 
@@ -729,7 +729,7 @@ migrateExistingMessages().catch(console.error);
 - 仅迁移尚未迁移的消息
 - 使用批处理以获得更好的性能
 - 可以安全地多次运行
-- 可以停止并恢复
+- 可以停止和恢复
 
 ### 步骤 4：验证迁移
 
@@ -741,30 +741,30 @@ import { db } from './db';
 import { messages, messages_v5 } from './db/schema';
 
 async function verifyMigration() {
-  // 统计两个模式中的消息数
+  // Count messages in both schemas
   const v4Count = await db.select({ count: count() }).from(messages);
   const v5Count = await db.select({ count: count() }).from(messages_v5);
 
-  console.log('迁移状态：');
-  console.log(`V4 消息：${v4Count[0].count}`);
-  console.log(`V5 消息：${v5Count[0].count}`);
+  console.log('Migration Status:');
+  console.log(`V4 Messages: ${v4Count[0].count}`);
+  console.log(`V5 Messages: ${v5Count[0].count}`);
   console.log(
-    `迁移进度：${((v5Count[0].count / v4Count[0].count) * 100).toFixed(2)}%`,
+    `Migration progress: ${((v5Count[0].count / v4Count[0].count) * 100).toFixed(2)}%`,
   );
 }
 
 verifyMigration().catch(console.error);
 ```
 
-### 步骤 5：从 V5 模式读取
+### 步骤 5：从 V5 Schema 读取
 
-迁移完成后，更新你的读取函数以使用新的 v5 模式。由于数据现在是 v5 格式，你不需要转换：
+迁移完成后，更新读取函数以使用新的 v5 schema。由于数据现在是 v5 格式，你不需要转换：
 
 ```typescript
 import type { MyUIMessage } from './conversion';
 
 export const loadChat = async (chatId: string): Promise<MyUIMessage[]> => {
-  // 从 v5 模式加载 - 无需转换
+  // Load from v5 schema - no conversion needed
   const messages = await db
     .select()
     .from(messages_v5)
@@ -775,9 +775,9 @@ export const loadChat = async (chatId: string): Promise<MyUIMessage[]> => {
 };
 ```
 
-### 步骤 6：仅写入 V5 模式
+### 步骤 6：仅写入 V5 Schema
 
-一旦你的读取函数与 v5 配合工作，并且后台迁移完成，停止双写并仅写入 v5：
+一旦你的读取函数使用 v5 工作，且后台迁移完成，停止双写，仅写入 v5：
 
 ```typescript
 import type { MyUIMessage } from './conversion';
@@ -789,9 +789,9 @@ export const upsertMessage = async ({
 }: {
   id: string;
   chatId: string;
-  message: MyUIMessage; // 现在接受 v5 格式
+  message: MyUIMessage; // Now accepts v5 format
 }) => {
-  // 仅写入 v5 模式
+  // Write to v5 schema only
   const [result] = await db
     .insert(messages_v5)
     .values({
@@ -813,28 +813,27 @@ export const upsertMessage = async ({
 };
 ```
 
-更新你的路由处理器以直接传递 v5 消息：
+更新路由处理器以直接传递 v5 消息：
 
 ```tsx
 export async function POST(req: Request) {
   const { message, chatId }: { message: MyUIMessage; chatId: string } =
     await req.json();
 
-  // 直接传递 v5 消息 - 无需转换
+  // Pass v5 message directly - no conversion needed
   await upsertMessage({
     chatId,
     id: message.id,
     message,
   });
 
-  const previousMessages = await loadChat(chatId);
-  const messages = [...previousMessages, message];
+  const messages = await loadChat(chatId);
 
   const result = streamText({
     model: __MODEL__,
     messages: convertToModelMessages(messages),
     tools: {
-      // 你的工具在这里
+      // Your tools here
     },
   });
 
@@ -845,7 +844,7 @@ export async function POST(req: Request) {
       await upsertMessage({
         chatId,
         id: responseMessage.id,
-        message: responseMessage, // 无需转换
+        message: responseMessage, // No conversion needed
       });
     },
   });
@@ -854,29 +853,29 @@ export async function POST(req: Request) {
 
 ### 步骤 7：完成切换
 
-一旦验证通过并且你对迁移有信心：
+一旦验证通过且你对迁移有信心：
 
 1. **移除转换函数**：删除 v4↔v5 转换工具
 2. **移除 `ai-legacy` 依赖**：卸载 v4 类型包
-3. **彻底测试**：确保你的应用程序在 v5 模式下正常工作
-4. **监控**：在生产环境中关注问题
+3. **彻底测试**：确保应用程序在 v5 schema 下正常工作
+4. **监控**：留意生产环境中的问题
 5. **清理**：在安全期（1-2 周）后，删除旧表
 
 ```sql
--- 确认一切正常后
+-- After confirming everything works
 DROP TABLE messages;
 
--- 可选：将 v5 表重命名为标准名称
+-- Optionally rename v5 table to standard name
 ALTER TABLE messages_v5 RENAME TO messages;
 ```
 
-**阶段 2 现已完成。** 你的应用程序已完全迁移到 v5 模式，没有运行时转换开销。
+**阶段 2 现已完成。** 你的应用程序已完全迁移到 v5 schema，没有运行时转换开销。
 
 ## 社区资源
 
 以下社区成员分享了他们的迁移经验：
 
-- [AI SDK 迁移：处理之前保存的消息](https://jhakim.com/blog/ai-sdk-migration-handling-previously-saved-messages) - 详细的转换函数实现
-- [我们如何将 Atypica.ai 迁移到 AI SDK v5 而不破坏 1000 万+ 聊天历史](https://blog.web3nomad.com/p/how-we-migrated-atypicaai-to-ai-sdk-v5-without-breaking-10m-chat-histories) - 大规模迁移的运行时转换方法
+- [AI SDK Migration: Handling Previously Saved Messages](https://jhakim.com/blog/ai-sdk-migration-handling-previously-saved-messages) - 详细的转换函数实现
+- [How we migrated Atypica.ai to AI SDK v5 without breaking 10M+ chat histories](https://blog.web3nomad.com/p/how-we-migrated-atypicaai-to-ai-sdk-v5-without-breaking-10m-chat-histories) - 大规模迁移的运行时转换方法
 
-有关更多 API 变更详情，请参阅[主迁移指南](/docs/migration-guides/migration-guide-5-0)。
+有关更多 API 变更详情，请参见[主迁移指南](/docs/migration-guides/migration-guide-5-0)。

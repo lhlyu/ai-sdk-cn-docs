@@ -10,10 +10,10 @@ tags: ['caching', 'cost-optimization']
 
 本示例展示了一种模式，你可以将其复制到项目中，并根据具体的提供商和缓存策略进行自定义。示例实现开箱即用地涵盖了 Anthropic 推荐的方法，但你可以根据需要扩展它以支持其他提供商。
 
-这种模式在以下场景中特别有用：
+这种模式在以下情况下特别有用：
 
-1. **构建长对话智能体** - 多轮智能体交互会累积上下文，而这些上下文会在每次请求时被重新发送。
-2. **大量使用工具** - 工具调用和结果会带来显著的 token 开销，缓存可以从中受益。
+1. **构建具有长对话的智能体** - 多轮智能体交互会累积上下文，而这些上下文会在每次请求时重新发送。
+2. **大量使用工具** - 工具调用和结果会增加大量 token 开销，而缓存可以从中受益。
 
 对于非 Anthropic 模型，消息会原样传递，因此可以安全地用于与提供商无关的代码中。
 
@@ -106,7 +106,7 @@ export function addCacheControlToMessages({
 
 ## 使用该工具
 
-使用 `prepareStep` 回调，结合 `generateText` 和 `stopWhen`，将该工具集成到你的智能体中：
+通过 `prepareStep` 回调，结合 `generateText` 和 `stopWhen`，将该工具集成到你的智能体中：
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -116,7 +116,7 @@ import { addCacheControlToMessages } from './add-cache-control-to-messages';
 
 async function main() {
   const result = await generateText({
-    model: anthropic('claude-sonnet-5'),
+    model: anthropic('claude-sonnet-5-5'),
     prompt: 'Help me analyze this codebase and suggest improvements.',
     stopWhen: isStepCount(10),
     tools: {
@@ -159,9 +159,9 @@ prepareStep: ({ messages, model }) => ({
 
 ## 注意事项
 
-使用此工具时，请记住以下几点：
+使用该工具时，请记住以下几点：
 
-1. **提供商特定行为** - 此实现针对 Anthropic 模型。对于其他提供商，消息会原样传递。你可以扩展此模式以支持更多提供商。
-2. **最小 token 阈值** - Anthropic 要求达到最小 token 数量后缓存才会激活。短对话可能无法受益。其他提供商可能有类似的要求。
+1. **提供商特定行为** - 此实现针对 Anthropic 模型。对于其他提供商，消息会原样传递。你可以扩展该模式以支持更多提供商。
+2. **最小 token 阈值** - Anthropic 要求达到最小 token 数量后缓存才会激活。较短的对话可能无法受益。其他提供商可能有类似的要求。
 3. **缓存生命周期** - Anthropic 的临时缓存 TTL 为 5 分钟。不活跃的对话会丢失其缓存。请查看你的提供商文档以了解缓存持续时间详情。
 4. **成本结构** - 使用 Anthropic 时，缓存 token 的成本为输入 token 的 10%，但缓存写入的成本要高出 25%。当缓存命中超过缓存未命中时，你就能节省费用。成本结构因提供商而异。

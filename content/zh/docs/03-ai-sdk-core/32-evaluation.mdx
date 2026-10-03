@@ -7,7 +7,7 @@ description: "针对共享状态评估 Choice、Score 和 Boolean 问题。"
 
 `experimental_evaluate` 使用评估模型针对一个共享状态评估具名问题。状态可以是字符串、JSON 对象或 JSON 数组。数组是一个状态，而不是一批不相关的输入。
 
-此 API 和评估模型规范均为实验性的，可能会在补丁版本中发生变化。可以传入评估模型实例、通过提供商注册表解析模型，或使用字符串 ID。除非你配置了支持评估的默认提供商，否则字符串会通过 Vercel AI Gateway 解析。
+此 API 和评估模型规范是实验性的，可能会在补丁版本中发生变化。传入评估模型实例、通过提供商注册表解析模型，或使用字符串 ID。除非你配置了支持评估的默认提供商，否则字符串会通过 Vercel AI Gateway 解析。
 
 ```ts
 import { experimental_evaluate, type Experimental_EvaluationModel } from 'ai';
@@ -50,15 +50,15 @@ async function triage(model: Experimental_EvaluationModel, message: string) {
 | Anthropic   | `anthropic.evaluationModel('claude-haiku-4-5-20251001')` |
 | Google      | `google.evaluationModel('gemini-3.5-flash-lite')`        |
 
-TypeSafe AI 的 [Jev](https://vercel.com/i/what-is-jev) 提供原生的 Choice、Score 和 Boolean 评估。OpenAI、Anthropic 和 Google 则针对这三种类型适配结构化语言模型输出。Boolean 答案包含提示词估算的 P(true)，并经过验证为有限值且位于 `[0, 1]` 区间内。这些估算值不保证经过校准。Choice 和 Score 答案不包含概率分布。请选择支持提供商结构化输出 API 的模型；在为某个任务选择模型之前，请使用你自己的标注样本评估其判断质量。
+TypeSafe AI 的 [Jev](https://vercel.com/i/what-is-jev) 提供原生的 Choice、Score 和 Boolean 评估。OpenAI、Anthropic 和 Google 为所有三种类型适配结构化语言模型输出。Boolean 答案包含提示词估计的 P(true)，并验证其为有限值且在 `[0, 1]` 范围内。这些估计值不保证经过校准。Choice 和 Score 答案不包含概率分布。选择支持提供商结构化输出 API 的模型；在为任务选择模型之前，请根据你自己的标注示例评判质量。
 
-语言模型适配器会在一个提示词中评估所有问题。它们不提供 TypeSafe 原生的独立问题执行语义。示例模型 ID 仅用于演示 API 兼容性；它们并非经过基准测试选出的默认值。
+语言模型适配器在一个提示词中评估所有问题。它们不提供 TypeSafe 的原生独立问题执行语义。示例模型 ID 用于演示 API 兼容性；它们不是经过基准测试选择的默认值。
 
-语言模型适配器默认请求 `reasoning: 'none'`。每个提供商会将此设置映射到其模型的推理控制项；它并不保证每个模型都在不思考的情况下运行。要为更高要求的评估启用推理，请通过 `providerOptions` 传入模型支持的推理设置，其优先级高于此默认值。例如，对于支持该推理强度的 OpenAI 模型，使用 `providerOptions: { openai: { reasoningEffort: 'high' } }`。
+语言模型适配器默认请求 `reasoning: 'none'`。每个提供商将此设置映射到其模型的推理控制；它并不保证每个模型都在不思考的情况下运行。要为更高要求的评估启用推理，请通过 `providerOptions` 传入模型支持的推理设置，其优先级高于此默认值。例如，对支持该推理强度的 OpenAI 模型使用 `providerOptions: { openai: { reasoningEffort: 'high' } }`。
 
 ## 模型别名和注册表
 
-使用 `customProvider` 为模型赋予应用程序特定的名称，然后通过 `createProviderRegistry` 注册提供商：
+使用 `customProvider` 为模型提供应用程序特定的名称，然后使用 `createProviderRegistry` 注册提供商：
 
 ```ts
 import { typeSafeAi } from '@ai-sdk/typesafe-ai';
@@ -95,7 +95,7 @@ const result = await experimental_evaluate({
 result.answers.department.choice; // 'billing' | 'support'
 ```
 
-注册表 ID 使用 `providerId:modelId` 格式；`separator` 选项可更改分隔符。仅使用第一个分隔符，因此模型 ID 中可以包含该分隔符。自定义别名优先于回退提供商。回退仅解析未知的模型 ID；它不会重试失败的评估，也不会在问题类型不受支持时替换模型。已注册的提供商保留各自的凭据和设置。注册表的语言/图像中间件不会包装评估模型。
+注册表 ID 使用 `providerId:modelId`；`separator` 选项可更改分隔符。只使用第一个分隔符，因此模型 ID 可以包含它。自定义别名优先于回退提供商。回退仅解析未知模型 ID；它不会重试失败的评估，也不会在问题类型不受支持时替换模型。已注册的提供商保留自己的凭据和设置。注册表的语言/图像中间件不会包装评估模型。
 
 ### 默认提供商字符串
 
@@ -105,7 +105,7 @@ result.answers.department.choice; // 'billing' | 'support'
 import { experimental_evaluate } from 'ai';
 
 const result = await experimental_evaluate({
-  model: 'typesafe-ai/jev-latest',
+  model: 'typesafe-ai/jev',
   state: 'I was charged twice. Please refund the extra charge.',
   questions: {
     refund: {
@@ -136,29 +136,29 @@ const result = await experimental_evaluate({
 });
 ```
 
-像 `typeSafeAi` 这样的直接提供商也可以作为默认提供商；此时使用其不带前缀的模型 ID，例如 `'jev-latest'`。`evaluationModels` 中的字符串值也会通过此全局默认值解析。别名中优先使用模型实例，以避免解析循环。全局配置也会影响其他 AI SDK 函数；在共享进程中应避免按请求更改它。
+像 `typeSafeAi` 这样的直接提供商也可以作为默认提供商；然后使用其不带前缀的模型 ID，例如 `'jev-latest'`。`evaluationModels` 中的字符串值也会通过此全局默认值解析。在别名中优先使用模型实例，以避免解析循环。全局配置也会影响其他 AI SDK 函数；在共享进程中避免按请求更改它。
 
-显式配置的默认提供商必须暴露 `evaluationModel` 方法；仅当未配置默认提供商时才会使用 Gateway。缺少注册表提供商会抛出 `NoSuchProviderError`；缺少模型或评估能力会抛出 `NoSuchModelError`，并带有 `modelType: 'evaluationModel'`。不受支持的模型版本会抛出 `UnsupportedModelVersionError`，包括注册表返回的模型。稳定的 `ProviderV4` 和 `ProviderRegistryProvider` 接口保持不变；请保留推断出的注册表类型，或使用 `Experimental_EvaluationProviderRegistry`，以保留其实验性的 `evaluationModel` 方法。
+显式配置的默认提供商必须公开 `evaluationModel` 方法；仅当未配置默认提供商时才使用 Gateway。缺少注册表提供商会抛出 `NoSuchProviderError`；缺少模型或评估能力会抛出 `NoSuchModelError`，并带有 `modelType: 'evaluationModel'`。不受支持的模型版本会抛出 `UnsupportedModelVersionError`，包括注册表返回的模型。稳定的 `ProviderV4` 和 `ProviderRegistryProvider` 接口保持不变；保留推断出的注册表类型，或使用 `Experimental_EvaluationProviderRegistry`，以保留其实验性的 `evaluationModel` 方法。
 
 ## 问题类型
 
-| 类型      | 条件                                       | 答案                                                                     |
-| --------- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| `choice`  | 选项到描述的非空映射                       | `choice`，推断为选项键的联合类型；可选的 `probabilities`                 |
-| `score`   | 至少两个有序的等级描述                     | `[0, levels.length - 1]` 区间内的分数 `score`；可选的 `probabilities`    |
-| `boolean` | 可选的 `true` 和 `false` 描述              | 必需的 `probability`，即模型估算为真的概率                               |
+| 类型      | 条件                                      | 答案                                                                     |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| `choice`  | 选项到描述的非空映射                      | `choice`，推断为选项键的联合类型；可选的 `probabilities`                 |
+| `score`   | 至少两个有序的等级描述                    | `[0, levels.length - 1]` 范围内的小数 `score`；可选的 `probabilities`    |
+| `boolean` | 可选的 `true` 和 `false` 描述             | 必需的 `probability`，即模型估计为 true 的概率                           |
 
-指令和描述可以是字符串、JSON 对象或 JSON 数组。描述也可以是 `null`。核心将结构化描述视为内容；它不会解释其键。函数、类实例、循环引用、undefined 值和非有限数字不兼容 JSON。
+指令和描述可以是字符串、JSON 对象或 JSON 数组。描述也可以是 `null`。Core 将结构化描述视为内容；它不会解释其键。函数、类实例、循环引用、undefined 值和非有限数字不兼容 JSON。
 
-答案保留问题 ID，并具有与其问题相同的 `type`。当提供 Choice 分布时，它包含每个选项，且所选选项具有最大概率。Score 分布使用字符串键表示从零开始的等级索引，分数等于概率加权平均值。没有分布时，分数是模型对评分标准位置的估算。
+答案保留问题 ID，并具有与其问题相同的 `type`。当提供 Choice 分布时，它包含每个选项，且所选选项具有最大概率。Score 分布使用字符串键表示从零开始的等级索引，分数等于概率加权平均值。没有分布时，分数是模型对评分标准估计的位置。
 
-分布之和必须为一，且加权分数必须与其分布一致。默认绝对容差为 `0.000001`。会对输出进行舍入的提供商可以声明 `rounding.probabilityDecimals` 和 `rounding.scoreDecimals`（0 到 15 的整数）。此时验证还会允许每个舍入后的概率或分数在最后一位小数上有半个单位的误差，并在求和或加权平均中累积。例如，舍入到两位小数的概率即使其未舍入值之和为一，也可能求和为 `0.99`。结果中会包含此 `rounding` 信息。无效输出会被拒绝；原生值会被保留，绝不会被静默归一化。
+分布之和必须为一，且加权分数必须与其分布一致。默认绝对容差为 `0.000001`。对其输出进行舍入的提供商可以声明 `rounding.probabilityDecimals` 和 `rounding.scoreDecimals`（0 到 15 的整数）。验证随后还允许每个舍入概率或分数在最后一位小数上有半个单位的误差，并在总和或加权平均值上累积。例如，舍入到两位小数的概率即使其未舍入值之和为一，也可以总和为 `0.99`。结果包含此 `rounding` 信息。无效输出会被拒绝；原生值会被保留，绝不会被静默规范化。
 
 ## 概率和置信度
 
-Choice 和 Score 分布是可选的。Boolean 概率是必需的：`0.98` 表示强烈的肯定，`0.02` 表示强烈的否定。它不是对任一结果的置信度。SDK 不承诺跨提供商的校准。结构化语言模型适配器会提示模型估算 P(true)；原生评估提供商返回其 API 概率。提供商特定的置信度统计信息应放在 `providerMetadata` 中。TypeSafe 在 `result.providerMetadata?.typesafe?.confidence` 处暴露其单独的 Choice/Score 置信度统计信息，以问题 ID 为键。它不是所选选项的概率，也不是可移植的置信度度量。
+Choice 和 Score 分布是可选的。Boolean 概率是必需的：`0.98` 表示强烈的肯定，`0.02` 表示强烈的否定。它不是对任一结果的置信度。SDK 不承诺跨提供商的校准。结构化语言模型适配器提示模型估计 P(true)；原生评估提供商返回其 API 概率。提供商特定的置信度统计信息应放在 `providerMetadata` 中。TypeSafe 在 `result.providerMetadata?.typesafe?.confidence` 处公开其单独的 Choice/Score 置信度统计信息，以问题 ID 为键。它不是所选选项的概率，也不是可移植的置信度度量。
 
-在使用可选分布之前请先检查它们是否存在。例如，应用程序可以仅在提供商提供足够高的所选选项概率时进行路由：
+在使用可选分布之前检查它们是否存在。例如，应用程序可以仅在提供商提供足够高的所选选项概率时进行路由：
 
 ```ts
 const answer = result.answers.department;
@@ -168,7 +168,7 @@ if (selectedProbability != null && selectedProbability >= 0.9) {
 }
 ```
 
-在应用程序代码中选择 Boolean 阈值，使用该任务的标注数据，而不是假设相同的阈值在不同提供商之间表现一致：
+在应用程序代码中选择 Boolean 阈值，使用任务的标注数据，而不是假设相同的阈值在不同提供商之间表现相同：
 
 ```ts
 if (result.answers.requestsRefund.probability >= 0.8) {
@@ -178,17 +178,17 @@ if (result.answers.requestsRefund.probability >= 0.8) {
 
 ## 错误和取消
 
-在调用提供商之前会检查模型的 `supportedQuestionTypes`。任何不受支持的问题都会导致整个调用失败，并抛出 `Experimental_EvaluationUnsupportedQuestionTypeError`。成功的调用会为每个问题返回一个答案；不存在部分成功或自动模型替换。
+在调用提供商之前会检查模型的 `supportedQuestionTypes`。任何不受支持的问题都会使整个调用失败，并抛出 `Experimental_EvaluationUnsupportedQuestionTypeError`。成功的调用会为每个问题返回一个答案；没有部分成功，Core 也不会自动替换模型。
 
-无效输入会抛出 `InvalidArgumentError`。缺少答案、答案类型不匹配、无效选项、分数或概率会抛出 `InvalidResponseDataError`。临时性提供商故障使用正常的重试策略（默认 `maxRetries: 2`）。使用 `abortSignal` 取消评估，使用 `headers` 设置请求头，使用 `providerOptions` 设置提供商特定配置。
+无效输入会抛出 `InvalidArgumentError`。缺少答案、答案类型不匹配、无效选项、分数或概率会抛出 `InvalidResponseDataError`。瞬时提供商故障使用正常的重试策略（默认 `maxRetries: 2`）。使用 `abortSignal` 取消评估，使用 `headers` 设置请求头，使用 `providerOptions` 设置提供商特定的配置。
 
-结果包含 `usage`、`warnings`、`providerMetadata` 和 `response`。未知的 token 计数保持为 `undefined`；仅当输入和输出计数均已知时，`totalTokens` 才可用。
+结果包含 `usage`、`warnings`、`providerMetadata` 和 `response`。未知的 token 计数保持为 `undefined`；仅当输入和输出计数都已知时，`totalTokens` 才可用。
 
 对于测试，请使用来自 `ai/test` 的 `Experimental_EvaluationMockModelV4`。
 
 ## 范围和示例
 
-评估目前针对一个共享状态返回一个完整结果。它不会流式传输答案、执行多标签分类或批量处理不相关的状态。请为不同的状态分别运行调用。提供商支持和判断质量取决于所选的模型；SDK 不会自动选择模型。
+评估目前针对一个共享状态返回一个完整结果。它不会流式传输答案、执行多标签分类或批处理不相关的状态。为不同的状态运行单独的调用。提供商支持和判断质量取决于所选的模型。Core 不会选择另一个模型，但提供商可以通过其提供商选项实现路由。例如，AI Gateway 支持在 `providerOptions.gateway.models` 下的条件评估回退。
 
 可运行的示例位于
 [`examples/ai-functions/src/evaluate`](https://github.com/vercel/ai/tree/main/examples/ai-functions/src/evaluate)，
@@ -196,9 +196,9 @@ if (result.answers.requestsRefund.probability >= 0.8) {
 
 ## 相关资源
 
-探索将 TypeSafe AI 的 Jev 与 AI SDK 结合使用的用例、实现指南和可部署模板：
+探索用例、实现指南以及将 TypeSafe AI 的 Jev 与 AI SDK 结合使用的可部署模板：
 
 - [Jev 用例](https://vercel.com/i/jev-use-cases)：探索在应用程序中应用评估的想法。
-- [使用 Jev 和 AI SDK 进行分类、路由和评分](https://vercel.com/kb/guide/typesafe-jev-and-ai-sdk)：了解如何提出类型化问题、使用概率路由答案，以及使用模拟评估模型测试路由逻辑。
-- [Jev 和 AI SDK 表单路由指南](https://vercel.com/kb/guide/jev-ai-sdk-form-router)：探索使用 Jev 和 AI SDK 进行表单路由。
-- [Jev 和 AI SDK 表单路由模板](https://vercel.com/templates/next.js/jev-and-ai-sdk)：部署一个使用 Jev 路由表单提交，并使用语言模型回退处理不确定或失败评估的 Next.js 应用程序。
+- [使用 Jev 和 AI SDK 进行分类、路由和评分](https://vercel.com/kb/guide/typesafe-jev-and-ai-sdk)：了解如何提出类型化问题、使用概率路由答案，并使用模拟评估模型测试路由逻辑。
+- [Jev 和 AI SDK 表单路由器指南](https://vercel.com/kb/guide/jev-ai-sdk-form-router)：探索使用 Jev 和 AI SDK 进行表单路由。
+- [Jev 和 AI SDK 表单路由器模板](https://vercel.com/templates/next.js/jev-and-ai-sdk)：部署一个 Next.js 应用程序，使用 Jev 路由表单提交，并使用语言模型回退处理不确定或失败的评估。

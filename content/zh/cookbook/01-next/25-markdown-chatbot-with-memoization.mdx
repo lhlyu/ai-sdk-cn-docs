@@ -1,171 +1,85 @@
 ---
-title: "使用记忆化的 Markdown 聊天机器人"
-description: "使用 Next.js 和 AI SDK 构建一个能够渲染并记忆化 Markdown 响应的聊天机器人。"
+title: "使用 Streamdown 的 Markdown 聊天机器人"
+description: "使用 Streamdown、Next.js 和 AI SDK 渲染流式 Markdown 响应。"
 tags: ['next', 'streaming', 'chatbot', 'markdown']
 ---
 
-# 使用记忆化的 Markdown 聊天机器人
+# 使用 Streamdown 的 Markdown 聊天机器人
 
-在使用 Next.js 和 AI SDK 构建聊天机器人时，你很可能希望使用像 `react-markdown` 这样的库以 Markdown 格式渲染模型的响应。然而，这可能会带来性能方面的负面影响，因为每当从流式传输响应中接收到新 token 时，Markdown 都会被重新渲染。
+[Streamdown](https://streamdown.ai) 可以在语言模型流式输出时渲染 Markdown。它能够处理不完整的 Markdown 语法，并[对 Markdown 块进行记忆化](https://streamdown.ai/docs/memoization)，使未更改的块可以跳过重新渲染。Streamdown 在其默认的流式传输模式下提供此行为。
 
-随着对话变得越来越长、越来越复杂，这种性能影响会呈指数级恶化，因为每收到一个新 token，整个对话历史都会被重新渲染。
-
-本示例使用了记忆化（memoization）——一种性能优化技术，它会缓存并复用昂贵函数调用的结果，以避免不必要的重复计算。在本例中，解析后的 Markdown 块会被记忆化，以防止在每次 token 更新时被重新解析和重新渲染。这意味着一旦某个块被完全解析，它就会被缓存并复用，而不是被重新生成。这种方法通过消除冗余的解析和渲染操作，显著提升了长对话的渲染性能。
+从 [Stream Text with Chat Prompt](/cookbook/next/stream-text-with-chat-prompt) 配方开始，搭建 `/api/chat` 路由。然后使用 Streamdown 在客户端渲染文本部分。
 
 ## 安装
 
-首先，安装 Markdown 渲染和解析所需的依赖：
+在你的 Next.js 应用中安装 Streamdown：
 
 ```bash
-npm install react-markdown marked
+npm install streamdown
 ```
 
-## 服务端
+对于 Tailwind CSS v4，将 Streamdown 添加到全局样式表的 sources 中：
 
-在服务端，你使用一个简单的路由处理器来流式传输语言模型的响应。
-
-```tsx filename='app/api/chat/route.ts'
-import {
-  convertToModelMessages,
-  createUIMessageStreamResponse,
-  streamText,
-  toUIMessageStream,
-  type UIMessage,
-} from 'ai';
-
-export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
-
-  const result = streamText({
-    instructions:
-      'You are a helpful assistant. Respond to the user in Markdown format.',
-    model: 'openai/gpt-6-astra',
-    messages: await convertToModelMessages(messages),
-  });
-
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
-  });
-}
+```css filename='app/globals.css'
+@import 'tailwindcss';
+@source '../node_modules/streamdown/dist/*.js';
 ```
 
-## 记忆化的 Markdown 组件
-
-接下来，创建一个记忆化的 Markdown 组件，它会将原始 Markdown 文本拆分为块，并且仅在内容实际发生变化时才更新。该组件使用 `marked` 库将 Markdown 内容拆分为块，以识别离散的 Markdown 元素，然后利用 React 的记忆化特性来优化重新渲染，仅更新实际发生变化的块。
-
-```tsx filename='components/memoized-markdown.tsx'
-import { marked } from 'marked';
-import { memo, useMemo } from 'react';
-import ReactMarkdown from 'react-markdown';
-
-function parseMarkdownIntoBlocks(markdown: string): string[] {
-  const tokens = marked.lexer(markdown);
-  return tokens.map(token => token.raw);
-}
-
-const MemoizedMarkdownBlock = memo(
-  ({ content }: { content: string }) => {
-    return <ReactMarkdown>{content}</ReactMarkdown>;
-  },
-  (prevProps, nextProps) => {
-    if (prevProps.content !== nextProps.content) return false;
-    return true;
-  },
-);
-
-MemoizedMarkdownBlock.displayName = 'MemoizedMarkdownBlock';
-
-export const MemoizedMarkdown = memo(
-  ({ content, id }: { content: string; id: string }) => {
-    const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
-
-    return blocks.map((block, index) => (
-      <MemoizedMarkdownBlock content={block} key={`${id}-block_${index}`} />
-    ));
-  },
-);
-
-MemoizedMarkdown.displayName = 'MemoizedMarkdown';
-```
+`@source` 路径相对于样式表。如果你使用 `src/app` 目录或 monorepo，请相应调整。有关 Tailwind CSS v3 配置，请参阅 [Streamdown 安装指南](https://streamdown.ai/docs/getting-started)。
 
 ## 客户端
 
-最后，在客户端，使用 `useChat` Hook 来管理聊天状态并渲染聊天界面。你可以使用 `MemoizedMarkdown` 组件以 Markdown 格式渲染消息内容，同时不影响性能。此外，你可以将表单渲染在它自己的组件中，以避免触发聊天消息不必要的重新渲染。你还可以使用 `throttle` 选项，它会将数据更新节流到指定的时间间隔，从而帮助管理渲染性能。
+将每个文本部分传递给 `Streamdown`。当该部分正在流式传输时设置 `isAnimating`，以便 Streamdown 在文本完成之前禁用交互控件。
 
-```typescript filename='app/page.tsx'
-"use client";
+```tsx filename='app/page.tsx'
+'use client';
 
-import { Chat, useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useState } from "react";
-import { MemoizedMarkdown } from "@/components/memoized-markdown";
-
-const chat = new Chat({
-  transport: new DefaultChatTransport({
-    api: "/api/chat",
-  }),
-});
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { useState } from 'react';
+import { Streamdown } from 'streamdown';
 
 export default function Page() {
-  const { messages } = useChat({ chat, throttle: 50 });
+  const [input, setInput] = useState('');
+  const { messages, sendMessage } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
+  });
 
   return (
-    <div className="flex flex-col w-full max-w-xl py-24 mx-auto stretch">
-      <div className="space-y-8 mb-4">
-        {messages.map((message) => (
-          <div key={message.id}>
-            <div className="font-bold mb-2">
-              {message.role === "user" ? "You" : "Assistant"}
-            </div>
-            <div className="prose space-y-2">
-              {message.parts.map((part) => {
-                if (part.type === "text") {
-                  return (
-                    <MemoizedMarkdown
-                      key={`${message.id}-text`}
-                      id={message.id}
-                      content={part.text}
-                    />
-                  );
-                }
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div>
+      {messages.map(message => (
+        <div key={message.id}>
+          <div>{message.role === 'user' ? 'You' : 'Assistant'}</div>
+          {message.parts.map((part, index) =>
+            part.type === 'text' ? (
+              <Streamdown
+                key={`${message.id}-${index}`}
+                isAnimating={part.state === 'streaming'}
+              >
+                {part.text}
+              </Streamdown>
+            ) : null,
+          )}
+        </div>
+      ))}
 
-      <MessageInput />
+      <form
+        onSubmit={event => {
+          event.preventDefault();
+          sendMessage({ text: input });
+          setInput('');
+        }}
+      >
+        <input
+          value={input}
+          onChange={event => setInput(event.target.value)}
+          placeholder="Say something..."
+        />
+        <button type="submit">Send</button>
+      </form>
     </div>
   );
 }
-
-const MessageInput = () => {
-  const [input, setInput] = useState("");
-  const { sendMessage } = useChat({ chat });
-
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        sendMessage({
-          text: input,
-        });
-        setInput("");
-      }}
-    >
-      <input
-        className="fixed bottom-0 w-full max-w-xl p-2 mb-8 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
-        placeholder="Say something..."
-        value={input}
-        onChange={(event) => {
-          setInput(event.target.value);
-        }}
-      />
-    </form>
-  );
-};
 ```
 
-<Note>
-  通过使用同一个 `Chat` 实例，聊天状态在两个组件之间共享。这使你能够将表单和聊天消息拆分为独立的组件，同时保持状态同步。
-</Note>
+有关语法高亮、数学公式或 Mermaid 图表，请参阅 [Streamdown 的插件](https://streamdown.ai/docs/plugins)。

@@ -6,10 +6,10 @@ description: "了解如何使用 AI SDK 处理异步批处理。"
 # 批处理
 
 <Note type="warning">
-  批处理支持处于实验阶段，API 可能会在补丁版本中发生变化。
+  批处理支持是实验性的，API 可能会在补丁版本中发生变化。
 </Note>
 
-批处理允许你提交多个独立的请求进行异步处理。提供商在后台处理批处理，因此你的应用程序无需在模型生成结果期间保持请求处于打开状态。这对于分类、摘要和内容生成等不需要立即响应的任务非常有用。
+批处理允许你提交多个独立的请求以进行异步处理。提供商在后台处理批处理，因此你的应用程序无需在模型生成结果期间保持请求处于打开状态。这对于分类、摘要和内容生成等不需要立即响应的任务非常有用。
 
 批处理 API 支持 `type: 'text'` 的文本生成和 `type: 'image'` 的图像生成。
 
@@ -20,13 +20,13 @@ AI SDK 为批处理生命周期提供了五个函数：
 - [`experimental_getBatchStatus`](/docs/reference/ai-sdk-core/get-batch-status)
   获取最新状态和请求计数。
 - [`experimental_getBatchResults`](/docs/reference/ai-sdk-core/get-batch-results)
-  异步遍历每个请求的最终结果。
+  异步迭代每个请求的最终结果。
 - [`experimental_cancelBatch`](/docs/reference/ai-sdk-core/cancel-batch)
   请求取消批处理。
 - [`experimental_listBatches`](/docs/reference/ai-sdk-core/list-batches)
   列出批处理及其最新状态。
 
-这五个函数均从 `ai` 导出。下面的示例使用别名，以便在应用程序代码中使用更短的名称：
+这五个函数都从 `ai` 导出。下面的示例使用了别名，以便在应用程序代码中使用更短的名称：
 
 ```ts
 import {
@@ -38,25 +38,25 @@ import {
 } from 'ai';
 ```
 
-取消和列出是提供商的可选能力。使用未实现相应功能的提供商调用任一函数都会抛出 `UnsupportedFunctionalityError`。在下面的取消和列出示例中，`provider` 表示实现了相应能力的批处理提供商。
+取消和列出是提供商的可选能力。使用未实现该功能的提供商调用任一函数都会抛出 `UnsupportedFunctionalityError`。在下面的取消和列出示例中，`provider` 表示实现了相应能力的批处理提供商。
 
 ## 支持的提供商
 
-批处理需要实现批处理接口的提供商。支持情况因提供商和模型而异。支持批处理的第一方提供商包括：
+批处理需要实现批处理接口的提供商。支持情况因提供商和模型而异。支持该功能的第一方提供商包括：
 
 | 提供商                                               | 提供商值       | 请求类型      | 提供商 API                                                                                    |
 | ---------------------------------------------------- | -------------- | ------------- | --------------------------------------------------------------------------------------------- |
-| [Anthropic](/providers/ai-sdk-providers/anthropic)   | `anthropic`    | text          | [Message Batches API](https://platform.claude.com/docs/en/build-with-claude/batch-processing) |
-| [Google](/providers/ai-sdk-providers/google)         | `google`       | text, image   | [Gemini Batch API](https://ai.google.dev/gemini-api/docs/batch-api)                           |
-| [OpenAI](/providers/ai-sdk-providers/openai)         | `openai`       | text          | [Batch API](https://developers.openai.com/api/docs/guides/batch)                              |
-| [xAI](/providers/ai-sdk-providers/xai)               | `xai`          | text, image   | [Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api)                        |
-| [AI Gateway](/providers/ai-sdk-providers/ai-gateway) | global default | text          | [Batch processing](https://vercel.com/docs/ai-gateway/models-and-providers/batch-processing)  |
+| [Anthropic](/providers/ai-sdk-providers/anthropic)   | `anthropic`    | 文本          | [Message Batches API](https://platform.claude.com/docs/en/build-with-claude/batch-processing) |
+| [Google](/providers/ai-sdk-providers/google)         | `google`       | 文本、图像    | [Gemini Batch API](https://ai.google.dev/gemini-api/docs/batch-api)                           |
+| [OpenAI](/providers/ai-sdk-providers/openai)         | `openai`       | 文本          | [Batch API](https://developers.openai.com/api/docs/guides/batch)                              |
+| [xAI](/providers/ai-sdk-providers/xai)               | `xai`          | 文本、图像    | [Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api)                        |
+| [AI Gateway](/providers/ai-sdk-providers/ai-gateway) | 全局默认       | 文本          | [批处理](https://vercel.com/docs/ai-gateway/models-and-providers/batch-processing)            |
 
 有关支持的模型、限制和原生批处理行为，请参阅提供商文档。例如，OpenAI 批处理支持通过 Responses API 提供，而不是 `openai.chat()`。
 
 ## 启动批处理
 
-将提供商和一个或多个具有唯一标识的请求传递给 `startBatch`。每个请求必须指定 `type: 'text'`、模型 ID，以及文本 `prompt` 或 `messages` 数组。在提供商支持的情况下，请求可以使用不同的模型 ID。每个请求还可以使用常见的文本生成设置，例如 `instructions`、`maxOutputTokens`、`temperature`、`topP`、`topK`、`presencePenalty`、`frequencyPenalty`、`stopSequences`、`seed` 和 `reasoning`。
+将提供商和一个或多个具有唯一标识的请求传递给 `startBatch`。每个文本请求必须指定 `type: 'text'`、模型 ID，以及文本 `prompt` 或 `messages` 数组。在提供商支持的情况下，请求可以使用不同的模型 ID。每个请求还可以使用常见的文本生成设置，例如 `instructions`、`maxOutputTokens`、`temperature`、`topP`、`topK`、`presencePenalty`、`frequencyPenalty`、`stopSequences`、`seed` 和 `reasoning`。
 
 工具定义和工具设置在各请求上提供。使用相同名称的工具在每个使用它的请求中必须具有相同的定义。
 
@@ -87,15 +87,15 @@ const batch = await startBatch({
 console.log(batch.id, batch.status);
 ```
 
-请求 ID 必须非空且在批处理内唯一。它们是输入请求与其结果之间的关联。结果不保证按输入顺序到达，因此在将结果与应用程序数据关联时，请使用 ID 而不是数组位置。
+请求 ID 必须非空且在批处理中唯一。它们是输入请求与其结果之间的关联。结果不保证按输入顺序到达，因此在将结果与应用程序数据关联时，请使用 ID 而不是数组位置。
 
-你可以在批处理级别通过 `providerOptions` 传递提供商特定的设置，也可以在单个请求上通过该请求的 `providerOptions` 传递。提供商支持的设置在两个级别之间可能有所不同。启动结果上的 `warnings` 属性包含有关不支持设置的警告。
+你可以在批处理级别使用 `providerOptions` 传递提供商特定的设置，也可以在单个请求上使用该请求的 `providerOptions`。提供商支持的设置在两个级别之间可能有所不同。启动结果上的 `warnings` 属性包含有关不受支持设置的警告。
 
 `startBatch` 返回的批处理引用是可序列化的。如果批处理将由另一个进程或在稍后时间完成，请在进程退出前持久化它。检索批处理时，请传递相同的提供商。AI SDK 使用该引用来确保不会通过不兼容的提供商读取批处理。
 
 ### 图像请求
 
-图像请求使用与 `generateImage` 相同的提示词和生成设置：`prompt`、`n`、`size`、`aspectRatio`、`seed` 和 `providerOptions`。对于支持图像编辑的提供商，提示词还可以包含输入图像和蒙版。提供商批处理端点可能仅支持这些选项的子集；不支持的选项会产生警告或错误。
+图像请求使用与 `generateImage` 相同的提示词和生成设置：`prompt`、`n`、`size`、`aspectRatio`、`seed` 和 `providerOptions`。对于支持图像编辑的提供商，提示词还可以包含输入图像和蒙版。提供商批处理端点可能仅支持这些选项的子集；不受支持的选项会产生警告或错误。
 
 ```ts
 import { google } from '@ai-sdk/google';
@@ -115,7 +115,7 @@ const batch = await startBatch({
 });
 ```
 
-成功的图像项具有 `images` 数组，包含 `GeneratedFile` 值，以及图像警告、响应元数据、使用情况和提供商元数据（当提供商提供时）。成功的文本项具有 `text` 和 `content` 属性。使用 `type` 属性来缩小混合结果的范围：
+成功的图像项具有一个由 `GeneratedFile` 值组成的 `images` 数组，以及图像警告、响应元数据、用量和提供商元数据（当提供商提供时）。成功的文本项具有 `text` 和 `content` 属性。使用 `type` 属性来收窄混合结果：
 
 ```ts
 for await (const item of getBatchResults({ provider: google, batch })) {
@@ -127,9 +127,9 @@ for await (const item of getBatchResults({ provider: google, batch })) {
 
 ## 批处理工具
 
-批处理文本请求支持客户端定义的工具和提供商定义的工具。工具定义会随每个包含它们的请求一起发送，因此模型可以为每个请求独立调用它们。
+批处理文本请求同时支持客户端定义的工具和提供商定义的工具。工具定义会随每个包含它们的请求一起发送，因此模型可以为每个请求独立调用它们。
 
-客户端定义的工具在批处理中仅作为定义存在。它们的 `execute` 函数永远不会被调用，AI SDK 在检索到工具调用后不会提交工具结果或启动后续生成。将相同的工具集传递给 `getBatchResults` 以验证和规范化返回的工具调用：
+客户端定义的工具在批处理中仅作为定义存在。它们的 `execute` 函数永远不会被调用，AI SDK 在检索到工具调用后也不会提交工具结果或启动后续生成。将相同的工具集传递给 `getBatchResults` 以验证和规范化返回的工具调用：
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -176,7 +176,7 @@ for await (const item of getBatchResults({
 }
 ```
 
-提供商定义的工具（例如网络搜索或代码执行）可以在该提供商的批处理 API 支持时在提供商端执行。它们的工具调用和结果会作为规范化的 `content` 部分返回。有关批处理中可用的工具和模型，请参阅提供商文档。
+提供商定义的工具（例如网络搜索或代码执行）在该提供商的批处理 API 支持时可以在提供商端执行。它们的工具调用和结果会作为规范化的 `content` 部分返回。有关批处理中可用的工具和模型，请参阅提供商文档。
 
 ## 检查批处理状态
 
@@ -209,9 +209,9 @@ if (status === 'failed') {
 - `completed` — 批处理已达到最终状态，可以检索结果。
 - `failed` — 批处理无法完成。`error` 属性可能包含更多详细信息。
 
-状态响应还可以包含 `requestCounts`、`createdAt`、`expiresAt`、`rawStatus` 和提供商元数据。`requestCounts` 报告提供商已知的总请求数、待处理数、已完成数和失败数。
+状态响应还可以包含 `requestCounts`、`createdAt`、`expiresAt`、`rawStatus` 和提供商元数据。`requestCounts` 报告提供商已知的总数、待处理、已完成和失败的请求数。
 
-对于支持 webhook 的提供商，将 `webhookUrl` 传递给 `startBatch`，以便在批处理达到最终状态时收到通知。Webhook 支持和负载因提供商而异。上面链接的提供商页面描述了它们的 webhook 行为；不支持 webhook 的提供商会返回不支持警告并在没有 webhook 的情况下继续。
+对于支持 webhook 的提供商，将 `webhookUrl` 传递给 `startBatch`，以便在批处理达到最终状态时收到通知。Webhook 支持和负载因提供商而异。上面链接的提供商页面描述了它们的 webhook 行为；不支持 webhook 的提供商会返回不受支持的警告并在没有 webhook 的情况下继续。
 
 ## 取消批处理
 
@@ -271,14 +271,14 @@ for await (const item of getBatchResults({ provider: anthropic, batch })) {
 成功的项包括：
 
 - `text` — 拼接后的文本内容。当结果不包含文本部分时，这可能是一个空字符串。
-- `content` — 有序的、规范化的内容部分，包括文本、推理、文件、来源、工具调用、工具结果，以及提供商支持时的提供商内容。
+- `content` — 有序的、规范化的内容部分，包括文本、推理、文件、来源、工具调用、工具结果以及提供商内容（在支持的情况下）。
 - `finishReason` 和可选的 `rawFinishReason`。
 - `usage` 和可选的 `response` 元数据。
 - 可选的 `providerMetadata`。
 
-失败、取消和过期的项包含其 `id` 和状态。失败的项包含 `error`；取消和过期的项也可能包含一个。一个请求失败并不一定意味着批处理中的每个请求都失败，因此请独立处理每一项。
+失败、已取消和已过期的项包含其 `id` 和状态。失败的项包含 `error`；已取消和已过期的项也可能包含一个。一个请求失败并不一定意味着批处理中的每个请求都失败，因此请独立处理每一项。
 
-批处理检索不会运行 AI SDK 工具循环或调用客户端定义的 `execute` 函数。提供商定义的工具可能作为批处理处理的一部分在提供商端执行。将结果内容和提供商元数据视为不受信任的模型输出，并避免不加区分地记录它们，因为它们可能包含敏感数据。
+批处理检索不会运行 AI SDK 工具循环，也不会调用客户端定义的 `execute` 函数。提供商定义的工具可能作为批处理处理的一部分在提供商端执行。将结果内容和提供商元数据视为不受信任的模型输出，并避免不加区分地记录它们，因为它们可能包含敏感数据。
 
 ## 请求控制
 

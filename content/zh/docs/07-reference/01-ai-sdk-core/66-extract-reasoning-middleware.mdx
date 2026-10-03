@@ -1,11 +1,11 @@
 ---
-title: extractReasoningMiddleware
-description: 从生成的文本中提取 XML 标签标记的推理部分的中间件
+title: "extractReasoningMiddleware"
+description: "使用可配置分隔符从生成文本中提取推理部分的中间件"
 ---
 
 # `extractReasoningMiddleware()`
 
-`extractReasoningMiddleware` 是一个中间件函数，用于从生成的文本中提取 XML 标签标记的推理部分，并将其与主文本内容分开暴露。当你希望将 AI 模型的推理过程与其最终输出分离时，此功能特别有用。
+`extractReasoningMiddleware` 是一个中间件函数，用于从生成文本中提取被分隔符包裹的推理部分，并将其与主文本内容分开暴露。当你希望将 AI 模型的推理过程与其最终输出分离时，这尤其有用。
 
 ```ts
 import { extractReasoningMiddleware } from 'ai';
@@ -16,53 +16,63 @@ const middleware = extractReasoningMiddleware({
 });
 ```
 
-## 导入
+对于使用非 XML 分隔符的模型，请传入字面量形式的 `opening` 和 `closing` 字符串。例如，Gemma 4 的原始思维通道输出在其起始分隔符中使用了换行符：
+
+```ts
+const middleware = extractReasoningMiddleware({
+  tagName: { opening: '<|channel>thought\n', closing: '<channel|>' },
+});
+```
+
+自定义分隔符必须非空。它们按字面量进行匹配，包括 `|` 等字符，并且可以跨越多个流式传输分块。空的推理块也会从答案文本中移除。当服务器在文本中返回这些标记时，请使用此中间件；已经单独返回推理内容的提供商则不需要它。
+
+## Import
 
 <Snippet
   text={`import { extractReasoningMiddleware } from "ai"`}
   prompt={false}
 />
 
-## API 签名
+## API Signature
 
-### 参数
+### Parameters
 
 <PropertiesTable
   content={[
     {
       name: 'tagName',
-      type: 'string',
+      type: 'string | { opening: string; closing: string }',
       isOptional: false,
       description:
-        '要从中提取推理内容的 XML 标签名称（不含尖括号）',
+        '不带尖括号的 XML 标签名（例如 "think" 对应 <think> / </think>），或一个包含非空字面量起始和结束分隔符的对象。',
     },
     {
       name: 'separator',
       type: 'string',
       isOptional: true,
       description:
-        '推理部分与文本部分之间使用的分隔符。默认为 "\\n"',
+        '用于分隔推理部分和文本部分的分隔符。默认为 "\\n"',
     },
     {
       name: 'startWithReasoning',
       type: 'boolean',
       isOptional: true,
       description:
-        '以推理令牌开头。当响应始终以推理开头且省略了初始标签时，设置为 true。默认为 false。',
+        '以推理 token 开头。当响应始终以推理开头且省略起始分隔符时，设置为 true。默认为 false。',
     },
   ]}
 />
 
-### 返回值
+### Returns
 
-返回一个中间件对象，该对象：
+返回一个中间件对象，它会：
 
-- 处理流式传输和非流式传输响应
-- 提取指定 XML 标签之间的内容作为推理内容
-- 从主文本中移除 XML 标签和推理内容
-- 向结果中添加一个 `reasoning` 属性，包含提取的内容
-- 使用指定的分隔符保持文本部分之间的适当分隔
+- 同时处理流式传输和非流式传输响应
+- 将指定分隔符之间的内容提取为推理内容
+- 从主文本中移除分隔符和推理内容
+- 将推理内容部分与文本内容部分分开输出
+- 使用指定的分隔符在文本部分之间保持正确的分隔
 
-### 类型参数
+### Type Parameters
 
 该中间件适用于流式传输响应的 `LanguageModelV4StreamPart` 类型。

@@ -7,13 +7,13 @@ description: "使用 Confident AI 追踪和监控你的 AI SDK 应用"
 
 [Confident AI](https://confident-ai.com/) 是一个 LLM 可观测性与评估平台，面向在开发和生产环境中构建可靠 AI 应用的团队。
 
-[`confident-trace`](https://github.com/confident-ai/confident-trace) 是 Confident AI 的 OpenTelemetry 原生追踪 SDK，无需更改你的调用即可追踪 AI SDK 应用——每次 `generateText` 和 `streamText` 调用都会在 [Observatory](https://www.confident-ai.com/docs/llm-tracing/introduction) 中显示为一条 trace，包含智能体、步骤、模型和工具 span，因此你可以看到应用选择了哪些工具、每次模型调用的成本，并对结果运行评估。
+[`confident-trace`](https://github.com/confident-ai/confident-trace) 是 Confident AI 的 OpenTelemetry 原生追踪 SDK，无需更改你的调用即可追踪 AI SDK 应用——每次 `generateText` 和 `streamText` 调用都会在 [Observatory](https://www.confident-ai.com/docs/llm-tracing/introduction) 中显示为一条 trace，包含智能体、步骤、模型和工具 span，让你可以看到应用选择了哪些工具、每次模型调用的成本，并对结果运行评估。
 
 Confident AI 与 AI SDK 集成，提供：
 
 - [Traces](https://www.confident-ai.com/docs/llm-tracing/introduction)，包含完整的智能体、步骤、模型和工具层级
 - 每次模型调用的[Token 用量与成本](https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost)
-- [Threads](https://www.confident-ai.com/docs/llm-tracing/features/threads)，将一次对话的多轮交互归为一个单元
+- [Threads](https://www.confident-ai.com/docs/llm-tracing/features/threads)，将一次对话的多轮归为一个单元
 - [在线评估](https://www.confident-ai.com/docs/llm-tracing/online-evals)，在 trace 被摄取时对其进行评分
 
 ## 设置
@@ -35,7 +35,7 @@ CONFIDENT_API_KEY="YOUR-PROJECT-API-KEY"
 ```
 
 <Note>
-  对于欧盟地区的用户，请设置
+  对于欧盟区域的用户，请设置
   `CONFIDENT_OTEL_ENDPOINT="https://eu.otel.confident-ai.com/v1/traces"`
 </Note>
 
@@ -82,7 +82,7 @@ try {
 
 你的 AI SDK 调用保持原样不变。每个 span 都带有 `Vercel AI SDK` 集成标签，嵌套在调用发生时处于活动状态的 span 之下，并捕获：
 
-- **智能体和步骤 span** —— 一个 span 对应整个 `generateText` 或 `streamText` 调用，多步骤运行中每个步骤再对应一个 span。
+- **智能体和步骤 span** —— 一个 span 对应整个 `generateText` 或 `streamText` 调用，多步骤运行中每个步骤再各有一个 span。
 - **模型调用** —— [LLM span](https://www.confident-ai.com/docs/llm-tracing/features/span-types#llm-spans)，包含模型名称、[token 用量](https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost)、结束原因以及规范化后的输入/输出消息，包括模型请求的工具调用。
 - **工具调用** —— [工具 span](https://www.confident-ai.com/docs/llm-tracing/features/span-types#tool-spans)，包含工具名称、其输入和结果，嵌套在运行它们的步骤之下。
 - **内容** —— 提示词和响应文本，默认捕获且无大小限制（除非你配置了限制），并受[内容策略](https://www.confident-ai.com/docs/llm-tracing/features/masking)约束。
@@ -93,7 +93,7 @@ try {
 </Note>
 
 <Note>
-  初始化一次，关闭一次。在长时间运行的服务器中，在启动时调用 `init()`，并在优雅关闭期间、进行中的请求和流完成之后调用 `runtime.shutdown()`——绝不要按请求调用。在无服务器函数中，改为在处理程序末尾、任何流完成后调用 `runtime.flush()`，以便在函数冻结之前导出 span。
+  初始化一次，关闭一次。在长时间运行的服务器中，在启动时调用 `init()`，并在优雅关闭期间、在途请求和流完成之后调用 `runtime.shutdown()`——绝不要按请求调用。在无服务器函数中，改为在处理程序末尾、任何流完成后调用 `runtime.flush()`，以便在函数冻结之前导出 span。
 </Note>
 
 ## 高级功能
@@ -107,7 +107,7 @@ try {
 以下是你可以配置的工作流：
 
 - **评估规则** —— 根据[指标集合](https://www.confident-ai.com/docs/metrics/metric-collections)评估传入的 trace。
-- **分类器** —— 按问题、情感或你定义的任何维度为 trace 打标签，以便之后对其进行分组或筛选。
+- **分类器** —— 按问题、情感或你定义的任何维度为 trace 打标签，以便之后对它们进行分组或筛选。
 - **队列摄取** —— 将生产 trace 路由到标注队列，供内部审核团队手动标注。
 - **数据集摄取** —— 将生产 trace 摄取到数据集中，作为测试用例复用，并迭代结果以持续改进。
 
@@ -141,7 +141,7 @@ const { text } = await traceContext(
 
 ### 将 Trace 分组为 Thread
 
-`confident-trace` 提供了 `turn()` 方法，你可以用它把两次连续的 AI SDK 调用归为一次 turn。在后续 turn 中复用相同的 thread ID，即可将它们归为一个 thread，你可以在 Confident AI 上查看和评估：
+`confident-trace` 提供了 `turn()` 方法，你可以用它把连续的 AI SDK 调用归为一轮。在后续轮次中复用同一个 thread ID，即可将它们归为一个 thread，你可以在 Confident AI 上查看和评估：
 
 ```ts
 import { generateText } from 'ai';
@@ -174,5 +174,5 @@ async function chat(prompt: string, threadId: string) {
 - [Confident AI 上的 AI 可观测性](https://www.confident-ai.com/docs/llm-tracing/introduction)
 - [完整的 AI SDK 集成指南](https://www.confident-ai.com/docs/integrations/third-party/vercel-ai-sdk)
 - [在线评估](https://www.confident-ai.com/docs/llm-tracing/online-evals)
-- [需要集成帮助？与真人交流。](https://www.confident-ai.com/book-a-demo)
+- [需要集成方面的帮助？与真人交流。](https://www.confident-ai.com/book-a-demo)
 - [AI SDK 遥测文档](/docs/ai-sdk-core/telemetry)

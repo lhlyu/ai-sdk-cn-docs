@@ -12,12 +12,28 @@ AI SDK 提供了 [`generateSpeech`](/docs/reference/ai-sdk-core/generate-speech)
 import { generateSpeech } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
-const audio = await generateSpeech({
+const result = await generateSpeech({
   model: openai.speech('gpt-4o-mini-tts'),
   text: 'Hello, world!',
   voice: 'alloy',
 });
 ```
+
+## 遥测
+
+`generateSpeech` 接受标准的 `telemetry` 选项。已注册的集成会收到开始、结束和错误事件，其中包含提供商和模型、源文本、生成的音频字节长度、媒体类型和格式、警告、响应元数据、提供商元数据，以及提供商报告时的用量信息。原始生成的音频不会包含在遥测事件中。
+
+```ts highlight="5-7"
+const result = await generateSpeech({
+  model: openai.speech('gpt-4o-mini-tts'),
+  text: 'Hello from the AI SDK!',
+  telemetry: {
+    functionId: 'speak-greeting',
+  },
+});
+```
+
+当文本或输出元数据不应被遥测集成记录时，请使用 `recordInputs: false` 或 `recordOutputs: false`。
 
 要访问生成的音频：
 
@@ -48,10 +64,9 @@ const audio = await generateSpeech({
 });
 ```
 
-### 中止信号与超时
+### 中止信号和超时
 
-`generateSpeech` 接受一个可选的 `abortSignal` 参数，类型为
-[`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
+`generateSpeech` 接受一个可选的 `abortSignal` 参数，类型为 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)，
 你可以使用它来中止语音生成过程或设置超时。
 
 ```ts highlight="7"
@@ -108,7 +123,7 @@ const warnings = audio.warnings;
 
 该错误会保留以下信息，以帮助你记录问题：
 
-- `responses`：关于语音模型响应的元数据，包括时间戳、模型和请求头。
+- `responses`：有关语音模型响应的元数据，包括时间戳、模型和请求头。
 - `cause`：错误的原因。你可以使用它进行更详细的错误处理。
 
 ```ts
@@ -137,6 +152,10 @@ try {
 | [OpenAI](/providers/ai-sdk-providers/openai#speech-models)               | `tts-1-hd`                          |
 | [OpenAI](/providers/ai-sdk-providers/openai#speech-models)               | `gpt-4o-mini-tts`                   |
 | [Mistral](/providers/ai-sdk-providers/mistral#speech-models)             | `voxtral-mini-tts-2603`             |
+| [Azure Speech](/providers/ai-sdk-providers/azure#mai-voice)              | `mai-voice-2.1-flash`               |
+| [Azure Speech](/providers/ai-sdk-providers/azure#mai-voice)              | `mai-voice-2.1`                     |
+| [Azure Speech](/providers/ai-sdk-providers/azure#mai-voice)              | `mai-voice-2-flash`                 |
+| [Azure Speech](/providers/ai-sdk-providers/azure#mai-voice)              | `mai-voice-2`                       |
 | [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#speech-models)       | `eleven_v3`                         |
 | [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#speech-models)       | `eleven_multilingual_v2`            |
 | [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#speech-models)       | `eleven_flash_v2_5`                 |
@@ -162,4 +181,4 @@ try {
 | [Fish Audio](/providers/ai-sdk-providers/fish-audio#speech-models)       | `s2-pro`                            |
 | [Fish Audio](/providers/ai-sdk-providers/fish-audio#speech-models)       | `s2.1-pro`                          |
 
-以上是 AI SDK 提供商支持的语音模型的一小部分。如需了解更多，请参阅各提供商的文档。
+以上是 AI SDK 提供商支持的语音模型的一小部分。如需了解更多，请参阅相应提供商的文档。

@@ -6,7 +6,7 @@ tags: ['streaming', 'caching', 'middleware']
 
 # 本地缓存中间件
 
-在开发 AI 应用时，你经常会发现在开发过程中反复进行相同的 API 调用。这会导致成本增加和开发周期变慢。缓存中间件允许你将响应存储在本地，并在提供相同输入时复用它们。
+在开发 AI 应用时，你经常会发现在开发过程中反复进行相同的 API 调用。这会导致成本增加和开发周期变慢。缓存中间件允许你在本地存储响应，并在提供相同输入时复用它们。
 
 这种方法在两种场景下特别有用：
 
@@ -15,15 +15,15 @@ tags: ['streaming', 'caching', 'middleware']
 
 ## 实现
 
-在此实现中，你创建一个 JSON 文件来存储响应。当发起请求时，首先检查是否已经见过这个完全相同的请求。如果见过，则立即返回缓存的响应（作为一次性生成或 token 分块）。如果没有见过，则触发生成，保存响应，然后返回。
+在此实现中，你创建一个 JSON 文件来存储响应。当发起请求时，你首先检查是否已经见过这个完全相同的请求。如果有，则立即返回缓存的响应（作为一次性生成或 token 块）。如果没有，则触发生成，保存响应，然后返回它。
 
 <Note>
-  请确保将本地缓存的路径添加到 `.gitignore` 中，以免将其提交。
+  确保将本地缓存的路径添加到你的 `.gitignore` 中，以免将其提交。
 </Note>
 
 ### 工作原理
 
-对于常规生成，你存储和检索完整的响应。而流式传输实现则会在每个 token 到达时捕获它，存储完整序列，并在缓存命中时使用 SDK 的 `simulateReadableStream` 工具以受控速度（默认分块间隔 10ms）重建逐 token 的流式传输体验。
+对于常规生成，你存储和检索完整的响应。而流式传输实现则会在每个 token 到达时捕获它，存储完整序列，并在缓存命中时使用 SDK 的 `simulateReadableStream` 工具以受控速度（默认块之间间隔 10ms）重新创建逐 token 的流式传输体验。
 
 这种方法让你两全其美：
 
@@ -76,7 +76,7 @@ const getCachedResult = (key: string | object) => {
       console.error('Failed to parse cache:', parseResult.error);
       return null;
     }
-    const cache = parseResult.value as Record<string, unknown>;
+    const cache = parseResult.value as Record<string, any>;
 
     const result = cache[cacheKey];
 
@@ -132,6 +132,7 @@ export const cacheMiddleware: LanguageModelV4Middleware = {
   specificationVersion: 'v4',
   wrapGenerate: async ({ doGenerate, params, model }) => {
     const cacheKey = JSON.stringify({
+      ...params,
       prompt: cleanPrompt(params.prompt),
       _function: 'generate',
       model: model.modelId,
@@ -160,6 +161,7 @@ export const cacheMiddleware: LanguageModelV4Middleware = {
 
   wrapStream: async ({ doStream, params, model }) => {
     const cacheKey = JSON.stringify({
+      ...params,
       prompt: cleanPrompt(params.prompt),
       _function: 'stream',
       model: model.modelId,
@@ -247,6 +249,6 @@ main().catch(console.error);
 
 使用此缓存中间件时，请记住以下几点：
 
-1. **仅限开发** - 此方法适用于本地开发，不适用于生产环境
+1. **仅用于开发** - 此方法适用于本地开发，不适用于生产环境
 2. **缓存失效** - 当你想要获取全新响应时，需要清除缓存（删除缓存文件）
 3. **多步骤流程** - 使用 `stopWhen` 时，请注意缓存发生在单个语言模型响应级别，而不是整个执行流程。这意味着虽然模型的生成被缓存了，但工具调用不会被缓存，每次生成时都会运行。

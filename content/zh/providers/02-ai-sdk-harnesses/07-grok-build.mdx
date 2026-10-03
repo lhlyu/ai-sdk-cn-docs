@@ -10,7 +10,7 @@ Grok Build harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent
 该适配器将 ACP 安装、会话、流式传输、工具和生命周期管理委托给 `@ai-sdk/harness-acp`。
 
 <Note>
-  Harness 包目前处于**实验阶段**。随着这一早期 API 的进一步完善，各版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验阶段**。由于这一早期 API 仍在进一步完善，各版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
@@ -32,18 +32,19 @@ import { createGrokBuild, grokBuild } from '@ai-sdk/harness-grok-build';
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { grokBuild } from '@ai-sdk/harness-grok-build';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { createVercelNetworkSandboxSession } from '@ai-sdk/sandbox-vercel';
 
 const agent = new HarnessAgent({
   harness: grokBuild,
   model: 'grok-build-0.1',
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
 });
 
-const session = await agent.createSession();
+const sandboxSession = await createVercelNetworkSandboxSession({
+  runtime: 'node24',
+  ports: [4000],
+  template: await agent.getSandboxTemplate(),
+});
+const session = await agent.createSession({ sandboxSession });
 
 let exitCode = 0;
 try {
@@ -62,12 +63,13 @@ try {
   console.error(err);
 } finally {
   await session.destroy();
+  await sandboxSession.destroy();
   process.exit(exitCode);
 }
 ```
 
-要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，以及
-[身份验证](#authentication)下列出的用于 Grok Build 的变量之一。
+要使用此智能体，请确保环境变量中包含用于 Vercel Sandbox 的 `VERCEL_OIDC_TOKEN`，
+以及 [身份验证](#authentication) 下列出的用于 Grok Build 的变量之一。
 
 ## 适配器设置
 
@@ -85,7 +87,7 @@ const harness = createGrokBuild({
 设置项：
 
 - `auth`：选择 `auto`、`direct` 或 `ai-gateway` 身份验证，或接受一个隔离的身份验证环境。默认值为 `auto`，当存在 Gateway 凭据时选择 AI Gateway，否则选择直接 xAI 身份验证。
-- `credentialForwarding`：可选的同步或异步回调，在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在宿主进程中能够发现、读取或以其他方式访问哪些凭据。
+- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在宿主进程中可以发现、读取或以其他方式访问哪些凭据。
 - `reasoningEffort`：支持推理的模型的推理强度。支持的值为 `none`、`minimal`、`low`、`medium`、`high`、`xhigh` 和 `max`。省略时，Grok Build 使用其配置的默认值。
 - `mcpServers`：以服务器名称为键的 MCP 服务器定义。
 - `port`：ACP 桥接端口覆盖。
@@ -102,7 +104,7 @@ Grok Build 支持基于 schema 的 [`HarnessAgent` 结构化输出](/docs/ai-sdk
 
 ## 身份验证
 
-默认情况下，身份验证从宿主环境解析。当沙箱支持附加式请求转换时，Grok Build 会收到一个占位符，适配器会将凭据注入到匹配的出站请求中。其他沙箱则保留直接凭据转发。
+默认情况下，身份验证从宿主环境解析。当沙箱支持增量请求转换时，Grok Build 会收到一个占位符，适配器会将凭据注入到匹配的出站请求中。其他沙箱则保留直接凭据转发。
 
 支持的环境变量：
 
@@ -133,24 +135,27 @@ const gatewayHarness = createGrokBuild({
 });
 ```
 
-提供的记录会替换用于身份验证发现的宿主环境，因此它也可以通过 `XAI_API_KEY` 选择直接身份验证。
+所提供的记录会替换宿主环境用于身份验证发现，因此它也可以通过 `XAI_API_KEY` 选择直接身份验证。
 
 ## 沙箱
 
-Grok Build 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少暴露一个端口的网络沙箱，例如 `@ai-sdk/sandbox-vercel`：
+Grok Build 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少暴露一个端口的网络沙箱，例如
+`@ai-sdk/sandbox-vercel`：
 
 ```ts
-const sandbox = createVercelSandbox({
+const sandboxSession = await createVercelNetworkSandboxSession({
   runtime: 'node24',
   ports: [4000],
+  template: await agent.getSandboxTemplate(),
 });
 ```
 
-首次会话需要网络出口，以便 ACP harness 能够在沙箱内安装 `@xai-official/grok@1.0.5`。
+首次会话需要网络出口，以便 ACP harness 可以在沙箱内安装
+`@xai-official/grok@1.0.5`。
 
 ## 内置工具
 
-适配器将这些 Grok Build 内置工具映射到常见的 harness 工具：
+适配器将这些 Grok Build 内置工具映射到通用 harness 工具：
 
 - `bash` (`run_terminal_command`)
 - `edit` (`search_replace`)
@@ -158,9 +163,12 @@ const sandbox = createVercelSandbox({
 - `webSearch` (`web_search`)
 - `write`
 
-其他 Grok Build 工具仍以其原生名称可用，包括 `read_file`、`list_dir`、`todo_write`、`spawn_subagent`、`monitor`、工作流和调度器工具，以及图像生成工具。
+其他 Grok Build 工具仍以其原生名称可用，包括
+`read_file`、`list_dir`、`todo_write`、`spawn_subagent`、`monitor`、工作流和
+调度器工具，以及图像生成工具。
 
-Grok Build 不会为其权限行为公布 ACP 会话模式。当 Grok 发送 ACP 权限请求时，ACP harness 会根据工具类型应用配置的 Harness `permissionMode`。Grok 可能会在内部处理安全的内置操作，而不发送权限请求。
+Grok Build 不会为其权限行为公布 ACP 会话模式。
+当 Grok 发送 ACP 权限请求时，ACP harness 会根据工具类型应用配置的 Harness `permissionMode`。Grok 可能会在内部处理安全的内置操作，而不发送权限请求。
 
 ## 已知限制
 
@@ -168,8 +176,8 @@ Grok Build 不会为其权限行为公布 ACP 会话模式。当 Grok 发送 ACP
 - ACP v1 没有可移植的手动压缩或回合中途引导 API。
 - ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 Grok 内置工具会抛出不支持的能力错误。
 - Grok Build 目前不支持内置工具审批请求。请在此适配器中使用 `permissionMode: 'allow-all'`。宿主执行的 AI SDK 工具审批仍然有效。
-- 宿主工具目录发生变化时，需要 Grok Build 刷新其 ACP MCP 工具列表。如果实现保留了过时的工具，该回合会显式失败。
-- 自定义 `headers` 不受原生支持，仅通过沙箱外部请求转换应用。因此，当提供不具备该能力的沙箱时，无法传递自定义 `headers`，它们会被忽略。
+- 宿主工具目录发生变化后，需要 Grok Build 刷新其 ACP MCP 工具列表。如果实现保留了过时的工具，该回合会显式失败。
+- 自定义 `headers` 不受原生支持，只能通过沙箱外部请求转换应用。因此，当提供不支持该能力的沙箱时，自定义 `headers` 无法传递并被忽略。
 
 ## 相关
 

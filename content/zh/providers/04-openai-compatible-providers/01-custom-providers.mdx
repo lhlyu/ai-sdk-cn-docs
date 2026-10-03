@@ -1,27 +1,27 @@
 ---
-title: 编写自定义提供商
-description: 利用 AI SDK OpenAI 兼容包，为兼容 OpenAI 的提供商创建自定义提供商包。
+title: "编写自定义提供商"
+description: "利用 AI SDK OpenAI Compatible 包，为兼容 OpenAI 的提供商创建自定义提供商包。"
 ---
 
 # 编写自定义提供商
 
-你可以创建自己的提供商包，利用 AI SDK 的 [OpenAI 兼容包](https://www.npmjs.com/package/@ai-sdk/openai-compatible)。将提供商包发布到 [npm](https://www.npmjs.com/) 可以让用户轻松使用该提供商的模型，并及时了解你可能做出的任何更改。以下是一个示例结构：
+你可以创建自己的提供商包，利用 AI SDK 的 [OpenAI Compatible 包](https://www.npmjs.com/package/@ai-sdk/openai-compatible)。将你的提供商包发布到 [npm](https://www.npmjs.com/)，可以让用户轻松使用提供商的模型，并及时了解你可能做出的任何更改。以下是一个示例结构：
 
 ### 文件结构
 
 ```bash
 packages/example/
 ├── src/
-│   ├── example-chat-settings.ts       # 聊天模型类型和设置
-│   ├── example-completion-settings.ts # 补全模型类型和设置
-│   ├── example-embedding-settings.ts  # 嵌入模型类型和设置
-│   ├── example-image-settings.ts      # 图像模型类型和设置
-│   ├── example-provider.ts            # 主提供商实现
-│   ├── example-provider.test.ts       # 提供商测试
-│   └── index.ts                       # 公共导出
+│   ├── example-chat-settings.ts       # Chat model types and settings
+│   ├── example-completion-settings.ts # Completion model types and settings
+│   ├── example-embedding-settings.ts  # Embedding model types and settings
+│   ├── example-image-settings.ts      # Image model types and settings
+│   ├── example-provider.ts            # Main provider implementation
+│   ├── example-provider.test.ts       # Provider tests
+│   └── index.ts                       # Public exports
 ├── package.json
 ├── tsconfig.json
-├── tsup.config.ts                     # 构建配置
+├── tsdown.config.ts                   # Build configuration
 └── README.md
 ```
 
@@ -41,7 +41,11 @@ export type ExampleChatModelId =
 2. **example-provider.ts** - 主提供商实现：
 
 ```ts
-import { LanguageModelV4, EmbeddingModelV4 } from '@ai-sdk/provider';
+import {
+  EmbeddingModelV4,
+  ImageModelV4,
+  LanguageModelV4,
+} from '@ai-sdk/provider';
 import {
   OpenAICompatibleChatLanguageModel,
   OpenAICompatibleCompletionLanguageModel,
@@ -53,35 +57,35 @@ import {
   loadApiKey,
   withoutTrailingSlash,
 } from '@ai-sdk/provider-utils';
-// 在此处导入你的模型 ID 和设置。
+// Import your model id and settings here.
 
 export interface ExampleProviderSettings {
   /**
-示例 API 密钥。
+Example API key.
 */
   apiKey?: string;
   /**
-API 调用的基础 URL。
+Base URL for the API calls.
 */
   baseURL?: string;
   /**
-要包含在请求中的自定义标头。
+Custom headers to include in the requests.
 */
   headers?: Record<string, string>;
   /**
-要包含在请求 URL 中的可选自定义 URL 查询参数。
+Optional custom url query parameters to include in request urls.
 */
   queryParams?: Record<string, string>;
   /**
-自定义 fetch 实现。你可以将其用作中间件来拦截请求，
-或提供自定义 fetch 实现以进行测试等。
+Custom fetch implementation. You can use it as a middleware to intercept requests,
+or to provide a custom fetch implementation for e.g. testing.
 */
   fetch?: FetchFunction;
 }
 
 export interface ExampleProvider {
   /**
-创建用于文本生成的模型。
+Creates a model for text generation.
 */
   (
     modelId: ExampleChatModelId,
@@ -89,7 +93,7 @@ export interface ExampleProvider {
   ): LanguageModelV4;
 
   /**
-创建用于文本生成的聊天模型。
+Creates a chat model for text generation.
 */
   chatModel(
     modelId: ExampleChatModelId,
@@ -97,7 +101,7 @@ export interface ExampleProvider {
   ): LanguageModelV4;
 
   /**
-创建用于文本生成的补全模型。
+Creates a completion model for text generation.
 */
   completionModel(
     modelId: ExampleCompletionModelId,
@@ -105,15 +109,15 @@ export interface ExampleProvider {
   ): LanguageModelV4;
 
   /**
-创建用于文本生成的文本嵌入模型。
+Creates a text embedding model for text generation.
 */
-  .embeddingModel(
+  embeddingModel(
     modelId: ExampleEmbeddingModelId,
     settings?: ExampleEmbeddingSettings,
-  ): EmbeddingModelV4<string>;
+  ): EmbeddingModelV4;
 
   /**
-创建用于图像生成的图像模型。
+Creates an image model for image generation.
 */
   imageModel(
     modelId: ExampleImageModelId,
@@ -131,7 +135,7 @@ export function createExample(
     Authorization: `Bearer ${loadApiKey({
       apiKey: options.apiKey,
       environmentVariableName: 'EXAMPLE_API_KEY',
-      description: '示例 API 密钥',
+      description: 'Example API key',
     })}`,
     ...options.headers,
   });
@@ -177,7 +181,7 @@ export function createExample(
       getCommonModelConfig('completion'),
     );
 
-  const create.embeddingModel = (
+  const createEmbeddingModel = (
     modelId: ExampleEmbeddingModelId,
     settings: ExampleEmbeddingSettings = {},
   ) =>
@@ -204,17 +208,17 @@ export function createExample(
 
   provider.completionModel = createCompletionModel;
   provider.chatModel = createChatModel;
-  provider.embeddingModel = create.embeddingModel;
+  provider.embeddingModel = createEmbeddingModel;
   provider.imageModel = createImageModel;
 
   return provider;
 }
 
-// 导出默认实例
+// Export default instance
 export const example = createExample();
 ```
 
-3. **index.ts** - 公共导出：
+3. **index.ts** - 公开导出：
 
 ```ts
 export { createExample, example } from './example-provider';
@@ -234,13 +238,13 @@ export type {
     "@ai-sdk/openai-compatible": "^0.0.7",
     "@ai-sdk/provider": "^1.0.2",
     "@ai-sdk/provider-utils": "^2.0.4",
-    // ...其他依赖
+    // ...additional dependencies
   },
-  // ...其他脚本和模块构建配置
+  // ...additional scripts and module build configuration
 }
 ```
 
-### 使用方法
+### 用法
 
 发布后，用户可以像这样使用你的提供商：
 
@@ -250,18 +254,18 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: example('example/chat-model-1'),
-  prompt: '你好，你怎么样？',
+  prompt: 'Hello, how are you?',
 });
 ```
 
-此结构提供了一个干净、类型安全的实现，它利用了 OpenAI 兼容包，同时保持了与其他 AI SDK 提供商使用方式的一致性。
+此结构提供了一个简洁、类型安全的实现，利用了 OpenAI Compatible 包，同时与其他 AI SDK 提供商的用法保持一致。
 
 ### 内部 API
 
-在开发提供商时，你可能需要使用 OpenAI 兼容包的一些内部 API。你可以从 `@ai-sdk/openai-compatible/internal` 包中导入它们，例如：
+在开发提供商时，你可能需要使用 OpenAI Compatible 包的一些内部 API。你可以从 `@ai-sdk/openai-compatible/internal` 包中导入它们，例如：
 
 ```ts
 import { convertToOpenAICompatibleChatMessages } from '@ai-sdk/openai-compatible/internal';
 ```
 
-你可以在 AI SDK [GitHub 仓库](https://github.com/vercel/ai/blob/main/packages/openai-compatible/src/internal/index.ts) 中查看最新的可用导出。
+你可以在 AI SDK [GitHub 仓库](https://github.com/vercel/ai/blob/main/packages/openai-compatible/src/internal/index.ts)中查看最新的可用导出。

@@ -1,0 +1,105 @@
+---
+title: "更便宜的推理"
+description: "在 AI SDK 中使用 Cheaper Inference OpenAI 兼容 API。"
+---
+
+# Cheaper Inference 提供商
+
+[Cheaper Inference](https://cheaperinference.com/) 是一个 API 网关，通过 OpenAI 兼容 API 提供对来自多个 AI 实验室的模型的访问。你可以通过 `@ai-sdk/openai-compatible` 模块，在 AI SDK 中使用其 Chat Completions 端点。
+
+## 设置
+
+安装 OpenAI Compatible 提供商：
+
+<InstallPackages packages="@ai-sdk/openai-compatible" />
+
+创建 Cheaper Inference API 密钥，并将其设置为服务端环境变量：
+
+```bash
+export CHEAPER_INFERENCE_API_KEY=your-api-key
+```
+
+有关创建 API 密钥的说明，请参阅 [Cheaper Inference 集成指南](https://cheaperinference.com/docs/integrations#framework-vercel)。
+
+## 提供商实例
+
+使用 `createOpenAICompatible` 创建 Cheaper Inference 提供商实例：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const cheaperInference = createOpenAICompatible({
+  name: 'cheaper-inference',
+  apiKey: process.env.CHEAPER_INFERENCE_API_KEY,
+  baseURL: 'https://api.cheaperinference.com/v1',
+});
+```
+
+`apiKey` 设置会将你的密钥作为 Bearer token 发送到 `Authorization` 请求头中。
+
+## 语言模型
+
+通过向提供商实例传入 Cheaper Inference 模型 ID 来创建语言模型：
+
+```ts
+const model = cheaperInference('gpt-5.4');
+```
+
+### 生成文本
+
+使用 `generateText` 通过模型生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const cheaperInference = createOpenAICompatible({
+  name: 'cheaper-inference',
+  apiKey: process.env.CHEAPER_INFERENCE_API_KEY,
+  baseURL: 'https://api.cheaperinference.com/v1',
+});
+
+const { text } = await generateText({
+  model: cheaperInference('gpt-5.4'),
+  prompt: 'Explain what an API gateway does in one sentence.',
+});
+
+console.log(text);
+```
+
+### 流式传输文本
+
+使用 `streamText` 在文本生成时进行流式传输：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { streamText } from 'ai';
+
+const cheaperInference = createOpenAICompatible({
+  name: 'cheaper-inference',
+  apiKey: process.env.CHEAPER_INFERENCE_API_KEY,
+  baseURL: 'https://api.cheaperinference.com/v1',
+});
+
+const result = streamText({
+  model: cheaperInference('gpt-5.4'),
+  prompt: 'Count from 1 to 5, separated by spaces.',
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+## 支持的模型与能力
+
+此集成使用 Cheaper Inference 的 OpenAI 兼容 Chat Completions 端点进行文本生成和流式传输。对工具、视觉以及其他模型特定功能的支持取决于所选模型。
+
+模型目录会随时间变化。使用需要身份验证的 [`GET /models`](https://api.cheaperinference.com/v1/models) 端点来查找当前的模型 ID、能力和定价。
+
+## 资源
+
+- [Cheaper Inference Vercel AI SDK 集成指南](https://cheaperinference.com/docs/integrations#framework-vercel)
+- [Cheaper Inference API 文档](https://cheaperinference.com/docs)
+- [Cheaper Inference 模型目录](https://cheaperinference.com/models)
+- [AI SDK OpenAI Compatible 提供商](/providers/openai-compatible-providers)

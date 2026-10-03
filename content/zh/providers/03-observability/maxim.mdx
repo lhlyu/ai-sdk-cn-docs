@@ -5,7 +5,7 @@ description: "使用 Maxim 评估与观测 LLM 应用"
 
 # Maxim 可观测性
 
-[Maxim AI](https://getmaxim.ai) 通过将传统软件最佳实践应用于非确定性 AI 工作流，简化了 AI 应用的开发与部署。我们的评估与可观测性工具帮助团队在 AI 应用生命周期中保持质量、可靠性和速度。Maxim 与 AI SDK 集成，提供：
+[Maxim AI](https://getmaxim.ai) 通过将传统软件最佳实践应用于非确定性的 AI 工作流，简化了 AI 应用的开发与部署。我们的评估与可观测性工具帮助团队在 AI 应用生命周期中保持质量、可靠性和速度。Maxim 与 AI SDK 集成，提供以下能力：
 
 - 自动可观测性 – 通过简单的包装器为 AI SDK 调用添加追踪、日志和元数据。
 
@@ -17,7 +17,7 @@ description: "使用 Maxim 评估与观测 LLM 应用"
 
 # 在 AI SDK 中设置 Maxim
 
-## 要求
+## 依赖要求
 
 ```
 "ai"
@@ -137,7 +137,7 @@ for await (const textPart of textStream) {
 
 ### **使用自定义元数据**
 
-```javascript
+```ts
 import { MaximVercelProviderMetadata } from '@maximai/maxim-js/vercel-ai-sdk';
 
 const response = await generateText({
@@ -159,10 +159,10 @@ const response = await generateText({
 
 **实体命名：**
 
-- `sessionName` - 覆盖默认会话名称
-- `traceName` - 覆盖默认追踪名称
-- `spanName` - 覆盖默认 span 名称
-- `generationName` - 覆盖默认 LLM 生成名称
+- `sessionName` - 覆盖默认的会话名称
+- `traceName` - 覆盖默认的追踪名称
+- `spanName` - 覆盖默认的 span 名称
+- `generationName` - 覆盖默认的 LLM 生成名称
 
 **实体标签：**
 
@@ -173,7 +173,7 @@ const response = await generateText({
 
 **ID 引用：**
 
-- `sessionId` - 将此追踪链接到现有会话
+- `sessionId` - 将此追踪关联到现有会话
 - `traceId` - 使用特定的追踪 ID
 - `spanId` - 使用特定的 span ID
 
@@ -181,10 +181,13 @@ const response = await generateText({
 
 ## 流式传输支持
 
-```javascript
+```ts
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { wrapMaximAISDKModel, MaximVercelProviderMetadata } from '@maximai/maxim-js/vercel-ai-sdk';
+import {
+  wrapMaximAISDKModel,
+  MaximVercelProviderMetadata,
+} from '@maximai/maxim-js/vercel-ai-sdk';
 
 const model = wrapMaximAISDKModel(openai('gpt-6-astra'), logger);
 
@@ -197,7 +200,7 @@ const { textStream } = await streamText({
       traceName: 'Story Generation',
       traceTags: {
         type: 'creative',
-        format: 'streaming'
+        format: 'streaming',
       },
     } as MaximVercelProviderMetadata,
   },
@@ -219,7 +222,7 @@ import { wrapMaximAISDKModel } from '@maximai/maxim-js/vercel-ai-sdk';
 // Wrap different provider models
 const openaiModel = wrapMaximAISDKModel(openai('gpt-6-astra'), logger);
 const anthropicModel = wrapMaximAISDKModel(
-  anthropic('claude-sonnet-5'),
+  anthropic('claude-sonnet-5-5'),
   logger,
 );
 const googleModel = wrapMaximAISDKModel(google('gemini-pro'), logger);
@@ -236,18 +239,21 @@ const responses = await Promise.all([
 
 ### **API 路由示例**
 
-```javascript
-// app/api/chat/route.js
+```ts
+// app/api/chat/route.ts
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { wrapMaximAISDKModel, MaximVercelProviderMetadata } from '@maximai/maxim-js/vercel-ai-sdk';
-import { Maxim } from "@maximai/maxim-js";
+import {
+  wrapMaximAISDKModel,
+  MaximVercelProviderMetadata,
+} from '@maximai/maxim-js/vercel-ai-sdk';
+import { Maxim } from '@maximai/maxim-js';
 
-const maxim = new Maxim({ apiKey });
+const maxim = new Maxim({ apiKey: process.env.MAXIM_API_KEY });
 const logger = await maxim.logger({ id: process.env.MAXIM_LOG_REPO_ID });
 const model = wrapMaximAISDKModel(openai('gpt-6-astra'), logger);
 
-export async function POST(req) {
+export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const result = await streamText({
@@ -259,7 +265,7 @@ export async function POST(req) {
         traceName: 'Chat API',
         traceTags: {
           endpoint: '/api/chat',
-          type: 'conversation'
+          type: 'conversation',
         },
       } as MaximVercelProviderMetadata,
     },
@@ -303,9 +309,9 @@ export default function Chat() {
 
 ## 了解更多
 
-- 为 Vercel AI SDK 设置 Maxim 追踪后，你可以探索 Maxim 平台的其他功能：
+- 为 Vercel AI SDK 设置 Maxim 追踪后，你可以探索 Maxim 平台的其他能力：
   - 提示词管理：跨环境和智能体对提示词进行版本控制、管理并动态应用。
-  - 评估：对追踪、生成和完整的智能体轨迹运行自动和手动评估。
+  - 评估：对追踪、生成结果和完整的智能体轨迹运行自动和手动评估。
   - 模拟：通过模拟多轮交互和工作流，在真实场景中测试智能体。
 
 如需了解更多详情，请查看 Vercel AI SDK 的 [Maxim 集成文档](https://www.getmaxim.ai/docs/sdk/typescript/integrations/vercel/vercel)。

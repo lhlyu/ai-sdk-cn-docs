@@ -1,15 +1,15 @@
 ---
 title: "MCP Apps"
-description: "了解如何连接 MCP Apps 并使用 AI SDK 渲染交互式工具 UI。"
+description: "了解如何连接到 MCP Apps 并使用 AI SDK 渲染交互式工具 UI。"
 ---
 
 # MCP Apps
 
-MCP Apps 通过交互式 UI 资源扩展了 [Model Context Protocol (MCP)](/docs/ai-sdk-core/mcp-tools) 工具。模型仍然调用普通的 MCP 工具，但工具可以指向一个 `ui://` 资源，其中包含由你的应用在沙箱化 iframe 中渲染的 HTML。
+MCP Apps 通过交互式 UI 资源扩展了 [Model Context Protocol (MCP)](/docs/ai-sdk-core/mcp-tools) 工具。模型仍然调用普通的 MCP 工具，但工具可以指向一个 `ui://` 资源，其中包含由你的应用在沙箱 iframe 中渲染的 HTML。
 
 AI SDK 提供了两个部分来构建 MCP Apps 宿主：
 
-- [`@ai-sdk/mcp`](/docs/reference/ai-sdk-core/mcp-apps) 辅助函数，用于声明对 MCP Apps 的支持、过滤模型可见和 app 可见的工具，以及读取 `ui://` 资源。
+- [`@ai-sdk/mcp`](/docs/reference/ai-sdk-core/mcp-apps) 辅助函数，用于声明 MCP Apps 支持、过滤模型可见和 app 可见的工具，以及读取 `ui://` 资源。
 - [`@ai-sdk/react`](/docs/reference/ai-sdk-ui/mcp-app-renderer) 组件，用于渲染 app iframe 并桥接 MCP Apps JSON-RPC 消息。
 
 ## 宿主流程
@@ -20,7 +20,7 @@ MCP Apps 宿主通常执行以下操作：
 1. 列出工具并按 MCP Apps 可见性拆分它们。
 1. 仅将模型可见的工具传递给 `streamText` 或 `generateText`。
 1. 当工具部分包含 MCP App 元数据时，读取 app 的 `ui://` 资源。
-1. 在沙箱化 iframe 中渲染 HTML 资源。
+1. 在沙箱 iframe 中渲染 HTML 资源。
 1. 将允许的 iframe 请求（例如 app 可见的 `tools/call`）代理回 MCP 服务器。
 
 ## 连接并支持 MCP Apps
@@ -86,15 +86,15 @@ export async function POST(req: Request) {
 }
 ```
 
-当模型调用由 app 支持的工具时，MCP 客户端会在工具 UI 部分保留 app 元数据。React 渲染器使用该元数据来判断某个工具部分是否具有 MCP App。
+当模型调用由 app 支持的工具时，MCP 客户端会在工具 UI 部分保留 app 元数据。React 渲染器使用该元数据来决定工具部分是否具有 MCP App。
 
 ## 读取 App 资源
 
 使用 `readMCPAppResource` 在将 app 资源发送到浏览器宿主之前读取并规范化它。
 
-```ts filename="app/api/mcp-app-host/route.ts"
+```ts filename="app/api/mcp-app-host/read-resource/route.ts"
 import { readMCPAppResource } from '@ai-sdk/mcp';
-import { createMCPAppsClient } from '../chat/mcp-client';
+import { createMCPAppsClient } from '../../chat/mcp-client';
 
 export async function POST(req: Request) {
   const requestUrl = new URL(req.url);
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
 }
 ```
 
-`readMCPAppResource` 会验证资源使用 `ui://` URI，要求 MCP Apps MIME 类型，解码文本或 base64 资源内容，并返回 HTML 以及渲染元数据（如 CSP 和权限）。
+`readMCPAppResource` 会验证资源使用 `ui://` URI，要求 MCP Apps MIME 类型，解码文本或 base64 资源内容，并返回 HTML 以及渲染元数据，例如 CSP 和权限。
 
 ## 代理 App 可见的工具调用
 
@@ -117,11 +117,11 @@ iframe 无法直接连接到你的 MCP 服务器。它向你的宿主发送 JSON
 
 对于由 app 发起的工具调用，在调用 MCP 服务器之前，请验证所请求的工具是 app 可见的。
 
-```ts filename="app/api/mcp-app-host/route.ts"
+```ts filename="app/api/mcp-app-host/call-tool/route.ts"
 import { splitMCPAppTools } from '@ai-sdk/mcp';
-import { createMCPAppsClient } from '../chat/mcp-client';
+import { createMCPAppsClient } from '../../chat/mcp-client';
 
-export async function callAppVisibleTool(req: Request) {
+export async function POST(req: Request) {
   const requestUrl = new URL(req.url);
   const { name, arguments: toolArguments } = await req.json();
   const client = await createMCPAppsClient(requestUrl.origin);
@@ -149,7 +149,7 @@ export async function callAppVisibleTool(req: Request) {
 }
 ```
 
-在生产环境中，在转发 iframe 请求之前，请添加你的应用所需的任何策略和用户批准检查。
+在生产环境中，在转发 iframe 请求之前，添加你的应用所需的任何策略和用户批准检查。
 
 ## 使用 React 渲染
 
@@ -241,11 +241,11 @@ export default function Chat() {
 }
 ```
 
-`experimental_MCPAppRenderer` 对普通工具不渲染任何内容。对于由 app 支持的工具，它会加载资源、创建沙箱桥接、向 iframe 发送工具输入和结果通知，并通过你的处理程序转发受支持的 app 请求。
+对于普通工具，`experimental_MCPAppRenderer` 会渲染提供的 `fallback`（如果未提供 fallback，则不渲染任何内容）。对于由 app 支持的工具，它会加载资源、创建沙箱桥接、向 iframe 发送工具输入和结果通知，并通过你的 handlers 转发受支持的 app 请求。
 
 ## 最佳实践
 
-- 将 MCP App HTML 视为不受信任的内容。在沙箱化 iframe 中渲染它，最好通过位于独立源上的沙箱代理路由。
+- 将 MCP App HTML 视为不受信任的内容。在沙箱 iframe 中渲染它，最好通过位于单独源上的沙箱代理路由。
 - 切勿将仅 app 可见的工具传递给模型。使用 `splitMCPAppTools` 并仅暴露 `modelVisible` 工具。
 - 在调用 `client.callTool` 之前，在服务器上验证每个 iframe 请求。
 - 按 `resourceUri` 缓存 app 资源，以便重复的工具调用不会重新获取相同的 HTML。

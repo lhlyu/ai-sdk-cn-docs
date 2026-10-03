@@ -10,8 +10,8 @@ tags: ['agents', 'next', 'tools']
 
 该应用将：
 
-- 从自然语言输入生成 SQL 查询
-- 用通俗易懂的英语解释查询组件
+- 根据自然语言输入生成 SQL 查询
+- 用通俗易懂的英语解释查询的各个组成部分
 - 创建图表以可视化查询结果
 
 你可以在 [natural-language-postgres.vercel.app](https://natural-language-postgres.vercel.app) 找到该项目的完整版本。
@@ -25,12 +25,12 @@ tags: ['agents', 'next', 'tools']
 - [OpenAI](https://openai.com)
 - [Zod](https://zod.dev)
 - [Postgres](https://www.postgresql.org/)，通过 [Vercel Marketplace 使用 Neon](https://vercel.com/marketplace/neon)
-- [shadcn-ui](https://ui.shadcn.com) 和 [TailwindCSS](https://tailwindcss.com) 用于样式
+- [shadcn-ui](https://ui.shadcn.com) 和 [TailwindCSS](https://tailwindcss.com) 用于样式设计
 - [Recharts](https://recharts.org) 用于数据可视化
 
 ### 克隆仓库
 
-为了让你专注于 AI 驱动的功能，而不是项目设置和配置，我们准备了一个包含数据库 schema 和一些组件的起始仓库。
+为了让你专注于 AI 驱动的功能，而不是项目设置和配置，我们准备了一个起始仓库，其中包含数据库 schema 和一些组件。
 
 克隆起始仓库并检出 `starter` 分支：
 
@@ -74,10 +74,10 @@ POSTGRES_DATABASE="..."
    - 将其保存为 `unicorns.csv` 放在项目根目录
 
 <Note>
-  完成本教程你需要一个 Postgres 数据库。如果你的本地机器上没有设置
+  完成本教程需要一个 Postgres 数据库。如果你的本地机器上没有设置
   Postgres，你可以：- 使用 Vercel 创建一个免费的 Postgres
   数据库（推荐 - 请参阅下面的说明）；或者 - 按照[本指南](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database)
-  在本地设置
+  在本地进行设置
 </Note>
 
 #### 使用 Vercel 设置 Postgres
@@ -86,18 +86,18 @@ POSTGRES_DATABASE="..."
 
 1. 前往 [Vercel.com](https://vercel.com) 并确保你已登录
 1. 导航到你的团队主页
-1. 点击 **Integrations** 标签
+1. 点击 **Integrations** 标签页
 1. 点击 **Browse Marketplace**
 1. 在侧边栏中查找 **Storage** 选项
-1. 选择 **Neon** 选项（推荐，但任何其他 PostgreSQL 数据库提供商都可以）
+1. 选择 **Neon** 选项（推荐，但任何其他 PostgreSQL 数据库提供商也可以）
 1. 点击 **Install**，然后在右上角再次点击 **Install**
 1. 在 "Get Started with Neon" 页面上，点击右侧的 **Create Database**
 1. 选择你的区域（例如 Washington, D.C., U.S. East）
 1. 关闭 **Auth**
 1. 点击 **Continue**
-1. 命名你的数据库（你可以使用默认名称或将其重命名为 "NaturalLanguagePostgres" 之类的名称）
+1. 为你的数据库命名（你可以使用默认名称，或将其重命名为类似 "NaturalLanguagePostgres"）
 1. 点击右下角的 **Create**
-1. 看到 "Database created successfully" 后，点击 **Done**
+1. 在看到 "Database created successfully" 后，点击 **Done**
 1. 你将被重定向到你的数据库实例
 1. 在 Quick Start 部分，点击 **Show secrets**
 1. 复制完整的 `DATABASE_URL` 环境变量，并用它来填充 `.env` 文件中的 Postgres 环境变量
@@ -108,15 +108,15 @@ Unicorn List 数据集包含以下关于独角兽初创公司（估值超过 10 
 
 - 公司名称
 - 估值
-- 加入日期（独角兽状态）
+- 加入日期（获得独角兽地位）
 - 国家
 - 城市
 - 行业
 - 精选投资者
 
-该数据集包含超过 1000 行数据和 7 列，为我们提供了大量结构化数据可供分析。这使其非常适合探索各种 SQL 查询，从而揭示有关独角兽初创公司生态系统的有趣见解。
+该数据集包含 7 列、超过 1000 行数据，为我们提供了大量可供分析的结构化数据。这使其非常适合探索各种 SQL 查询，从而揭示有关独角兽初创公司生态系统的有趣见解。
 
-5. 现在你已经下载了数据集并将其添加到项目中，你可以使用以下命令初始化数据库：
+5. 现在你已经下载了数据集并将其添加到项目中，可以使用以下命令初始化数据库：
 
 <Snippet text={['pnpm run seed']} />
 
@@ -134,10 +134,10 @@ Unicorn List 数据集包含以下关于独角兽初创公司（估值超过 10 
 
 ## 项目结构
 
-起始仓库已经包含了你需要的一切，包括：
+起始仓库已经包含了你所需的一切，包括：
 
 - 数据库填充脚本（`lib/seed.ts`）
-- 使用 shadcn/ui 构建的基本组件（`components/`）
+- 使用 shadcn/ui 构建的基础组件（`components/`）
 - 运行 SQL 查询的函数（`app/actions.ts`）
 - 数据库 schema 的类型定义（`lib/types.ts`）
 
@@ -167,13 +167,13 @@ Unicorn List 数据集包含以下关于独角兽初创公司（估值超过 10 
 
 提醒一下，该应用将有三个主要功能：
 
-1. 从自然语言生成 SQL 查询
-2. 从查询结果创建图表
+1. 根据自然语言生成 SQL 查询
+2. 根据查询结果创建图表
 3. 用通俗易懂的英语解释 SQL 查询
 
-对于这些功能中的每一个，你将通过 [Server Actions](https://react.dev/reference/rsc/server-actions) 使用 AI SDK 与 OpenAI 的 GPT-6 Astra 和 GPT-6 Luna 模型交互。Server Actions 是一个强大的 React Server Component 功能，允许你直接从前端代码调用服务器端函数。
+对于这些功能中的每一个，你都将通过 [Server Actions](https://react.dev/reference/rsc/server-actions) 使用 AI SDK 与 OpenAI 的 GPT-6 Astra 和 GPT-6 Luna 模型进行交互。Server Actions 是 React Server Component 的一项强大功能，允许你直接从前端代码调用服务端函数。
 
-让我们从从自然语言生成 SQL 查询开始。
+让我们从根据自然语言生成 SQL 查询开始。
 
 ## 生成 SQL 查询
 
@@ -342,16 +342,16 @@ const handleSubmit = async (suggestion?: string) => {
 /* ...rest of the file... */
 ```
 
-现在，当用户提交自然语言查询（例如 "how many unicorns are from San Francisco?"）时，该问题将被发送到你新创建的 Server Action。Server Action 将调用模型，传入你的系统提示词和用户查询，并以结构化格式返回生成的 SQL 查询。然后，此查询被传递给 `runGeneratedSQLQuery` action，以针对你的数据库运行查询。结果随后保存在本地状态中并显示给用户。
+现在，当用户提交自然语言查询（例如 "how many unicorns are from San Francisco?"）时，该问题将被发送到你新创建的 Server Action。Server Action 将调用模型，传入你的系统提示词和用户的查询，并以结构化格式返回生成的 SQL 查询。然后，此查询被传递给 `runGeneratedSQLQuery` action，以针对你的数据库运行该查询。结果随后保存在本地状态中并显示给用户。
 
 保存文件，确保开发服务器正在运行，然后在浏览器中访问 `localhost:3000`。尝试提交一个自然语言查询，查看生成的 SQL 查询和结果。你应该会看到在输入字段下方生成并显示了一个 SQL 查询。你还应该看到查询结果以表格形式显示在输入字段下方。
 
-如果 SQL 查询太长而无法在输入字段中显示，请尝试点击它以查看完整查询。你应该会在输入字段右侧看到一个带有问号图标的按钮。点击此按钮目前没有任何作用，但你将在下一步中为其添加 "explain query" 功能。
+如果 SQL 查询太长而无法在输入字段中显示，尝试点击它以查看完整查询。你应该会在输入字段右侧看到一个带有问号图标的按钮。点击此按钮目前不会执行任何操作，但你将在下一步中为其添加 "explain query" 功能。
 
 ## 解释 SQL 查询
 
 接下来，让我们添加用通俗易懂的英语解释 SQL 查询的功能。此功能通过将生成的 SQL 查询分解为逻辑部分，帮助用户理解其工作原理。
-与 SQL 查询生成一样，你需要一个提示词来在解释查询时指导模型。
+与 SQL 查询生成一样，你需要一个提示词来在解释查询时引导模型。
 
 让我们为解释查询功能编写一个提示词：
 
@@ -372,7 +372,7 @@ When you explain you must take a section of the query, and then explain it. Each
 If a section doesn't have any explanation, include it, but leave the explanation empty.
 ```
 
-与生成 SQL 查询的提示词一样，你向模型提供数据库的 schema。此外，你提供了一个示例，说明查询的每个部分可能是什么样子。这有助于模型理解查询的结构以及如何将其分解为逻辑部分。
+与生成 SQL 查询的提示词一样，你向模型提供数据库的 schema。此外，你提供一个示例，说明查询的每个部分可能是什么样子。这有助于模型理解查询的结构以及如何将其分解为逻辑部分。
 
 ### 创建 Server Action
 
@@ -483,9 +483,9 @@ const handleExplainQuery = async () => {
 现在，当用户点击解释按钮（问号图标）时，组件将：
 
 1. 显示加载状态
-2. 将活动 SQL 查询和用户的自然语言查询发送到你的 Server Action
+2. 将活动的 SQL 查询和用户的自然语言查询发送到你的 Server Action
 3. 模型将生成一个解释数组
-4. 解释将设置在组件状态中并在 UI 中渲染
+4. 解释将被设置到组件状态中并在 UI 中渲染
 
 提交一个新查询，然后点击解释按钮。将鼠标悬停在查询的不同元素上。你应该会看到每个部分的解释！
 
@@ -495,7 +495,7 @@ const handleExplainQuery = async () => {
 
 1. 将查询和数据都发送给模型，并要求它以可视化就绪的格式返回数据。虽然这提供了对可视化的完全控制，但它要求模型返回所有数据，这会显著增加延迟和成本。
 
-2. 将查询和数据发送给模型，并要求它生成一个图表配置（固定大小且 token 不多），以适当地映射你的数据。此配置指定如何可视化信息，同时传达来自你自然语言查询的见解。重要的是，这不需要模型返回完整数据集。
+2. 将查询和数据发送给模型，并要求它生成一个图表配置（固定大小且 token 不多），以适当地映射你的数据。此配置指定了如何可视化信息，同时传达来自你自然语言查询的见解。重要的是，这不需要模型返回完整数据集。
 
 由于你事先不知道 SQL 查询或数据形状，让我们使用第二种方法，根据查询结果和用户意图动态生成图表配置。
 
@@ -507,7 +507,7 @@ const handleExplainQuery = async () => {
 - 轴映射
 - 视觉样式
 
-让我们从在 `lib/types.ts` 中定义图表配置的 schema 开始：
+让我们首先在 `lib/types.ts` 中定义图表配置的 schema：
 
 ```ts filename="lib/types.ts"
 /* ...rest of the file... */
@@ -564,9 +564,9 @@ export type Config = z.infer<typeof configSchema>;
   将现有的 `export type Config = any;` 类型替换为新的类型。
 </Note>
 
-此 schema 广泛使用了 Zod 的 `.describe()` 函数，为模型提供关于你在图表配置中期望的每个键的额外上下文。这将帮助模型理解每个键的用途并生成更准确的结果。
+此 schema 大量使用了 Zod 的 `.describe()` 函数，为模型提供有关你在图表配置中期望的每个键的额外上下文。这将帮助模型理解每个键的用途并生成更准确的结果。
 
-这里要注意的另一个重要技巧是，你定义了 `description` 和 `takeaway` 字段。这些不仅对用户快速理解图表的含义以及他们应该从中获得什么有用，而且还迫使模型在尝试生成轴和列等配置属性之前，首先生成数据的描述。这将帮助模型生成更准确和相关的图表配置。
+这里需要注意的另一个重要技巧是，你定义了 `description` 和 `takeaway` 字段。这些字段不仅对用户快速理解图表的含义以及他们应该从中获得什么有用，而且还迫使模型在尝试生成轴和列等配置属性之前，首先生成数据的描述。这将帮助模型生成更准确和相关的图表配置。
 
 ### 创建 Server Action
 
@@ -574,7 +574,7 @@ export type Config = z.infer<typeof configSchema>;
 
 ```ts
 /* ...other imports... */
-import { Config, configSchema, explanationsSchema, Result } from '@/lib/types';
+import { Config, configSchema, Result } from '@/lib/types';
 
 /* ...rest of the file... */
 
@@ -629,7 +629,7 @@ export const generateChartConfig = async (
 
 ### 更新图表组件
 
-有了 action，你将希望在收到查询结果后自动触发它。这确保可视化在数据加载后几乎立即出现。
+有了 action，你会希望在收到查询结果后自动触发它。这确保可视化在数据加载后几乎立即出现。
 
 更新根页面（`app/page.tsx`）中的 `handleSubmit` 函数，以在运行查询后生成并设置图表配置：
 

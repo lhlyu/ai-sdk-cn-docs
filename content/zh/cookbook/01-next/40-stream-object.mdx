@@ -9,7 +9,7 @@ tags: ['next', 'streaming', 'structured data']
 对象生成有时可能需要很长时间才能完成，尤其是在生成大型 schema 时。
 在这种情况下，将对象生成过程实时流式传输到客户端会很有用。
 这允许客户端在对象生成过程中就显示生成的对象，
-而不是让用户等待生成完成后再显示结果。
+而不必让用户等待生成完成后再显示结果。
 
 <Browser>
   <ObjectGeneration
@@ -98,7 +98,7 @@ export default function Page() {
 
 ### 服务端
 
-在服务端，我们使用 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 配合 `Output.object` 来流式传输对象生成过程。
+在服务端，我们使用带有 `Output.object` 的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 来流式传输对象生成过程。
 
 ```typescript filename='app/api/use-object/route.ts'
 import { streamText, Output, createTextStreamResponse, toTextStream } from 'ai';
@@ -124,8 +124,8 @@ export async function POST(req: Request) {
 
 ## 加载状态与停止流式传输
 
-你可以使用 `loading` 状态在对象生成过程中显示加载指示器。
-你还可以使用 `stop` 函数来停止对象生成过程。
+你可以使用 `loading` 状态在对象生成期间显示加载指示器。
+你也可以使用 `stop` 函数来停止对象生成过程。
 
 ```tsx filename='app/page.tsx' highlight="7,16,21,24"
 'use client';
@@ -194,7 +194,7 @@ export const notificationSchema = z.object({
 'use client';
 
 import { useObject } from '@ai-sdk/react';
-import { notificationSchema } from '../api/use-object/schema';
+import { notificationSchema } from './api/use-object/schema';
 import z from 'zod';
 
 export default function Page() {
@@ -260,7 +260,7 @@ export async function POST(req: Request) {
 
 ## JSON 模式
 
-当你不想指定 schema 时，例如数据结构由动态用户请求定义时，可以使用 `Output.json()`。模型仍会尝试根据提示词生成 JSON 数据。
+当你不想指定 schema 时，例如当数据结构由动态用户请求定义时，可以使用 `Output.json()`。模型仍会尝试根据提示词生成 JSON 数据。
 
 ### 客户端
 

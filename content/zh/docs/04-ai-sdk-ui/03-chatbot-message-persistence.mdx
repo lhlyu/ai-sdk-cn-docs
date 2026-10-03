@@ -5,11 +5,11 @@ description: "了解如何在聊天机器人中存储和加载聊天消息。"
 
 # 聊天机器人消息持久化
 
-能够存储和加载聊天消息对大多数 AI 聊天机器人来说至关重要。
+对于大多数 AI 聊天机器人来说，能够存储和加载聊天消息至关重要。
 在本指南中，我们将展示如何使用 `useChat` 和 `streamText` 实现消息持久化。
 
 <Note>
-  本指南不涉及授权、错误处理或其他实际应用中的考虑事项。它旨在作为一个简单的示例，展示如何实现消息持久化。
+  本指南不涵盖授权、错误处理或其他实际应用中的考虑事项。它旨在作为一个简单的示例，展示如何实现消息持久化。
 </Note>
 
 ## 开始新聊天
@@ -71,7 +71,7 @@ function getChatFile(id: string): string {
 
 ## 加载现有聊天
 
-当用户带着聊天 ID 导航到聊天页面时，我们需要从存储中加载聊天消息。
+当用户使用聊天 ID 导航到聊天页面时，我们需要从存储中加载聊天消息。
 
 我们基于文件的聊天存储中的 `loadChat` 函数实现如下：
 
@@ -86,19 +86,25 @@ export async function loadChat(id: string): Promise<UIMessage[]> {
 // ... rest of the file
 ```
 
-## 在服务器端验证消息
+## 在服务器上验证消息
 
-在服务器端处理包含工具调用、自定义元数据或数据部分的消息时，你应该在将它们发送给模型之前使用 `validateUIMessages` 进行验证。
+在服务器上处理包含工具调用、自定义元数据或数据部分的消息时，你应该在将其发送给模型之前使用 `validateUIMessages` 进行验证。
+
+### 持久化流式传输中的工具输入
+
+`input-streaming` 工具部分在工具参数仍在到达时会包含 `rawInput`。
+请持久化完整的 UI 消息（包括此字段），以便恢复的流可以将后续的工具输入增量追加到中断前收到的确切文本上。
+AI SDK 会在每个增量到达时更新 `rawInput`，并在工具输入可用时将其移除。
 
 ### 迁移已弃用的工具 `rawInput`
 
-处于 `output-error` 状态的旧持久化工具部分可能包含 `rawInput`。
-该字段已弃用，将在下一个主版本中移除。请将
-工具参数存储在 `input` 中。当 `validateUIMessages`、`safeValidateUIMessages` 或 `convertToModelMessages`
+处于 `output-error` 状态的较旧的持久化工具部分可能包含 `rawInput`。
+此字段已弃用，并将在下一个主要版本中移除。请改为将工具参数存储在 `input` 中。
+当 `validateUIMessages`、`safeValidateUIMessages` 或 `convertToModelMessages`
 遇到已定义的 `rawInput` 值时，AI SDK 会发出弃用警告。UI 流处理在
-重建带有 `rawInput` 的静态 `output-error` 部分时也会发出警告。
+使用 `rawInput` 重建静态 `output-error` 部分时也会发出警告。
 
-当 `input` 为 `null` 或 `undefined` 时，通过将 `rawInput` 复制到 `input` 来迁移每个旧版部分，
+对于每个旧版部分，当 `input` 为 `null` 或 `undefined` 时，将 `rawInput` 复制到 `input`，
 然后移除 `rawInput`。这样可以保留当前的向后兼容转换行为：
 
 ```ts
@@ -125,7 +131,7 @@ const migratedParts = message.parts.map(part => {
 
 ### 使用工具进行验证
 
-当你的消息包含工具调用时，请根据工具定义对它们进行验证：
+当你的消息包含工具调用时，请根据工具定义对其进行验证：
 
 ```tsx filename="app/api/chat/route.ts" highlight="7-8,14-27,35-45"
 import {
@@ -139,7 +145,7 @@ import {
 } from 'ai';
 import { z } from 'zod';
 import { loadChat, saveChat } from '@util/chat-store';
-import { dataPartsSchema, metadataSchema } from '@util/schemas';
+import { dataSchemas, metadataSchema } from '@util/schemas';
 
 // Define your tools
 const tools = {
@@ -170,13 +176,13 @@ export async function POST(req: Request) {
   const validatedMessages = await validateUIMessages({
     messages,
     tools, // Ensures tool calls in messages match current schemas
-    dataPartsSchema,
+    dataSchemas,
     metadataSchema,
   });
 
   const result = streamText({
     model: 'openai/gpt-6-luna',
-    messages: convertToModelMessages(validatedMessages),
+    messages: await convertToModelMessages(validatedMessages),
     tools,
   });
 
@@ -310,18 +316,18 @@ export default function Chat({
 `useChat` 会将聊天 ID 和消息发送到后端。
 
 <Note>
-  `useChat` 的消息格式与 `ModelMessage` 格式不同。`useChat` 的消息格式
-  是为前端显示而设计的，包含诸如 `id` 和 `createdAt` 之类的
-  附加字段。我们建议以 `useChat` 的消息格式存储消息。
+  `useChat` 消息格式与 `ModelMessage` 格式不同。`useChat` 消息格式专为
+  前端显示而设计，包含诸如 `id` 和 `createdAt` 之类的附加字段。我们建议
+  以 `useChat` 消息格式存储消息。
 
-当从存储中加载包含工具、元数据或自定义数据部分的消息时，请在处理之前
+从存储中加载包含工具、元数据或自定义数据部分的消息时，请在处理之前
 使用 `validateUIMessages` 进行验证（参见上文的
 [验证部分](#validating-messages-on-the-server)）。
 
 </Note>
 
 消息的存储是在 `toUIMessageStream` 函数的 `onEnd` 回调中完成的。
-`onEnd` 接收包含新 AI 响应的完整消息，类型为 `UIMessage[]`。
+`onEnd` 会接收包含新 AI 响应的完整消息，类型为 `UIMessage[]`。
 
 ```tsx filename="app/api/chat/route.ts" highlight="12,17-25"
 import { openai } from '@ai-sdk/openai';
@@ -355,8 +361,8 @@ export async function POST(req: Request) {
 }
 ```
 
-消息的实际存储是在 `saveChat` 函数中完成的，在我们基于文件的聊天存储中
-其实现如下：
+消息的实际存储是在 `saveChat` 函数中完成的，在我们的
+基于文件的聊天存储中实现如下：
 
 ```tsx filename="util/chat-store.ts"
 import { UIMessage } from 'ai';
@@ -379,14 +385,15 @@ export async function saveChat({
 ## 消息 ID
 
 除了聊天 ID 之外，每条消息都有一个 ID。
-你可以使用此消息 ID 来例如操作单条消息。
+你可以使用此消息 ID 来操作单条消息。
 
 ### 客户端与服务器端 ID 生成
 
 默认情况下，消息 ID 在客户端生成：
 
 - 用户消息 ID 由客户端的 `useChat` Hook 生成
-- AI 响应消息 ID 由服务器端的 `streamText` 生成
+- AI 响应消息 ID 也由客户端的 `useChat` 生成，除非
+  服务器在流中发送了一个（见下文）
 
 对于没有持久化的应用，客户端 ID 生成完全可以正常工作。
 然而，**对于持久化，你应该使用在消息存储之前就稳定的 ID**，
@@ -399,7 +406,7 @@ export async function saveChat({
 
 ### 设置服务器端 ID 生成
 
-在实现持久化时，你有两种选择来为助手响应消息生成服务器端 ID：
+在实现持久化时，你有两种方式为助手响应消息生成服务器端 ID：
 
 1. **在 `toUIMessageStream` 中使用 `generateMessageId`**
 2. **使用 `createUIMessageStream` 在起始消息部分中设置 ID**
@@ -443,8 +450,9 @@ export async function POST(req: Request) {
 
 或者，你可以使用 `createUIMessageStream` 通过写入起始消息部分来控制消息 ID：
 
-```tsx filename="app/api/chat/route.ts" highlight="14-18,25-27"
+```tsx filename="app/api/chat/route.ts" highlight="15-19,26-28"
 import {
+  convertToModelMessages,
   generateId,
   streamText,
   createUIMessageStream,
@@ -456,7 +464,7 @@ export async function POST(req: Request) {
   const { messages, chatId } = await req.json();
 
   const stream = createUIMessageStream({
-    execute: ({ writer }) => {
+    execute: async ({ writer }) => {
       // Write start message part with custom ID
       writer.write({
         type: 'start',
@@ -502,10 +510,10 @@ const { ... } = useChat({
 
 ## 仅发送最后一条消息
 
-一旦实现了消息持久化，你可能希望只将最后一条消息发送到服务器。
+一旦你实现了消息持久化，你可能希望只将最后一条消息发送到服务器。
 这可以减少每次请求发送到服务器的数据量，并可能提升性能。
 
-为此，你可以为 transport 提供一个 `prepareSendMessagesRequest` 函数。
+为此，你可以向 transport 提供一个 `prepareSendMessagesRequest` 函数。
 该函数接收消息和聊天 ID，并返回要发送到服务器的请求体。
 
 ```tsx filename="ui/chat.tsx" highlight="7-12"
@@ -526,7 +534,7 @@ const {
 });
 ```
 
-在服务器端，你可以加载之前的消息，并将新消息追加到之前的消息中。如果你的消息包含工具、元数据或自定义数据部分，你应该对它们进行验证：
+在服务器上，你可以加载之前的消息，并将新消息追加到之前的消息中。如果你的消息包含工具、元数据或自定义数据部分，你应该对其进行验证：
 
 ```tsx filename="app/api/chat/route.ts" highlight="18-24"
 import {
@@ -556,7 +564,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     // ...
-    messages: convertToModelMessages(validatedMessages),
+    messages: await convertToModelMessages(validatedMessages),
   });
 
   return createUIMessageStreamResponse({
@@ -574,12 +582,12 @@ export async function POST(req: Request) {
 ## 处理客户端断开连接
 
 默认情况下，AI SDK 的 `streamText` 函数会对语言模型提供商使用背压，以防止
-消耗尚未被请求的 token。
+消耗尚未请求的 token。
 
-然而，这意味着当客户端断开连接时（例如关闭浏览器标签页或由于网络问题），
+然而，这意味着当客户端断开连接时（例如关闭浏览器标签页或因网络问题），
 来自 LLM 的流将被中止，对话可能会处于损坏状态。
 
-假设你已经有了[存储方案](#storing-messages)，你可以使用 `consumeStream` 方法在后端消费该流，
+假设你已经有了[存储方案](#storing-messages)，你可以使用 `consumeStream` 方法在后端消费流，
 然后像往常一样保存结果。
 `consumeStream` 有效地移除了背压，
 这意味着即使客户端已经断开连接，结果也会被存储。
@@ -627,4 +635,4 @@ export async function POST(req: Request) {
   流式传输尚未完成的情况。
 </Note>
 
-为了更稳健地处理断开连接，你可能需要添加断开连接时的可恢复性。查看 [聊天机器人恢复流](/docs/ai-sdk-ui/chatbot-resume-streams) 文档以了解更多信息。
+为了更稳健地处理断开连接，你可能希望在断开连接时添加可恢复性。查看 [聊天机器人恢复流](/docs/ai-sdk-ui/chatbot-resume-streams) 文档以了解更多信息。

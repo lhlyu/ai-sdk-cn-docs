@@ -5,22 +5,22 @@ description: "使用 ToolLoopAgent 创建智能体的完整指南。"
 
 # 构建智能体
 
-ToolLoopAgent 提供了一种结构化的方式，将 LLM 配置、工具和行为封装为可复用的组件。它为您处理智能体循环，允许 LLM 按顺序多次调用工具以完成复杂任务。定义一次智能体，即可在整个应用程序中使用。
+ToolLoopAgent 提供了一种结构化的方式，将 LLM 配置、工具和行为封装为可复用的组件。它为你处理智能体循环，允许 LLM 按顺序多次调用工具以完成复杂任务。只需定义一次智能体，即可在整个应用程序中重复使用。
 
-## 为什么使用 ToolLoopAgent 类？
+## 为什么要使用 ToolLoopAgent 类？
 
-在构建 AI 应用程序时，您通常需要：
+在构建 AI 应用程序时，你通常需要：
 
 - **复用配置** - 在应用程序的不同部分使用相同的模型设置、工具和提示词
 - **保持一致性** - 确保整个代码库中具有相同的行为和能力
 - **简化 API 路由** - 减少端点中的样板代码
 - **类型安全** - 为智能体的工具和输出获得完整的 TypeScript 支持
 
-ToolLoopAgent 类提供了一个单一位置来定义智能体的行为。
+ToolLoopAgent 类提供了一个统一的位置来定义智能体的行为。
 
 ## 创建智能体
 
-通过使用所需配置实例化 ToolLoopAgent 类来定义智能体：
+通过使用所需的配置实例化 ToolLoopAgent 类来定义智能体：
 
 ```ts
 import { ToolLoopAgent } from 'ai';
@@ -28,16 +28,16 @@ __PROVIDER_IMPORT__;
 
 const myAgent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: '你是一个乐于助人的助手。',
+  instructions: 'You are a helpful assistant.',
   tools: {
-    // 在此处添加您的工具
+    // Your tools here
   },
 });
 ```
 
 ## 配置选项
 
-ToolLoopAgent 接受与 `generateText` 和 `streamText` 相同的所有设置。配置：
+ToolLoopAgent 接受与 `generateText` 和 `streamText` 相同的所有设置。可配置：
 
 ### 模型和系统指令
 
@@ -47,7 +47,7 @@ __PROVIDER_IMPORT__;
 
 const agent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: '你是一位专业的软件工程师。',
+  instructions: 'You are an expert software engineer.',
 });
 ```
 
@@ -64,13 +64,13 @@ const codeAgent = new ToolLoopAgent({
   model: __MODEL__,
   tools: {
     runCode: tool({
-      description: '执行 Python 代码',
+      description: 'Execute Python code',
       inputSchema: z.object({
         code: z.string(),
       }),
       execute: async ({ code }) => {
-        // 执行代码并返回结果
-        return { output: '代码执行成功' };
+        // Execute code and return result
+        return { output: 'Code executed successfully' };
       },
     }),
   },
@@ -79,7 +79,7 @@ const codeAgent = new ToolLoopAgent({
 
 ### 上下文和智能体状态
 
-使用 `runtimeContext` 作为智能体的共享运行时状态。它贯穿智能体循环，并在 `prepareStep`、生命周期回调和最终结果中可用。如果工具需要服务器端值（如凭据、作用域权限或默认设置），请通过 `toolsContext` 传递它们，并使用工具的 `contextSchema` 声明它们。
+使用 `runtimeContext` 作为智能体的共享运行时状态。它会流经智能体循环，并可在 `prepareStep`、生命周期回调和最终结果中使用。如果工具需要服务器端值（如凭据、作用域权限或默认设置），请通过 `toolsContext` 传递它们，并使用工具的 `contextSchema` 声明它们。
 
 ```ts highlight="12-15,20-27,31-40"
 import { ToolLoopAgent, tool } from 'ai';
@@ -89,7 +89,7 @@ const agent = new ToolLoopAgent({
   model: __MODEL__,
   tools: {
     searchTickets: tool({
-      description: '搜索支持工单',
+      description: 'Search support tickets',
       inputSchema: z.object({
         query: z.string(),
       }),
@@ -111,7 +111,7 @@ const agent = new ToolLoopAgent({
 });
 
 const result = await agent.generate({
-  prompt: '查找此账户的未结账单工单。',
+  prompt: 'Find open billing tickets for this account.',
   runtimeContext: {
     requestId: 'req_abc',
     escalated: false,
@@ -125,21 +125,21 @@ const result = await agent.generate({
 });
 ```
 
-从 `prepareStep` 返回的模型调用设置（如 `temperature`）仅适用于当前步骤。后续步骤使用智能体的顶层设置，除非它们返回另一个覆盖值。
+从 `prepareStep` 返回的模型调用设置（如 `temperature`）仅适用于当前步骤。后续步骤将使用智能体的顶层设置，除非它们返回另一个覆盖值。
 
-有关完整模型（包括敏感上下文过滤以及每个上下文值的可用位置），请参阅 [运行时和工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
+有关完整模型，包括敏感上下文过滤以及每个上下文值的可用位置，请参阅[运行时和工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
 
 ### 使用实验性沙箱的工具
 
-当智能体工具需要命令或代码执行环境时，传递 `experimental_sandbox`。实验性沙箱是每次调用的值，因此请将其提供给 `generate()`、`stream()` 或调用智能体的智能体 UI 流辅助函数。
+当智能体工具需要命令或代码执行环境时，请传递 `experimental_sandbox`。实验性沙箱是每次调用的值，因此请将其提供给 `generate()`、`stream()` 或调用智能体的智能体 UI 流辅助函数。
 
 ```ts highlight="13,19-23,31"
 const agent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: '你是一个编码助手。需要时使用 shell 工具。',
+  instructions: 'You are a coding assistant. Use the shell tool when needed.',
   tools: {
     shell: tool({
-      description: '在实验性沙箱中执行 shell 命令。',
+      description: 'Execute shell commands in the experimental sandbox.',
       inputSchema: z.object({
         command: z.string(),
         workingDirectory: z.string().optional(),
@@ -149,7 +149,7 @@ const agent = new ToolLoopAgent({
         { abortSignal, experimental_sandbox },
       ) => {
         if (!experimental_sandbox) {
-          throw new Error('实验性沙箱不可用');
+          throw new Error('Experimental sandbox is not available');
         }
 
         return experimental_sandbox.run({
@@ -163,21 +163,21 @@ const agent = new ToolLoopAgent({
 });
 
 const result = await agent.generate({
-  prompt: `运行测试。\n\n沙箱：\n${experimental_sandbox.description}`,
+  prompt: `Run the tests.\n\nSandbox:\n${experimental_sandbox.description}`,
   experimental_sandbox,
 });
 ```
 
-实验性沙箱描述不会自动添加到模型提示词中。当模型需要了解环境详细信息时，请将其包含在提示词或指令中。传递实验性沙箱并不会对工具本身进行沙箱化；工具必须显式地将操作委托给实验性沙箱。有关更多详细信息，请参阅 [工具调用中的实验性沙箱部分](/docs/ai-sdk-core/tools-and-tool-calling#experimental-sandbox)。
+实验性沙箱描述不会自动添加到模型提示词中。当模型需要了解环境详细信息时，请将其包含在提示词或指令中。传递实验性沙箱并不会对工具本身进行沙箱化；工具必须显式地将操作委托给实验性沙箱。有关更多详细信息，请参阅[工具调用中的实验性沙箱部分](/docs/ai-sdk-core/tools-and-tool-calling#experimental-sandbox)。
 
-您还可以在工具执行前要求审批。在 `ToolLoopAgent` 上使用 `toolApproval` 配置审批：
+你还可以要求工具在执行前获得批准。使用 `toolApproval` 在 `ToolLoopAgent` 上配置批准：
 
 ```ts
 const agent = new ToolLoopAgent({
   model: __MODEL__,
   tools: {
     runCode: tool({
-      description: '执行 Python 代码',
+      description: 'Execute Python code',
       inputSchema: z.object({
         code: z.string(),
       }),
@@ -190,13 +190,13 @@ const agent = new ToolLoopAgent({
 });
 ```
 
-有关手动审批、自动批准和拒绝、动态策略函数以及 `useChat` 集成，请参阅 [工具审批](/docs/agents/tool-approvals)。
+有关手动批准、自动批准和拒绝、动态策略函数以及 `useChat` 集成，请参阅[工具批准](/docs/agents/tool-approvals)。
 
 ### 循环控制
 
-默认情况下，智能体运行 20 步（`stopWhen: isStepCount(20)`）。在每一步中，模型要么生成文本，要么调用工具。如果生成文本，智能体完成。如果调用工具，AI SDK 将执行该工具。
+默认情况下，智能体运行 20 个步骤（`stopWhen: isStepCount(20)`）。在每个步骤中，模型要么生成文本，要么调用工具。如果生成文本，智能体就完成了。如果调用工具，AI SDK 会执行该工具。
 
-您可以配置不同的 `stopWhen` 以允许更多步骤。每次工具执行后，智能体触发新的生成，模型可以在其中调用另一个工具或生成文本：
+你可以以不同方式配置 `stopWhen` 以允许更多步骤。每次工具执行后，智能体会触发一次新的生成，模型可以在其中调用另一个工具或生成文本：
 
 ```ts
 import { ToolLoopAgent, isStepCount } from 'ai';
@@ -204,18 +204,18 @@ __PROVIDER_IMPORT__;
 
 const agent = new ToolLoopAgent({
   model: __MODEL__,
-  stopWhen: isStepCount(50), // 将默认值从 20 增加到 50。
+  stopWhen: isStepCount(50), // Increase default from 20 to 50.
 });
 ```
 
-每一步代表一次生成（产生文本或工具调用）。循环持续直到：
+每个步骤代表一次生成（其结果是文本或工具调用）。循环会持续进行，直到：
 
-- 返回工具调用以外的完成原因，或
-- 调用的工具没有 execute 函数，或
-- 工具调用需要审批，或
+- 返回的完成原因不是 tool-calls，或
+- 被调用的工具没有 execute 函数，或
+- 工具调用需要批准，或
 - 满足停止条件
 
-您可以组合多个条件：
+你可以组合多个条件：
 
 ```ts
 import { ToolLoopAgent, isStepCount } from 'ai';
@@ -224,13 +224,13 @@ __PROVIDER_IMPORT__;
 const agent = new ToolLoopAgent({
   model: __MODEL__,
   stopWhen: [
-    isStepCount(20), // 最多 20 步
-    yourCustomCondition(), // 自定义停止逻辑
+    isStepCount(20), // Maximum 20 steps
+    yourCustomCondition(), // Custom logic for when to stop
   ],
 });
 ```
 
-了解更多关于 [循环控制和停止条件](/docs/agents/loop-control) 的信息。
+了解更多关于[循环控制和停止条件](/docs/agents/loop-control)的信息。
 
 ### 工具选择
 
@@ -243,15 +243,15 @@ __PROVIDER_IMPORT__;
 const agent = new ToolLoopAgent({
   model: __MODEL__,
   tools: {
-    // 在此处添加您的工具
+    // your tools here
   },
-  toolChoice: 'required', // 强制使用工具
-  // 或 toolChoice: 'none' 禁用工具
-  // 或 toolChoice: 'auto'（默认）让模型决定
+  toolChoice: 'required', // Force tool use
+  // or toolChoice: 'none' to disable tools
+  // or toolChoice: 'auto' (default) to let the model decide
 });
 ```
 
-您还可以强制使用特定工具：
+你也可以强制使用特定工具：
 
 ```ts
 import { ToolLoopAgent } from 'ai';
@@ -265,7 +265,7 @@ const agent = new ToolLoopAgent({
   },
   toolChoice: {
     type: 'tool',
-    toolName: 'weather', // 强制使用天气工具
+    toolName: 'weather', // Force the weather tool to be used
   },
 });
 ```
@@ -291,7 +291,7 @@ const analysisAgent = new ToolLoopAgent({
 });
 
 const { output } = await analysisAgent.generate({
-  prompt: '分析上个季度的客户反馈',
+  prompt: 'Analyze customer feedback from the last quarter',
 });
 ```
 
@@ -307,43 +307,43 @@ const { output } = await analysisAgent.generate({
 const agent = new ToolLoopAgent({
   model: __MODEL__,
   instructions:
-    '你是一位专业的数据分析师。你能从复杂数据中提供清晰的见解。',
+    'You are an expert data analyst. You provide clear insights from complex data.',
 });
 ```
 
-### 详细行为指令
+### 详细的行为指令
 
-提供智能体行为的具体指南：
+为智能体行为提供具体指南：
 
 ```ts
 const codeReviewAgent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: `你是一位进行代码审查的高级软件工程师。
+  instructions: `You are a senior software engineer conducting code reviews.
 
-  你的方法：
-  - 首先关注安全漏洞
-  - 识别性能瓶颈
-  - 建议提高可读性和可维护性的改进
-  - 在反馈中保持建设性和教育性
-  - 始终解释为什么某个问题存在以及如何修复`,
+  Your approach:
+  - Focus on security vulnerabilities first
+  - Identify performance bottlenecks
+  - Suggest improvements for readability and maintainability
+  - Be constructive and educational in your feedback
+  - Always explain why something is an issue and how to fix it`,
 });
 ```
 
 ### 约束智能体行为
 
-设置边界并确保一致的行为：
+设置边界并确保行为一致：
 
 ```ts
 const customerSupportAgent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: `你是电子商务平台的客户支持专员。
+  instructions: `You are a customer support specialist for an e-commerce platform.
 
-  规则：
-  - 未经检查政策，绝不承诺退款
-  - 始终保持同理心和专业性
-  - 如果你不知道某事，请说明并提供升级
-  - 保持回复简洁且可操作
-  - 绝不分享内部公司信息`,
+  Rules:
+  - Never make promises about refunds without checking the policy
+  - Always be empathetic and professional
+  - If you don't know something, say so and offer to escalate
+  - Keep responses concise and actionable
+  - Never share internal company information`,
   tools: {
     checkOrderStatus,
     lookupPolicy,
@@ -354,19 +354,19 @@ const customerSupportAgent = new ToolLoopAgent({
 
 ### 工具使用指令
 
-指导智能体应如何使用可用工具：
+指导智能体应如何使用可用的工具：
 
 ```ts
 const researchAgent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: `你是一个可以访问搜索和文档工具的研究助手。
+  instructions: `You are a research assistant with access to search and document tools.
 
-  研究时：
-  1. 始终从广泛搜索开始以了解主题
-  2. 使用文档分析获取详细信息
-  3. 在得出结论前交叉引用多个来源
-  4. 呈现信息时引用来源
-  5. 如果信息冲突，呈现两种观点`,
+  When researching:
+  1. Always start with a broad search to understand the topic
+  2. Use document analysis for detailed information
+  3. Cross-reference multiple sources before drawing conclusions
+  4. Cite your sources when presenting information
+  5. If information conflicts, present both viewpoints`,
   tools: {
     webSearch,
     analyzeDocument,
@@ -382,22 +382,22 @@ const researchAgent = new ToolLoopAgent({
 ```ts
 const technicalWriterAgent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: `你是一位技术文档撰写者。
+  instructions: `You are a technical documentation writer.
 
-  写作风格：
-  - 使用清晰、简单的语言
-  - 除非必要，避免使用行话
-  - 使用标题和项目符号组织信息
-  - 在相关处包含代码示例
-  - 使用第二人称（"你"而不是"用户"）
+  Writing style:
+  - Use clear, simple language
+  - Avoid jargon unless necessary
+  - Structure information with headers and bullet points
+  - Include code examples where relevant
+  - Write in second person ("you" instead of "the user")
 
-  始终使用 Markdown 格式回复。`,
+  Always format responses in Markdown.`,
 });
 ```
 
 ## 使用智能体
 
-定义后，您可以通过三种方式使用智能体：
+定义完成后，你可以通过三种方式使用智能体：
 
 ### 生成文本
 
@@ -405,7 +405,7 @@ const technicalWriterAgent = new ToolLoopAgent({
 
 ```ts
 const result = await myAgent.generate({
-  prompt: '天气怎么样？',
+  prompt: 'What is the weather like?',
 });
 
 console.log(result.text);
@@ -413,11 +413,11 @@ console.log(result.text);
 
 ### 流式传输文本
 
-使用 `stream()` 进行流式响应：
+使用 `stream()` 进行流式传输响应：
 
 ```ts
 const result = await myAgent.stream({
-  prompt: '给我讲个故事',
+  prompt: 'Tell me a story',
 });
 
 for await (const chunk of result.textStream) {
@@ -430,7 +430,7 @@ for await (const chunk of result.textStream) {
 使用 `createAgentUIStreamResponse()` 为客户端应用程序创建 API 响应：
 
 ```ts
-// 在您的 API 路由中（例如，app/api/chat/route.ts）
+// In your API route (e.g., app/api/chat/route.ts)
 import { createAgentUIStreamResponse } from 'ai';
 
 export async function POST(request: Request) {
@@ -445,27 +445,28 @@ export async function POST(request: Request) {
 
 ### 生命周期回调
 
-智能体提供生命周期回调，让您可以在智能体执行的不同阶段进行挂钩。这些对于日志记录、可观测性、调试和自定义遥测非常有用。
+智能体提供生命周期回调，让你可以挂钩到智能体执行的不同阶段。
+这些回调对于日志记录、可观测性、调试和自定义遥测非常有用。
 
 ```ts
 const result = await myAgent.generate({
-  prompt: '研究并总结最新的 AI 趋势',
+  prompt: 'Research and summarize the latest AI trends',
 
   onStart({ modelId }) {
-    console.log('智能体已启动', { modelId });
+    console.log('Agent started', { modelId });
   },
 
   onStepStart({ stepNumber, modelId }) {
-    console.log(`步骤 ${stepNumber} 开始`, { modelId });
+    console.log(`Step ${stepNumber} starting`, { modelId });
   },
 
   onToolExecutionStart({ toolCall }) {
-    console.log(`工具调用开始：${toolCall.toolName}`);
+    console.log(`Tool call starting: ${toolCall.toolName}`);
   },
 
   onToolExecutionEnd({ toolCall, toolExecutionMs, toolOutput }) {
     console.log(
-      `工具调用完成：${toolCall.toolName} (${toolExecutionMs}ms)`,
+      `Tool call finished: ${toolCall.toolName} (${toolExecutionMs}ms)`,
       {
         success: toolOutput.type === 'tool-result',
       },
@@ -473,7 +474,7 @@ const result = await myAgent.generate({
   },
 
   onStepEnd({ stepNumber, usage, performance, finishReason, toolCalls }) {
-    console.log(`步骤 ${stepNumber} 完成：`, {
+    console.log(`Step ${stepNumber} completed:`, {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       outputTokensPerSecond: performance.effectiveOutputTokensPerSecond,
@@ -484,7 +485,7 @@ const result = await myAgent.generate({
   },
 
   onEnd({ usage, steps }) {
-    console.log('智能体已完成：', {
+    console.log('Agent finished:', {
       totalSteps: steps.length,
       totalTokens: usage.totalTokens,
     });
@@ -495,32 +496,32 @@ const result = await myAgent.generate({
 可用的生命周期回调包括：
 
 - **`onStart`**：在智能体操作开始时调用一次，在任何 LLM 调用之前。接收模型信息、消息、设置和 `runtimeContext`。
-- **`onStepStart`**：在每一步（LLM 调用）之前调用。接收步骤编号、模型、正在发送的消息、工具和先前的步骤。
-- **`onToolExecutionStart`**：在工具的 `execute` 函数运行之前调用。接收工具调用对象、消息和 `toolContext`。
-- **`onToolExecutionEnd`**：在工具的 `execute` 函数完成或出错后立即调用。接收工具调用、`toolExecutionMs` 和 `toolOutput` 判别联合（`type: 'tool-result'` 带有 `output`，或 `type: 'tool-error'` 带有 `error`）。
-- **`onStepEnd`**：在每一步完成后调用。接收步骤结果，包括使用量、性能、完成原因和工具调用。
-- **`onEnd`**：在所有步骤完成且响应完整时调用。接收所有步骤结果、总使用量和 `runtimeContext`。
+- **`onStepStart`**：在每个步骤（LLM 调用）之前调用。接收步骤编号、模型、正在发送的消息、工具和之前的步骤。
+- **`onToolExecutionStart`**：在工具的 `execute` 函数运行之前立即调用。接收工具调用对象、消息和 `toolContext`。
+- **`onToolExecutionEnd`**：在工具的 `execute` 函数完成或出错后立即调用。接收工具调用、`toolExecutionMs` 和一个 `toolOutput` 可辨识联合（`type: 'tool-result'` 带 `output`，或 `type: 'tool-error'` 带 `error`）。
+- **`onStepEnd`**：在每个步骤完成后调用。接收步骤结果，包括用量、性能、完成原因和工具调用。
+- **`onEnd`**：当所有步骤完成且响应完成时调用。接收所有步骤结果、总用量和 `runtimeContext`。
 
-有关完整的事件数据参考，请参阅 [生命周期回调](/docs/ai-sdk-core/lifecycle-callbacks)。`ToolLoopAgent` 对 `onStart`、`onStepStart`、`onToolExecutionStart`、`onToolExecutionEnd`、`onStepEnd` 和 `onEnd` 使用相同的生成生命周期事件类型。
+有关完整的事件数据参考，请参阅[生命周期回调](/docs/ai-sdk-core/lifecycle-callbacks)。`ToolLoopAgent` 对 `onStart`、`onStepStart`、`onToolExecutionStart`、`onToolExecutionEnd`、`onStepEnd` 和 `onEnd` 使用相同的生成生命周期事件类型。
 
-#### 构造函数与方法回调
+#### 构造函数回调与方法调用回调
 
-所有生命周期回调都可以在构造函数中定义以进行智能体级跟踪，在 `generate()`/`stream()` 调用中定义以进行每次调用跟踪，或两者都定义。当两者都提供时，两者都会被调用（先调用构造函数，然后调用方法回调）：
+所有生命周期回调都可以在构造函数中定义（用于智能体范围的跟踪）、在 `generate()`/`stream()` 调用中定义（用于每次调用的跟踪），或两者都定义。当两者都提供时，两者都会被调用（先构造函数，然后方法回调）：
 
 ```ts
 const agent = new ToolLoopAgent({
   model: __MODEL__,
   onStepEnd: async ({ stepNumber, usage }) => {
-    // 智能体级日志记录
-    console.log(`智能体步骤 ${stepNumber}：`, usage.totalTokens);
+    // Agent-wide logging
+    console.log(`Agent step ${stepNumber}:`, usage.totalTokens);
   },
 });
 
-// 方法级回调在构造函数回调之后运行
+// Method-level callback runs after constructor callback
 const result = await agent.generate({
-  prompt: '你好',
+  prompt: 'Hello',
   onStepEnd: async ({ stepNumber, usage }) => {
-    // 每次调用跟踪（例如，用于计费）
+    // Per-call tracking (e.g., for billing)
     await trackUsage(stepNumber, usage);
   },
 });
@@ -528,20 +529,20 @@ const result = await agent.generate({
 
 ## 端到端类型安全
 
-您可以为智能体的 `UIMessage` 推断类型：
+你可以为智能体的 `UIMessage` 推断类型：
 
 ```ts
 import { ToolLoopAgent, InferAgentUIMessage } from 'ai';
 
 const myAgent = new ToolLoopAgent({
-  // ... 配置
+  // ... configuration
 });
 
-// 为 UI 组件或持久化推断 UIMessage 类型
+// Infer the UIMessage type for UI components or persistence
 export type MyAgentUIMessage = InferAgentUIMessage<typeof myAgent>;
 ```
 
-在客户端组件中使用 `useChat` 时使用此类型：
+在客户端组件中配合 `useChat` 使用此类型：
 
 ```tsx filename="components/chat.tsx"
 'use client';
@@ -551,14 +552,14 @@ import type { MyAgentUIMessage } from '@/agent/my-agent';
 
 export function Chat() {
   const { messages } = useChat<MyAgentUIMessage>();
-  // 为您的消息和工具提供完整的类型安全
+  // Full type safety for your messages and tools
 }
 ```
 
 ## 后续步骤
 
-既然您已经了解如何构建智能体，您可以：
+现在你已经了解了如何构建智能体，你可以：
 
-- 探索 [工作流模式](/docs/agents/workflows) 以了解使用核心函数的结构化模式
-- 了解 [循环控制](/docs/agents/loop-control) 以进行高级执行控制
-- 查看 [手动循环示例](/cookbook/node/manual-agent-loop) 以了解自定义工作流实现
+- 探索[工作流模式](/docs/agents/workflows)，了解使用核心函数的结构化模式
+- 了解[循环控制](/docs/agents/loop-control)，以实现高级执行控制
+- 查看[手动循环示例](/cookbook/node/manual-agent-loop)，了解自定义工作流实现

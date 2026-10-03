@@ -9,7 +9,7 @@ description: "用于创建类型未知的动态工具的辅助函数"
 
 - 没有 schema 的 MCP（Model Context Protocol）工具
 - 在运行时加载的用户自定义函数
-- 从外部源或数据库加载的工具
+- 从外部来源或数据库加载的工具
 - 基于用户输入动态生成的工具
 
 与常规的 `tool` 函数不同，`dynamicTool` 接受并返回 `unknown` 类型，允许你处理 schema 在运行时确定的工具。
@@ -20,7 +20,7 @@ import { z } from 'zod';
 
 export const customTool = dynamicTool({
   description: 'Execute a custom user-defined function',
-  inputSchema: z.object({}),
+  inputSchema: z.object({ action: z.string(), parameters: z.unknown() }),
   // input is typed as 'unknown'
   execute: async input => {
     const { action, parameters } = input as any;
@@ -176,11 +176,11 @@ export const customTool = dynamicTool({
 
 ### Returns
 
-一个 `Tool<unknown, unknown>`，其 `type: 'dynamic'`，可与 `generateText`、`streamText` 以及其他 AI SDK 函数一起使用。
+A `Tool<unknown, unknown>` with `type: 'dynamic'` that can be used with `generateText`, `streamText`, and other AI SDK functions.
 
 ## Type-Safe Usage
 
-在将动态工具与静态工具一起使用时，你需要检查 `dynamic` 标志以进行正确的类型收窄：
+When using dynamic tools alongside static tools, you need to check the `dynamic` flag for proper type narrowing:
 
 ```ts
 const result = await generateText({
@@ -216,7 +216,7 @@ const result = await generateText({
 
 ## Usage with `useChat`
 
-与 useChat（`UIMessage` 格式）一起使用时，动态工具会以 `dynamic-tool` 部分的形式出现：
+When used with useChat (`UIMessage` format), dynamic tools appear as `dynamic-tool` parts:
 
 ```tsx
 {

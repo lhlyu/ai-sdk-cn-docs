@@ -8,13 +8,13 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 
 在本指南中，你将构建一个能够理解图像和 PDF 的多模态智能体。
 
-多模态指的是智能体能够理解并以多种格式生成响应的能力。在本指南中，我们将重点关注图像和 PDF——现代语言模型可以原生处理的两种常见文档类型。
+多模态指的是智能体能够理解和生成多种格式的响应。在本指南中，我们将重点关注图像和 PDF——现代语言模型可以原生处理的两种常见文档类型。
 
 <Note>
   如需查看提供商及其多模态能力的完整列表，请访问[提供商文档](/providers/ai-sdk-providers)。
 </Note>
 
-我们将使用 OpenAI 的 GPT-6 Astra 构建这个智能体，但相同的代码也可以与其他提供商无缝协作——你只需更改一行代码即可在它们之间切换。
+我们将使用 OpenAI 的 GPT-6 Astra 构建这个智能体，但相同的代码可以无缝地与其他提供商配合使用——你只需更改一行代码即可在它们之间切换。
 
 ## 前提条件
 
@@ -25,9 +25,9 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 
 如果你还没有获得 Vercel AI Gateway API 密钥，可以在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)获取。
 
-## 创建你的应用
+## 创建你的应用程序
 
-首先创建一个新的 Next.js 应用。此命令将创建一个名为 `multi-modal-agent` 的新目录，并在其中设置一个基本的 Next.js 应用。
+首先创建一个新的 Next.js 应用程序。此命令将创建一个名为 `multi-modal-agent` 的新目录，并在其中设置一个基本的 Next.js 应用程序。
 
 <div className="mb-4">
   <Note>
@@ -46,13 +46,13 @@ tags: ['multi-modal', 'agent', 'images', 'pdf', 'vision', 'next']
 安装 `ai` 和 `@ai-sdk/react`，分别是 AI SDK 包和 AI SDK 的 React 包。
 
 <Note>
-  AI SDK 旨在成为一个与任何大型语言模型交互的统一接口。这意味着你只需一行代码即可更改模型和提供商！在[提供商](/providers)部分了解更多关于[可用提供商](/providers)和[构建自定义提供商](/providers/community-providers/custom-providers)的信息。
+  AI SDK 旨在成为与任何大型语言模型交互的统一接口。这意味着你只需一行代码即可更改模型和提供商！在[提供商](/providers)部分了解更多关于[可用提供商](/providers)和[构建自定义提供商](/providers/community-providers/custom-providers)的信息。
 </Note>
 <InstallPackages packages="ai @ai-sdk/react" />
 
 ### 配置你的 Vercel AI Gateway API 密钥
 
-在项目根目录创建一个 `.env.local` 文件，并添加你的 Vercel AI Gateway API 密钥。此密钥用于通过 Vercel AI Gateway 验证你的应用程序。
+在项目根目录创建一个 `.env.local` 文件，并添加你的 Vercel AI Gateway API 密钥。此密钥用于向 Vercel AI Gateway 验证你的应用程序。
 
 <Snippet text="touch .env.local" />
 
@@ -65,7 +65,7 @@ AI_GATEWAY_API_KEY=your_api_key_here
 将 `your_api_key_here` 替换为你实际的 Vercel AI Gateway API 密钥。
 
 <Note className="mb-4">
-  AI SDK 的 Vercel AI Gateway 提供商是默认的全局提供商，因此你可以在模型配置中使用简单的字符串来访问模型。如果你更愿意直接使用像 OpenAI 这样的特定提供商，请参阅[提供商管理](/docs/ai-sdk-core/provider-management)文档。
+  AI SDK 的 Vercel AI Gateway 提供商是默认的全局提供商，因此你可以在模型配置中使用简单的字符串来访问模型。如果你希望直接使用像 OpenAI 这样的特定提供商，请参阅[提供商管理](/docs/ai-sdk-core/provider-management)文档。
 </Note>
 
 ## 实现计划
@@ -74,7 +74,7 @@ AI_GATEWAY_API_KEY=your_api_key_here
 
 - 创建一个 Route Handler 来处理传入的聊天消息并生成响应。
 - 连接 UI 以显示聊天消息、提供用户输入并处理提交新消息。
-- 添加上传图像和 PDF 的功能，并将它们附加到聊天消息中。
+- 添加上传图像和 PDF 并将它们附加到聊天消息中的功能。
 
 ## 创建 Route Handler
 
@@ -108,13 +108,13 @@ export async function POST(req: Request) {
 
 让我们来看看这段代码中发生了什么：
 
-1. 定义一个异步 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和智能体之间的对话历史，并为智能体提供进行下一次生成所需的上下文。
-2. 使用 `convertToModelMessages` 将 UI 消息转换为模型消息，该函数将面向 UI 的消息格式转换为语言模型所期望的格式。
-3. 调用 [`streamText`](/docs/reference/ai-sdk-core/stream-text)，它是从 `ai` 包中导入的。此函数接受一个配置对象，其中包含 `model` 提供商和 `messages`（在第 2 步中转换）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。
-4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建一个流式响应对象。
+1. 定义一个异步 `POST` 请求处理程序，并从请求体中提取 `messages`。`messages` 变量包含你和智能体之间的对话历史，为智能体提供进行下一次生成所需的上下文。
+2. 使用 `convertToModelMessages` 将 UI 消息转换为模型消息，该函数将面向 UI 的消息格式转换为语言模型期望的格式。
+3. 调用 [`streamText`](/docs/reference/ai-sdk-core/stream-text)，它是从 `ai` 包导入的。此函数接受一个配置对象，其中包含 `model` 提供商和 `messages`（在第 2 步中转换）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。
+4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result-object)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建流式响应对象。
 5. 最后，将结果返回给客户端以流式传输响应。
 
-此 Route Handler 在 `/api/chat` 创建了一个 POST 请求端点。
+此 Route Handler 在 `/api/chat` 创建一个 POST 请求端点。
 
 ## 连接 UI
 
@@ -179,16 +179,16 @@ export default function Chat() {
   确保在文件顶部添加 `"use client"` 指令。这允许你使用 JavaScript 添加交互性。
 </Note>
 
-此页面使用了 `useChat` Hook，并通过 `DefaultChatTransport` 配置以指定 API 端点。`useChat` Hook 提供了多个实用函数和状态变量：
+此页面使用 `useChat` Hook，并配置 `DefaultChatTransport` 来指定 API 端点。`useChat` Hook 提供多个实用函数和状态变量：
 
 - `messages` - 当前的聊天消息（一个包含 `id`、`role` 和 `parts` 属性的对象数组）。
 - `sendMessage` - 向 AI 发送新消息的函数。
-- 每条消息都包含一个 `parts` 数组，其中可以包含文本、图像、PDF 和其他内容类型。
-- 文件在发送前会被转换为 data URL，以保持跨不同环境的兼容性。
+- 每条消息包含一个 `parts` 数组，可以包括文本、图像、PDF 和其他内容类型。
+- 文件在发送前会转换为数据 URL，以保持跨不同环境的兼容性。
 
 ## 添加文件上传
 
-为了让你的智能体具备多模态能力，让我们添加上传图像和 PDF 并将其发送到模型的功能。在 v5 中，文件作为消息的 `parts` 数组的一部分发送。文件在发送到服务器之前会使用 FileReader API 转换为 data URL。
+为了让你的智能体具备多模态能力，让我们添加上传并向模型发送图像和 PDF 的功能。在 v5 中，文件作为消息的 `parts` 数组的一部分发送。文件在发送到服务器之前使用 FileReader API 转换为数据 URL。
 
 使用以下代码更新你的根页面（`app/page.tsx`）：
 
@@ -320,22 +320,22 @@ export default function Chat() {
 
 在这段代码中，你：
 
-1. 添加了一个辅助函数 `convertFilesToDataURLs`，用于将上传的文件转换为 data URL。
+1. 添加一个辅助函数 `convertFilesToDataURLs`，将上传的文件转换为数据 URL。
 1. 创建状态来保存输入文本、文件以及文件输入字段的 ref。
-1. 使用 `DefaultChatTransport` 配置 `useChat` 以指定 API 端点。
+1. 使用 `DefaultChatTransport` 配置 `useChat` 来指定 API 端点。
 1. 使用 `parts` 数组结构显示消息，适当地渲染文本、图像和 PDF。
 1. 更新 `onSubmit` 函数，使用 `sendMessage` 函数发送消息，包括文本和文件部分。
-1. 向表单添加一个文件输入字段，包括一个 `onChange` 处理程序来处理更新文件状态。
+1. 向表单添加文件输入字段，包括一个 `onChange` 处理程序来处理更新文件状态。
 
-## 运行你的应用
+## 运行你的应用程序
 
-至此，你已经构建了多模态智能体所需的一切！要启动你的应用，请使用以下命令：
+至此，你已经构建了多模态智能体所需的一切！要启动你的应用程序，请使用以下命令：
 
 <Snippet text="pnpm run dev" />
 
 前往浏览器并打开 http://localhost:3000。你应该会看到一个输入字段和一个上传文件的按钮。
 
-尝试上传一张图像或 PDF，并就其向模型提问。观察模型的响应如何流式传输回给你！
+尝试上传一张图像或 PDF，并就它向模型提问。观察模型的响应如何流式传输回给你！
 
 ## 使用其他提供商
 
@@ -344,7 +344,7 @@ export default function Chat() {
 ```tsx filename="app/api/chat/route.ts"
 // Using Anthropic
 const result = streamText({
-  model: 'anthropic/claude-sonnet-5',
+  model: 'anthropic/claude-sonnet-5.5',
   messages: await convertToModelMessages(messages),
 });
 
@@ -358,9 +358,9 @@ const result = streamText({
 安装提供商包（`@ai-sdk/anthropic` 或 `@ai-sdk/google`）并更新 `.env.local` 中的 API 密钥。其余代码保持不变。
 
 <Note>
-  不同的提供商可能有不同的文件大小限制和性能特征。请查看[提供商文档](/providers/ai-sdk-providers)了解具体细节。
+  不同的提供商可能有不同的文件大小限制和性能特征。查看[提供商文档](/providers/ai-sdk-providers)了解具体细节。
 </Note>
 
 ## 下一步是什么？
 
-你已经使用 AI SDK 构建了一个多模态 AI 智能体！通过探索[工具调用](/docs/ai-sdk-core/tools-and-tool-calling)来进一步实验和扩展此应用的功能。
+你已经使用 AI SDK 构建了一个多模态 AI 智能体！通过探索[工具调用](/docs/ai-sdk-core/tools-and-tool-calling)来进一步实验和扩展此应用程序的功能。

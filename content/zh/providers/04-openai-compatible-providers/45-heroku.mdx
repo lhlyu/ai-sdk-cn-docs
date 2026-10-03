@@ -1,26 +1,27 @@
 ---
 title: "Heroku"
-description: "使用与 AI SDK 兼容的 Heroku OpenAI API。"
+description: "在 AI SDK 中使用 Heroku 的 OpenAI 兼容 API。"
 ---
 
 # Heroku 提供商
 
-[Heroku](https://heroku.com/) 是一个云平台，允许您部署和运行应用程序，包括兼容 OpenAI API 的 AI 模型。
-您可以部署兼容 OpenAI API 的模型，并将其与 AI SDK 一起使用。
+[Heroku](https://heroku.com/) 是一个云平台，允许你部署和运行应用程序，包括兼容 OpenAI API 的 AI 模型。
+你可以部署兼容 OpenAI API 的模型，并将它们与 AI SDK 一起使用。
 
 ## 设置
 
-Heroku 提供商可通过 `@ai-sdk/openai-compatible` 模块获得，因为它与 OpenAI API 兼容。
-您可以通过以下方式安装：
+Heroku 提供商通过 `@ai-sdk/openai-compatible` 模块提供，因为它与 OpenAI API 兼容。
+你可以使用以下命令安装
 
 <InstallPackages packages="@ai-sdk/openai-compatible" />
 
 ### Heroku 设置
 
-1. 在 Heroku 中创建一个测试应用：
+1. 在 Heroku 中创建一个测试应用，将 `your-app-name` 替换为唯一的应用名称：
 
 ```bash
-heroku create
+export APP_NAME=your-app-name
+heroku create $APP_NAME
 ```
 
 2. 使用 claude-3-5-haiku 进行推理：
@@ -39,7 +40,7 @@ export INFERENCE_URL=$(heroku config:get INFERENCE_URL -a $APP_NAME)
 
 ## 提供商实例
 
-要使用 Heroku，您可以使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建自定义提供商实例：
+要使用 Heroku，你可以使用 `@ai-sdk/openai-compatible` 中的 `createOpenAICompatible` 函数创建一个自定义提供商实例：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -51,12 +52,12 @@ const heroku = createOpenAICompatible({
 });
 ```
 
-请确保在环境变量中设置了 `INFERENCE_KEY`、`INFERENCE_MODEL_ID` 和 `INFERENCE_URL`。
+请确保在你的环境变量中设置了 `INFERENCE_KEY`、`INFERENCE_MODEL_ID` 和 `INFERENCE_URL`。
 
 ## 语言模型
 
-您可以使用提供商实例创建 Heroku 模型。
-第一个参数是提供的模型名称，例如 `claude-3-5-haiku`。
+你可以使用提供商实例创建 Heroku 模型。
+第一个参数是所服务的模型名称，例如 `claude-3-5-haiku`。
 
 ```ts
 const model = heroku('claude-3-5-haiku');
@@ -64,7 +65,7 @@ const model = heroku('claude-3-5-haiku');
 
 ### 示例
 
-您可以使用 Heroku 语言模型通过 `generateText` 函数生成文本：
+你可以使用 Heroku 语言模型通过 `generateText` 函数生成文本：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -78,13 +79,13 @@ const heroku = createOpenAICompatible({
 
 const { text } = await generateText({
   model: heroku('claude-3-5-haiku'),
-  prompt: '用一句话介绍一下你自己',
+  prompt: 'Tell me about yourself in one sentence',
 });
 
 console.log(text);
 ```
 
-Heroku 语言模型还可以通过 `streamText` 函数以流式传输方式生成文本：
+Heroku 语言模型也可以通过 `streamText` 函数以流式传输方式生成文本：
 
 ```ts
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
@@ -98,7 +99,7 @@ const heroku = createOpenAICompatible({
 
 const result = streamText({
   model: heroku('claude-3-5-haiku'),
-  prompt: '用一句话介绍一下你自己',
+  prompt: 'Tell me about yourself in one sentence',
 });
 
 for await (const message of result.textStream) {
@@ -106,4 +107,4 @@ for await (const message of result.textStream) {
 }
 ```
 
-Heroku 语言模型还支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据。
+Heroku 语言模型还支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据。

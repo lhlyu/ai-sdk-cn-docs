@@ -1,11 +1,11 @@
 ---
 title: "pipeUIMessageStreamToResponse"
-description: "学习使用 pipeUIMessageStreamToResponse 辅助函数将流式数据管道传输到 ServerResponse 对象。"
+description: "了解如何使用 pipeUIMessageStreamToResponse 辅助函数将流式数据传输到 ServerResponse 对象。"
 ---
 
 # `pipeUIMessageStreamToResponse`
 
-`pipeUIMessageStreamToResponse` 函数将流式数据管道传输到 Node.js ServerResponse 对象（参见[流式数据](/docs/ai-sdk-ui/streaming-data)）。
+`pipeUIMessageStreamToResponse` 函数将流式数据传输到 Node.js 的 ServerResponse 对象（参见[流式传输数据](/docs/ai-sdk-ui/streaming-data)）。
 
 ## 导入
 
@@ -26,8 +26,8 @@ await pipeUIMessageStreamToResponse({
   },
   stream: myUIMessageStream,
   consumeSseStream: ({ stream }) => {
-    // 可选：独立消费 SSE 流
-    console.log('正在消费 SSE 流:', stream);
+    // Optional: consume the SSE stream independently
+    console.log('Consuming SSE stream:', stream);
   },
 });
 ```
@@ -41,12 +41,12 @@ await pipeUIMessageStreamToResponse({
     {
       name: 'response',
       type: 'ServerResponse',
-      description: '用于管道传输数据的 Node.js ServerResponse 对象。',
+      description: '要传输数据的 Node.js ServerResponse 对象。',
     },
     {
       name: 'stream',
       type: 'ReadableStream<UIMessageChunk>',
-      description: '要管道传输到响应的 UI 消息流。',
+      description: '要传输到响应的 UI 消息流。',
     },
     {
       name: 'status',
@@ -64,18 +64,25 @@ await pipeUIMessageStreamToResponse({
       name: 'headers',
       type: 'Headers | Record<string, string>',
       isOptional: true,
-      description: '响应的附加标头。',
+      description: '响应的附加请求头。',
+    },
+    {
+      name: 'keepAliveMs',
+      type: 'number',
+      isOptional: true,
+      description:
+        '发送 SSE keep-alive 注释的间隔时间（毫秒）。设置后，会立即发送一条开场注释，并在流空闲达到配置的间隔时间后发送额外的注释。',
     },
     {
       name: 'consumeSseStream',
       type: '({ stream }: { stream: ReadableStream<string> }) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '可选函数，用于独立消费 SSE 流。该流会被分叉，此函数将接收一个副本。',
+        '可选函数，用于独立消费 SSE 流。该流会被分流，此函数接收其中一份副本。',
     },
   ]}
 />
 
 ### 返回值
 
-一个 `Promise<void>`，当流已写入响应时解析，当读取或写入流失败时拒绝。
+一个 `Promise<void>`，当流写入响应完成时 resolve，当读取或写入流失败时 reject。

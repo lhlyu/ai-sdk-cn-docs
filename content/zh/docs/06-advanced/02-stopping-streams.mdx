@@ -101,7 +101,7 @@ export default function Chat() {
 与在流正常完成时调用的 `onEnd` 不同，`onAbort` 专门在流通过 `AbortSignal` 被中止时调用。这种区别允许你以不同方式处理正常完成和中止的流。
 
 <Note>
-  对于 UI 消息流（`toUIMessageStreamResponse`），`onEnd` 回调还会接收一个 `isAborted` 参数，用于指示流是否被中止。这允许你在单个回调中同时处理完成和中止场景。
+  对于 UI 消息流（`toUIMessageStreamResponse`），`onEnd` 回调还会接收一个 `isAborted` 参数，用于指示流是否被中止。这允许你在单个回调中处理完成和中止两种场景。
 </Note>
 
 ```tsx highlight="8-12"
@@ -112,12 +112,12 @@ const result = streamText({
   model: __MODEL__,
   prompt: 'Write a long story...',
   abortSignal: controller.signal,
-  onAbort: ({ steps }) => {
+  onAbort: async ({ steps }) => {
     // Called when stream is aborted - persist partial results
     await savePartialResults(steps);
     await logAbortEvent(steps.length);
   },
-  onEnd: ({ steps, totalUsage }) => {
+  onEnd: async ({ steps, totalUsage }) => {
     // Called when stream completes normally
     await saveFinalResults(steps, totalUsage);
   },
@@ -133,7 +133,7 @@ const result = streamText({
 - 将部分对话历史持久化到数据库
 - 保存部分进度以便稍后继续
 - 清理服务器端资源或连接
-- 记录中止事件以进行分析
+- 记录中止事件以用于分析
 
 你也可以使用 `abort` 流部分直接在流中处理中止事件：
 
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
 
 `consumeStream` 函数对于 UI 消息流中的正确处理中止是必要的。它确保即使在中止时流也会被正确消费，从而防止潜在的内存泄漏或挂起连接。
 
-`onEnd` 回调会区分消费者取消和观察到的中止。当消费者在结果声明之前取消 UI 消息流时，例如在客户端断开连接期间，`isCancelled` 为 `true`，`outcome.status` 保持为 `'unknown'`，而 `isAborted` 保持为 `false`。当流先观察到 `abort` 部分时，`outcome.status` 为 `'aborted'`，`isAborted` 为 `true`，并且 `isCancelled` 不存在。当两种情况都应运行相同的清理逻辑时，请同时检查这两个标志。
+`onEnd` 回调会区分消费者取消与观察到的中止。当消费者在结果声明之前取消 UI 消息流时，例如在客户端断开连接期间，`isCancelled` 为 `true`，`outcome.status` 保持为 `'unknown'`，而 `isAborted` 保持为 `false`。当流先观察到 `abort` 部分时，`outcome.status` 为 `'aborted'`，`isAborted` 为 `true`，并且 `isCancelled` 不存在。当两种情况都应运行相同的清理时，请检查这两个标志。
 
 ## AI SDK RSC
 

@@ -5,31 +5,26 @@ description: "了解如何连接到模型上下文协议 (MCP) 服务器，并�
 
 # 模型上下文协议 (MCP)
 
-AI SDK 支持连接到 [模型上下文协议 (MCP)](https://modelcontextprotocol.io/) 服务器，以访问它们的工具、资源和提示词。
+AI SDK 支持连接到 [模型上下文协议 (MCP)](https://modelcontextprotocol.io/) 服务器，以访问其工具、资源和提示词。
 这使你的 AI 应用能够通过标准化接口发现并使用各种服务中的能力。
 
 <Note>
-  如果你使用的是 OpenAI 的 Responses API，你还可以使用内置的
-  `openai.tools.mcp` 工具，它提供了直接的 MCP 服务器集成，无需
-  转换工具。详情请参阅 [OpenAI 提供商
-  文档](/providers/ai-sdk-providers/openai#mcp-tool)。
+  如果你使用的是 OpenAI 的 Responses API，你也可以使用内置的
+  `openai.tools.mcp` 工具，它提供了直接的 MCP 服务器集成，无需转换工具。详情请参阅
+  [OpenAI 提供商文档](/providers/ai-sdk-providers/openai#mcp-tool)。
 </Note>
 
 ## 初始化 MCP 客户端
 
-我们建议在生产部署中使用 HTTP 传输（例如 `StreamableHTTPClientTransport`）。stdio 传输只应用于连接本地服务器，因为它无法部署到生产环境。
+我们建议在生产部署中使用 HTTP 传输（例如 `StreamableHTTPClientTransport`）。stdio 传输仅应用于连接本地服务器，因为它无法部署到生产环境。
 
 使用以下传输选项之一创建 MCP 客户端：
 
 - **HTTP 传输（推荐）**：可以通过客户端直接配置 HTTP，使用 `transport: { type: 'http', ... }`，或使用 MCP 官方 TypeScript SDK 的 `StreamableHTTPClientTransport`
-- SSE (Server-Sent Events)：另一种基于 HTTP 的传输方式
+- SSE（Server-Sent Events）：另一种基于 HTTP 的传输方式
 - `stdio`：仅用于本地开发。使用标准输入/输出流连接本地 MCP 服务器
 
-AI SDK MCP 客户端同时支持基于初始化的旧版协议
-版本和无状态的 MCP `2026-07-28`。内置的 stdio 传输会使用
-`server/discover` 进行探测，并自动回退到旧版的
-`initialize` 握手以兼容较旧的服务器。自定义传输可以通过
-`supportsProtocolVersionDiscovery: true` 选择启用此协商。
+AI SDK MCP 客户端同时支持基于初始化的旧版协议版本和无状态的 MCP `2026-07-28`。内置的 stdio 传输会通过 `server/discover` 进行探测，并自动回退到旧版 `initialize` 握手以兼容较旧的服务器。自定义传输可以通过 `supportsProtocolVersionDiscovery: true` 选择启用此协商。
 
 ### HTTP 传输（推荐）
 
@@ -55,8 +50,7 @@ const mcpClient = await createMCPClient({
 });
 ```
 
-如果旧版 MCP 服务器使用 Streamable HTTP 会话，你可以通过恢复之前的
-会话 id 和初始化结果来重新连接到已保存的会话。
+如果旧版 MCP 服务器使用 Streamable HTTP 会话，你可以通过恢复之前的会话 ID 和初始化结果来重新连接到已保存的会话。
 MCP `2026-07-28` 是无状态的，不使用这些选项：
 
 ```typescript
@@ -95,13 +89,8 @@ if (currentSessionId) {
 }
 ```
 
-当提供了 `initialInitializeResult` 时，`createMCPClient` 会复用缓存的
-初始化元数据，不会再次发送 `initialize` 请求。当
-`onSessionExpired` 被调用时，传输层已经清除了会话 id，
-请求仍会以底层 HTTP 错误失败。请在不带 `initialSessionId` 或
-`initialInitializeResult` 的情况下创建一个新客户端来重试。
-当你只想关闭本地客户端但保留 MCP 会话以便稍后重新连接时，
-请将 `terminateSessionOnClose` 设置为 `false`。
+当提供了 `initialInitializeResult` 时，`createMCPClient` 会复用缓存的初始化元数据，不会再次发送 `initialize` 请求。当调用 `onSessionExpired` 时，传输层已经清除了会话 ID，请求仍会以底层 HTTP 错误失败。请通过创建一个不带 `initialSessionId` 或 `initialInitializeResult` 的新客户端来重试。
+当仅关闭本地客户端但保留 MCP 会话以便稍后重新连接时，请将 `terminateSessionOnClose` 设置为 `false`。
 
 或者，你可以使用 MCP 官方 TypeScript SDK 中的 `StreamableHTTPClientTransport`：
 
@@ -144,10 +133,10 @@ const mcpClient = await createMCPClient({
 ### Stdio 传输（本地服务器）
 
 <Note type="warning">
-  stdio 传输只应用于本地服务器。
+  stdio 传输仅应用于本地服务器。
 </Note>
 
-Stdio 传输可以从 MCP SDK 或 AI SDK 中导入：
+Stdio 传输可以从 MCP SDK 或 AI SDK 导入：
 
 ```typescript
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -168,22 +157,32 @@ const mcpClient = await createMCPClient({
 你还可以通过实现 `MCPTransport` 接口来提供自己的传输，以满足标准传输未覆盖的特定需求。
 
 <Note>
-  `createMCPClient` 函数返回的客户端是一个
-  轻量级客户端，旨在用于工具转换。它目前不支持
-  完整 MCP 客户端的所有功能，例如自动会话
-  持久化、可恢复流和接收通知。
+  `createMCPClient` 函数返回的客户端是一个轻量级客户端，旨在用于工具转换。它目前不支持完整 MCP 客户端的所有功能，例如自动会话持久化、可恢复流和接收通知。
 
-当使用 AI SDK MCP HTTP 或 SSE 传输时，通过提供 `authProvider`
-支持 OAuth 授权。
+当使用 AI SDK MCP HTTP 或 SSE 传输时，通过提供 `authProvider` 支持 OAuth 授权。
 
 </Note>
 
+### 共享 OAuth 凭据存储
+
+当多个 MCP 客户端或副本共享 OAuth 凭据时，轮换的刷新令牌可能会被并发使用。一次刷新可能保存新令牌，而另一次则因旧刷新令牌收到 `invalid_grant`。
+
+可选的 `OAuthClientProvider.invalidateCredentials` 方法会接收第二个参数，用于标识失败刷新所使用的令牌：
+
+```typescript
+invalidateCredentials(
+  scope: 'all' | 'client' | 'tokens' | 'verifier',
+  context?: { tokens: OAuthTokens },
+): void | Promise<void>;
+```
+
+对于带有上下文的 `scope === 'tokens'`，仅当存储的访问令牌和刷新令牌仍与 `context.tokens` 匹配时才删除凭据。比较和删除必须是原子操作，使用条件数据库操作或事务。如果它们不再匹配，请保留较新的令牌。SDK 会重试授权并再次读取存储的令牌。
+
+当使缺少授权服务器绑定的存储令牌失效时，SDK 也会提供此上下文。其他失效操作可以省略上下文。
+
 ### OAuth 授权服务器验证
 
-在服务器端应用中使用 MCP OAuth 时，MCP 服务器可以声明
-要使用的 OAuth 授权服务器。如果你连接到不受你控制的
-MCP 服务器，请在你的 `authProvider` 上实现 `validateAuthorizationServerURL`，
-以仅允许你信任的授权服务器来源：
+在服务器端应用中使用 MCP OAuth 时，MCP 服务器可以声明要使用的 OAuth 授权服务器。如果你连接到不受你控制的 MCP 服务器，请在 `authProvider` 上实现 `validateAuthorizationServerURL`，仅允许你信任的授权服务器来源：
 
 ```typescript
 const allowedAuthorizationServerOrigins = new Set([
@@ -206,14 +205,11 @@ const myOAuthClientProvider = {
 };
 ```
 
-此 Hook 会在 SDK 获取授权服务器元数据之前被调用，因此
-被拒绝的 URL 不会被请求。它是可选的，除非你实现它，否则不会改变现有的 OAuth
-流程。
+此 Hook 会在 SDK 获取授权服务器元数据之前调用，因此被拒绝的 URL 不会被请求。它是可选的，除非你实现它，否则不会改变现有的 OAuth 流程。
 
 ### OAuth 回调签发者验证
 
-在完成 OAuth 授权回调时，将回调的 `iss`
-参数作为 `callbackIssuer` 传递给 `auth`：
+在完成 OAuth 授权回调时，将回调的 `iss` 参数作为 `callbackIssuer` 传递给 `auth`：
 
 ```typescript
 import { auth } from '@ai-sdk/mcp';
@@ -228,20 +224,13 @@ await auth(myOAuthClientProvider, {
 });
 ```
 
-当 `iss` 存在时，它必须与发现的授权
-服务器签发者完全匹配。不匹配时不会交换授权码。
+当 `iss` 存在时，它必须与发现的授权服务器签发者完全匹配。不匹配时不会交换授权码。
 
-动态客户端注册请求包含 OAuth `application_type`。客户端
-会为回环地址、localhost 和自定义 scheme 重定向推断为 `native`，
-为远程 HTTP(S) 重定向推断为 `web`。你可以通过在提供商的 `clientMetadata`
-中设置 `application_type` 来覆盖此行为。
+动态客户端注册请求包含 OAuth `application_type`。客户端会为回环、localhost 和自定义 scheme 重定向推断为 `native`，为远程 HTTP(S) 重定向推断为 `web`。你可以通过在提供商的 `clientMetadata` 中设置 `application_type` 来覆盖此行为。
 
 ### 动态客户端凭据恢复
 
-为了让 SDK 替换通过动态客户端
-注册创建的无效凭据，请在 OAuth 客户端提供商上实现 `isClientInformationDynamicallyRegistered`。
-仅当当前客户端信息来自动态注册响应时才返回 `true`。当提供商在请求之间被重新创建时，
-请将此来源信息与凭据一起持久化。
+为了让 SDK 替换通过动态客户端注册创建的无效凭据，请在 OAuth 客户端提供商上实现 `isClientInformationDynamicallyRegistered`。仅当当前客户端信息来自动态注册响应时才返回 `true`。当提供商在请求之间重新创建时，请将此来源信息与凭据一起持久化。
 
 ```typescript
 const myOAuthClientProvider = {
@@ -260,17 +249,11 @@ const myOAuthClientProvider = {
 };
 ```
 
-当此方法被省略或返回 `false` 时，客户端信息会被视为
-预注册，并在 `invalid_client` 和
-`unauthorized_client` 错误后保留。SDK 不会从诸如 `redirect_uris` 之类的字段推断来源，
-因为预注册的客户端可能包含与动态注册客户端相同的
-元数据。
+当省略此方法或返回 `false` 时，客户端信息会被视为预注册，并在 `invalid_client` 和 `unauthorized_client` 错误后保留。SDK 不会从 `redirect_uris` 等字段推断来源，因为预注册的客户端可能包含与动态注册客户端相同的元数据。
 
 ### 重试瞬时工具失败
 
-MCP 工具调用可能因瞬时传输原因而失败，例如速率限制、
-临时过载或网关超时。你可以通过在创建客户端时传递 `maxRetries`，
-选择为 `tools/call` 请求启用自动重试：
+MCP 工具调用可能因瞬时传输原因失败，例如速率限制、临时过载或网关超时。你可以通过在创建客户端时传递 `maxRetries` 来选择对 `tools/call` 请求启用自动重试：
 
 ```typescript
 const mcpClient = await createMCPClient({
@@ -282,15 +265,43 @@ const mcpClient = await createMCPClient({
 });
 ```
 
-默认情况下禁用重试。内置的重试匹配仅适用于
-瞬时 HTTP 和网络故障。JSON-RPC 应用错误，例如
-无效的工具参数，会立即呈现而不会重试。带有 `isError: true` 的成功
-MCP 工具响应也会返回给模型而不会重试。
+默认禁用重试。内置的重试匹配仅适用于瞬时 HTTP 和网络故障。JSON-RPC 应用错误（例如无效的工具参数）会立即抛出，不会重试。带有 `isError: true` 的成功 MCP 工具响应也会返回给模型，不会重试。
+
+`maxRetries` 适用于 `tools/call` 请求，不适用于客户端初始化。以下示例使用导出的 `MCPClientError` 类型守卫来识别可能瞬时的 HTTP 初始化失败：
+
+```typescript
+import { createMCPClient, MCPClientError } from '@ai-sdk/mcp';
+
+try {
+  await createMCPClient({
+    transport: {
+      type: 'http',
+      url: 'https://your-server.com/mcp',
+    },
+  });
+} catch (error) {
+  if (
+    !MCPClientError.isInstance(error) ||
+    error.code != null ||
+    error.statusCode == null ||
+    !(
+      error.statusCode === 408 ||
+      error.statusCode === 409 ||
+      error.statusCode === 429 ||
+      error.statusCode >= 500
+    )
+  ) {
+    throw error;
+  }
+
+  // Retry according to your application's backoff policy.
+}
+```
+
+此示例仅考虑 HTTP 状态码。缺少 `statusCode` 并不能确定失败是瞬时的：配置错误、协议错误和已取消的请求也可能缺少 HTTP 状态码。网络和超时重试需要单独的应用策略。此示例会重新抛出 `UnauthorizedError` 和 `MCPClientOAuthError` 等 OAuth 错误。
 
 <Note type="warning">
-  仅对重试安全的 MCP 工具启用重试。重试
-  非幂等工具，例如发送电子邮件或创建记录的工具，可能会
-  导致重复的副作用。
+  仅对重试安全的 MCP 工具启用重试。重试非幂等工具（例如发送电子邮件或创建记录的工具）可能会导致重复的副作用。
 </Note>
 
 ### 关闭 MCP 客户端
@@ -347,23 +358,15 @@ try {
 const tools = await mcpClient.tools();
 ```
 
-这种方式实现起来更简单，并且会自动与服务器变更保持同步。但是，你在开发过程中将没有 TypeScript 类型安全，并且服务器中的所有工具都会被加载
+此方法实现更简单，并会自动与服务器变更保持同步。但是，你在开发过程中将没有 TypeScript 类型安全，并且服务器中的所有工具都会被加载。
 
 ### 工具注解与审批
 
-MCP 服务器可以通过注解描述工具行为，例如
-`readOnlyHint`、`destructiveHint`、`idempotentHint` 和 `openWorldHint`。MCP
-客户端会在每个工具的 `metadata.annotations` 上以及
-生成的工具调用的 `toolMetadata.annotations` 上公开这些注解。
+MCP 服务器可以通过 `readOnlyHint`、`destructiveHint`、`idempotentHint` 和 `openWorldHint` 等注解描述工具行为。MCP 客户端会在每个工具的 `metadata.annotations` 以及生成的工具调用的 `toolMetadata.annotations` 上公开这些注解。
 
-注解是不可信的、由服务器提供的提示。MCP 客户端不会自动
-将它们转换为审批策略。应用应将它们
-与确定性控制相结合，例如工具允许列表、限定范围的凭据，以及
-自己的 [`toolApproval`](/docs/agents/tool-approvals) 策略。
+注解是不可信的、由服务器提供的提示。MCP 客户端不会自动将它们转换为审批策略。应用应将它们与确定性控制措施结合使用，例如工具允许列表、限定范围的凭据以及它们自己的 [`toolApproval`](/docs/agents/tool-approvals) 策略。
 
-以下保守策略仅在服务器明确将工具标记为只读时，
-才允许工具自动运行。带有 `readOnlyHint: false`
-或没有 `readOnlyHint` 的工具需要用户审批：
+以下保守策略仅在服务器明确将工具标记为只读时才允许工具自动运行。带有 `readOnlyHint: false` 或没有 `readOnlyHint` 的工具需要用户审批：
 
 ```typescript
 import { type McpProviderMetadata } from '@ai-sdk/mcp';
@@ -390,10 +393,8 @@ const result = streamText({
 });
 ```
 
-请参阅
-[本地工具注解示例](https://github.com/vercel/ai/tree/main/examples/mcp/src/tool-annotations)
-以获取完整的带注解 MCP 服务器和应用层审批
-配置。在单独的终端中启动服务器和客户端：
+有关完整的带注解 MCP 服务器和应用层审批配置，请参阅
+[本地工具注解示例](https://github.com/vercel/ai/tree/main/examples/mcp/src/tool-annotations)。在单独的终端中启动服务器和客户端：
 
 ```bash
 cd examples/mcp
@@ -405,10 +406,7 @@ cd examples/mcp
 pnpm client:tool-annotations
 ```
 
-让客户端读取、删除或创建笔记。只读工具会立即
-执行。破坏性和未注解的工具会提示审批；在你
-输入 `y` 或 `n` 后，客户端会将决定发送回去并打印模型的
-响应。
+让客户端读取、删除或创建笔记。只读工具会立即执行。破坏性和未注解的工具会提示审批；在你输入 `y` 或 `n` 后，客户端会将决定发送回去并打印模型的响应。
 
 ### Schema 定义
 
@@ -433,11 +431,11 @@ const tools = await mcpClient.tools({
 });
 ```
 
-这种方式提供了完整的 TypeScript 类型安全和 IDE 自动补全，让你在开发过程中捕获参数不匹配的问题。当你定义 `schemas` 时，客户端只会拉取显式定义的工具，使你的应用专注于它需要的工具
+此方法提供完整的 TypeScript 类型安全和 IDE 自动补全，让你在开发过程中捕获参数不匹配。当你定义 `schemas` 时，客户端只会拉取显式定义的工具，使你的应用专注于它需要的工具。
 
 ### 类型化工具输出
 
-当 MCP 服务器返回 `structuredContent` 时（根据 [MCP 规范](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#structured-content)），你可以定义 `outputSchema` 来获得类型化的工具结果：
+当 MCP 服务器返回 `structuredContent`（根据 [MCP 规范](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#structured-content)）时，你可以定义 `outputSchema` 来获得类型化的工具结果：
 
 ```typescript
 import { z } from 'zod';
@@ -466,7 +464,7 @@ const result = await tools['get-weather'].execute(
 console.log(`Temperature: ${result.temperature}°C`);
 ```
 
-当提供了 `outputSchema` 时：
+当提供 `outputSchema` 时：
 
 - 客户端会从工具结果中提取 `structuredContent`
 - 输出会在运行时根据你的 schema 进行验证
@@ -474,18 +472,17 @@ console.log(`Temperature: ${result.temperature}°C`);
 
 如果服务器不返回 `structuredContent`，客户端会回退到从文本内容中解析 JSON。如果两者都不可用或验证失败，则会抛出错误。
 
-如果服务器返回 `structuredContent` 但没有向后兼容的 `content` 字段，客户端会在返回结果之前添加一个包含序列化 JSON 的文本内容块。此兼容行为用于处理省略了 MCP 规范推荐的文本镜像的服务器。
+如果服务器返回 `structuredContent` 但没有向后兼容的 `content` 字段，客户端会在返回结果之前添加一个包含序列化 JSON 的文本内容块。此兼容行为用于处理省略 MCP 规范推荐文本镜像的服务器。
 
 <Note>
-  如果没有 `outputSchema`，工具会返回原始的 `CallToolResult` 对象，
-  其中包含 `content` 和可选的 `isError` 字段。
+  如果没有 `outputSchema`，工具会返回包含 `content` 和可选 `isError` 字段的原始 `CallToolResult` 对象。
 </Note>
 
 ## 使用 MCP 资源
 
 根据 [MCP 规范](https://modelcontextprotocol.io/docs/learn/server-concepts#resources)，资源是**应用驱动**的数据源，为模型提供上下文。与工具（由模型控制）不同，你的应用决定何时获取资源并将其作为上下文传递。
 
-MCP 客户端提供了三种处理资源的方法：
+MCP 客户端提供三种处理资源的方法：
 
 ### 列出资源
 
@@ -507,7 +504,7 @@ const resourceData = await mcpClient.readResource({
 
 ### 列出资源模板
 
-资源模板是动态 URI 模式，允许灵活的查询。列出所有可用的模板：
+资源模板是允许灵活查询的动态 URI 模式。列出所有可用的模板：
 
 ```typescript
 const templates = await mcpClient.listResourceTemplates();
@@ -515,9 +512,7 @@ const templates = await mcpClient.listResourceTemplates();
 
 ## 使用 MCP 补全
 
-当 MCP 服务器声明 `completions` 能力时，它们可以为提示词参数和
-资源模板变量提供自动补全建议。
-使用 `complete` 根据当前部分参数值向服务器请求建议：
+当 MCP 服务器声明 `completions` 能力时，它可以为提示词参数和资源模板变量提供自动补全建议。使用 `complete` 根据当前部分参数值向服务器请求建议：
 
 ```typescript
 const completion = await mcpClient.complete({
@@ -534,7 +529,7 @@ const completion = await mcpClient.complete({
 console.log(completion.completion.values);
 ```
 
-对于带有多个参数的资源模板或提示词，请通过 `context.arguments` 传递已解析的值：
+对于具有多个参数的资源模板或提示词，通过 `context.arguments` 传递已解析的值：
 
 ```typescript
 const completion = await mcpClient.complete({
@@ -562,7 +557,7 @@ const completion = await mcpClient.complete({
   MCP 提示词是一项实验性功能，未来可能会发生变化。
 </Note>
 
-根据 MCP 规范，提示词是用户控制的模板，服务器公开这些模板供客户端列出和检索，并可带有可选参数。
+根据 MCP 规范，提示词是用户控制的模板，服务器公开这些模板供客户端列出和检索，并支持可选参数。
 
 ### 列出提示词
 
@@ -586,9 +581,7 @@ const prompt = await mcpClient.experimental_getPrompt({
 引导（Elicitation）是一种机制，MCP 服务器可以在工具执行期间向客户端请求额外信息。例如，服务器可能需要用户输入来完成注册表单或确认敏感操作。
 
 <Note type="warning">
-  正确处理引导请求由客户端应用负责。
-  MCP 客户端只是将这些请求从服务器呈现给你的
-  应用代码。
+  正确处理引导请求由客户端应用负责。MCP 客户端只是将这些请求从服务器传递到你的应用代码。
 </Note>
 
 ### 启用引导支持
@@ -636,22 +629,15 @@ mcpClient.onElicitationRequest(ElicitationRequestSchema, async request => {
 
 你的处理器必须返回一个带有 `action` 字段的对象，该字段可以是以下之一：
 
-- `'accept'`：用户提供了请求的信息。必须包含带有数据的 `content`。
+- `'accept'`：用户提供了所请求的信息。必须包含带有数据的 `content`。
 - `'decline'`：用户选择不提供信息。
 - `'cancel'`：用户完全取消了操作。
 
-## 检测工具定义漂移（“rug pull”）
+## 检测工具定义漂移（"rug pull"）
 
-MCP 服务器在你的应用首次连接时会发送工具定义（名称、描述、输入 schema），你通常会在那时审查并批准它们。
-协议中没有任何内容阻止服务器稍后为同一工具名称提供_不同的_定义——例如带有注入指令的描述，或扩展了额外字段的输入 schema。由于 SDK 在每次调用时使用你传入的工具，后续 `mcpClient.tools()` 获取返回的变异定义会被直接使用，而不会与已批准的内容进行任何比较。这就是 MCP 的 ["rug pull"](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks)
-类攻击。
+当你的应用首次连接时，MCP 服务器会发送工具定义（名称、描述、输入 schema），你通常会在此时审查并批准它们。协议中没有任何机制阻止服务器之后为同一工具名称提供_不同_的定义——例如带有注入指令的描述，或扩展了额外字段的输入 schema。由于 SDK 在每次调用时使用你传入的工具，后续 `mcpClient.tools()` 获取返回的变异定义会被直接使用，而不会与已批准的内容进行任何比较。这就是 MCP 的 ["rug pull"](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks) 类攻击。
 
-AI SDK 提供了两个函数来固定已批准的定义并检测
-变更。`fingerprintTools` 将每个工具的服务器控制、与安全相关的
-字段（字符串 `description`、解析后的输入 schema 和 `title`）
-摘要为工具名称到摘要的稳定映射。`detectToolDrift` 对两个这样的映射进行差异比较。
-你的应用负责基线存储和对漂移的响应（阻止、强制
-重新审批或告警）：
+AI SDK 提供两个函数来固定已批准的定义并检测变更。`fingerprintTools` 会将每个工具中由服务器控制、与安全相关的字段（字符串 `description`、解析后的输入 schema 和 `title`）摘要为工具名称到摘要的稳定映射。`detectToolDrift` 会比较两个这样的映射。你的应用负责基线存储和对漂移的响应（阻止、强制重新审批或告警）：
 
 ```typescript
 import { fingerprintTools, detectToolDrift } from 'ai';
@@ -670,11 +656,7 @@ if (drift.changed.length || drift.added.length) {
 ```
 
 <Note>
-  这可以检测工具描述、输入 schema 或标题的变异——即
-  提示词注入和 schema 扩展向量。它无法检测
-  名称、描述和 schema 都未改变的行为/端点交换，因为工具在 MCP 服务器上远程运行，该变更
-  对客户端不可见。Core 保持不持立场：它不会持久化
-  基线或阻止调用——这些是你应用的责任。
+  这可以检测工具描述、输入 schema 或标题的变异——即提示词注入和 schema 扩展向量。它无法检测名称、描述和 schema 都未改变的行为/端点替换，因为工具在 MCP 服务器上远程运行，这种变化对客户端不可见。Core 保持不持立场：它不会持久化基线或阻止调用——这些是你应用的责任。
 </Note>
 
 ## 示例

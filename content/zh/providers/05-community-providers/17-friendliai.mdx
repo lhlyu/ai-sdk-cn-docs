@@ -1,18 +1,18 @@
 ---
 title: "FriendliAI"
-description: "了解如何使用 AI SDK 的 FriendliAI 提供商。"
+description: "了解如何使用 FriendliAI 提供商进行 AI SDK 开发。"
 ---
 
 # FriendliAI 提供商
 
-[FriendliAI](https://friendli.ai/) 提供商支持通过 [Friendli Serverless Endpoints](https://friendli.ai/products/serverless-endpoints) 使用开源 LLM，以及通过 [Dedicated Endpoints](https://friendli.ai/products/dedicated-endpoints) 使用自定义模型。
+[FriendliAI](https://friendli.ai/) 提供商同时支持通过 [Friendli Serverless Endpoints](https://friendli.ai/products/serverless-endpoints) 使用开源 LLM，以及通过 [Dedicated Endpoints](https://friendli.ai/products/dedicated-endpoints) 使用自定义模型。
 
-它创建的语言模型对象可用于 `generateText` 和 `streamText` 函数，并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成。
+它会创建可与 `generateText` 和 `streamText` 函数一起使用的语言模型对象，并支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成。
 
 ## 设置
 
 Friendli 提供商可通过 `@friendliai/ai-provider` 模块获取。
-你可以通过以下命令安装：
+你可以使用以下命令安装：
 
 <InstallPackages packages="@friendliai/ai-provider" />
 
@@ -20,17 +20,17 @@ Friendli 提供商可通过 `@friendliai/ai-provider` 模块获取。
 
 模型使用所需的令牌可以从 [Friendli suite](https://suite.friendli.ai/) 获取。
 
-要使用该提供商，你需要设置 `FRIENDLI_TOKEN` 环境变量，并填入你的个人访问令牌。
+要使用该提供商，你需要将个人访问令牌设置为 `FRIENDLI_TOKEN` 环境变量。
 
 ```bash
 export FRIENDLI_TOKEN="YOUR_FRIENDLI_TOKEN"
 ```
 
-更多信息请查看 [FriendliAI 文档](https://friendli.ai/docs/guides/personal_access_tokens)。
+查看 [FriendliAI 文档](https://friendli.ai/docs/guides/personal_access_tokens) 了解更多信息。
 
 ## 提供商实例
 
-你可以从 `@friendliai/ai-provider` 导入默认的提供商实例 `friendliai`：
+你可以从 `@friendliai/ai-provider` 导入默认提供商实例 `friendli`：
 
 ```ts
 import { friendli } from '@friendliai/ai-provider';
@@ -39,7 +39,7 @@ import { friendli } from '@friendliai/ai-provider';
 ## 语言模型
 
 你可以使用提供商实例创建 [FriendliAI 模型](https://friendli.ai/docs/guides/serverless_endpoints/text_generation#model-supports)。
-第一个参数是模型 ID，例如 `meta-llama-3.1-8b-instruct`。
+第一个参数是模型 id，例如 `meta-llama-3.1-8b-instruct`。
 
 ```ts
 const model = friendli('meta-llama-3.1-8b-instruct');
@@ -63,8 +63,8 @@ console.log(text);
 
 ### 示例：推理
 
-FriendliAI 在生成的文本中通过 `<think>` 标签暴露 `deepseek-r1` 的思考过程。
-你可以使用 `extractReasoningMiddleware` 提取此推理过程，并将其作为结果的 `reasoning` 属性暴露：
+FriendliAI 使用 `<think>` 标签在生成的文本中暴露 `deepseek-r1` 的思考过程。
+你可以使用 `extractReasoningMiddleware` 提取该推理内容，并将其作为结果上的 `reasoning` 属性暴露出来：
 
 ```ts
 import { friendli } from '@friendliai/ai-provider';
@@ -81,16 +81,16 @@ const { text, reasoning } = await generateText({
 });
 ```
 
-### 示例：结构化输出（正则表达式）
+### 示例：结构化输出（regex）
 
-正则表达式选项允许你通过指定模式来控制 LLM 输出的格式。这在以下场景中特别有用：
+regex 选项允许你通过指定模式来控制 LLM 输出的格式。当你需要以下内容时，这尤其有用：
 
 - 特定格式，如 CSV
-- 将输出限制为特定字符，如韩文或日文
+- 将输出限制为特定字符，如韩语或日语
 
-此功能可用于 `generateText` 和 `streamText` 函数。
+此功能在 `generateText` 和 `streamText` 函数中均可用。
 
-要深入了解如何有效使用正则表达式模式与 LLM，请查看我们详细的指南，位于 [Structured Output LLM Agents](https://friendli.ai/blog/structured-output-llm-agents) 博客文章中。
+要更深入地了解如何有效地将 regex 模式与 LLM 配合使用，请查看我们在 [Structured Output LLM Agents](https://friendli.ai/blog/structured-output-llm-agents) 博客文章中的详细指南。
 
 ```ts highlight="6"
 import { friendli } from '@friendliai/ai-provider';
@@ -106,9 +106,9 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-### 示例：结构化输出（JSON）
+### 示例：结构化输出（json）
 
-结构化输出是一种引导生成的形式。JSON 模式被用作语法，输出将始终符合该模式。
+结构化输出是一种引导式生成。JSON schema 被用作语法，输出将始终符合该 schema。
 
 ```ts
 import { friendli } from '@friendliai/ai-provider';
@@ -136,9 +136,9 @@ console.log(output);
 
 <Note type="warning">内置工具目前处于测试阶段。</Note>
 
-如果你使用 `@friendliai/ai-provider`，可以通过 `tools` 选项使用 [内置工具](https://friendli.ai/docs/guides/serverless_endpoints/tools/built_in_tools)。
+如果你使用 `@friendliai/ai-provider`，你可以通过 `tools` 选项使用 [内置工具](https://friendli.ai/docs/guides/serverless_endpoints/tools/built_in_tools)。
 
-内置工具允许模型使用工具生成更好的答案。例如，`web:search` 工具可以为当前问题提供最新的答案。
+内置工具允许模型使用工具来生成更好的答案。例如，`web:search` 工具可以为当前问题提供最新的答案。
 
 ```ts highlight="1,5,6,7"
 import { friendli } from '@friendliai/ai-provider';
@@ -157,9 +157,9 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-### 示例：使用专用端点生成文本
+### 示例：使用 Dedicated Endpoints 生成文本
 
-要通过专用端点使用自定义模型，你可以使用 `friendli` 实例并传入端点 ID，例如 `zbimjgovmlcb`
+要通过专用端点使用自定义模型，你可以使用带有端点 id 的 `friendli` 实例，例如 `zbimjgovmlcb`
 
 ```ts
 import { friendli } from '@friendliai/ai-provider';
@@ -173,39 +173,43 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-你可以使用以下代码强制请求发送到专用端点。默认情况下，它们是自动检测的。
+你可以使用下面的代码强制请求发送到专用端点。默认情况下，它们会被自动检测。
 
 ```ts highlight="5,6,7"
 import { friendli } from '@friendliai/ai-provider';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: friendli("YOUR_ENDPOINT_ID", {
-    endpoint: "dedicated",
-  });
+  model: friendli('YOUR_ENDPOINT_ID', {
+    endpoint: 'dedicated',
+  }),
   prompt: 'What is the meaning of life?',
 });
 
 console.log(text);
 ```
 
-FriendliAI 语言模型也可用于 `streamText` 函数，并支持通过 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
+FriendliAI 语言模型也可以在 `streamText` 函数中使用，并支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 进行结构化数据生成
+（参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ### 模型能力
 
-| 模型                           | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
-| ----------------------------- | ----------- | ----------------- | ---------- | -------------- |
-| `deepseek-r1`                 | <Cross />   | <Check />         | <Cross />  | <Cross />      |
-| `meta-llama-3.3-70b-instruct` | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `meta-llama-3.1-8b-instruct`  | <Cross />   | <Check />         | <Check />  | <Check />      |
+| 模型                          | 图像输入    | 对象生成   | 工具使用   | 工具流式传输 |
+| ----------------------------- | ----------- | ---------- | ---------- | ------------ |
+| `deepseek-r1`                 | <Cross />   | <Check />  | <Cross />  | <Cross />    |
+| `meta-llama-3.3-70b-instruct` | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `meta-llama-3.1-8b-instruct`  | <Cross />   | <Check />  | <Check />  | <Check />    |
 
 <Note>
-  要访问[更多模型](https://friendli.ai/models)，请访问 [Friendli Dedicated Endpoints 文档](https://friendli.ai/docs/guides/dedicated_endpoints/quickstart) 以部署你的自定义模型。
+  要访问 [更多模型](https://friendli.ai/models)，请访问 [Friendli
+  Dedicated Endpoints
+  文档](https://friendli.ai/docs/guides/dedicated_endpoints/quickstart)
+  来部署你的自定义模型。
 </Note>
 
 ### OpenAI 兼容性
 
-你也可以使用 `@ai-sdk/openai`，因为其 API 与 OpenAI 兼容。
+你也可以使用 `@ai-sdk/openai`，因为这些 API 与 OpenAI 兼容。
 
 ```ts
 import { createOpenAI } from '@ai-sdk/openai';
@@ -216,7 +220,7 @@ const friendli = createOpenAI({
 });
 ```
 
-如果你使用专用端点：
+如果你使用的是专用端点
 
 ```ts
 import { createOpenAI } from '@ai-sdk/openai';

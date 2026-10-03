@@ -1,27 +1,27 @@
 ---
-title: "Web Search 智能体"
+title: "Web 搜索智能体"
 description: "学习如何使用 AI SDK 和 Node 构建一个可以访问网络的智能体"
 tags: ['node', 'tool use', 'agent', 'web']
 ---
 
-# Web Search 智能体
+# Web 搜索智能体
 
-使用 AI SDK 构建 web search 智能体有两种方法：
+使用 AI SDK 构建 Web 搜索智能体有两种方式：
 
-1. 使用具有原生 web 搜索能力的模型
+1. 使用具备原生 Web 搜索能力的模型
 2. 使用工具访问网络并返回搜索结果。
 
-两种方法各有优缺点。具有原生搜索能力的模型往往速度更快，并且进行搜索不会产生额外费用。缺点是你对搜索内容的控制较少，而且该功能仅限于支持它的模型。
+提供商原生搜索运行在提供商的基础设施上，并在生成响应时一并返回来源。可用的搜索控制项和定价因提供商而异；搜索可能会产生额外的工具费用。
 
-相反，通过使用工具，你可以实现更高的灵活性，并对搜索查询拥有更强的控制力。它允许你自定义搜索策略、指定搜索参数，并且可以与任何支持工具调用的 LLM 一起使用。这种方法会为你使用的搜索 API 产生额外费用，但让你能够完全掌控搜索体验。
+相反，通过使用工具，你可以获得更大的灵活性，并对搜索查询拥有更强的控制力。它允许你自定义搜索策略、指定搜索参数，并且可以与任何支持工具调用的 LLM 配合使用。这种方式会为你使用的搜索 API 带来额外费用，但让你能够完全掌控搜索体验。
 
-## 使用原生 web 搜索
+## 使用原生 Web 搜索
 
-有几种模型提供原生 web 搜索能力（Perplexity、OpenAI、Gemini）。让我们看看如何跨提供商构建一个 Web Search 智能体。
+有多个模型提供原生 Web 搜索能力（Perplexity、OpenAI、Gemini）。让我们看看如何跨提供商构建一个 Web 搜索智能体。
 
 ### OpenAI Responses API
 
-OpenAI 的 Responses API 内置了一个 web search 工具，可用于搜索网络并返回搜索结果。该工具名为 `web_search`，通过 `openai` 提供商访问。
+OpenAI 的 Responses API 内置了一个 Web 搜索工具，可用于搜索网络并返回搜索结果。该工具名为 `web_search`，通过 `openai` 提供商访问。
 
 ```ts
 import { openai } from '@ai-sdk/openai';
@@ -39,7 +39,7 @@ console.log(text);
 console.log(sources);
 ```
 
-你也可以使用 `ToolLoopAgent` 来构建一个带有 OpenAI 的 web search 智能体。以下示例展示了如何从工具调用中提取查询和来源：
+你也可以使用 `ToolLoopAgent` 来构建一个基于 OpenAI 的 Web 搜索智能体。以下示例展示了如何从工具调用中提取查询和来源：
 
 ```ts
 import { openai } from '@ai-sdk/openai';
@@ -73,13 +73,18 @@ for (const toolResult of toolResults) {
 
 ### Perplexity
 
-Perplexity 的 Sonar 模型将实时 web 搜索与自然语言处理相结合。每个响应都基于当前的 web 数据，并包含详细的引用。
+Perplexity 的 Agent API 提供了预设，将模型与 Web 搜索等原生工具结合在一起。`fast` 预设可以搜索网络，并通过 `sources` 属性返回引用。
+
+安装 `@ai-sdk/perplexity` 并在环境中设置 `PERPLEXITY_API_KEY`，即可直接使用该提供商：
+
+<InstallPackages packages="@ai-sdk/perplexity" />
 
 ```ts
+import { perplexity } from '@ai-sdk/perplexity';
 import { generateText } from 'ai';
 
 const { text, sources } = await generateText({
-  model: 'perplexity/sonar-pro',
+  model: perplexity('fast'),
   prompt: 'What are the latest developments in quantum computing?',
 });
 
@@ -87,9 +92,11 @@ console.log(text);
 console.log(sources);
 ```
 
+有关原生工具、搜索过滤器和 Agent API 选项，请参阅 [Perplexity 提供商文档](/providers/ai-sdk-providers/perplexity#agent-tools)。
+
 ### Gemini
 
-使用兼容的 Gemini 模型，你可以启用搜索接地（search grounding），让模型通过 Google 搜索访问最新信息。
+对于兼容的 Gemini 模型，你可以启用搜索接地（search grounding），让模型能够使用 Google 搜索获取最新信息。
 
 ```ts
 import { google } from '@ai-sdk/google';
@@ -116,22 +123,22 @@ const safetyRatings = metadata?.safetyRatings;
 
 ## 使用工具
 
-在使用工具进行 web 搜索时，你有两个选择：使用直接与 AI SDK 集成的现成工具，或者构建针对你特定需求定制的自定义工具。
+在使用工具进行 Web 搜索时，你有两种选择：使用与 AI SDK 直接集成的现成工具，或者构建适合你特定需求的自定义工具。
 
-与搜索内置于模型中的原生 web 搜索示例不同，使用 web 搜索工具需要多个步骤。语言模型将进行两次生成——第一次调用相关的 web 搜索工具（从上下文中提取搜索查询），第二次处理结果并生成响应。当你将 `stopWhen: isStepCount(n)` 设置为大于 1 的值时，这个多步骤过程会自动处理。
+与原生 Web 搜索示例中搜索内置于模型不同，使用 Web 搜索工具需要多个步骤。语言模型会进行两次生成——第一次调用相关的 Web 搜索工具（从上下文中提取搜索查询），第二次处理结果并生成响应。当你将 `stopWhen: isStepCount(n)` 设置为大于 1 的值时，这个多步骤过程会自动处理。
 
 <Note>
   通过使用 `stopWhen`，你可以自动将工具结果连同原始问题一起发送回语言模型，使模型能够根据搜索结果回应用户查询的相关信息。这创造了一种无缝体验，智能体可以搜索网络并将这些发现融入其响应中。
 </Note>
 
-### 使用现成的工具
+### 使用现成工具
 
-如果你更倾向于使用现成的 web 搜索工具，而不想从头构建，有几个选项可以直接与 AI SDK 集成。
+如果你希望使用开箱即用的 Web 搜索工具，而不必从头构建，有多个选项可以直接与 AI SDK 集成。
 
 #### Exa
 
 <Note>
-  从 [Exa Dashboard](https://dashboard.exa.ai/api-keys) 获取你的 API key。
+  从 [Exa Dashboard](https://dashboard.exa.ai/api-keys) 获取你的 API 密钥。
 </Note>
 
 首先，安装 Exa `webSearch` 工具：
@@ -163,7 +170,7 @@ console.log(text);
 
 #### Parallel Web
 
-<Note>从 [Parallel Platform](https://parallel.ai) 获取你的 API key。</Note>
+<Note>从 [Parallel Platform](https://parallel.ai) 获取你的 API 密钥。</Note>
 
 首先，安装 Parallel Web AI SDK 工具：
 
@@ -171,7 +178,7 @@ console.log(text);
 pnpm install @parallel-web/ai-sdk-tools
 ```
 
-然后，你可以导入这些工具并传入 `generateText`、`streamText` 或你的智能体。Parallel Web 提供两个工具：用于 web 搜索的 `searchTool` 和用于提取网页内容的 `extractTool`：
+然后，你可以导入这些工具并传入 `generateText`、`streamText` 或你的智能体。Parallel Web 提供两个工具：用于 Web 搜索的 `searchTool` 和用于提取网页内容的 `extractTool`：
 
 ```ts
 import { generateText, isStepCount } from 'ai';
@@ -194,7 +201,7 @@ console.log(text);
 #### Perplexity Search
 
 <Note>
-  从 [Perplexity API Keys 页面](https://www.perplexity.ai/account/api/keys)获取你的 API key。
+  从 [Perplexity API Keys 页面](https://www.perplexity.ai/account/api/keys)获取你的 API 密钥。
 </Note>
 
 首先，安装 Perplexity Search 工具：
@@ -203,7 +210,7 @@ console.log(text);
 pnpm install @perplexity-ai/ai-sdk
 ```
 
-然后，你可以导入它并传入 `generateText`、`streamText` 或你的智能体。Perplexity Search 提供实时 web 搜索，并带有高级过滤选项，包括域名、语言、日期范围和时效性过滤器：
+然后，你可以导入它并传入 `generateText`、`streamText` 或你的智能体。Perplexity Search 提供实时 Web 搜索，并带有高级过滤选项，包括域名、语言、日期范围和时效性过滤器：
 
 ```ts
 import { generateText, isStepCount } from 'ai';
@@ -228,7 +235,7 @@ console.log(text);
 #### Tavily
 
 <Note>
-  从 [Tavily Dashboard](https://app.tavily.com) 获取你的 API key。
+  从 [Tavily Dashboard](https://app.tavily.com) 获取你的 API 密钥。
 </Note>
 
 首先，安装 `tavilySearch` 工具：
@@ -257,12 +264,12 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-有关智能体 web 访问功能的更多自定义选项，请访问 [Tavily AI SDK 文档](https://docs.tavily.com/documentation/integrations/vercel)。
+有关智能体 Web 访问功能的更多自定义选项，请访问 [Tavily AI SDK 文档](https://docs.tavily.com/documentation/integrations/vercel)。
 
 #### You.com
 
 <Note>
-  从 [You.com API Keys 页面](https://you.com/platform/api-keys)获取你的 API key。
+  从 [You.com API Keys 页面](https://you.com/platform/api-keys)获取你的 API 密钥。
 </Note>
 
 首先，安装 You.com AI SDK 插件：
@@ -271,7 +278,7 @@ console.log(text);
 pnpm install @youdotcom-oss/ai-sdk-plugin
 ```
 
-然后，你可以导入这些工具并传入 `generateText`、`streamText` 或你的智能体。You.com 提供三个工具：`youSearch` 用于带高级过滤的实时 web 搜索，`youResearch` 用于带引用来源和可配置力度（从 lite 到 exhaustive）的深度研究，以及 `youContents` 用于以 markdown 或 HTML 提取网页内容：
+然后，你可以导入这些工具并传入 `generateText`、`streamText` 或你的智能体。You.com 提供三个工具：`youSearch` 用于带高级过滤的实时 Web 搜索，`youResearch` 用于带引用来源和可配置力度（从 lite 到 exhaustive）的深度研究，`youContents` 用于以 markdown 或 HTML 提取网页内容：
 
 ```ts
 import { generateText, isStepCount } from 'ai';
@@ -300,7 +307,7 @@ console.log(text);
 
 ### 构建并使用自定义工具
 
-为了对你的 web 搜索功能拥有更多控制，你可以使用 web 抓取和爬取 API 构建自定义工具。这种方法允许你自定义搜索参数、处理特定数据格式，并与专门的搜索服务集成。
+为了更好地控制你的 Web 搜索功能，你可以使用网页抓取和爬取 API 构建自定义工具。这种方式允许你自定义搜索参数、处理特定数据格式，并与专门的搜索服务集成。
 
 #### Exa
 
@@ -349,7 +356,7 @@ const { text } = await generateText({
 
 #### Firecrawl
 
-[Firecrawl](https://firecrawl.dev) 提供了一个用于 web 抓取和爬取的 API。让我们看看如何使用 Firecrawl 构建一个自定义抓取工具：
+[Firecrawl](https://firecrawl.dev) 提供了一个用于网页抓取和爬取的 API。让我们看看如何使用 Firecrawl 构建一个自定义抓取工具：
 
 ```bash
 pnpm install @mendable/firecrawl-js

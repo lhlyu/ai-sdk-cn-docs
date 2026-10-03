@@ -1,29 +1,31 @@
 ---
 title: "Perplexity"
-description: "了解如何将 Perplexity 的 Sonar API 与 AI SDK 结合使用。"
+description: "了解如何将 Perplexity 的 Agent API 与 AI SDK 配合使用。"
 ---
 
 # Perplexity 提供商
 
-[Perplexity](https://sonar.perplexity.ai) 提供商提供对 Sonar API 的访问——这是一种将实时网络搜索与自然语言处理独特结合的语言模型。每个响应都基于当前网络数据，并包含详细的引用，非常适合研究、事实核查和获取最新信息。
+[Perplexity](https://www.perplexity.ai) 提供商提供对
+[Agent API](https://docs.perplexity.ai/docs/agent-api/quickstart) 的访问。Agent API
+可以跨模型路由、搜索网络、调用工具，并返回带引用的答案。
 
-API 密钥可以从 [Perplexity 平台](https://docs.perplexity.ai) 获取。
+API 密钥可从 [Perplexity 平台](https://docs.perplexity.ai) 获取。
 
-## 安装
+## 设置
 
-Perplexity 提供商可通过 `@ai-sdk/perplexity` 模块获得。您可以使用以下命令安装：
+Perplexity 提供商通过 `@ai-sdk/perplexity` 模块提供。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/perplexity" />
 
 ## 提供商实例
 
-您可以从 `@ai-sdk/perplexity` 导入默认提供商实例 `perplexity`：
+你可以从 `@ai-sdk/perplexity` 导入默认提供商实例 `perplexity`：
 
 ```ts
 import { perplexity } from '@ai-sdk/perplexity';
 ```
 
-对于自定义配置，您可以导入 `createPerplexity` 并使用您的设置创建提供商实例：
+如需自定义配置，你可以导入 `createPerplexity` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createPerplexity } from '@ai-sdk/perplexity';
@@ -33,7 +35,7 @@ const perplexity = createPerplexity({
 });
 ```
 
-您可以使用以下可选设置来自定义 Perplexity 提供商实例：
+你可以使用以下可选设置来自定义 Perplexity 提供商实例：
 
 - **baseURL** _string_
 
@@ -42,12 +44,12 @@ const perplexity = createPerplexity({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认为
+  通过 `Authorization` 请求头发送的 API 密钥。默认使用
   `PERPLEXITY_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -55,17 +57,30 @@ const perplexity = createPerplexity({
 
 ## 语言模型
 
-您可以使用提供商实例创建 Perplexity 模型：
+你可以使用提供商实例创建 Perplexity 模型：
 
 ```ts
 import { perplexity } from '@ai-sdk/perplexity';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: perplexity('sonar-pro'),
-  prompt: '量子计算有哪些最新进展？',
+  model: perplexity('low'),
+  prompt: 'What are the latest developments in quantum computing?',
 });
 ```
+
+Agent API 提供 `fast`、`low`、`medium`、`high` 和 `xhigh`
+预设。要直接选择模型，请传入其 Agent API 模型 ID，例如
+`perplexity('perplexity/sonar')`。
+
+这些示例使用 `PERPLEXITY_API_KEY` 直接调用 Perplexity。将诸如
+`model: 'perplexity/sonar'` 这样的纯模型字符串传递给 `generateText` 或
+`streamText` 会使用 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)，
+它有自己的模型目录和身份验证。
+
+版本 5 仅使用 Agent API。旧版 Sonar 模型 ID 和提供商
+选项不会被映射；升级前请参阅[从 v4 Sonar 迁移到 v5 Agent
+API](#migrating-from-v4-sonar-to-v5-agent-api)。
 
 ### 来源
 
@@ -76,17 +91,84 @@ import { perplexity } from '@ai-sdk/perplexity';
 import { generateText } from 'ai';
 
 const { text, sources } = await generateText({
-  model: perplexity('sonar-pro'),
-  prompt: '量子计算有哪些最新进展？',
+  model: perplexity('low'),
+  prompt: 'What are the latest developments in quantum computing?',
 });
 
 console.log(sources);
 ```
 
-### 提供商选项与元数据
+### 智能体工具
+
+通过 `providerOptions.perplexity.tools` 传入原生 Agent API 工具：
+
+```ts
+import {
+  perplexity,
+  type PerplexityLanguageModelOptions,
+} from '@ai-sdk/perplexity';
+import { generateText } from 'ai';
+
+const { text, sources } = await generateText({
+  model: perplexity('low'),
+  prompt: 'Summarize recent US federal AI policy from official sources.',
+  providerOptions: {
+    perplexity: {
+      tools: [
+        {
+          type: 'web_search',
+          filters: {
+            search_domain_filter: [
+              'whitehouse.gov',
+              'congress.gov',
+              'federalregister.gov',
+            ],
+            search_recency_filter: 'month',
+          },
+          max_results: 10,
+          search_context_size: 'medium',
+        },
+      ],
+    } satisfies PerplexityLanguageModelOptions,
+  },
+});
+```
+
+支持的原生工具包括 `web_search`、`fetch_url`、`people_search`、
+`finance_search`、`sandbox`、`mcp` 和 `connector`。Agent API 预设包含
+保持启用的预配置工具；`tools` 选项可以添加显式
+工具，或在使用直接模型 ID 时提供工具。
+
+搜索和抓取结果会作为 AI SDK 来源公开。其他原生工具追踪，
+包括 finance、sandbox 和 MCP 结果，可在 `response.body`
+和原始流块（`include: { rawChunks: true }`）中获取。它们不会作为
+AI SDK 客户端工具调用公开。零数据保留的账户可能会拒绝
+支持文件的工具，例如 `finance_search` 和 `sandbox`。
+
+AI SDK 函数工具可以通过顶层 `tools` 选项传入：
+
+```ts
+import { perplexity } from '@ai-sdk/perplexity';
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const result = await generateText({
+  model: perplexity('low'),
+  prompt: 'What is the weather in San Francisco?',
+  tools: {
+    weather: tool({
+      description: 'Get the weather for a city',
+      inputSchema: z.object({ city: z.string() }),
+      execute: async ({ city }) => ({ city, temperature: 18 }),
+    }),
+  },
+});
+```
+
+### 提供商选项和元数据
 
 Perplexity 提供商通过 `providerMetadata` 在响应中包含额外的元数据。
-通过 `providerOptions` 可以使用额外的配置选项。
+其他配置选项可通过 `providerOptions` 使用。
 
 ```ts
 import {
@@ -96,102 +178,176 @@ import {
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: perplexity('sonar-pro'),
-  prompt: '量子计算有哪些最新进展？',
+  model: perplexity('low'),
+  prompt: 'What are the latest developments in quantum computing?',
   providerOptions: {
     perplexity: {
-      return_images: true, // 启用图像响应（仅限 Perplexity Tier-2 用户）
-      search_recency_filter: 'week', // 按时间过滤搜索结果
+      max_steps: 5,
+      store: true,
+      reasoning: { effort: 'low' },
     } satisfies PerplexityLanguageModelOptions,
   },
 });
 
 console.log(result.providerMetadata);
-// 示例输出：
+// Example output:
 // {
 //   perplexity: {
-//     usage: { citationTokens: 5286, numSearchQueries: 1 },
-//     images: [
-//       { imageUrl: "https://example.com/image1.jpg", originUrl: "https://elsewhere.com/page1", height: 1280, width: 720 },
-//       { imageUrl: "https://example.com/image2.jpg", originUrl: "https://elsewhere.com/page2", height: 1280, width: 720 }
-//     ]
+//     usage: { citationTokens: null, numSearchQueries: 1 },
+//     images: null,
+//     cost: { totalCost: 0.006, currency: 'USD', ... },
+//     toolCalls: { search_web: { invocation: 1 } },
 //   },
 // }
 ```
 
 #### 提供商选项
 
-以下提供商特定选项可用：
+以下 Agent API 选项可用：
 
-- **return_images** _boolean_
+- **instructions** _string_
 
-  启用图像响应。设置为 `true` 时，响应可能包含相关图像。此功能仅对 Perplexity Tier-2 及以上用户可用。
+  Agent API 运行的顶层指令。
 
-- **search_recency_filter** _string_
+- **tools** _array_
 
-  按时间过滤搜索结果。可能的值：`'hour'`、`'day'`、`'week'`、`'month'`、`'year'`。如果未指定，默认为所有时间。
+  原生 Agent API 工具及其配置。
+
+- **models** _string[]_
+
+  用于 Agent API 路由的备用模型列表。
+
+- **max_steps** _number_
+
+  智能体步骤的最大数量。
+
+- **max_tool_calls** _number_
+
+  原生工具调用的最大数量。将其设置为 `0` 会禁用所有
+  预设工具。
+
+- **previous_response_id** _string_
+
+  从先前的 Agent API 响应继续对话。
+
+- **store** _boolean_
+
+  响应是否可以在稍后检索。设置 `store: false` 会将其从
+  检索中隐藏；它不会禁用持久化，并且该响应仍可
+  用作 `previous_response_id` 继续来源。有关保留行为和
+  账户特定的零数据保留限制，请参阅 Perplexity 的
+  [对话状态文档](https://docs.perplexity.ai/docs/agent-api/conversation-state)。
+
+- **language_preference** _string_
+
+  首选响应语言，使用 ISO 639-1 语言代码。
+
+- **reasoning** _object_
+
+  推理配置。`effort` 支持 `'minimal'`、`'low'`、`'medium'`、
+  `'high'` 和 `'xhigh'`。
+
+- **skills** _array_
+
+  Agent API 技能配置。
 
 <Note>
-  任何其他 [Perplexity API
-  参数](https://docs.perplexity.ai/api-reference/chat-completions) 也可以通过 `providerOptions.perplexity` 传递。
+  有关原生请求字段的详细信息，请参阅 [Perplexity Agent API
+  文档](https://docs.perplexity.ai/docs/agent-api/quickstart)。
 </Note>
 
 #### 提供商元数据
 
 响应元数据包括：
 
-- `usage`：包含 `citationTokens` 和 `numSearchQueries` 指标的对象
-- `images`：当启用 `return_images` 时（仅限 Tier-2 用户），图像对象数组。每个图像包含 `imageUrl`、`originUrl`、`height` 和 `width`。
+- `usage`：`citationTokens`（对于 Agent API 响应始终为 `null`）以及
+  搜索查询的数量
+- `cost`：Perplexity 返回的 token、工具和总成本
+- `toolCalls`：按原生工具分组的调用次数
+- `images`：始终为 `null`；Agent API 不返回 Sonar 图像结果
 
-### PDF 支持
+### 结构化输出
 
-Perplexity 提供商支持读取 PDF 文件。
-您可以使用 `file` 类型将 PDF 文件作为消息内容的一部分传递：
+`Output.object` 和 `Output.array` 会发送 Agent API JSON schema 响应
+格式。不支持没有 schema 的 JSON 输出。
 
-```ts
-const result = await generateText({
-  model: perplexity('sonar-pro'),
-  messages: [
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: '这份文档是关于什么的？',
-        },
-        {
-          type: 'file',
-          data: fs.readFileSync('./data/ai.pdf'),
-          mediaType: 'application/pdf',
-          filename: 'ai.pdf', // 可选
-        },
-      ],
-    },
-  ],
-});
-```
+### 输入图像
 
-您也可以传递 PDF 的 URL：
+图像 URL 和数据输入会转换为 Agent API `input_image` 部分。
+Agent API 不提供与 Sonar 等效的 PDF 输入字段，因此不支持 PDF 文件
+部分。
 
-```ts
-{
-  type: 'file',
-  data: new URL('https://example.com/document.pdf'),
-  mediaType: 'application/pdf',
-  filename: 'document.pdf', // 可选
-}
-```
-
-模型将能够访问 PDF 文件的内容并回答相关问题。
+### 从 v4 Sonar 迁移到 v5 Agent API
 
 <Note>
-  有关 Perplexity 功能的更多详细信息，请参阅 [Perplexity 聊天
-  补全文档](https://docs.perplexity.ai/api-reference/chat-completions)。
+  版本 5 是从 Sonar Chat Completions 到 Agent
+  API 的重大迁移。它不提供旧版模型别名、不转换 Sonar 提供商
+  选项，也不在运行时发出迁移警告。
 </Note>
+
+<Note type="warning">
+  Perplexity 仅在 2026 年 9 月 27 日之前支持 Sonar Chat Completions。
+  请在该日期之前将语言生成应用程序升级到 Agent API；
+  停留在版本 4 无法在 Sonar 关停后保留服务。
+</Note>
+
+将每个 Sonar 模型 ID 替换为 Agent API 预设或直接的 Agent API 模型
+ID。这些预设是建议的起点，而非等效别名：一个
+预设可能选择不同的模型和工具，因此成本、延迟和输出可能会
+发生变化。
+
+| v4 Sonar 模型         | 建议的 v5 起点              |
+| --------------------- | --------------------------- |
+| `sonar`               | `fast`                      |
+| `sonar-pro`           | `low`                       |
+| `sonar-reasoning`     | `medium`                    |
+| `sonar-reasoning-pro` | `medium`                    |
+| `sonar-deep-research` | `high`                      |
+
+例如：
+
+```ts
+// v4
+perplexity('sonar-pro');
+
+// v5
+perplexity('low');
+```
+
+将 Sonar 搜索和推理选项移动到其 Agent API 位置：
+
+| v4 提供商选项                            | v5 Agent API 选项                      |
+| ---------------------------------------- | -------------------------------------- |
+| 域、时效性和日期过滤器                   | `web_search` 上的 `tools[].filters`    |
+| `num_search_results`                     | `tools[].max_results`                  |
+| `web_search_options.search_context_size` | `tools[].search_context_size`          |
+| `web_search_options.user_location`       | `tools[].user_location`                |
+| `reasoning_effort`                       | `reasoning.effort`                     |
+| `disable_search`                         | 对于直接模型 ID 省略 `web_search`      |
+
+预设工具无法单独移除。当必须禁用搜索时，使用不带
+`web_search` 工具的直接模型 ID，或设置 `max_tool_calls: 0` 来
+禁用所有预设工具调用。
+
+Agent API 没有与 Sonar PDF 或视频输入、图像或视频
+结果、`search_language_filter` 或 `stream_mode` 等效的功能。相关问题需要
+提示词或结构化输出。迁移期间请移除这些选项。
+
+语言请求现在使用 `/v1/agent`。自定义 `baseURL` 代理必须路由该
+路径。原始响应和流使用 Agent API 的类型化输出和 SSE 事件
+格式，并且 Perplexity 提供商元数据、用量、成本和来源标识符
+可能有所不同。嵌入 API 保持不变。
+
+对于 PDF 输入，请在将其发送到 Agent API 之前提取文档文本，
+或选择另一个支持 PDF 输入的提供商。如果你的应用程序需要
+这些功能，请将图像/视频检索和语言过滤搜索移至单独的服务。为类型化 Agent
+事件重写原始 Sonar 流事件的消费者。有关完整的 API 级比较，请参阅 Perplexity 的[迁移
+指南](https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/how-to)。
 
 ## 嵌入模型
 
-您可以使用 `.embedding()` 工厂方法创建调用 [Perplexity 嵌入 API](https://docs.perplexity.ai/docs/embeddings/quickstart) 的模型。
+你可以使用 `.embedding()` 工厂方法创建调用 [Perplexity 嵌入 API](https://docs.perplexity.ai/docs/embeddings/quickstart)
+的模型。
 
 ```ts
 import { perplexity } from '@ai-sdk/perplexity';
@@ -199,21 +355,24 @@ import { embed } from 'ai';
 
 const { embedding } = await embed({
   model: perplexity.embedding('pplx-embed-v1-4b'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
 });
 ```
 
 <Note>
-  Perplexity 返回**量化**嵌入（非浮点数）。值会被解码为数字——有符号 `int8` 值（默认）或每字节的打包位。
-  使用余弦相似度比较 `base64_int8` 嵌入，使用汉明距离比较 `base64_binary` 嵌入。
+  Perplexity 返回**量化**嵌入（不是浮点数）。值会被
+  解码为数字——有符号 `int8` 值（默认）或每字节打包的位。
+  使用余弦相似度比较 `base64_int8` 嵌入，使用汉明距离比较 `base64_binary`
+  嵌入。
 </Note>
 
-当 API 返回成本明细时，它会通过 `providerMetadata.perplexity.cost`（`inputCost`、`totalCost`、`currency`）暴露：
+当 API 返回成本明细时，它会通过
+`providerMetadata.perplexity.cost`（`inputCost`、`totalCost`、`currency`）公开：
 
 ```ts
 const { embedding, providerMetadata } = await embed({
   model: perplexity.embedding('pplx-embed-v1-4b'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
 });
 
 console.log(providerMetadata?.perplexity?.cost);
@@ -222,29 +381,30 @@ console.log(providerMetadata?.perplexity?.cost);
 
 ### 提供商选项
 
-您可以通过 `providerOptions.perplexity` 字段传递提供商特定选项：
+你可以通过 `providerOptions.perplexity` 字段传入提供商特定的选项：
 
 ```ts
 const { embedding } = await embed({
   model: perplexity.embedding('pplx-embed-v1-4b'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
   providerOptions: {
     perplexity: {
-      // 输出向量的 Matryoshka 截断（128 到模型大小）。
+      // Matryoshka truncation of the output vector (128 up to the model size).
       dimensions: 512,
-      // 量化编码格式。默认为 'base64_int8'。
+      // Quantized encoding format. Defaults to 'base64_int8'.
       encodingFormat: 'base64_int8',
     },
   },
 });
 ```
 
-以下可选的提供商选项可用于嵌入模型：
+以下可选提供商选项可用于嵌入模型：
 
 - **dimensions** _number_
 
   生成的输出嵌入应具有的维度数。
-  范围从 128 到模型的完整大小（`0.6b` 模型为 1024，`4b` 模型为 2560）。
+  范围从 128 到模型的完整大小（`0.6b` 模型为 1024，`4b` 模型为
+  2560）。
 
 - **encodingFormat** _'base64_int8' | 'base64_binary'_
 
@@ -252,22 +412,21 @@ const { embedding } = await embed({
 
 ### 嵌入模型能力
 
-| 模型                   | 维度 | 每次调用最大值 |
-| ---------------------- | ---------- | ------------------- |
-| `pplx-embed-v1-0.6b`   | 1024       | 512                 |
-| `pplx-embed-v1-4b`     | 2560       | 512                 |
+| 模型                 | 维度       | 每次调用最大值      |
+| -------------------- | ---------- | ------------------- |
+| `pplx-embed-v1-0.6b` | 1024       | 512                 |
+| `pplx-embed-v1-4b`   | 2560       | 512                 |
 
 ## 模型能力
 
-| 模型                    | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
-| ----------------------- | ----------- | ----------------- | ---------- | -------------- |
-| `sonar-deep-research`   | <Cross />   | <Check />         | <Cross />  | <Cross />      |
-| `sonar-reasoning-pro`   | <Check />   | <Check />         | <Cross />  | <Cross />      |
-| `sonar-reasoning`       | <Check />   | <Check />         | <Cross />  | <Cross />      |
-| `sonar-pro`             | <Check />   | <Check />         | <Cross />  | <Cross />      |
-| `sonar`                 | <Check />   | <Check />         | <Cross />  | <Cross />      |
+| 模型     | 图像输入    | 对象生成          | 工具使用   | 工具流式传输   |
+| -------- | ----------- | ----------------- | ---------- | -------------- |
+| `fast`   | <Check />   | <Check />         | <Check />  | <Check />      |
+| `low`    | <Check />   | <Check />         | <Check />  | <Check />      |
+| `medium` | <Check />   | <Check />         | <Check />  | <Check />      |
+| `high`   | <Check />   | <Check />         | <Check />  | <Check />      |
+| `xhigh`  | <Check />   | <Check />         | <Check />  | <Check />      |
 
 <Note>
-  请参阅 [Perplexity 文档](https://docs.perplexity.ai) 了解详细的 API
-  文档和最新更新。
+  有关详细的 API 文档和最新更新，请参阅 [Perplexity 文档](https://docs.perplexity.ai)。
 </Note>

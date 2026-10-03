@@ -1,16 +1,16 @@
 ---
-title: "多步骤界面"
-description: "使用 AI SDK RSC 构建多步骤界面的概述"
+title: "多步界面"
+description: "使用 AI SDK RSC 构建多步界面的概述"
 ---
 
-# 设计多步骤界面
+# 设计多步界面
 
 <Note type="warning">
   AI SDK RSC 目前处于实验阶段。我们建议在生产环境中使用 [AI SDK
   UI](/docs/ai-sdk-ui/overview)。有关从 RSC 迁移到 UI 的指导，请参阅我们的[迁移指南](/docs/ai-sdk-rsc/migrating-to-ui)。
 </Note>
 
-多步骤界面指的是需要执行多个独立步骤才能完成特定任务的用户界面。
+多步界面指的是需要执行多个独立步骤才能完成特定任务的用户界面。
 
 例如，如果你想构建一个能够预订航班的生成式 UI 聊天机器人，它可能包含三个步骤：
 
@@ -20,17 +20,17 @@ description: "使用 AI SDK RSC 构建多步骤界面的概述"
 
 要构建这类应用，你需要利用两个概念：**工具组合**和**应用上下文**。
 
-**工具组合**是将多个[工具](/docs/ai-sdk-core/tools-and-tool-calling)组合起来创建新工具的过程。这是一个强大的概念，允许你将复杂任务分解为更小、更易管理的步骤。在上面的示例中，_"搜索所有航班"_、_"选择航班"_ 和 _"检查可用性"_ 组合在一起，形成了一个完整的 _"预订航班"_ 工具。
+**工具组合**是将多个[工具](/docs/ai-sdk-core/tools-and-tool-calling)组合起来创建新工具的过程。这是一个强大的概念，允许你将复杂任务分解为更小、更易管理的步骤。在上面的示例中，_"搜索所有航班"_、_"选择航班"_ 和 _"检查可用性"_ 组合在一起，构成了一个完整的 _"预订航班"_ 工具。
 
-**应用上下文**指的是应用在任意时间点的状态。这包括用户的输入、语言模型的输出以及任何其他相关信息。在上面的示例中，_"选择航班"_ 中所选的航班将作为完成 _"检查可用性"_ 任务所必需的上下文。
+**应用上下文**指的是应用在任意时间点的状态。这包括用户的输入、语言模型的输出以及任何其他相关信息。在上面的示例中，_"选择航班"_ 中所选的航班将作为完成 _"检查可用性"_ 任务所需的上下文。
 
 ## 概述
 
-要使用 `@ai-sdk/rsc` 构建多步骤界面，你需要以下几项：
+要使用 `@ai-sdk/rsc` 构建多步界面，你需要以下几项：
 
 - 一个调用并返回 `streamUI` 函数结果的 Server Action
 - 工具（完成整体任务所需的子任务）
-- 工具被调用时应渲染的 React 组件
+- 在调用工具时应渲染的 React 组件
 - 一个用于渲染聊天机器人的页面
 
 你将遵循的一般流程是：
@@ -38,12 +38,12 @@ description: "使用 AI SDK RSC 构建多步骤界面的概述"
 - 用户发送消息（使用 `useActions` 调用你的 Server Action，并将消息作为输入传入）
 - 消息被追加到 AI State，然后与多个工具一起传递给模型
 - 模型可以决定调用某个工具，这将渲染 `<SomeTool />` 组件
-- 在该组件内，你可以通过使用 `useActions` 调用模型（配合你的 Server Action）以及使用 `useUIState` 将模型的响应（`<SomeOtherTool />`）追加到 UI State 来添加交互性
+- 在该组件内部，你可以通过使用 `useActions` 调用模型（配合你的 Server Action）以及使用 `useUIState` 将模型的响应（`<SomeOtherTool />`）追加到 UI State 来添加交互性
 - 以此类推……
 
 ## 实现
 
-逐轮实现是多步骤界面最简单的形式。在这种实现中，用户和模型在对话过程中轮流进行。对于每一次用户输入，模型生成一个响应，对话以这种逐轮的方式继续进行。
+逐轮实现是多步界面最简单的形式。在这种实现中，用户和模型在对话过程中轮流进行。对于每一次用户输入，模型生成一个响应，对话以这种逐轮的方式继续。
 
 在下面的示例中，你指定了两个工具（`searchFlights` 和 `lookupFlight`），模型可以使用它们来搜索航班和查询特定航班的详细信息。
 
@@ -214,11 +214,11 @@ export default function Page() {
 }
 ```
 
-此页面使用 `useUIState` Hook 拉取当前的 UI State，然后将其映射并渲染到 UI 中。要访问 Server Action，你使用 `useActions` Hook，它会返回传递给 `actions.tsx` 文件中 `createAI` 函数 `actions` 键的所有 action。最后，你像调用任何其他 TypeScript 函数一样调用 `submitUserMessage` 函数。此函数返回一个 React 组件（`message`），然后通过使用 `setConversation` 更新 UI State 将其渲染到 UI 中。
+此页面使用 `useUIState` Hook 拉取当前的 UI State，然后将其映射并渲染在 UI 中。要访问 Server Action，你使用 `useActions` Hook，它会返回传递给 `actions.tsx` 文件中 `createAI` 函数 `actions` 键的所有 action。最后，你像调用任何其他 TypeScript 函数一样调用 `submitUserMessage` 函数。此函数返回一个 React 组件（`message`），然后通过使用 `setConversation` 更新 UI State 将其渲染在 UI 中。
 
 在此示例中，要调用下一个工具，用户必须以纯文本形式回复。**鉴于你正在流式传输一个 React 组件，你可以添加一个按钮来触发对话中的下一步**。
 
-要添加用户交互，你必须将该组件转换为客户端组件，并使用 `useAction` Hook 来触发对话中的下一步。
+要添加用户交互，你必须将该组件转换为客户端组件，并使用 `useActions` Hook 来触发对话中的下一步。
 
 ```tsx filename="components/flights.tsx"
 'use client';
@@ -276,6 +276,6 @@ searchFlights: {
 ...
 ```
 
-在上面的示例中，`Flights` 组件用于显示搜索结果。当用户点击航班号时，会以该航班号作为参数调用 `lookupFlight` 工具。然后调用 `submitUserMessage` action 来触发对话中的下一步。
+在上面的示例中，`Flights` 组件用于显示搜索结果。当用户点击航班号时，会以航班号作为参数调用 `lookupFlight` 工具。然后调用 `submitUserMessage` action 来触发对话中的下一步。
 
 通过查看[此处](/examples/next-app/tools)的示例，了解有关 Next.js App Router 中工具调用的更多信息。

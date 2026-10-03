@@ -1,14 +1,17 @@
 ---
 title: "useObject"
-description: "useObject Hook 的 API 参考文档。"
+description: "useObject Hook 的 API 参考。"
 ---
 
 # `useObject()`
 
-<Note>`useObject` 仅在 React、Svelte 和 Vue 中可用。</Note>
+<Note>
+  `useObject` 在 React、Svelte、Vue 和 SolidJS 社区集成中可用。Angular 提供了等效的
+  `StructuredObject` 服务。
+</Note>
 
-允许你消费表示 JSON 对象的文本流，并根据模式将其解析为完整的对象。
-你可以将其与后端的 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 和 [`Output.object()`](/docs/reference/ai-sdk-core/output#output-object) 结合使用。
+允许你消费表示 JSON 对象的文本流，并根据 schema 将其解析为完整的对象。
+你可以在后端将其与 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 和 [`Output.object()`](/docs/reference/ai-sdk-core/output#output-object) 一起使用。
 
 ```tsx
 'use client';
@@ -23,14 +26,14 @@ export default function Page() {
 
   return (
     <div>
-      <button onClick={() => submit('example input')}>生成</button>
+      <button onClick={() => submit('example input')}>Generate</button>
       {object?.content && <p>{object.content}</p>}
     </div>
   );
 }
 ```
 
-## 导入
+## Import
 
 <Tabs items={['React', 'Svelte', 'Vue']}>
   <Tab>
@@ -66,19 +69,19 @@ export default function Page() {
       name: 'api',
       type: 'string',
       description:
-        '用于生成对象的 API 端点。它应以分块文本形式流式传输符合模式的 JSON。可以是相对路径（以 `/` 开头）或绝对 URL。',
+        '用于生成对象而调用的 API 端点。它应以分块文本的形式流式传输与 schema 匹配的 JSON。它可以是相对路径（以 `/` 开头）或绝对 URL。',
     },
     {
       name: 'schema',
       type: 'Zod Schema | JSON Schema',
       description:
-        '定义完整对象形状的模式。你可以传入 Zod 模式或 JSON 模式（使用 `jsonSchema` 函数）。',
+        '定义完整对象形状的 schema。你可以传入 Zod schema 或 JSON schema（使用 `jsonSchema` 函数）。',
     },
     {
       name: 'id?',
       type: 'string',
       description:
-        '唯一标识符。如果未提供，将生成一个随机标识符。当提供时，具有相同 `id` 的 `useObject` Hook 将在组件间共享状态。',
+        '唯一标识符。如果未提供，将生成一个随机标识符。当提供时，具有相同 `id` 的 `useObject` Hook 将在各组件之间共享状态。',
     },
     {
       name: 'initialValue',
@@ -98,14 +101,14 @@ export default function Page() {
       type: 'Record<string, string> | Headers',
       isOptional: true,
       description:
-        '要传递给 API 端点的 headers 对象。可选。',
+        '传递给 API 端点的 headers 对象。可选。',
     },
     {
       name: 'credentials',
       type: 'RequestCredentials',
       isOptional: true,
       description:
-        '用于 fetch 请求的凭据模式。可能的值有："omit"、"same-origin"、"include"。可选。',
+        '用于 fetch 请求的 credentials 模式。可能的值有："omit"、"same-origin"、"include"。可选。',
     },
     {
       name: 'onError',
@@ -118,7 +121,7 @@ export default function Page() {
       name: 'onFinish',
       type: '(result: OnFinishResult) => void',
       isOptional: true,
-      description: '流式响应完成时调用。',
+      description: '当流式传输响应完成时调用。',
       properties: [
         {
           type: 'OnFinishResult',
@@ -127,13 +130,13 @@ export default function Page() {
               name: 'object',
               type: 'T | undefined',
               description:
-                '生成的对象（根据模式进行类型化）。如果最终对象与模式不匹配，则可能为 undefined。',
+                '生成的对象（根据 schema 进行类型标注）。如果最终对象与 schema 不匹配，则可能为 undefined。',
             },
             {
               name: 'error',
               type: 'Error | undefined',
               description:
-                '可选的错误对象。例如，当最终对象与模式不匹配时，会是一个 TypeValidationError。',
+                '可选的错误对象。例如，当最终对象与 schema 不匹配时，这是一个 TypeValidationError。',
             },
           ],
         },
@@ -149,7 +152,7 @@ export default function Page() {
     {
       name: 'submit',
       type: '(input: INPUT) => void',
-      description: '使用提供的输入作为 JSON 主体调用 API。',
+      description: '使用提供的输入作为 JSON 请求体调用 API。',
     },
     {
       name: 'object',
@@ -166,17 +169,17 @@ export default function Page() {
       name: 'isLoading',
       type: 'boolean',
       description:
-        '布尔标志，指示请求是否正在进行中。',
+        '布尔标志，指示当前是否有请求正在进行中。',
     },
     {
       name: 'stop',
       type: '() => void',
-      description: '中止当前 API 请求的函数。',
+      description: '用于中止当前 API 请求的函数。',
     },
     {
       name: 'clear',
       type: '() => void',
-      description: '清除对象状态的函数。',
+      description: '用于清除对象状态的函数。',
     },
   ]}
 />

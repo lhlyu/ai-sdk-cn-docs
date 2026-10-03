@@ -1,20 +1,20 @@
 ---
-title: ModelMessage
-description: AI SDK Core 的消息类型（API 参考）
+title: "ModelMessage"
+description: "AI SDK Core 的消息类型（API 参考）"
 ---
 
 # `ModelMessage`
 
-`ModelMessage` 表示与 AI SDK Core 函数一起使用的基本消息结构。
-它包含可在任何 AI SDK Core 函数的 `messages` 字段中使用的各种消息类型。
+`ModelMessage` 表示 AI SDK Core 函数所使用的基本消息结构。
+它包含多种消息类型，可用于任何 AI SDK Core 函数的 `messages` 字段。
 
-你可以通过 `modelMessageSchema` 导出访问 `ModelMessage` 的 Zod 模式。
+你可以通过 `modelMessageSchema` 导出访问 `ModelMessage` 的 Zod schema。
 
 ## `ModelMessage` 类型
 
 ### `SystemModelMessage`
 
-一条可包含系统信息的系统消息。
+可包含系统信息的系统消息。
 
 ```typescript
 type SystemModelMessage = {
@@ -23,15 +23,17 @@ type SystemModelMessage = {
 };
 ```
 
-你可以通过 `systemModelMessageSchema` 导出访问 `SystemModelMessage` 的 Zod 模式。
+你可以通过 `systemModelMessageSchema` 导出访问 `SystemModelMessage` 的 Zod schema。
 
 <Note>
-  请使用顶层的 `instructions` 属性代替系统消息来提供系统指令。AI SDK 函数默认会拒绝 `prompt` 或 `messages` 中的系统消息，除非将 `allowSystemInMessages` 设置为 `true`。如果用户能够注入系统消息，选择启用可能会带来提示词注入风险。
+  系统指令请使用顶层的 `instructions` 属性，而不是系统消息。默认情况下，AI SDK
+  函数会拒绝 `prompt` 或 `messages` 中的系统消息，除非将 `allowSystemInMessages`
+  设置为 `true`。如果用户可以注入系统消息，选择启用可能会带来提示词注入风险。
 </Note>
 
 ### `UserModelMessage`
 
-一条可包含文本或文本、图像和文件组合的用户消息。
+用户消息，可包含文本，或文本、图像和文件的组合。
 
 ```typescript
 type UserModelMessage = {
@@ -42,11 +44,11 @@ type UserModelMessage = {
 type UserContent = string | Array<TextPart | ImagePart | FilePart>;
 ```
 
-你可以通过 `userModelMessageSchema` 导出访问 `UserModelMessage` 的 Zod 模式。
+你可以通过 `userModelMessageSchema` 导出访问 `UserModelMessage` 的 Zod schema。
 
 ### `AssistantModelMessage`
 
-一条可包含文本、工具调用或两者组合的助手消息。
+助手消息，可包含文本、工具调用，或两者的组合。
 
 ```typescript
 type AssistantModelMessage = {
@@ -57,11 +59,11 @@ type AssistantModelMessage = {
 type AssistantContent = string | Array<TextPart | CustomPart | ToolCallPart>;
 ```
 
-你可以通过 `assistantModelMessageSchema` 导出访问 `AssistantModelMessage` 的 Zod 模式。
+你可以通过 `assistantModelMessageSchema` 导出访问 `AssistantModelMessage` 的 Zod schema。
 
 ### `ToolModelMessage`
 
-一条包含一个或多个工具调用结果的工具消息。
+工具消息，包含一个或多个工具调用的结果。
 
 ```typescript
 type ToolModelMessage = {
@@ -72,7 +74,7 @@ type ToolModelMessage = {
 type ToolContent = Array<ToolResultPart>;
 ```
 
-你可以通过 `toolModelMessageSchema` 导出访问 `ToolModelMessage` 的 Zod 模式。
+你可以通过 `toolModelMessageSchema` 导出访问 `ToolModelMessage` 的 Zod schema。
 
 ## `ModelMessage` 组成部分
 
@@ -84,7 +86,7 @@ type ToolContent = Array<ToolResultPart>;
 export interface TextPart {
   type: 'text';
   /**
-   * 文本内容。
+   * The text content.
    */
   text: string;
 }
@@ -93,29 +95,30 @@ export interface TextPart {
 ### `ImagePart` <Note type="warning">已弃用</Note>
 
 <Note type="warning">
-  `ImagePart` 已弃用。请改用 [`FilePart`](#filepart) 并设置 `mediaType: 'image'`（或更具体的 `image/*` 子类型）。
+  `ImagePart` 已弃用。请改用 [`FilePart`](#filepart) 并设置 `mediaType:
+  'image'`（或更具体的 `image/*` 子类型）。
 </Note>
 
 表示用户消息中的图像部分。
 
 ```typescript
 /**
- * @deprecated 请改用 `FilePart` 并设置 `mediaType: 'image'`。
+ * @deprecated Use `FilePart` with `mediaType: 'image'` instead.
  */
 export interface ImagePart {
   type: 'image';
 
   /**
-   * 图像数据。可以是：
-   * - data：base64 编码的字符串、Uint8Array、ArrayBuffer 或 Buffer
-   * - URL：指向图像的 URL
-   * - ProviderReference：来自 `uploadFile` 的提供商引用
+   * Image data. Can either be:
+   * - data: a base64-encoded string, a Uint8Array, an ArrayBuffer, or a Buffer
+   * - URL: a URL that points to the image
+   * - ProviderReference: a provider reference from `uploadFile`
    */
   image: DataContent | URL | ProviderReference;
 
   /**
-   * 可选的 IANA 媒体类型。
-   * 建议省略此项，因为会自动检测。
+   * Optional IANA media type of the image.
+   * We recommend leaving this out as it will be detected automatically.
    */
   mediaType?: string;
 }
@@ -130,31 +133,31 @@ export interface FilePart {
   type: 'file';
 
   /**
-   * 文件数据。请使用带标签的 `FileData` 形状。
-   * 也支持裸的 `DataContent`、`URL` 和 `ProviderReference` 简写形式。
+   * File data. Use the tagged `FileData` shape.
+   * Bare `DataContent`, `URL`, and `ProviderReference` shorthands are also supported.
    */
   data: FileData | DataContent | URL | ProviderReference;
 
   /**
-   * 可选的文件名。
+   * Optional filename of the file.
    */
   filename?: string;
 
   /**
-   * 完整的 IANA 媒体类型（`type/subtype`，例如 `image/png`）或
-   * 仅顶层 IANA 段（例如 `image`、`audio`、`video`、`text`）。
+   * Either a full IANA media type (`type/subtype`, e.g. `image/png`) or just
+   * the top-level IANA segment (e.g. `image`, `audio`, `video`, `text`).
    */
   mediaType: string;
 }
 
 export type FileData =
-  // 原始字节，作为 base64 字符串、Uint8Array、ArrayBuffer 或 Buffer。
+  // Raw bytes as a base64 string, Uint8Array, ArrayBuffer, or Buffer.
   | { type: 'data'; data: DataContent }
-  // 指向文件的 URL。
+  // A URL that points to the file.
   | { type: 'url'; url: URL }
-  // 来自 `uploadFile` 的提供商引用。
+  // A provider reference from `uploadFile`.
   | { type: 'reference'; reference: ProviderReference }
-  // 内联文本内容。
+  // Inline text content.
   | { type: 'text'; text: string };
 ```
 
@@ -167,12 +170,12 @@ export interface CustomPart {
   type: 'custom';
 
   /**
-   * 自定义内容的种类，格式为 `{provider}.{provider-type}`。
+   * The kind of custom content, in the format `{provider}.{provider-type}`.
    */
   kind: `${string}.${string}`;
 
   /**
-   * 额外的提供商特定元数据。
+   * Additional provider-specific metadata.
    */
   providerOptions?: ProviderOptions;
 }
@@ -187,17 +190,17 @@ export interface ToolCallPart {
   type: 'tool-call';
 
   /**
-   * 工具调用的 ID。此 ID 用于将工具调用与工具结果匹配。
+   * ID of the tool call. This ID is used to match the tool call with the tool result.
    */
   toolCallId: string;
 
   /**
-   * 被调用的工具名称。
+   * Name of the tool that is being called.
    */
   toolName: string;
 
   /**
-   * 工具调用的参数。这是一个 JSON 可序列化的对象，与工具的输入模式匹配。
+   * Arguments of the tool call. This is a JSON-serializable object that matches the tool's input schema.
    */
   args: unknown;
 }
@@ -212,44 +215,45 @@ export interface ToolResultPart {
   type: 'tool-result';
 
   /**
-   * 与此结果关联的工具调用 ID。
+   * ID of the tool call that this result is associated with.
    */
   toolCallId: string;
 
   /**
-   * 生成此结果的工具名称。
+   * Name of the tool that generated this result.
    */
   toolName: string;
 
   /**
-   * 工具调用的结果。这是一个 JSON 可序列化的对象。
+   * Result of the tool call. This is a JSON-serializable object.
    */
-  output: LanguageModelV4ToolResultOutput;
+  output: ToolResultOutput;
 
   /**
-   * 额外的提供商特定元数据。它们从 AI SDK 传递到提供商，
-   * 并启用可完全封装在提供商中的提供商特定功能。
-   */
+  Additional provider-specific metadata. They are passed through
+  to the provider from the AI SDK and enable provider-specific
+  functionality that can be fully encapsulated in the provider.
+  */
   providerOptions?: ProviderOptions;
 }
 ```
 
-### `LanguageModelV4ToolResultOutput`
+### `ToolResultOutput`
 
 ```ts
 /**
- * 工具结果的输出。
+ * Output of a tool result.
  */
 export type ToolResultOutput =
   | {
       /**
-       * 应直接发送到 API 的文本工具输出。
+       * Text tool output that should be directly sent to the API.
        */
       type: 'text';
       value: string;
 
       /**
-       * 提供商特定选项。
+       * Provider-specific options.
        */
       providerOptions?: ProviderOptions;
     }
@@ -258,23 +262,23 @@ export type ToolResultOutput =
       value: JSONValue;
 
       /**
-       * 提供商特定选项。
+       * Provider-specific options.
        */
       providerOptions?: ProviderOptions;
     }
   | {
       /**
-       * 用户拒绝执行工具调用时的类型。
+       * Type when the user has denied the execution of the tool call.
        */
       type: 'execution-denied';
 
       /**
-       * 执行被拒绝的可选原因。
+       * Optional reason for the execution denial.
        */
       reason?: string;
 
       /**
-       * 提供商特定选项。
+       * Provider-specific options.
        */
       providerOptions?: ProviderOptions;
     }
@@ -283,7 +287,7 @@ export type ToolResultOutput =
       value: string;
 
       /**
-       * 提供商特定选项。
+       * Provider-specific options.
        */
       providerOptions?: ProviderOptions;
     }
@@ -292,7 +296,7 @@ export type ToolResultOutput =
       value: JSONValue;
 
       /**
-       * 提供商特定选项。
+       * Provider-specific options.
        */
       providerOptions?: ProviderOptions;
     }
@@ -303,18 +307,18 @@ export type ToolResultOutput =
             type: 'text';
 
             /**
-             * 文本内容。
-             */
+Text content.
+*/
             text: string;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * @deprecated 请改用 image-data 或 file-data。
+             * @deprecated Use image-data or file-data instead.
              */
             type: 'media';
             data: string;
@@ -324,23 +328,23 @@ export type ToolResultOutput =
             type: 'file-data';
 
             /**
-             * Base-64 编码的媒体数据。
-             */
+Base-64 encoded media data.
+*/
             data: string;
 
             /**
-             * IANA 媒体类型。
-             * @see https://www.iana.org/assignments/media-types/media-types.xhtml
-             */
+IANA media type.
+@see https://www.iana.org/assignments/media-types/media-types.xhtml
+*/
             mediaType: string;
 
             /**
-             * 可选的文件名。
+             * Optional filename of the file.
              */
             filename?: string;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
@@ -348,39 +352,40 @@ export type ToolResultOutput =
             type: 'file-url';
 
             /**
-             * 文件的 URL。
+             * URL of the file.
              */
             url: string;
 
             /**
-             * 文件的 IANA 媒体类型。
-             * 提供商用于确定如何处理文件（例如图像与文档）。
-             * 可选；如果省略，SDK 将尝试从 URL 文件扩展名推断。
+             * IANA media type of the file.
+             * Used by providers to determine how to handle the file (e.g. image vs document).
+             * Optional; if omitted, the SDK will attempt to infer it from the URL file extension.
              */
             mediaType?: string;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * @deprecated 请改用 file-reference。
+             * @deprecated Use file-reference instead.
              */
             type: 'file-id';
 
             /**
-             * 文件的 ID。
+             * ID of the file.
              *
-             * 如果使用多个提供商，你需要使用
-             * Record 选项指定提供商特定的 ID。
-             * 键是提供商名称，例如 'openai' 或 'anthropic'。
+             * If you use multiple providers, you need to
+             * specify the provider specific ids using
+             * the Record option. The key is the provider
+             * name, e.g. 'openai' or 'anthropic'.
              */
             fileId: string | Record<string, string>;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
@@ -388,104 +393,105 @@ export type ToolResultOutput =
             type: 'file-reference';
 
             /**
-             * 文件的提供商特定引用。
-             * 键是提供商名称，例如 'openai' 或 'anthropic'。
+             * Provider-specific references for the file.
+             * The key is the provider name, e.g. 'openai' or 'anthropic'.
              */
             providerReference: ProviderReference;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * @deprecated 请改用 file-data。
-             * 使用 base64 编码数据引用的图像。
+             * @deprecated Use file-data instead.
+             * Images that are referenced using base64 encoded data.
              */
             type: 'image-data';
 
             /**
-             * Base-64 编码的图像数据。
-             */
+Base-64 encoded image data.
+*/
             data: string;
 
             /**
-             * IANA 媒体类型。
-             * @see https://www.iana.org/assignments/media-types/media-types.xhtml
-             */
+IANA media type.
+@see https://www.iana.org/assignments/media-types/media-types.xhtml
+*/
             mediaType: string;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * @deprecated 请改用 file-url。
-             * 使用 URL 引用的图像。
+             * @deprecated Use file-url instead.
+             * Images that are referenced using a URL.
              */
             type: 'image-url';
 
             /**
-             * 图像的 URL。
+             * URL of the image.
              */
             url: string;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * @deprecated 请改用 file-reference。
-             * 使用提供商文件 ID 引用的图像。
+             * @deprecated Use file-reference instead.
+             * Images that are referenced using a provider file id.
              */
             type: 'image-file-id';
 
             /**
-             * 使用提供商文件 ID 引用的图像。
+             * Image that is referenced using a provider file id.
              *
-             * 如果使用多个提供商，你需要使用
-             * Record 选项指定提供商特定的 ID。
-             * 键是提供商名称，例如 'openai' 或 'anthropic'。
+             * If you use multiple providers, you need to
+             * specify the provider specific ids using
+             * the Record option. The key is the provider
+             * name, e.g. 'openai' or 'anthropic'.
              */
             fileId: string | Record<string, string>;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * @deprecated 请改用 file-reference。
-             * 使用提供商引用引用的图像。
+             * @deprecated Use file-reference instead.
+             * Images that are referenced using a provider reference.
              */
             type: 'image-file-reference';
 
             /**
-             * 图像文件的提供商特定引用。
-             * 键是提供商名称，例如 'openai' 或 'anthropic'。
+             * Provider-specific references for the image file.
+             * The key is the provider name, e.g. 'openai' or 'anthropic'.
              */
             providerReference: ProviderReference;
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }
         | {
             /**
-             * 自定义内容部分。可用于实现
-             * 提供商特定的内容部分。
+             * Custom content part. This can be used to implement
+             * provider-specific content parts.
              */
             type: 'custom';
 
             /**
-             * 提供商特定选项。
+             * Provider-specific options.
              */
             providerOptions?: ProviderOptions;
           }

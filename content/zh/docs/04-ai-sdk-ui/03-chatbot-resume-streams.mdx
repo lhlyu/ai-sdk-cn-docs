@@ -10,7 +10,7 @@ description: "了解如何在客户端断开连接后恢复聊天机器人流。
 <Note type="warning">
   在可恢复流设置中，客户端中止被视为断开连接。
   关闭标签页、刷新页面或调用 `stop()` 只会关闭
-  当前的 HTTP 连接，不应取消底层的生成。要
+  当前的 HTTP 连接，不应取消底层的生成。若要
   让用户停止生成，请添加一个专用的停止端点，该端点会持久化
   部分响应、取消活动工作并清除活动流。有关
   更多详细信息，请参阅
@@ -20,27 +20,27 @@ description: "了解如何在客户端断开连接后恢复聊天机器人流。
 
 ## 流恢复的工作原理
 
-流恢复需要持久化应用中的消息和活动流。AI SDK 提供了连接到存储的工具，但你需要自己设置存储。
+流恢复需要你的应用程序对消息和活动流进行持久化。AI SDK 提供了连接到存储的工具，但你需要自己设置存储。
 
 **AI SDK 提供：**
 
 - `useChat` 中的 `resume` 选项，可自动重新连接到活动流
-- 通过 `consumeSseStream` 回调访问传出的流
-- 自动向恢复端点发送 HTTP 请求
+- 通过 `consumeSseStream` 回调访问传出流
+- 自动向你的恢复端点发送 HTTP 请求
 
 **你需要构建：**
 
-- 用于跟踪每个聊天所属流的存储
+- 用于跟踪每个聊天对应哪个流的存储
 - 用于存储 UIMessage 流的 Redis
 - 两个 API 端点：POST 用于创建流，GET 用于恢复流
 - 与 [`resumable-stream`](https://www.npmjs.com/package/resumable-stream) 集成以管理 Redis 存储
 
 ## 前提条件
 
-要在聊天应用中实现可恢复流，你需要：
+要在你的聊天应用中实现可恢复流，你需要：
 
 1. **`resumable-stream` 包** - 处理流的发布者/订阅者机制
-2. **一个 Redis 实例** - 存储流数据（例如 [通过 Vercel 使用 Redis](https://vercel.com/marketplace/redis)）
+2. **一个 Redis 实例** - 存储流数据（例如[通过 Vercel 使用 Redis](https://vercel.com/marketplace/redis)）
 3. **一个持久化层** - 跟踪每个聊天当前活动的流 ID（例如数据库）
 
 ## 实现
@@ -88,7 +88,11 @@ export function Chat({
   `prepareSendMessagesRequest`）。
 </Note>
 
-当你启用 `resume` 时，`useChat` Hook 会在挂载时向 `/api/chat/[id]/stream` 发送一个 `GET` 请求，以检查并恢复任何活动流。
+当你启用 `resume` 时，`useChat` Hook 会在挂载时向 `/api/chat/[id]/stream` 发出 `GET` 请求，以检查并恢复任何活动流。
+
+默认传输会将聊天 ID 进行 URL 编码为单个路径段。等于
+`.` 或 `..` 的 ID 会被拒绝并返回 `InvalidArgumentError`，因为 URL 解析器
+会将它们解释为路径遍历段。
 
 让我们从创建 POST 处理器来创建可恢复流开始。
 
@@ -196,27 +200,31 @@ export async function GET(
 ```
 
 <Note>
-  Next.js 的 `after` 函数允许在响应发送后继续工作。这确保了可恢复流
-  即使在初始响应返回给客户端后仍会保留在 Redis 中，从而支持稍后重新连接。
+  Next.js 的 `after` 函数允许在响应发送后继续工作。这确保了
+  可恢复流即使在初始响应返回给客户端后仍会持久化在 Redis 中，
+  从而支持稍后重新连接。
 </Note>
 
 ## 工作原理
 
 ### 请求生命周期
 
-![显示可恢复流请求的架构和生命周期的图表](https://e742qlubrjnjqpp0.public.blob.vercel-storage.com/resume-stream-diagram.png)
+![展示可恢复流请求的架构和生命周期的图表](https://e742qlubrjnjqpp0.public.blob.vercel-storage.com/resume-stream-diagram.png)
 
 上图展示了可恢复流的完整生命周期：
 
 1. **流创建**：当你发送新消息时，POST 处理器使用 `streamText` 生成响应。`consumeSseStream` 回调创建一个具有唯一 ID 的可恢复流，并通过 `resumable-stream` 包将其存储在 Redis 中
 2. **流跟踪**：你的持久化层将 `activeStreamId` 保存在聊天数据中
-3. **客户端重新连接**：当客户端重新连接（页面重新加载）时，`resume` 选项会触发向 `/api/chat/[id]/stream` 发送 GET 请求
+3. **客户端重新连接**：当客户端重新连接（页面重新加载）时，`resume` 选项会触发向 `/api/chat/[id]/stream` 的 GET 请求
 4. **流恢复**：GET 处理器检查 `activeStreamId` 并使用 `resumeExistingStream` 重新连接。如果没有活动流，则返回 204（No Content）响应
-5. **完成清理**：当流结束时，`onFinish` 回调通过将 `activeStreamId` 设置为 `null` 来清除它
+5. **完成清理**：当流结束时，`onEnd` 回调通过将 `activeStreamId` 设置为 `null` 来清除它
 
 ## 自定义恢复端点
 
-默认情况下，`useChat` Hook 在恢复时会向 `/api/chat/[id]/stream` 发送 GET 请求。使用 `DefaultChatTransport` 中的 `prepareReconnectToStreamRequest` 选项自定义此端点、凭据和请求头：
+默认情况下，`useChat` Hook 在恢复时会向 `/api/chat/[id]/stream` 发出 GET 请求。使用 `DefaultChatTransport` 中的 `prepareReconnectToStreamRequest` 选项自定义此端点、凭据和请求头：
+
+该回调接收原始的、未编码的 ID。它返回的 `api` URL 会被原样使用，
+因此你需要自行对自定义 URL 中包含的任何 ID 进行编码和验证。
 
 ```tsx filename="app/chat/[chatId]/chat.tsx"
 import { useChat } from '@ai-sdk/react';
@@ -231,10 +239,10 @@ export function Chat({ chatData, resume }) {
       // Customize reconnect settings (optional)
       prepareReconnectToStreamRequest: ({ id }) => {
         return {
-          api: `/api/chat/${id}/stream`, // Default pattern
+          api: `/api/chat/${encodeURIComponent(id)}/stream`,
           // Or use a different pattern:
-          // api: `/api/streams/${id}/resume`,
-          // api: `/api/resume-chat?id=${id}`,
+          // api: `/api/streams/${encodeURIComponent(id)}/resume`,
+          // api: `/api/resume-chat?id=${encodeURIComponent(id)}`,
           credentials: 'include', // Include cookies/auth
           headers: {
             Authorization: 'Bearer token',
@@ -251,7 +259,7 @@ export function Chat({ chatData, resume }) {
 
 这让你可以：
 
-- 匹配现有的 API 路由结构
+- 匹配你现有的 API 路由结构
 - 添加查询参数或自定义路径
 - 与不同的后端架构集成
 
@@ -259,17 +267,17 @@ export function Chat({ chatData, resume }) {
 
 `useChat` 包含一个 `stop()` 函数，用于中止当前客户端请求。在可恢复流设置中，该中止是断开连接信号，而不是停止生成的请求。
 
-流恢复允许客户端在原始连接关闭后重新连接到活动流。为实现这一点，即使没有客户端主动消费流，服务器也会保持流运行。如果用户刷新页面、关闭标签页、失去连接或导航离开，客户端稍后可以使用 `resumeStream()` 重新连接。
+流恢复允许客户端在原始连接关闭后重新连接到活动流。为实现这一点，即使没有客户端主动消费流，服务器也会保持流运行。如果用户刷新页面、关闭标签页、失去连接或导航离开，客户端可以稍后通过 `resumeStream()` 重新连接。
 
-因此，客户端中止（例如关闭页面或刷新）只会关闭当前 HTTP 连接。它不是取消底层工作的请求。如果你的停止按钮只调用 `stop()`，模型请求、后台任务、工作流或流写入器可能会继续运行，客户端可以重新连接到同一个活动流。
+因此，客户端中止（例如关闭页面或刷新）只会关闭当前 HTTP 连接。它不是取消底层工作的请求。如果你的停止按钮只调用 `stop()`，模型请求、后台作业、工作流或流写入器可能会继续运行，客户端可以重新连接到同一个活动流。
 
-要支持显式停止按钮，请创建一个专用的停止端点。该端点应接受来自客户端的当前助手消息，持久化该部分响应，取消正在产生流的工作，并清除聊天的活动流记录。
+要支持显式停止按钮，请创建一个专用的停止端点。该端点应接受来自客户端的当前助手消息，持久化该部分响应，取消正在生成流的工作，并清除聊天的活动流记录。
 
-流恢复还需要你的应用存储从聊天到可恢复流的引用。本指南将该引用称为 `activeStreamId`。恢复端点使用它来查找要重新连接的流。停止端点使用相同的值来查找要取消的工作，并避免清除在停止请求进行期间可能已启动的较新流。
+流恢复还需要你的应用程序存储从聊天到可恢复流的引用。本指南将该引用称为 `activeStreamId`。恢复端点使用它来查找要重新连接的流。停止端点使用相同的值来查找要取消的工作，并避免清除在停止请求进行期间可能已启动的较新流。
 
 ### 客户端：发送当前助手消息
 
-聊天设置与上面的可恢复流设置相同。要添加停止行为，请在停止本地聊天流之前，将最新的部分助手消息发送到停止端点。
+聊天设置与上面的可恢复流设置相同。要添加停止行为，请在停止本地聊天流之前，将最新的部分助手消息发送到你的停止端点。
 
 当客户端知道活动流 ID 时，请将其包含在请求中。这使服务器可以忽略在较新流已启动后到达的过期停止请求。
 
@@ -301,7 +309,7 @@ export function Chat({
     const assistantMessage =
       lastMessage?.role === 'assistant' ? lastMessage : undefined;
 
-    void fetch(`/api/chat/${chatData.id}/stop`, {
+    void fetch(`/api/chat/${encodeURIComponent(chatData.id)}/stop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(
@@ -321,7 +329,7 @@ export function Chat({
 }
 ```
 
-停止请求会告诉服务器取消活动工作。`chat.stop()` 会阻止本地客户端继续读取更多数据块。
+停止请求会告诉你的服务器取消活动工作。`chat.stop()` 会停止本地客户端读取更多数据块。
 
 ### 服务端：停止活动工作并清除流
 
@@ -329,7 +337,7 @@ export function Chat({
 
 1. 加载聊天并读取其 `activeStreamId`
 2. 如果发送了助手快照，则持久化它
-3. 取消正在产生流的工作
+3. 取消正在生成流的工作
 4. 仅当 `activeStreamId` 仍指向同一个流时才清除它
 
 ```ts filename="app/api/chat/[id]/stop/route.ts"
@@ -378,9 +386,9 @@ export async function POST(
 }
 ```
 
-`markStreamAsStopped` 和 `cancelActiveWork` 取决于你的后端。在基于 Redis 的可恢复流设置中，你可能会关闭存储的流并中止正在写入它的模型请求。在工作流设置中，你可能会取消拥有该流的工作流运行。在作业队列设置中，你可能会取消作业或写入作业会检查的取消标志。
+`markStreamAsStopped` 和 `cancelActiveWork` 取决于你的后端。在基于 Redis 的可恢复流设置中，你可能会关闭存储的流并中止正在写入它的模型请求。在工作流设置中，你可能会取消拥有该流的工作流运行。在作业队列设置中，你可能会取消作业或写入作业检查的取消标志。
 
-`activeStreamId` 可以标识重放状态、生产者状态或两者。如果它们在系统中是分开的，请在聊天中存储足够的信息，以取消写入流的生产者。
+`activeStreamId` 可以标识重放状态、生产者状态或两者。如果它们在系统中是分开的，请在聊天中存储足够的信息以取消写入流的生产者。
 
 将助手快照持久化为插入或合并。避免用较旧的客户端快照覆盖较新的服务器写入消息。
 

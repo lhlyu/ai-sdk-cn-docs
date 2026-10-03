@@ -5,25 +5,21 @@ description: "在 AI SDK harness 中使用工具。"
 
 # Harness 工具
 
-Harness 有三类工具接口：
+Harness 有三种工具接口：
 
 - 由底层 harness 运行时暴露的内置工具，例如文件读取、编辑、shell 命令和网页搜索。
 - 通过 `tools` 设置传递给 `HarnessAgent` 的 AI SDK 工具。
 - 通过 harness 适配器的 `mcpServers` 设置配置的外部 MCP 工具。
 
-本页介绍 harness 特有的行为。关于通用 AI SDK 工具概念、schema、工具结果以及 `tool()` 用法，请参阅 [Tools](/docs/foundations/tools)。
+本页介绍 harness 特有的行为。关于 AI SDK 工具的一般概念、schema、工具结果以及 `tool()` 用法，请参阅 [工具](/docs/foundations/tools)。
 
 ## 内置工具
 
-每个适配器都会声明其运行时可以原生调用的内置工具。`HarnessAgent` 会将这些内置工具与你宿主定义的工具合并，并通过 `agent.tools` 暴露合并后的工具集。
+每个适配器声明其运行时可以原生调用的内置工具。`HarnessAgent` 会将这些内置工具与你定义的主机工具合并，并通过 `agent.tools` 暴露合并后的工具集。
 
 ```ts
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
 });
 
 agent.tools.bash;
@@ -31,9 +27,9 @@ agent.tools.read;
 agent.tools.write;
 ```
 
-内置调用由 harness 运行时执行，而不是由你的应用进程执行。当运行时已经执行了调用时，流式部分会使用 `providerExecuted: true`。
+内置调用由 harness 运行时执行，而不是由你的应用程序进程执行。当运行时已经执行了调用时，流部分会使用 `providerExecuted: true`。
 
-适配器会尽可能使用通用名称：
+适配器尽可能使用通用名称：
 
 - `read`
 - `write`
@@ -45,14 +41,13 @@ agent.tools.write;
 
 某些运行时还会暴露没有跨 harness 通用名称的原生工具。这些工具会以其原生名称出现。
 
-## 宿主执行的工具
+## 主机执行的工具
 
-像向 `ToolLoopAgent` 传递工具一样，将 AI SDK 工具传递给 `HarnessAgent`：
+像传递给 `ToolLoopAgent` 一样，将 AI SDK 工具传递给 `HarnessAgent`：
 
 ```ts
 import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { claudeCode } from '@ai-sdk/harness-claude-code';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
 import { tool } from 'ai';
 import { z } from 'zod';
 
@@ -74,17 +69,13 @@ const weather = tool({
 
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   tools: { weather },
 });
 ```
 
-当 harness 调用 `weather` 时，`HarnessAgent` 会在你的宿主进程中执行该工具，然后将结果提交回 harness 运行时。
+当 harness 调用 `weather` 时，`HarnessAgent` 会在你的主机进程中执行该工具，然后将结果提交回 harness 运行时。
 
-宿主执行的工具可以声明 `contextSchema`，并通过 `toolsContext` 接收轮次作用域上下文：
+主机执行的工具可以声明 `contextSchema`，并通过 `toolsContext` 接收轮次作用域的上下文：
 
 ```ts
 const lookupAccount = tool({
@@ -104,21 +95,22 @@ const agent = new HarnessAgent({
 });
 ```
 
-当值取决于自定义调用选项时，使用 `prepareCall` 替换 `toolsContext`。`toolsContext` 的类型会跟随工具集：当没有工具声明上下文 schema 时会被拒绝，当某个工具要求上下文对象时为必填，当所有上下文对象都是可选时为可选。`HarnessAgent` 会在执行前根据工具的 `contextSchema` 验证每个条目，并在步骤结果和生命周期回调中暴露已配置的映射。
+当值依赖于自定义调用选项时，使用 `prepareCall` 替换 `toolsContext`。`toolsContext` 的类型跟随工具集：当没有工具声明上下文 schema 时会被拒绝，当某个工具需要上下文对象时为必需，当所有上下文对象都是可选的时为可选。`HarnessAgent` 会在执行前根据工具的 `contextSchema` 验证每个条目，并在步骤结果和生命周期回调中暴露配置的映射。
 
-工具上下文仅保留在宿主端，不会被序列化到挂起轮次状态中。当为未完成的轮次重新创建会话时，需要显式重新绑定：
+工具上下文仅保留在主机端，不会被序列化到挂起轮次状态中。当为未完成的轮次重新创建会话时，需要显式重新绑定：
 
 ```ts
 const session = await agent.createSession({
   sessionId,
   continueFrom,
+  sandboxSession,
   toolsContext: {
     lookupAccount: { userId: 'user-123' },
   },
 });
 ```
 
-缺失或无效的上下文会在宿主工具执行前验证失败。返回给 harness 运行时的验证错误有意保持通用，以免将宿主端上下文值和 schema 细节泄露给模型。
+缺失或无效的上下文会在主机工具执行前验证失败。返回给 harness 运行时的验证错误有意保持通用，以免将仅主机端的上下文值和 schema 细节泄露给模型。
 
 ## 客户端工具
 
@@ -135,7 +127,7 @@ const weather = tool({
 
 在 UI 流程中，将 `addToolOutput` 之后产生的模型消息传递给下一次 `stream()` 或 `generate()` 调用。`HarnessAgent` 会提取末尾的工具结果并自动继续暂停的轮次。
 
-对于直接智能体调用，将原始结果提供给 `continueStream()` 或 `continueGenerate()`：
+对于直接的智能体调用，将原始结果提供给 `continueStream()` 或 `continueGenerate()`：
 
 ```ts
 const continued = await agent.continueStream({
@@ -153,17 +145,13 @@ const continued = await agent.continueStream({
 
 ## 工具过滤
 
-在 `HarnessAgent` 上使用 `activeTools` 或 `inactiveTools` 来控制 harness 可以调用哪些工具。这两个设置都接受来自合并工具集的工具名称：harness 适配器声明的内置工具，以及通过 `tools` 传递的 AI SDK 工具。
+在 `HarnessAgent` 上使用 `activeTools` 或 `inactiveTools` 来控制 harness 可以调用哪些工具。这两个设置都接受来自合并工具集的工具名称：harness 适配器声明的内置工具以及通过 `tools` 传递的 AI SDK 工具。
 
 `activeTools` 是允许列表：
 
 ```ts
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   tools: { weather },
   activeTools: ['weather'],
 });
@@ -174,24 +162,20 @@ const agent = new HarnessAgent({
 ```ts
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   tools: { weather },
   inactiveTools: ['bash', 'write'],
 });
 ```
 
-只能传递 `activeTools` 或 `inactiveTools` 之一，不能同时传递。TypeScript 设置类型会阻止将它们组合使用，并且当两者都被指定时，`HarnessAgent` 也会在运行时抛出错误。
+传入 `activeTools` 或 `inactiveTools` 之一，不要同时传入。TypeScript 设置类型会阻止同时使用它们，并且当两者都被指定时，`HarnessAgent` 也会在运行时抛出错误。
 
-对于宿主执行的工具，非活动工具不会传递给底层 harness 运行时。如果运行时仍尝试调用其中一个，`HarnessAgent` 会返回执行被拒绝的工具结果。
+对于主机执行的工具，非活动工具不会传递给底层 harness 运行时。如果运行时仍然尝试调用其中一个，`HarnessAgent` 会返回执行被拒绝的工具结果。
 
-对于内置工具，支持情况取决于 harness 适配器。某些适配器可以原生过滤内置工具。其他适配器则通过其内置工具审批机制来强制执行过滤，在执行前拒绝非活动的内置调用，且不会发出审批请求或响应流式部分。如果适配器两种机制都不支持，则在你过滤内置工具时会抛出错误。
+对于内置工具，支持情况取决于 harness 适配器。某些适配器可以原生过滤内置工具。其他适配器通过其内置工具审批机制强制执行过滤，在执行前拒绝非活动的内置调用，而不会发出审批请求或响应流部分。两种机制都不支持的适配器在你过滤内置工具时会抛出错误。
 
 ## 工具执行中的沙箱
 
-宿主执行的工具会通过与其他地方 AI SDK 工具相同的 `experimental_sandbox` 执行选项接收会话沙箱。该值是一个受限的沙箱会话，因此工具可以读取、写入和运行命令，但无法停止网络沙箱或更改其网络策略。
+主机执行的工具通过与其他地方 AI SDK 工具使用的相同 `experimental_sandbox` 执行选项接收会话沙箱。该值是一个受限的沙箱会话，因此工具可以读取、写入和运行命令，但无法停止网络沙箱或更改其网络策略。
 
 ```ts
 const inspectFile = tool({
@@ -209,33 +193,28 @@ const inspectFile = tool({
 
 ## 工具审批
 
-Harness 会区分内置工具权限和宿主执行工具审批。
+Harness 区分内置工具权限和主机执行的工具审批。
 
-对适配器原生内置工具使用 `permissionMode`：
+对适配器原生的内置工具使用 `permissionMode`：
 
 ```ts
 const agent = new HarnessAgent({
   harness: pi,
-  sandbox: createVercelSandbox({ runtime: 'node24' }),
   permissionMode: 'allow-edits',
 });
 ```
 
-可用值包括：
+可用的值有：
 
 - `allow-all`：允许内置读取、编辑和 shell 命令。这是默认值。
 - `allow-edits`：允许读取和编辑，但当适配器支持内置审批时，对 shell 命令请求审批。
 - `allow-reads`：允许读取，但当适配器支持内置审批时，对编辑和 shell 命令请求审批。
 
-对宿主执行的工具使用 `toolApproval`：
+对主机执行的工具使用 `toolApproval`：
 
 ```ts
 const agent = new HarnessAgent({
   harness: claudeCode,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
   tools: { weather },
   toolApproval: {
     weather: 'user-approval',
@@ -245,19 +224,19 @@ const agent = new HarnessAgent({
 
 `toolApproval` 接受与 AI SDK 工具审批状态对象相同的状态值：`not-applicable`、`approved`、`user-approval` 和 `denied`。
 
-当需要审批时，流会在 `tool-approval-request` 之后暂停。通过发送工具审批响应消息来继续同一会话。在 UI 流程中，当你添加审批结果时，`useChat` 会为你发送这些消息。在直接智能体代码中，将审批响应作为 `messages` 传递给下一次 `stream()` 或 `generate()` 调用。
+当需要审批时，流会在 `tool-approval-request` 之后暂停。通过发送工具审批响应消息来继续同一会话。在 UI 流程中，当你添加审批结果时，`useChat` 会为你发送这些消息。在直接的智能体代码中，将审批响应作为 `messages` 传递给下一次 `stream()` 或 `generate()` 调用。
 
 ## 内置审批支持
 
-大多数适配器都可以暂停内置工具调用以进行审批。不支持此功能的适配器在指定了不受支持的工具审批模式时会报错。
+大多数适配器可以暂停内置工具调用以进行审批。不支持此功能的适配器在指定了不支持的工具审批模式时会报错。
 
-宿主执行的工具审批由 `HarnessAgent` 处理，因此它们可以跨适配器工作。
+主机执行的工具审批由 `HarnessAgent` 处理，因此它们可以跨适配器工作。
 
 ## 文件变更与压缩
 
 某些 harness 事件不是普通的工具调用。为了 UI 兼容性，`HarnessAgent` 会将它们投影为动态的、由提供商执行的工具部分：
 
-- `fileChange`：针对不透明的工作区文件变更发出。
-- `compaction`：当运行时压缩上下文时发出。
+- `fileChange`：在不透明的工作区文件变更时发出。
+- `compaction`：在运行时压缩上下文时发出。
 
 在假设某个工具部分属于你的类型化工具集之前，请检查 `part.dynamic`。

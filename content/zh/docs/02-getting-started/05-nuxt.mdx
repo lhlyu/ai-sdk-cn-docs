@@ -3,22 +3,22 @@ title: "Vue.js (Nuxt)"
 description: "了解如何使用 AI SDK 和 Vue.js (Nuxt) 构建你的第一个智能体。"
 ---
 
-# Vue.js (Nuxt) 快速开始
+# Vue.js (Nuxt) 快速上手
 
-AI SDK 是一个强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动的应用程序。
+AI SDK 是一个功能强大的 TypeScript 库，旨在帮助开发者构建 AI 驱动的应用程序。
 
-在本快速入门教程中，你将构建一个带有流式传输聊天用户界面的简单智能体。在此过程中，你将学习到在自己的项目中使用该 SDK 所必需的关键概念和技术。
+在本快速上手教程中，你将构建一个带有流式传输聊天用户界面的简单智能体。在此过程中，你将学习到在自己的项目中使用该 SDK 所必需的关键概念和技术。
 
 如果你对[提示词工程](/docs/advanced/prompt-engineering)和 [HTTP 流式传输](/docs/foundations/streaming)的概念不熟悉，可以选择先阅读这些文档。
 
-## 前置条件
+## 前提条件
 
-要跟随本快速入门，你需要：
+要跟随本快速上手教程，你需要：
 
 - 在本地开发机器上安装 Node.js 22+ 和 pnpm。
 - 一个 [Vercel AI Gateway](https://vercel.com/ai-gateway) API 密钥。
 
-如果你还没有获得 Vercel AI Gateway API 密钥，可以在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)来获取。
+如果你还没有获得 Vercel AI Gateway API 密钥，可以在 Vercel 网站上[注册](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai&title=Go+to+AI+Gateway)获取。
 
 ## 设置你的应用程序
 
@@ -63,7 +63,7 @@ export default defineNuxtConfig({
 ```
 
 <Note className="mb-4">
-  本指南使用 Nuxt 的运行时配置来管理 API 密钥。环境变量中的 `NUXT_` 前缀允许 Nuxt 自动将其加载到运行时配置中。虽然 AI Gateway Provider 也支持默认的 `AI_GATEWAY_API_KEY` 环境变量，但此方法能与 Nuxt 的配置系统更好地集成。
+  本指南使用 Nuxt 的运行时配置来管理 API 密钥。环境变量中的 `NUXT_` 前缀允许 Nuxt 自动将其加载到运行时配置中。虽然 AI Gateway Provider 也支持默认的 `AI_GATEWAY_API_KEY` 环境变量，但此方法可以与 Nuxt 的配置系统更好地集成。
 </Note>
 
 ## 创建 API 路由
@@ -91,7 +91,7 @@ export default defineLazyEventHandler(async () => {
     const { messages }: { messages: UIMessage[] } = await readBody(event);
 
     const result = streamText({
-      model: gateway('anthropic/claude-sonnet-5'),
+      model: gateway('anthropic/claude-sonnet-5.5'),
       messages: await convertToModelMessages(messages),
     });
 
@@ -105,7 +105,7 @@ export default defineLazyEventHandler(async () => {
 让我们来看看这段代码中发生了什么：
 
 1. 使用 `ai` 包中的 `createGateway` 函数创建一个 gateway 提供商实例。
-2. 定义一个事件处理器，并从请求体中提取 `messages`。`messages` 变量包含你和聊天机器人之间的对话历史，为聊天机器人提供进行下一次生成所需的上下文。`messages` 的类型为 UIMessage，专为应用程序 UI 使用而设计——它们包含完整的消息历史以及相关元数据，如时间戳。
+2. 定义一个 Event Handler，并从请求体中提取 `messages`。`messages` 变量包含你和聊天机器人之间的对话历史，为聊天机器人提供进行下一次生成所需的上下文。`messages` 的类型为 UIMessage，专为应用程序 UI 设计——它们包含完整的消息历史以及相关元数据，例如时间戳。
 3. 调用从 `ai` 包导入的 [`streamText`](/docs/reference/ai-sdk-core/stream-text)。此函数接受一个配置对象，其中包含 `model` 提供商（在第 1 步中定义）和 `messages`（在第 2 步中定义）。你可以传递额外的[设置](/docs/ai-sdk-core/settings)来进一步自定义模型的行为。`messages` 键期望一个 `ModelMessage[]` 数组。此类型与 `UIMessage` 不同，因为它不包含元数据，例如时间戳或发送者信息。为了在这些类型之间进行转换，我们使用 `convertToModelMessages` 函数，它会剥离 UI 特定的元数据，并将 `UIMessage[]` 数组转换为模型期望的 `ModelMessage[]` 格式。
 4. `streamText` 函数返回一个 [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text#result)。将其 `stream` 传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它，以创建一个流式响应对象。
 5. 将结果返回给客户端以流式传输响应。
@@ -114,7 +114,7 @@ export default defineLazyEventHandler(async () => {
 
 AI SDK 通过[第一方](/providers/ai-sdk-providers)、[OpenAI 兼容](/providers/openai-compatible-providers)和[社区](/providers/community-providers)包支持数十种模型提供商。
 
-本快速入门使用 [Vercel AI Gateway](https://vercel.com/ai-gateway) 提供商，这是默认的[全局提供商](/docs/ai-sdk-core/provider-management#global-provider-configuration)。这意味着你可以在模型配置中使用简单的字符串来访问模型：
+本快速上手教程使用 [Vercel AI Gateway](https://vercel.com/ai-gateway) 提供商，这是默认的[全局提供商](/docs/ai-sdk-core/provider-management#global-provider-configuration)。这意味着你可以在模型配置中使用简单的字符串来访问模型：
 
 ```ts
 model: __MODEL__;
@@ -125,16 +125,16 @@ model: __MODEL__;
 ```ts
 // Option 1: Import from 'ai' package (included by default)
 import { gateway } from 'ai';
-model: gateway('anthropic/claude-sonnet-5');
+model: gateway('anthropic/claude-sonnet-5.5');
 
 // Option 2: Install and import from '@ai-sdk/gateway' package
 import { gateway } from '@ai-sdk/gateway';
-model: gateway('anthropic/claude-sonnet-5');
+model: gateway('anthropic/claude-sonnet-5.5');
 ```
 
 ### 使用其他提供商
 
-要使用其他提供商，请安装其包并创建一个提供商实例。例如，直接使用 OpenAI：
+要使用其他提供商，请安装其包并创建一个提供商实例。例如，要直接使用 OpenAI：
 
 <InstallPackages packages="@ai-sdk/openai" />
 
@@ -146,7 +146,7 @@ model: openai('gpt-6-astra');
 
 ## 连接 UI
 
-现在你有了一个可以查询 LLM 的 API 路由，是时候设置你的前端了。AI SDK 的 [UI](/docs/ai-sdk-ui/overview) 包将聊天界面的复杂性抽象为一个 Hook，即 [`useChat`](/docs/reference/ai-sdk-ui/use-chat)。
+现在你已经有了一个可以查询 LLM 的 API 路由，是时候设置前端了。AI SDK 的 [UI](/docs/ai-sdk-ui/overview) 包将聊天界面的复杂性抽象为一个 Hook：[`useChat`](/docs/reference/ai-sdk-ui/use-chat)。
 
 使用以下代码更新你的根页面（`pages/index.vue`），以显示聊天消息列表并提供用户消息输入：
 
@@ -185,21 +185,21 @@ const handleSubmit = (e: Event) => {
 ```
 
 <Note>
-  如果你的项目有 `app.vue` 而不是 `pages/index.vue`，请删除 `app.vue` 文件，并使用上面的代码创建一个新的 `pages/index.vue` 文件。
+  如果你的项目中有 `app.vue` 而不是 `pages/index.vue`，请删除 `app.vue` 文件，并使用上面的代码创建一个新的 `pages/index.vue` 文件。
 </Note>
 
 此页面使用了 `useChat` Hook，默认情况下，它将使用你之前创建的 API 路由（`/api/chat`）。该 Hook 提供了用于处理用户输入和表单提交的函数和状态。`useChat` Hook 提供了多个实用函数和状态变量：
 
 - `messages` - 当前的聊天消息（一个包含 `id`、`role` 和 `parts` 属性的对象数组）。
-- `sendMessage` - 一个向聊天 API 发送消息的函数。
+- `sendMessage` - 用于向聊天 API 发送消息的函数。
 
 该组件使用本地状态（`ref`）来管理输入字段的值，并通过使用输入文本调用 `sendMessage`，然后清空输入字段来处理表单提交。
 
-LLM 的响应通过消息的 `parts` 数组访问。每条消息都包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些部分可以包括纯文本、推理 token，以及你稍后将看到的更多内容。`parts` 数组保留了模型输出的顺序，允许你按生成的顺序显示或处理每个组件。
+LLM 的响应通过消息的 `parts` 数组访问。每条消息都包含一个有序的 `parts` 数组，表示模型在其响应中生成的所有内容。这些 parts 可以包括纯文本、推理 token 以及你稍后将看到的更多内容。`parts` 数组保留了模型输出的顺序，允许你按照生成的顺序显示或处理每个组件。
 
 ## 运行你的应用程序
 
-至此，你已经构建了聊天机器人所需的一切！要启动应用程序，请使用以下命令：
+至此，你已经构建了聊天机器人所需的一切！要启动你的应用程序，请使用以下命令：
 
 <Snippet text="pnpm run dev" />
 
@@ -207,9 +207,9 @@ LLM 的响应通过消息的 `parts` 数组访问。每条消息都包含一个�
 
 ## 使用工具增强你的聊天机器人
 
-虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这正是[工具](/docs/ai-sdk-core/tools-and-tool-calling)的用武之地。
+虽然大型语言模型（LLM）具有令人难以置信的生成能力，但它们在处理离散任务（例如数学）和与外部世界交互（例如获取天气）方面存在困难。这正是[工具](/docs/ai-sdk-core/tools-and-tool-calling)发挥作用的地方。
 
-工具是 LLM 可以调用的操作。这些操作的结果可以反馈给 LLM，以便在下一个响应中加以考虑。
+工具是 LLM 可以调用的操作。这些操作的结果可以报告回 LLM，以便在下一次响应中加以考虑。
 
 例如，如果用户询问当前天气，在没有工具的情况下，模型只能根据其训练数据提供一般信息。但有了天气工具，它就可以获取并提供最新的、特定位置的天气信息。
 
@@ -217,7 +217,7 @@ LLM 的响应通过消息的 `parts` 数组访问。每条消息都包含一个�
 
 ### 更新你的 API 路由
 
-修改你的 `server/api/chat.ts` 文件，以包含新的天气工具：
+修改你的 `server/api/chat.ts` 文件以包含新的天气工具：
 
 ```typescript filename="server/api/chat.ts" highlight="5-8,25-41"
 import {
@@ -242,7 +242,7 @@ export default defineLazyEventHandler(async () => {
     const { messages }: { messages: UIMessage[] } = await readBody(event);
 
     const result = streamText({
-      model: gateway('anthropic/claude-sonnet-5'),
+      model: gateway('anthropic/claude-sonnet-5.5'),
       messages: await convertToModelMessages(messages),
       tools: {
         weather: tool({
@@ -275,17 +275,17 @@ export default defineLazyEventHandler(async () => {
 1. 你从 `ai` 包导入 `tool` 函数，并从 `zod` 导入 `z` 用于 schema 验证。
 2. 你定义了一个包含 `weather` 工具的 `tools` 对象。此工具：
    - 具有一个描述，帮助模型理解何时使用它。
-   - 使用 Zod schema 定义 `inputSchema`，指定执行此工具需要一个 `location` 字符串。模型将尝试从对话上下文中提取此输入。如果无法提取，它将向用户询问缺失的信息。
-   - 定义一个 `execute` 函数，用于模拟获取天气数据（在此例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
+   - 使用 Zod schema 定义 `inputSchema`，指定它需要一个 `location` 字符串来执行此工具。模型将尝试从对话上下文中提取此输入。如果无法提取，它将向用户询问缺失的信息。
+   - 定义一个 `execute` 函数，用于模拟获取天气数据（在本例中，它返回一个随机温度）。这是一个在服务器上运行的异步函数，因此你可以从外部 API 获取真实数据。
 
-现在你的聊天机器人可以为用户询问的任何位置“获取”天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后 `execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
+现在你的聊天机器人可以"获取"用户询问的任何位置的天气信息。当模型确定需要使用天气工具时，它将生成一个带有必要输入的工具调用。然后 `execute` 函数将自动运行，工具输出将作为 `tool` 消息添加到 `messages` 中。
 
-尝试询问类似“纽约的天气怎么样？”这样的问题，看看模型如何使用新工具。
+尝试询问类似"纽约的天气怎么样？"这样的问题，看看模型如何使用新工具。
 
-注意到 UI 中的空白响应了吗？这是因为模型没有生成文本响应，而是生成了一个工具调用。你可以在客户端通过 `message.parts` 数组的 `tool-weather` 部分访问工具调用及后续的工具结果。
+注意到 UI 中的空白响应了吗？这是因为模型没有生成文本响应，而是生成了一个工具调用。你可以在客户端通过 `message.parts` 数组的 `tool-weather` 部分访问工具调用和后续的工具结果。
 
 <Note>
-  工具部分的命名始终为 `tool-{toolName}`，其中 `{toolName}` 是你定义工具时使用的键。在此例中，由于我们将工具定义为 `weather`，因此部分类型为 `tool-weather`。
+  工具部分的命名始终为 `tool-{toolName}`，其中 `{toolName}` 是你在定义工具时使用的键。在本例中，由于我们将工具定义为 `weather`，因此部分类型为 `tool-weather`。
 </Note>
 
 ### 更新 UI
@@ -333,13 +333,13 @@ const handleSubmit = (e: Event) => {
 
 ## 启用多步工具调用
 
-你可能已经注意到，虽然工具现在在聊天界面中可见，但模型并没有使用这些信息来回答你最初的问题。这是因为一旦模型生成了工具调用，从技术上讲它已经完成了生成。
+你可能已经注意到，虽然工具现在在聊天界面中可见，但模型并没有使用此信息来回答你的原始查询。这是因为一旦模型生成了工具调用，从技术上讲它已经完成了生成。
 
-为了解决这个问题，你可以使用 `stopWhen` 启用多步工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当存在工具结果时，生成会在第一步之后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身，以触发额外的生成，直到满足你指定的停止条件。在此例中，你希望模型继续生成，以便它可以使用天气工具的结果来回答你最初的问题。
+要解决此问题，你可以使用 `stopWhen` 启用多步工具调用。默认情况下，`stopWhen` 设置为 `isStepCount(1)`，这意味着当存在工具结果时，生成会在第一步之后停止。通过更改此条件，你可以允许模型自动将工具结果发送回自身，以触发额外的生成，直到满足你指定的停止条件。在本例中，你希望模型继续生成，以便它可以使用天气工具的结果来回答你的原始问题。
 
 ### 更新你的 API 路由
 
-修改你的 `server/api/chat.ts` 文件，以包含 `stopWhen` 条件：
+修改你的 `server/api/chat.ts` 文件以包含 `stopWhen` 条件：
 
 ```typescript filename="server/api/chat.ts" highlight="26"
 import {
@@ -365,7 +365,7 @@ export default defineLazyEventHandler(async () => {
     const { messages }: { messages: UIMessage[] } = await readBody(event);
 
     const result = streamText({
-      model: gateway('anthropic/claude-sonnet-5'),
+      model: gateway('anthropic/claude-sonnet-5.5'),
       messages: await convertToModelMessages(messages),
       stopWhen: isStepCount(5),
       tools: {
@@ -394,9 +394,9 @@ export default defineLazyEventHandler(async () => {
 });
 ```
 
-回到浏览器，询问某个位置的天气。你现在应该会看到模型使用天气工具的结果来回答你的问题。
+返回浏览器并询问某个位置的天气。你现在应该会看到模型使用天气工具的结果来回答你的问题。
 
-通过设置 `stopWhen: isStepCount(5)`，你允许模型在任何给定的生成中使用最多 5 个“步骤”。这可以实现更复杂的交互，并允许模型在需要时跨多个步骤收集和处理信息。你可以通过添加另一个将温度从华氏度转换为摄氏度的工具来实际体验这一点。
+通过设置 `stopWhen: isStepCount(5)`，你允许模型在任何给定生成中使用最多 5 个"步骤"。这可以实现更复杂的交互，并允许模型在需要时跨多个步骤收集和处理信息。你可以通过添加另一个将温度从华氏度转换为摄氏度的工具来查看实际效果。
 
 ### 添加另一个工具
 
@@ -426,7 +426,7 @@ export default defineLazyEventHandler(async () => {
     const { messages }: { messages: UIMessage[] } = await readBody(event);
 
     const result = streamText({
-      model: gateway('anthropic/claude-sonnet-5'),
+      model: gateway('anthropic/claude-sonnet-5.5'),
       messages: await convertToModelMessages(messages),
       stopWhen: isStepCount(5),
       tools: {
@@ -514,23 +514,23 @@ const handleSubmit = (e: Event) => {
 </template>
 ```
 
-此更新处理了新的 `tool-convertFahrenheitToCelsius` 部分类型，在 UI 中显示温度转换工具调用及其结果。
+此更新处理新的 `tool-convertFahrenheitToCelsius` 部分类型，在 UI 中显示温度转换工具调用和结果。
 
-现在，当你询问“纽约的天气是多少摄氏度？”时，你应该会看到更完整的交互：
+现在，当你询问"纽约的天气是多少摄氏度？"时，你应该会看到更完整的交互：
 
-1. 模型将为纽约调用天气工具。
+1. 模型将调用纽约的天气工具。
 2. 你将看到显示的工具输出。
 3. 然后它将调用温度转换工具，将温度从华氏度转换为摄氏度。
 4. 模型随后将使用该信息提供关于纽约天气的自然语言响应。
 
 这种多步方法允许模型收集信息并使用它来提供更准确、更具上下文相关性的响应，使你的聊天机器人更加实用。
 
-这个简单的示例演示了工具如何扩展模型的能力。你可以创建更复杂的工具，与真实 API、数据库或任何其他外部系统集成，让模型能够实时访问和处理现实世界的数据。工具弥合了模型知识截止日期与当前信息之间的差距。
+这个简单的示例演示了工具如何扩展模型的能力。你可以创建更复杂的工具来与真实 API、数据库或任何其他外部系统集成，允许模型实时访问和处理真实世界的数据。工具弥合了模型知识截止日期与当前信息之间的差距。
 
 ## 接下来去哪里？
 
 你已经使用 AI SDK 构建了一个 AI 聊天机器人！从这里开始，你有几条路径可以探索：
 
-- 要了解更多关于 AI SDK 的信息，请阅读[文档](/docs)。
+- 要了解有关 AI SDK 的更多信息，请阅读[文档](/docs)。
 - 如果你有兴趣通过指南深入学习，请查看 [RAG（检索增强生成）](/cookbook/guides/rag-chatbot)和[多模态聊天机器人](/cookbook/guides/multi-modal-chatbot)指南。
 - 要快速启动你的第一个 AI 项目，请探索可用的[模板](https://vercel.com/templates?type=ai)。

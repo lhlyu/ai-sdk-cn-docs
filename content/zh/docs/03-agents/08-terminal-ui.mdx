@@ -5,8 +5,7 @@ description: "在交互式终端 UI 中运行 AI SDK 智能体。"
 
 # 终端 UI
 
-`@ai-sdk/tui` 包让你可以在交互式终端界面中运行本地 `ToolLoopAgent`，或通过 `ChatTransport` 连接到远程智能体。
-它适用于本地开发、演示以及内部工具，这些场景下终端体验已经足够，你无需构建自定义 UI。
+`@ai-sdk/tui` 包让你可以在交互式终端界面中运行本地 `ToolLoopAgent`，或通过 `ChatTransport` 连接到远程智能体。它适用于本地开发、演示以及内部工具，这些场景下终端体验已经足够，而你又不想构建自定义 UI。
 
 终端 UI 处理提示词输入、流式传输的助手响应、markdown 渲染、工具卡片、推理部分、滚动以及工具审批提示。
 
@@ -75,21 +74,24 @@ transport 控制端点、身份验证、请求体以及其他远程通信行为�
 当你的智能体工具需要执行环境时，通过 `sandbox` 选项传入沙箱会话：
 
 ```ts
-import { createJustBashSandbox } from '@ai-sdk/sandbox-just-bash';
+import { createJustBashNetworkSandboxSession } from '@ai-sdk/sandbox-just-bash';
 
-const sandboxSession = await createJustBashSandbox({
+const sandboxSession = await createJustBashNetworkSandboxSession({
   cwd: '/home/user',
-}).createSession();
-
-await runAgentTUI({
-  title: 'Sandbox Agent',
-  agent,
-  sandbox: sandboxSession.restricted(),
 });
+
+try {
+  await runAgentTUI({
+    title: 'Sandbox Agent',
+    agent,
+    sandbox: sandboxSession.restricted(),
+  });
+} finally {
+  await sandboxSession.destroy();
+}
 ```
 
-终端 UI 会将沙箱作为 `experimental_sandbox` 转发给每次智能体调用。工具描述函数和工具 `execute` 函数可以从它们的选项中读取它，并将命令或文件操作委托给它。
-如果模型需要了解工作目录、公共主机名或暴露端口等详细信息，请将沙箱描述添加到你的智能体指令中。
+终端 UI 会将沙箱作为 `experimental_sandbox` 转发给每次智能体调用。工具描述函数和工具 `execute` 函数可以从它们的选项中读取它，并将命令或文件操作委托给它。如果模型需要了解工作目录、公共主机名或暴露端口等详细信息，请将沙箱描述添加到你的智能体指令中。
 
 ## 显示选项
 
@@ -108,8 +110,8 @@ await runAgentTUI({
 
 设置项：
 
-- `tools`：控制工具调用的渲染方式。使用 `"full"` 显示工具输入和输出，使用 `"collapsed"` 仅显示工具卡片，使用 `"auto-collapsed"` 显示最新工具展开，直到出现另一个可见部分，或使用 `"hidden"` 省略工具调用。默认为 `"auto-collapsed"`。
-- `reasoning`：控制推理的渲染方式。使用 `"full"` 显示推理，使用 `"collapsed"` 仅显示推理卡片，使用 `"auto-collapsed"` 显示最新推理展开，直到出现另一个可见部分，或使用 `"hidden"` 省略推理。默认为 `"auto-collapsed"`。
+- `tools`：控制工具调用的渲染。使用 `"full"` 显示工具输入和输出，`"collapsed"` 仅显示工具卡片，`"auto-collapsed"` 显示最新工具为展开状态，直到出现另一个可见部分，或使用 `"hidden"` 省略工具调用。默认为 `"auto-collapsed"`。
+- `reasoning`：控制推理的渲染。使用 `"full"` 显示推理，`"collapsed"` 仅显示推理卡片，`"auto-collapsed"` 显示最新推理为展开状态，直到出现另一个可见部分，或使用 `"hidden"` 省略推理。默认为 `"auto-collapsed"`。
 - `responseStatistics`：使用 `"outputTokensPerSecond"` 显示输出 token 吞吐量，或使用 `"outputTokenCount"` 显示输出 token 数量。默认为 `"outputTokensPerSecond"`。
 - `contextSize`：提供后，终端 UI 会以模型上下文窗口的百分比显示总 token 使用量。
 
@@ -134,7 +136,7 @@ await runAgentTUI({ title: 'Weather Agent', agent });
 
 ## 兼容性
 
-使用 `agent` 选项时，智能体必须能够直接从终端用户输入运行。它不能要求每次调用提供选项，也不能使用结构化输出，因为终端 UI 无法从自由形式的提示词中推断这些值。对于需要自定义请求处理的远程智能体，请使用 `transport`。
+使用 `agent` 选项时，智能体必须能够直接从终端用户输入运行。它不能要求每次调用的选项，也不能使用结构化输出，因为终端 UI 无法从自由形式的提示词中推断这些值。对于需要自定义请求处理的远程智能体，请使用 `transport`。
 
 对于需要固定提示词、调用选项、结构化输出、自定义结果检查或自定义流处理的示例或应用，请直接使用 `agent.generate()` 或 `agent.stream()`。
 

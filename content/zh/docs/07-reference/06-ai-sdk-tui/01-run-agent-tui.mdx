@@ -5,7 +5,7 @@ description: "runAgentTUI 函数的 API 参考。"
 
 # `runAgentTUI()`
 
-在交互式终端 UI 中运行本地智能体或聊天传输。该终端 UI 读取用户提示词、流式传输助手响应、渲染 markdown、显示工具和推理部分，并处理手动工具审批。
+在交互式终端 UI 中运行本地智能体或聊天传输。终端 UI 读取用户提示词、流式传输助手响应、渲染 markdown、显示工具和推理部分，并处理手动工具审批。
 
 `runAgentTUI` 会一直运行，直到用户通过 `Esc` 或 `Ctrl+C` 退出。
 
@@ -29,9 +29,9 @@ await runAgentTUI({
 
 <Snippet text={`import { runAgentTUI } from "@ai-sdk/tui"`} prompt={false} />
 
-## API Signature
+## API 签名
 
-### Parameters
+### 参数
 
 <PropertiesTable
   content={[
@@ -49,7 +49,7 @@ await runAgentTUI({
               type: 'AgentTUIAgent',
               isOptional: true,
               description:
-                '要运行的智能体。必须提供 `agent` 或 `transport` 中的恰好一个。该智能体不得要求每次调用的选项，且不得使用结构化输出。',
+                '要运行的智能体。必须提供 `agent` 或 `transport` 中的恰好一个。该智能体不得要求每次调用选项，且不得使用结构化输出。',
             },
             {
               name: 'transport',
@@ -107,19 +107,19 @@ await runAgentTUI({
   ]}
 />
 
-### Returns
+### 返回值
 
 <PropertiesTable
   content={[
     {
       name: 'returns',
       type: 'Promise<void>',
-      description: '一个在终端 UI 退出时 resolve 的 promise。',
+      description: '一个 promise，在终端 UI 退出时 resolve。',
     },
   ]}
 />
 
-## Types
+## 类型
 
 ### `AgentTUIAgent`
 
@@ -129,7 +129,7 @@ await runAgentTUI({
 type AgentTUIAgent = Agent<undefined, any, any, never>;
 ```
 
-这意味着该智能体没有每次调用的选项，也没有结构化输出。
+这意味着该智能体没有每次调用选项，也没有结构化输出。
 
 ### `TerminalPartDisplayMode`
 
@@ -159,7 +159,7 @@ type ResponseStatisticsMode = 'outputTokenCount' | 'outputTokensPerSecond';
 - `"outputTokenCount"`：显示响应中的输出 token 数量。
 - `"outputTokensPerSecond"`：显示响应的输出 token 吞吐量。
 
-## Example with Tool Display Options
+## 带工具显示选项的示例
 
 ```ts
 await runAgentTUI({
@@ -172,7 +172,7 @@ await runAgentTUI({
 });
 ```
 
-## Example with a Chat Transport
+## 带聊天传输的示例
 
 ```ts
 import { DefaultChatTransport } from 'ai';
@@ -185,30 +185,34 @@ await runAgentTUI({
 });
 ```
 
-## Example with Sandbox
+## 带沙箱的示例
 
 ```ts
-import { createJustBashSandbox } from '@ai-sdk/sandbox-just-bash';
+import { createJustBashNetworkSandboxSession } from '@ai-sdk/sandbox-just-bash';
 
-const sandboxSession = await createJustBashSandbox({
+const sandboxSession = await createJustBashNetworkSandboxSession({
   cwd: '/home/user',
-}).createSession();
-
-await runAgentTUI({
-  title: 'Sandbox Assistant',
-  agent,
-  sandbox: sandboxSession.restricted(),
 });
+
+try {
+  await runAgentTUI({
+    title: 'Sandbox Assistant',
+    agent,
+    sandbox: sandboxSession.restricted(),
+  });
+} finally {
+  await sandboxSession.destroy();
+}
 ```
 
-沙箱会在每次 `agent.stream()` 调用时作为 `experimental_sandbox` 转发，使其可用于工具描述函数和工具 `execute` 函数。当模型需要了解沙箱特定细节（例如工作目录或暴露的端口）时，请在智能体指令中包含沙箱描述。
+沙箱会作为 `experimental_sandbox` 转发到每次 `agent.stream()` 调用，使其可用于工具描述函数和工具 `execute` 函数。当模型需要了解沙箱特定细节（例如工作目录或暴露的端口）时，请在智能体指令中包含沙箱描述。
 
-## Compatibility
+## 兼容性
 
-对于可以直接从自由形式的用户输入运行的智能体，请使用 `agent` 选项。使用 `transport` 选项与远程智能体通信。当你需要固定提示词、每次调用的选项、结构化输出、自定义结果检查或自定义流处理时，请直接使用 `agent.generate()` 或 `agent.stream()`。
+对于可以直接从自由形式用户输入运行的智能体，请使用 `agent` 选项。要与远程智能体通信，请使用 `transport` 选项。当你需要固定提示词、每次调用选项、结构化输出、自定义结果检查或自定义流处理时，请直接使用 `agent.generate()` 或 `agent.stream()`。
 
-## Related
+## 相关内容
 
-- [Terminal UI guide](/docs/agents/terminal-ui)
-- [Building Agents](/docs/agents/building-agents)
-- [ToolLoopAgent guide](/docs/agents/overview#toolloopagent-class)
+- [终端 UI 指南](/docs/agents/terminal-ui)
+- [构建智能体](/docs/agents/building-agents)
+- [ToolLoopAgent 指南](/docs/agents/overview#toolloopagent-class)

@@ -1,11 +1,11 @@
 ---
-title: "Terminal UI"
-description: "使用 @ai-sdk/tui 与 HarnessAgent。"
+title: "终端 UI"
+description: "将 @ai-sdk/tui 与 HarnessAgent 配合使用。"
 ---
 
-# 终端 UI 的 Harnesses
+# 带终端 UI 的 Harness
 
-`@ai-sdk/tui` 可以在终端中渲染 harness 流、工具调用、推理部分和审批提示。由于 `HarnessAgent` 每次调用都需要一个会话，因此可以将其包装在一个小的 `AgentTUIAgent` 适配器中，该适配器在终端 UI 的整个生命周期内注入一个会话。
+`@ai-sdk/tui` 可以在终端中渲染 harness 流、工具调用、推理部分和审批提示词。由于 `HarnessAgent` 在每次调用时都需要一个会话，因此请用一个小型 `AgentTUIAgent` 适配器将其包装起来，在终端 UI 的整个生命周期内注入一个会话。
 
 ## 安装
 
@@ -16,15 +16,11 @@ description: "使用 @ai-sdk/tui 与 HarnessAgent。"
 ```ts filename='tui.ts'
 import { HarnessAgent, type HarnessAgentSession } from '@ai-sdk/harness/agent';
 import { codex } from '@ai-sdk/harness-codex';
-import { createVercelSandbox } from '@ai-sdk/sandbox-vercel';
+import { createVercelNetworkSandboxSession } from '@ai-sdk/sandbox-vercel';
 import { runAgentTUI, type AgentTUIAgent } from '@ai-sdk/tui';
 
 const agent = new HarnessAgent({
   harness: codex,
-  sandbox: createVercelSandbox({
-    runtime: 'node24',
-    ports: [4000],
-  }),
 });
 
 function createTUIAgent({
@@ -53,7 +49,12 @@ function createTUIAgent({
   } as AgentTUIAgent;
 }
 
-const session = await agent.createSession();
+const sandboxSession = await createVercelNetworkSandboxSession({
+  runtime: 'node24',
+  ports: [4000],
+  template: await agent.getSandboxTemplate(),
+});
+const session = await agent.createSession({ sandboxSession });
 
 try {
   await runAgentTUI({
@@ -64,12 +65,13 @@ try {
   });
 } finally {
   await session.destroy();
+  await sandboxSession.destroy();
 }
 ```
 
-终端 UI 会一直运行，直到用户按下 `Esc` 或 `Ctrl+C` 退出。
+终端 UI 会一直运行，直到用户通过 `Esc` 或 `Ctrl+C` 退出。
 
-每次终端运行使用一个会话。对于长期运行的终端工具，如果需要稍后恢复，请持久化 `session.detach()` 或 `session.stop()` 中的状态。
+每次终端运行使用一个会话。对于长期运行的终端工具，如果需要稍后恢复，请持久化 `session.detach()` 或 `session.stop()` 的状态。
 
 ## 相关
 

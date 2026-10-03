@@ -5,29 +5,31 @@ description: "了解如何使用 useObject Hook。"
 
 # 对象生成
 
-<Note>`useObject` 仅在 React、Svelte 和 Vue 中可用。</Note>
+<Note>
+  `useObject` 可在 React、Svelte、Vue 以及 SolidJS 社区集成中使用。Angular 提供了等效的 `StructuredObject` 服务。
+</Note>
 
-[`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 允许你创建表示正在流式传输的结构化 JSON 对象的界面。
+[`useObject`](/docs/reference/ai-sdk-ui/use-object) Hook 允许你创建用于呈现正在流式传输的结构化 JSON 对象的界面。
 
-在本指南中，你将学习如何在应用程序中使用 `useObject` Hook 来动态生成结构化数据的 UI。
+在本指南中，你将学习如何在应用程序中使用 `useObject` Hook 来即时为结构化数据生成 UI。
 
 ## 示例
 
-该示例展示了一个小型通知演示应用，可实时生成模拟通知。
+该示例展示了一个小型通知演示应用，可实时生成虚假通知。
 
-### 模式
+### Schema
 
-最好将模式放在一个单独的文件中，并在客户端和服务器端都导入该文件。
+将 schema 设置在单独的文件中并在客户端和服务器端同时导入会很有帮助。
 
 ```ts filename='app/api/notifications/schema.ts'
 import { z } from 'zod';
 
-// 定义通知的模式
+// define a schema for the notifications
 export const notificationSchema = z.object({
   notifications: z.array(
     z.object({
-      name: z.string().describe('虚构人物的姓名。'),
-      message: z.string().describe('消息。请勿使用表情符号或链接。'),
+      name: z.string().describe('Name of a fictional person.'),
+      message: z.string().describe('Message. Do not use emojis or links.'),
     }),
   ),
 });
@@ -37,7 +39,7 @@ export const notificationSchema = z.object({
 
 客户端使用 [`useObject`](/docs/reference/ai-sdk-ui/use-object) 来流式传输对象生成过程。
 
-结果是部分结果，并在接收时显示。
+结果是部分的，并在接收时显示。
 请注意 JSX 中处理 `undefined` 值的代码。
 
 ```tsx filename='app/page.tsx'
@@ -54,8 +56,8 @@ export default function Page() {
 
   return (
     <>
-      <button onClick={() => submit('期末考试周的消息。')}>
-        生成通知
+      <button onClick={() => submit('Messages during finals week.')}>
+        Generate notifications
       </button>
 
       {object?.notifications?.map((notification, index) => (
@@ -69,16 +71,16 @@ export default function Page() {
 }
 ```
 
-### 服务器端
+### 服务器
 
-在服务器端，我们使用 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 配合 [`Output.object()`](/docs/reference/ai-sdk-core/output#output-object) 来流式传输对象生成过程。
+在服务器端，我们使用 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 搭配 [`Output.object()`](/docs/reference/ai-sdk-core/output#output-object) 来流式传输对象生成过程。
 
 ```typescript filename='app/api/notifications/route.ts'
 import { createTextStreamResponse, Output, streamText, toTextStream } from 'ai';
 __PROVIDER_IMPORT__;
 import { notificationSchema } from './schema';
 
-// 允许流式响应最长 30 秒
+// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
     model: __MODEL__,
     output: Output.object({ schema: notificationSchema }),
     prompt:
-      `在此上下文中为消息应用生成 3 条通知：` + context,
+      `Generate 3 notifications for a messages app in this context:` + context,
   });
 
   return createTextStreamResponse({
@@ -99,15 +101,15 @@ export async function POST(req: Request) {
 
 ## 枚举输出模式
 
-当你需要将输入分类或归类到预定义选项时，可以将 `enum` 输出模式与 `useObject` 一起使用。这需要一个特定的模式结构，其中对象以 `enum` 作为键，并使用 `z.enum` 包含你的可能值。
+当你需要将输入分类或归类到预定义选项中时，可以将 `enum` 输出模式与 `useObject` 一起使用。这需要特定的 schema 结构，其中对象以 `enum` 作为键，并使用 `z.enum` 包含可能的值。
 
 ### 示例：文本分类
 
-此示例演示如何构建一个简单的文本分类器，将陈述分类为真或假。
+此示例展示了如何构建一个简单的文本分类器，将语句分类为 true 或 false。
 
 #### 客户端
 
-当将 `useObject` 与枚举输出模式一起使用时，你的模式必须是一个以 `enum` 为键的对象：
+在将 `useObject` 与枚举输出模式一起使用时，你的 schema 必须是一个以 `enum` 为键的对象：
 
 ```tsx filename='app/classify/page.tsx'
 'use client';
@@ -123,19 +125,19 @@ export default function ClassifyPage() {
 
   return (
     <>
-      <button onClick={() => submit('地球是平的')} disabled={isLoading}>
-        分类陈述
+      <button onClick={() => submit('The earth is flat')} disabled={isLoading}>
+        Classify statement
       </button>
 
-      {object && <div>分类结果：{object.enum}</div>}
+      {object && <div>Classification: {object.enum}</div>}
     </>
   );
 }
 ```
 
-#### 服务器端
+#### 服务器
 
-在服务器端，使用 `streamText` 配合 `Output.choice()` 来流式传输分类结果：
+在服务器端，使用 `streamText` 搭配 `Output.choice()` 来流式传输分类结果：
 
 ```typescript filename='app/api/classify/route.ts'
 import { createTextStreamResponse, Output, streamText, toTextStream } from 'ai';
@@ -147,7 +149,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: __MODEL__,
     output: Output.choice({ options: ['true', 'false'] }),
-    prompt: `将此陈述分类为真或假：${context}`,
+    prompt: `Classify this statement as true or false: ${context}`,
   });
 
   return createTextStreamResponse({
@@ -158,13 +160,13 @@ export async function POST(req: Request) {
 
 ## 自定义 UI
 
-`useObject` 还提供了显示加载和错误状态的方法：
+`useObject` 还提供了显示加载和错误状态的方式：
 
 ### 加载状态
 
-`useObject` Hook 返回的 `isLoading` 状态可用于多种目的：
+`useObject` Hook 返回的 `isLoading` 状态可用于多种用途：
 
-- 在生成对象时显示加载旋转器。
+- 在对象生成时显示加载指示器。
 - 禁用提交按钮。
 
 ```tsx filename='app/page.tsx' highlight="6,13-20,24"
@@ -183,10 +185,10 @@ export default function Page() {
       {isLoading && <Spinner />}
 
       <button
-        onClick={() => submit('期末考试周的消息。')}
+        onClick={() => submit('Messages during finals week.')}
         disabled={isLoading}
       >
-        生成通知
+        Generate notifications
       </button>
 
       {object?.notifications?.map((notification, index) => (
@@ -202,7 +204,7 @@ export default function Page() {
 
 ### 停止处理程序
 
-`stop` 函数可用于停止对象生成过程。如果用户想要取消请求或服务器响应时间过长，这可能会很有用。
+`stop` 函数可用于停止对象生成过程。如果用户想要取消请求，或者服务器响应时间过长，这会很有用。
 
 ```tsx filename='app/page.tsx' highlight="6,14-16"
 'use client';
@@ -219,12 +221,12 @@ export default function Page() {
     <>
       {isLoading && (
         <button type="button" onClick={() => stop()}>
-          停止
+          Stop
         </button>
       )}
 
-      <button onClick={() => submit('期末考试周的消息。')}>
-        生成通知
+      <button onClick={() => submit('Messages during finals week.')}>
+        Generate notifications
       </button>
 
       {object?.notifications?.map((notification, index) => (
@@ -240,10 +242,11 @@ export default function Page() {
 
 ### 错误状态
 
-类似地，`error` 状态反映了在 fetch 请求期间抛出的错误对象。它可以用于显示错误消息，或禁用提交按钮：
+类似地，`error` 状态反映了在 fetch 请求期间抛出的错误对象。
+它可用于显示错误消息，或禁用提交按钮：
 
 <Note>
-  我们建议向用户显示通用错误消息，例如“出了点问题。”这是一种避免泄露服务器信息的好做法。
+  我们建议向用户显示通用的错误消息，例如“出错了。”这是避免泄露服务器信息的好做法。
 </Note>
 
 ```tsx file="app/page.tsx" highlight="6,13"
@@ -259,10 +262,10 @@ export default function Page() {
 
   return (
     <>
-      {error && <div>发生了一个错误。</div>}
+      {error && <div>An error occurred.</div>}
 
-      <button onClick={() => submit('期末考试周的消息。')}>
-        生成通知
+      <button onClick={() => submit('Messages during finals week.')}>
+        Generate notifications
       </button>
 
       {object?.notifications?.map((notification, index) => (
@@ -278,12 +281,12 @@ export default function Page() {
 
 ## 事件回调
 
-`useObject` 提供了可选的事件回调，你可以使用它们来处理生命周期事件。
+`useObject` 提供了可选的事件回调，可用于处理生命周期事件。
 
-- `onFinish`：当对象生成完成时调用。
-- `onError`：当 fetch 请求期间发生错误时调用。
+- `onFinish`：对象生成完成时调用。
+- `onError`：在 fetch 请求期间发生错误时调用。
 
-这些回调可用于触发额外的操作，例如日志记录、分析或自定义 UI 更新。
+这些回调可用于触发其他操作，例如日志记录、分析或自定义 UI 更新。
 
 ```tsx filename='app/page.tsx' highlight="10-20"
 'use client';
@@ -296,22 +299,22 @@ export default function Page() {
     api: '/api/notifications',
     schema: notificationSchema,
     onFinish({ object, error }) {
-      // 类型化的对象，如果模式验证失败则为 undefined：
-      console.log('对象生成完成：', object);
+      // typed object, undefined if schema validation fails:
+      console.log('Object generation completed:', object);
 
-      // 错误，如果模式验证成功则为 undefined：
-      console.log('模式验证错误：', error);
+      // error, undefined if schema validation succeeds:
+      console.log('Schema validation error:', error);
     },
     onError(error) {
-      // fetch 请求期间的错误：
-      console.error('发生了一个错误：', error);
+      // error during fetch request:
+      console.error('An error occurred:', error);
     },
   });
 
   return (
     <div>
-      <button onClick={() => submit('期末考试周的消息。')}>
-        生成通知
+      <button onClick={() => submit('Messages during finals week.')}>
+        Generate notifications
       </button>
 
       {object?.notifications?.map((notification, index) => (
@@ -327,7 +330,7 @@ export default function Page() {
 
 ## 配置请求选项
 
-你可以使用 `api`、`headers` 和 `credentials` 设置来配置 API 端点、可选的请求头和凭据。
+你可以使用 `api`、`headers` 和 `credentials` 设置来配置 API 端点、可选请求头和凭据。
 
 ```tsx highlight="2-5"
 const { submit, object } = useObject({

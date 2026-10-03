@@ -47,17 +47,28 @@ const { image } = await generateImage({
       name: 'modelId',
       type: 'string',
       description:
-        "可选的 custom model ID，用于覆盖原始模型的 ID。",
+        "可选的自定义模型 ID，用于覆盖原始模型的 ID。",
     },
     {
       name: 'providerId',
       type: 'string',
       description:
-        "可选的 custom provider ID，用于覆盖原始模型的提供商。",
+        "可选的自定义提供商 ID，用于覆盖原始模型的提供商。",
     },
   ]}
 />
 
 ### 返回值
 
-一个应用了中间件的新 `ImageModelV4` 实例。
+一个应用了中间件的新 `ImageModelV4` 实例。被包装的模型默认保留原始模型的 `supportsFileInputs` 和 `supportsMaskInputs` 能力。中间件可以通过 `overrideSupportsFileInputs` 和 `overrideSupportsMaskInputs` 覆盖它们。从覆盖函数返回 `undefined` 会有意将该能力标记为未知。
+
+```ts
+const model = wrapImageModel({
+  model: originalModel,
+  middleware: {
+    specificationVersion: 'v4',
+    overrideSupportsFileInputs: () => true,
+    overrideSupportsMaskInputs: () => false,
+  },
+});
+```

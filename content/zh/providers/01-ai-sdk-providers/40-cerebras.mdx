@@ -1,17 +1,17 @@
 ---
 title: "Cerebras"
-description: "了解如何将 Cerebras 的模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用 Cerebras 的模型。"
 ---
 
 # Cerebras 提供商
 
-[Cerebras](https://cerebras.ai) 提供商通过 Cerebras API 提供对强大语言模型的访问，包括由 Wafer-Scale 引擎和 CS-3 系统支持的高速推理能力。
+[Cerebras](https://cerebras.ai) 提供商通过 Cerebras API 提供对强大语言模型的访问，包括由 Wafer-Scale Engines 和 CS-3 系统驱动的高速推理能力。
 
-API 密钥可从 [Cerebras 平台](https://cloud.cerebras.ai) 获取。
+API 密钥可从 [Cerebras Platform](https://cloud.cerebras.ai) 获取。
 
-## 安装
+## 设置
 
-Cerebras 提供商可通过 `@ai-sdk/cerebras` 模块获得。你可以使用以下命令安装：
+Cerebras 提供商可通过 `@ai-sdk/cerebras` 模块使用。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/cerebras" />
 
@@ -42,12 +42,12 @@ const cerebras = createCerebras({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。默认为
+  通过 `Authorization` 请求头发送的 API 密钥。默认使用
   `CEREBRAS_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -63,7 +63,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: cerebras('gpt-oss-120b'),
-  prompt: '写一份供 4 人食用的素食千层面食谱。',
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
 
@@ -79,15 +79,15 @@ const model = cerebras('gpt-oss-120b');
 你也可以使用 `.languageModel()` 和 `.chat()` 方法：
 
 ```ts
-const model = cerebras.languageModel('gpt-oss-120b');
-const model = cerebras.chat('gpt-oss-120b');
+const languageModel = cerebras.languageModel('gpt-oss-120b');
+const chatModel = cerebras.chat('gpt-oss-120b');
 ```
 
 ### 推理模型
 
-Cerebras 提供推理模型，包括 `gpt-oss-120b` 和 `gemma-4-31b`，这些模型在生成最终响应之前会生成中间思考令牌。推理输出通过标准的 AI SDK 推理部分进行流式传输。
+Cerebras 提供推理模型，包括 `gpt-oss-120b` 和 `gemma-4-31b`，它们会在最终响应之前生成中间思考 token。推理输出通过标准 AI SDK 推理部分进行流式传输。
 
-对于 `gpt-oss-120b`，你可以使用 `reasoningEffort` 提供商选项来控制推理深度：
+对于 `gpt-oss-120b`，你可以使用 `reasoningEffort` 提供商选项控制推理深度：
 
 ```ts
 import { cerebras } from '@ai-sdk/cerebras';
@@ -100,23 +100,23 @@ const result = streamText({
       reasoningEffort: 'medium',
     },
   },
-  prompt: '单词 "strawberry" 中有多少个 "r"？',
+  prompt: 'How many "r"s are in the word "strawberry"?',
 });
 
 for await (const part of result.stream) {
   if (part.type === 'reasoning') {
-    console.log('推理：', part.text);
+    console.log('Reasoning:', part.text);
   } else if (part.type === 'text-delta') {
     process.stdout.write(part.textDelta);
   }
 }
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
-以下可选的提供商选项可用于 Cerebras 语言模型：
+以下可选提供商选项适用于 Cerebras 语言模型：
 
 - **parallelToolCalls** _boolean_
 
@@ -124,15 +124,15 @@ for await (const part of result.stream) {
 
 - **logprobs** _boolean_
 
-  是否为生成的令牌返回对数概率。默认为 `false`。
+  是否为生成的 token 返回对数概率。默认为 `false`。
 
 - **topLogprobs** _number_
 
-  在每个令牌位置返回的最可能令牌数量。接受 `0` 到 `20` 之间的值。需要 `logprobs` 为 `true`。
+  在每个 token 位置返回的最可能 token 数量。接受从 `0` 到 `20` 的值。需要将 `logprobs` 设置为 `true`。
 
 - **logitBias** _Record&lt;string, number&gt;_
 
-  将令牌 ID 映射到 `-100` 到 `100` 之间的偏置值。
+  将 token ID 映射到从 `-100` 到 `100` 的偏置值。
 
 - **serviceTier** _'auto' | 'default' | 'flex' | 'priority'_
 
@@ -140,7 +140,7 @@ for await (const part of result.stream) {
 
 - **reasoningEffort** _'none' | 'low' | 'medium' | 'high'_
 
-  控制受支持模型执行的推理量。支持的值和默认值取决于模型。
+  控制支持的模型执行的推理量。支持的值和默认值取决于模型。
 
 - **reasoningFormat** _'none' | 'parsed' | 'text_parsed' | 'raw' | 'hidden'_
 
@@ -148,19 +148,19 @@ for await (const part of result.stream) {
 
 - **prediction** _&#123; type: 'content'; content: string | Array&lt;&#123; type: 'text'; text: string &#125;&gt; &#125;_
 
-  提供预测输出，可加速大多数响应内容已知的请求。
+  提供预测输出，可在大部分响应已知的情况下加速请求。
 
 - **promptCacheKey** _string_
 
-  将相关请求路由到相同的提示词缓存。该值最多可包含 1024 个字符，并且需要账户级启用。
+  将相关请求路由到同一提示词缓存。该值最多可包含 1024 个字符，并且需要在账户级别启用。
 
 - **user** _string_
 
-  代表最终用户的唯一标识符，有助于监控和滥用检测。
+  表示你的最终用户的唯一标识符，有助于监控和滥用检测。
 
 - **strictJsonSchema** _boolean_
 
-  是否使用严格的 JSON 架构验证。当为 `true` 时，模型使用约束解码来保证架构合规性。默认为 `true`。
+  是否使用严格的 JSON schema 验证。当为 `true` 时，模型使用约束解码来保证 schema 合规性。默认为 `true`。
 
 例如：
 
@@ -173,7 +173,7 @@ import { generateText } from 'ai';
 
 const result = await generateText({
   model: cerebras('gpt-oss-120b'),
-  prompt: '解释为什么天空是蓝色的。',
+  prompt: 'Explain why the sky is blue.',
   providerOptions: {
     cerebras: {
       reasoningEffort: 'low',
@@ -186,7 +186,7 @@ const result = await generateText({
 
 ## 模型能力
 
-| 模型           | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 | 推理 |
-| -------------- | ----------- | ----------------- | ---------- | -------------- | --------- |
-| `gpt-oss-120b` | <Cross />   | <Check />         | <Check />  | <Check />      | <Check /> |
-| `gemma-4-31b`  | <Check />   | <Check />         | <Check />  | <Check />      | <Check /> |
+| 模型           | 图像输入    | 对象生成    | 工具使用    | 工具流式传输 | 推理        |
+| -------------- | ----------- | ----------- | ----------- | ------------ | ----------- |
+| `gpt-oss-120b` | <Cross />   | <Check />   | <Check />   | <Check />    | <Check />   |
+| `gemma-4-31b`  | <Check />   | <Check />   | <Check />   | <Check />    | <Check />   |

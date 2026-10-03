@@ -5,11 +5,11 @@ description: "了解如何在 AI SDK 中使用 QuiverAI 模型。"
 
 # QuiverAI 提供商
 
-[QuiverAI](https://quiver.ai/) 提供能够推理并创建 SVG 文档的 Arrow 语言模型，以及原生 SVG 生成、矢量化、编辑和动画端点。AI SDK 提供商通过 `generateText` 和 `streamText` 暴露 Arrow 2，并通过 `generateImage` 暴露图像操作。
+[QuiverAI](https://quiver.ai/) 提供 Arrow 语言模型，能够推理并创建 SVG 文档，同时还提供原生 SVG 生成、矢量化、编辑和动画端点。AI SDK 提供商通过 `generateText` 和 `streamText` 暴露 Arrow 2，并通过 `generateImage` 暴露图像操作。
 
 ## 设置
 
-QuiverAI 提供商可通过 `@ai-sdk/quiverai` 模块使用。你可以使用以下命令安装：
+QuiverAI 提供商通过 `@ai-sdk/quiverai` 模块提供。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/quiverai" />
 
@@ -40,22 +40,22 @@ const quiverai = createQuiverAI({
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
-  默认前缀是 `https://api.quiver.ai/v1`。它也会从环境中读取 `QUIVERAI_BASE_URL`。
+  默认前缀是 `https://api.quiver.ai/v1`。它也会从环境变量中读取 `QUIVERAI_BASE_URL`。
 
 - **apiKey** _string_
 
-  作为 `Bearer` 令牌在 `Authorization` 头中发送的 API 密钥。
-  默认为 `QUIVERAI_API_KEY` 环境变量。
+  作为 `Bearer` 令牌在 `Authorization` 请求头中发送的 API 密钥。
+  默认使用 `QUIVERAI_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   你可以将其用作中间件来拦截请求，
-  或提供自定义 fetch 实现，例如用于测试。
+  或为测试等场景提供自定义 fetch 实现。
 
 ## 语言模型
 
@@ -102,7 +102,7 @@ await generateText({
 
 ### 调用方执行的工具
 
-标准 AI SDK 工具作为 Responses API 函数工具发送，并在你的应用程序中执行。请使用有界循环，因为每一步都会执行另一次模型请求：
+标准 AI SDK 工具作为 Responses API 函数工具发送，并在你的应用程序中执行。由于每一步都会执行另一次模型请求，请使用有界循环：
 
 ```ts
 import { quiverai } from '@ai-sdk/quiverai';
@@ -129,7 +129,7 @@ const result = await generateText({
 });
 ```
 
-QuiverAI 自定义工具返回原始字符串，也由调用方执行：
+QuiverAI 自定义工具返回原始字符串，同样由调用方执行：
 
 ```ts
 const result = await generateText({
@@ -150,20 +150,20 @@ const result = await generateText({
 
 ### Responses API 限制
 
-- 请求是无状态的。提供商不会启用响应存储或响应 ID 延续。
-- QuiverAI 目前为此端点记录了文本响应格式。
+- 请求是无状态的。提供商不会启用响应存储或响应 ID 续接。
+- QuiverAI 目前为此端点记录的是文本响应格式。
   结构化输出设置会被省略并在 `warnings` 中报告。
-- 流式工具调用会在应用程序执行之前完整组装。
-- 中止信号、自定义头和自定义 `fetch` 实现会转发到 Responses 请求。
+- 流式传输工具调用会在应用程序执行之前完整组装。
+- 中止信号、自定义请求头和自定义 `fetch` 实现会转发到 Responses 请求。
 
 ### 语言模型用量
 
-当 QuiverAI 返回时，`result.usage` 和流式完成事件会包含输入、缓存读取、缓存写入、文本输出和推理令牌计数。
+当 QuiverAI 返回时，`result.usage` 和流式传输完成事件会包含输入、缓存读取、缓存写入、文本输出和推理令牌计数。
 
 ## 图像模型
 
 你可以使用 `.image()` 工厂方法创建 QuiverAI 图像模型。
-有关使用 AI SDK 生成图像的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ### 基本用法
 
@@ -182,7 +182,7 @@ fs.writeFileSync(filename, image.uint8Array);
 console.log(`Saved SVG to ${filename}`);
 ```
 
-QuiverAI 返回 SVG 文档。生成的 SVG 字节可通过 `result.image.uint8Array` 获取（生成多个时可通过 `result.images` 获取）。
+QuiverAI 返回 SVG 文档。生成的 SVG 字节可通过 `result.image.uint8Array` 获取（生成多张图像时为 `result.images`）。
 
 ### 模型能力
 
@@ -195,6 +195,12 @@ QuiverAI 支持以下 Arrow 模型：
 | `arrow-1`       | 基础文本到 SVG 模型。最多接受 4 张参考图像。                                                                                       |
 | `arrow-1.1`     | 改进的文本到 SVG 模型。最多接受 4 张参考图像。                                                                                     |
 | `arrow-1.1-max` | 具有扩展上下文的更高质量变体。最多接受 16 张参考图像。                                                                             |
+
+此表中的所有模型都声明 `supportsFileInputs: true` 和
+`supportsMaskInputs: false`。其他模型 ID 的这两项能力均为未知。
+文件输入支持包括用于生成的参考图像；SVG 编辑和
+动画仍需要相应的 `providerOptions.quiverai.operation`、
+支持的输入格式，以及你的 API 密钥对该操作的访问权限。
 
 ### 提供商选项
 
@@ -256,11 +262,11 @@ await generateImage({
 
 - **referenceImages** `Array<{ url: string } | { base64: string }>`
 
-  用于 SVG 编辑的最多四张可选参考图像。URL 引用必须使用 HTTP 或 HTTPS。Base64 引用必须解码为 PNG、JPEG、WebP、GIF 或 SVG 数据。使用 `prepareQuiverAIImageReference` 将二进制、数据 URL 或 URL 输入转换为此 JSON 安全的提供商选项形状。
+  最多四张用于 SVG 编辑的可选参考图像。URL 引用必须使用 HTTP 或 HTTPS。Base64 引用必须解码为 PNG、JPEG、WebP、GIF 或 SVG 数据。使用 `prepareQuiverAIImageReference` 将二进制、数据 URL 或 URL 输入转换为此 JSON 安全的提供商选项形状。
 
 - **maxReviewSteps** _number_ (0-5)
 
-  初始编辑后编辑审查和重做的最大步数。
+  初始编辑之后的最大编辑审查和重做步骤数。
 
 - **orchestratorMaxOutputTokens** _number_ (1-65536)
 
@@ -276,7 +282,7 @@ await generateImage({
 
 - **targetSize** _number_ (128-4096)
 
-  矢量化时，目标画布大小（以像素为单位）。仅与 `operation: 'vectorize'` 一起使用。
+  矢量化时，目标画布大小（像素）。仅与 `operation: 'vectorize'` 一起使用。
 
 ### 参考图像
 
@@ -320,7 +326,7 @@ const { image } = await generateImage({
 fs.writeFileSync('logo.svg', image.uint8Array);
 ```
 
-矢量化每个 API 请求返回一个 SVG。要使用 `n` 请求多个矢量化结果，还需设置 `maxImagesPerCall: 1`，以便 `generateImage` 将它们拆分为单独的调用。
+矢量化每次 API 请求返回一个 SVG。要使用 `n` 请求多次矢量化，还需设置 `maxImagesPerCall: 1`，以便 `generateImage` 将它们拆分为单独的调用。
 
 ### 编辑 SVG
 
@@ -363,20 +369,20 @@ const { image } = await generateImage({
 await fs.writeFile('./edited-logo.svg', image.uint8Array);
 ```
 
-源 SVG 可以是 HTTP/HTTPS URL、二进制数据（如 `Buffer` 或 `Uint8Array`）、base64 字符串或 SVG 数据 URL。二进制和 base64 源会作为完整的 UTF-8 SVG 文档进行验证，并作为 base64 SVG 源发送到 QuiverAI。远程源 URL 由 QuiverAI 获取，并且必须解析为 SVG。
+源 SVG 可以是 HTTP/HTTPS URL、二进制数据（如 `Buffer` 或 `Uint8Array`）、base64 字符串或 SVG 数据 URL。二进制和 base64 源会被验证为完整的 UTF-8 SVG 文档，并作为 base64 SVG 源发送到 QuiverAI。远程源 URL 由 QuiverAI 获取，且必须解析为 SVG。
 
-编辑参考图像与源 SVG 是分开的。将它们放在 `providerOptions.quiverai.referenceImages` 中，而不是 `prompt.images` 中。直接提供商选项值使用 `{ url }` 或 `{ base64 }`；`prepareQuiverAIImageReference` 将 HTTP/HTTPS URL、`URL`、`Uint8Array`、`ArrayBuffer`、base64 字符串或支持的图像数据 URL 转换为该 JSON 安全的形状。
+编辑参考图像与源 SVG 是分开的。将它们放在 `providerOptions.quiverai.referenceImages` 中，而不是 `prompt.images` 中。直接提供商选项值使用 `{ url }` 或 `{ base64 }`；`prepareQuiverAIImageReference` 将 HTTP/HTTPS URL、`URL`、`Uint8Array`、`ArrayBuffer`、base64 字符串或支持的图像数据 URL 转换为该 JSON 安全形状。
 
 SVG 编辑具有以下验证约束：
 
 - 模型必须是 `arrow-2` 或 `arrow-2-telos`，并且 API 密钥的实时模型目录必须包含 `svg_edit` 操作。
 - `prompt.images` 必须恰好包含一个源 SVG。
-- `prompt.text` 是必需的，不能为空，并且最多包含 4000 个字符。
+- `prompt.text` 是必需的，不能为空，且最多包含 4000 个字符。
 - 二进制源 SVG 必须是完整的 UTF-8 SVG 文档，且不超过 200000 字节。
 - 最多接受四张参考图像。内联引用最多可包含 12582912 个解码字节。
-- 编辑每个 API 请求恰好返回一个 SVG。要使用 `n` 请求多个编辑结果，请设置 `maxImagesPerCall: 1`，以便 `generateImage` 将它们拆分为单独的调用。
-- 编辑会拒绝蒙版和仅用于生成/矢量化的提供商选项。
-- 生成、矢量化和动画会拒绝仅用于编辑的提供商选项。
+- 编辑每次 API 请求恰好返回一个 SVG。要使用 `n` 请求多次编辑，请设置 `maxImagesPerCall: 1`，以便 `generateImage` 将它们拆分为单独的调用。
+- 蒙版和仅用于生成/矢量化的提供商选项在编辑时会被拒绝。
+- 仅用于编辑的提供商选项在生成、矢量化和动画时会被拒绝。
 
 编辑后的 SVG 以字节形式返回在 `result.image.uint8Array` 中。
 
@@ -412,13 +418,13 @@ console.log(timing?.loopPeriodMs, timing?.openingAnimationMs);
 
 动画源可以是 HTTP 或 HTTPS URL、SVG 字节、原始 base64 或 `image/svg+xml` base64 数据 URL。本地文件输入会在请求前检查，如果不包含 SVG 数据则会被拒绝。远程 URL 会验证其协议，并由 QuiverAI 获取和验证。
 
-动画以字节形式返回动画 SVG 到 `image.uint8Array` 中。当 QuiverAI 返回计时信息时，每张图像的元数据包含 `loopPeriodMs` 和 `openingAnimationMs`；任一计时值都可以为 `null`。
+动画以字节形式在 `image.uint8Array` 中返回动画 SVG。当 QuiverAI 返回计时信息时，每张图像的元数据包含 `loopPeriodMs` 和 `openingAnimationMs`；任一计时值都可以为 `null`。
 
-动画请求必须使用 `arrow-2` 或 `arrow-2-telos`，恰好包含一个源 SVG，省略蒙版，并且每个提供商请求产生一个结果。要使用 `n` 请求多个动画结果，请设置 `maxImagesPerCall: 1`，以便 `generateImage` 将它们拆分为单独的调用。动画支持 `temperature`、`reasoningEffort` 和 `maxOutputTokens`；仅用于生成和仅用于矢量化的提供商选项会被拒绝。
+动画请求必须使用 `arrow-2` 或 `arrow-2-telos`，恰好包含一个源 SVG，省略蒙版，并且每个提供商请求产生一个结果。要使用 `n` 请求多个动画，请设置 `maxImagesPerCall: 1`，以便 `generateImage` 将它们拆分为单独的调用。动画支持 `temperature`、`reasoningEffort` 和 `maxOutputTokens`；仅用于生成和仅用于矢量化的提供商选项会被拒绝。
 
 源 SVG、文本指令和远程源 URL 会发送到 QuiverAI。动画 SVG 是活动文档内容。在将来自不受信任来源的输出内联嵌入页面之前，请对其进行清理或在隔离上下文中渲染。
 
-### 计费和用量
+### 计费与用量
 
 Arrow 2 模型在 `result.usage` 中返回测量的令牌计数。固定积分模型可能返回零的兼容性令牌计数；当 API 提供时，其积分费用可在 `result.providerMetadata?.quiverai?.credits` 中获取。
 

@@ -1,11 +1,11 @@
 ---
-title: createAgentUIStream
-description: createAgentUIStream 工具的 API 参考文档。
+title: "createAgentUIStream"
+description: "createAgentUIStream 工具的 API 参考。"
 ---
 
 # `createAgentUIStream`
 
-`createAgentUIStream` 函数执行一个[智能体](/docs/reference/ai-sdk-core/agent)，消费一组 UI 消息，并通过异步可迭代对象将智能体的输出作为 UI 消息块进行流式传输。这可以在您自己的运行时中实现 AI 助手输出的实时、增量渲染，并完全支持工具使用、中间推理和交互式 UI 功能——非常适合构建由智能体驱动的聊天 API、仪表盘或机器人。
+`createAgentUIStream` 函数会执行一个 [Agent](/docs/reference/ai-sdk-core/agent)，消费一个 UI 消息数组，并通过异步可迭代对象将智能体的输出以 UI 消息块的形式流式传输。这使你能够在自己的运行时中实时、增量地渲染 AI 助手的输出，并完全访问工具使用、中间推理和交互式 UI 功能——非常适合构建由智能体驱动的聊天 API、仪表盘或机器人。
 
 ## 导入
 
@@ -19,7 +19,7 @@ __PROVIDER_IMPORT__;
 
 const agent = new ToolLoopAgent({
   model: __MODEL__,
-  instructions: '你是一个乐于助人的助手。',
+  instructions: 'You are a helpful assistant.',
   tools: { weather: weatherTool, calculator: calculatorTool },
 });
 
@@ -31,12 +31,12 @@ export async function* streamAgent(
     agent,
     uiMessages,
     abortSignal,
-    // experimental_sandbox, // 可选：将实验性沙盒传递给工具执行
-    // ...其他选项（见下文）
+    // experimental_sandbox, // optional: pass an experimental sandbox through to tool execution
+    // ...other options (see below)
   });
 
   for await (const chunk of stream) {
-    yield chunk; // 每个块都是智能体输出的 UI 消息。
+    yield chunk; // Each chunk is a UI message output from the agent.
   }
 }
 ```
@@ -50,77 +50,84 @@ export async function* streamAgent(
       type: 'Agent',
       isRequired: true,
       description:
-        '要运行的智能体。必须定义其 `tools` 并实现 `.stream({ prompt, ... })`。',
+        'The agent to run. Must define its `tools` and implement `.stream({ prompt, ... })`.',
     },
     {
       name: 'uiMessages',
       type: 'unknown[]',
       isRequired: true,
       description:
-        '输入 UI 消息对象数组（例如，用户/助手/聊天历史）。这些将被验证并转换为智能体所需的格式。',
+        'Array of input UI message objects (e.g., user/assistant/chat history). These will be validated and converted for the agent.',
+    },
+    {
+      name: 'convertDataPart',
+      type: '(part: DataUIPart) => TextPart | FilePart | undefined',
+      isRequired: false,
+      description:
+        'Converts custom UI data parts into text or file parts for the model. Data parts are ignored when this callback is omitted or returns undefined.',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal',
       isRequired: false,
       description:
-        '可选的 AbortSignal，用于提前取消流（例如，如果客户端断开连接）。',
+        'Optional abort signal to cancel the stream early (for example, if the client disconnects).',
     },
     {
       name: 'timeout',
       type: 'number | { totalMs?: number }',
       isRequired: false,
       description:
-        '超时时间（毫秒）。可以指定为数字或包含 totalMs 属性的对象。如果调用时间超过指定的超时时间，调用将被中止。可以与 abortSignal 一起使用。',
+        'Timeout in milliseconds. Can be specified as a number or as an object with a totalMs property. The call will be aborted if it takes longer than the specified timeout. Can be used alongside abortSignal.',
     },
     {
       name: 'experimental_sandbox',
       type: 'Experimental_SandboxSession',
       isRequired: false,
       description:
-        '可选的实验性沙盒环境，将传递给工具执行。工具可以从其执行上下文中访问它。',
+        'Optional experimental sandbox environment that is passed through to tool execution. Tools can access it from their execution context.',
     },
     {
       name: 'options',
       type: 'CALL_OPTIONS',
       isRequired: false,
       description:
-        '可选的智能体调用选项，仅在您的智能体需要额外配置时需要（请参阅智能体泛型参数）。',
+        'Optional agent call options, only needed if your agent expects extra configuration (see agent generic parameters).',
     },
     {
       name: 'experimental_transform',
       type: 'StreamTextTransform | StreamTextTransform[]',
       isRequired: false,
       description:
-        '应用于智能体输出流的可选转换（实验性）。',
+        'Optional transformations to apply to the agent output stream (experimental).',
     },
     {
       name: 'onStepEnd',
       type: 'GenerateTextOnStepEndCallback',
       isRequired: false,
       description:
-        '在每个智能体步骤（LLM/工具调用）完成后调用的回调。用于跟踪令牌使用情况、每步性能或记录中间步骤。',
+        'Callback invoked after each agent step (LLM/tool call) completes. Useful for tracking token usage, per-step performance, or logging intermediate steps.',
     },
     {
       name: 'onStepFinish',
       type: 'GenerateTextOnStepFinishCallback',
       isRequired: false,
       description:
-        '已弃用。请改用 `onStepEnd`。此别名仅在未提供 `onStepEnd` 时作为回退使用。',
+        'Deprecated. Use `onStepEnd` instead. This alias is only used as a fallback when `onStepEnd` is not provided.',
     },
     {
       name: '...UIMessageStreamOptions',
       type: 'UIMessageStreamOptions',
       isRequired: false,
       description:
-        '控制输出流的其他选项，例如包含来源或使用数据。',
+        'Additional options to control the output stream, such as including sources or usage data.',
     },
   ]}
 />
 
 ## 返回值
 
-一个 `Promise<AsyncIterableStream<UIMessageChunk>>`，其中每个生成的块都是智能体输出的 UI 消息（请参阅 [`UIMessage`](/docs/reference/ai-sdk-core/ui-message)）。可以使用任何异步迭代器循环消费，或通过管道传输到流式 HTTP 响应、套接字或任何其他接收器。
+一个 `Promise<AsyncIterableStream<UIMessageChunk>>`，其中每个产出的块都是智能体输出的 UI 消息（参见 [`UIMessage`](/docs/reference/ai-sdk-core/ui-message)）。可以使用任何异步迭代器循环来消费它，或将其管道传输到流式 HTTP 响应、套接字或任何其他接收端。
 
 ## 示例
 
@@ -131,38 +138,38 @@ const controller = new AbortController();
 
 const stream = await createAgentUIStream({
   agent,
-  uiMessages: [{ role: 'user', content: '今天旧金山的天气怎么样？' }],
+  uiMessages: [{ role: 'user', content: 'What is the weather in SF today?' }],
   abortSignal: controller.signal,
-  // experimental_sandbox, // 可选
+  // experimental_sandbox, // optional
   sendStart: true,
-  // ...其他 UIMessageStreamOptions
+  // ...other UIMessageStreamOptions
 });
 
 for await (const chunk of stream) {
-  // 每个块都是一个 UI 消息更新——将其流式传输到您的客户端、仪表盘、日志等。
+  // Each chunk is a UI message update — stream it to your client, dashboard, logs, etc.
   console.log(chunk);
 }
 
-// 调用 controller.abort() 以提前取消智能体操作。
+// Call controller.abort() to cancel the agent operation early.
 ```
 
 ## 工作原理
 
-1. **UI 消息验证：** 使用智能体的 `tools` 定义对输入的 `uiMessages` 数组进行验证和规范化。任何无效消息都会导致错误。
-2. **转换为模型消息：** 验证后的 UI 消息将转换为模型特定的消息格式，这是智能体所要求的。
-3. **智能体流式传输：** 使用转换后的模型消息、可选的调用选项、abortSignal、experimental_sandbox 以及任何实验性转换来调用智能体的 `.stream({ prompt, ... })` 方法。
-4. **UI 消息流构建：** 结果流被转换并作为 UI 消息块的流式异步可迭代对象暴露出来，供您消费。
+1. **UI 消息验证：** 输入的 `uiMessages` 数组会使用智能体的 `tools` 定义进行验证和规范化。任何无效消息都会导致错误。
+2. **转换为模型消息：** 验证后的 UI 消息会按照智能体的要求转换为模型特定的消息格式。
+3. **智能体流式传输：** 使用转换后的模型消息、可选的调用选项、中止信号、experimental_sandbox 以及任何实验性转换来调用智能体的 `.stream({ prompt, ... })` 方法。
+4. **UI 消息流构建：** 结果流会被转换并作为 UI 消息块的流式异步可迭代对象暴露出来，供你消费。
 
 ## 注意事项
 
-- 智能体**必须**实现 `.stream({ prompt, ... })` 方法并定义其支持的 `tools` 属性。
+- 智能体**必须**实现 `.stream({ prompt, ... })` 方法，并定义其支持的 `tools` 属性。
 - 此工具返回一个异步可迭代对象，以实现最大的流式传输灵活性。对于 HTTP 响应，请参阅 [`createAgentUIStreamResponse`](/docs/reference/ai-sdk-core/create-agent-ui-stream-response)（Web）或 [`pipeAgentUIStreamToResponse`](/docs/reference/ai-sdk-core/pipe-agent-ui-stream-to-response)（Node.js）。
-- `uiMessages` 参数名为 `uiMessages`，**不是** `messages`。
-- 您可以通过 `UIMessageStreamOptions` 提供高级选项（例如，包含来源或使用数据）。
-- 要取消流，请通过 `abortSignal` 参数传递一个 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)。
-- 当您的智能体工具在执行期间需要实验性沙盒环境时，请传递 `experimental_sandbox`。
+- `uiMessages` 参数命名为 `uiMessages`，**而不是**简单的 `messages`。
+- 你可以通过 `UIMessageStreamOptions` 提供高级选项（例如，包含来源或使用情况）。
+- 要取消流，请通过 `abortSignal` 参数传入一个 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)。
+- 当你的智能体工具在执行期间需要实验性沙箱环境时，请传入 `experimental_sandbox`。
 
-## 参见
+## 另请参阅
 
 - [`Agent`](/docs/reference/ai-sdk-core/agent)
 - [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent)

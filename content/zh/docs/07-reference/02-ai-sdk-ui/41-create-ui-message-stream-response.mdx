@@ -1,6 +1,6 @@
 ---
 title: "createUIMessageStreamResponse"
-description: "createUIMessageStreamResponse 的 API 参考文档。"
+description: "createUIMessageStreamResponse 的 API 参考。"
 ---
 
 # `createUIMessageStreamResponse`
@@ -33,16 +33,16 @@ const response = createUIMessageStreamResponse({
   },
   stream: createUIMessageStream({
     execute({ writer }) {
-      // 外层流负责管理智能体消息的生命周期。
+      // The outer stream owns the assistant message lifecycle.
       writer.write({ type: 'start' });
 
-      // 写入自定义数据（类型必须为 'data-<name>'）
+      // Write custom data (type must be 'data-<name>')
       writer.write({
         type: 'data-message',
         data: { content: 'Hello' },
       });
 
-      // 使用 start/delta/end 模式写入文本内容
+      // Write text content using start/delta/end pattern
       writer.write({
         type: 'text-start',
         id: 'greeting-text',
@@ -57,7 +57,7 @@ const response = createUIMessageStreamResponse({
         id: 'greeting-text',
       });
 
-      // 写入来源信息（使用扁平属性，而非嵌套结构）
+      // Write source information (flat properties, not nested)
       writer.write({
         type: 'source-url',
         sourceId: 'source-1',
@@ -65,7 +65,7 @@ const response = createUIMessageStreamResponse({
         title: 'Example Source',
       });
 
-      // 与 LLM 流合并
+      // Merge with LLM stream
       const result = streamText({
         model: __MODEL__,
         prompt: 'Say hello',
@@ -106,14 +106,21 @@ const response = createUIMessageStreamResponse({
       name: 'headers',
       type: 'Headers | Record<string, string>',
       isOptional: true,
-      description: '响应的附加标头。',
+      description: '响应的附加请求头。',
+    },
+    {
+      name: 'keepAliveMs',
+      type: 'number',
+      isOptional: true,
+      description:
+        '发送 SSE keep-alive 注释的间隔时间（毫秒）。设置后，会立即发送一条开头注释，并在流空闲达到配置的间隔时间后发送额外的注释。',
     },
     {
       name: 'consumeSseStream',
       type: '(options: { stream: ReadableStream<string> }) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '可选回调函数，用于消费 Server-Sent Events 流。',
+        '用于消费 Server-Sent Events 流的可选回调。',
     },
   ]}
 />
@@ -122,4 +129,4 @@ const response = createUIMessageStreamResponse({
 
 `Response`
 
-一个 Response 对象，用于以指定的状态、标头和内容流式传输 UI 消息块。
+一个 Response 对象，用于以指定的状态、请求头和内容流式传输 UI 消息块。

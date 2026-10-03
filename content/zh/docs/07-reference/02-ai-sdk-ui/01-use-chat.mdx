@@ -5,7 +5,7 @@ description: "useChat Hook 的 API 参考。"
 
 # `useChat()`
 
-让你能够轻松地为聊天机器人应用创建对话式用户界面。它支持从 AI 提供商流式传输聊天消息、管理聊天状态，并在收到新消息时自动更新 UI。
+让你能够轻松为聊天机器人应用创建对话式用户界面。它支持从 AI 提供商流式传输聊天消息、管理聊天状态，并在收到新消息时自动更新 UI。
 
 <Note>
   `useChat` API 在 AI SDK 5.0 中进行了重大更新。它现在使用基于传输的架构，不再在内部管理输入状态。详情请参阅[迁移指南](/docs/migration-guides/migration-guide-5-0#usechat-changes)。
@@ -103,7 +103,7 @@ description: "useChat Hook 的 API 参考。"
                     {
                       name: 'options',
                       type: 'PrepareSendMessageRequestOptions',
-                      description: '准备请求的选项',
+                      description: '用于准备请求的选项',
                       properties: [
                         {
                           type: 'PrepareSendMessageRequestOptions',
@@ -151,7 +151,7 @@ description: "useChat Hook 的 API 参考。"
                             {
                               name: 'messageId',
                               type: 'string | undefined',
-                              description: '消息 ID（如适用）',
+                              description: '消息 ID（如果适用）',
                             },
                           ],
                         },
@@ -175,7 +175,7 @@ description: "useChat Hook 的 API 参考。"
                       name: 'options',
                       type: 'PrepareReconnectToStreamRequestOptions',
                       description:
-                        '准备重连请求的选项',
+                        '用于准备重连请求的选项',
                       properties: [
                         {
                           type: 'PrepareReconnectToStreamRequestOptions',
@@ -252,21 +252,21 @@ description: "useChat Hook 的 API 参考。"
       type: 'IdGenerator',
       isOptional: true,
       description:
-        '用于为消息和聊天生成唯一 ID 的函数。如果未提供，将使用 AI SDK 默认的 generateId。',
+        '用于为消息和聊天生成唯一 ID 的函数。如果未提供，将使用默认的 AI SDK generateId。',
     },
     {
       name: 'onToolCall',
       type: '({toolCall: ToolCall}) => void | Promise<void>',
       isOptional: true,
       description:
-        '可选回调函数，在收到工具调用时被调用。你必须调用 addToolOutput 来提供工具结果。',
+        '可选的回调函数，在收到工具调用时被调用。你必须调用 addToolOutput 来提供工具结果。',
     },
     {
       name: 'sendAutomaticallyWhen',
       type: '(options: { messages: UIMessage[] }) => boolean | PromiseLike<boolean>',
       isOptional: true,
       description:
-        '当提供时，此函数将在流结束或添加工具调用时被调用，以确定是否应重新提交当前消息。对于常见场景，你可以使用 lastAssistantMessageIsCompleteWithToolCalls 辅助函数。',
+        '当提供时，此函数将在流结束或添加工具调用时被调用，以确定当前消息是否应重新提交。对于常见场景，你可以使用 lastAssistantMessageIsCompleteWithToolCalls 辅助函数。',
     },
     {
       name: 'onFinish',
@@ -320,21 +320,21 @@ description: "useChat Hook 的 API 参考。"
       type: '(error: Error) => void',
       isOptional: true,
       description:
-        '遇到错误时要调用的回调函数。',
+        '遇到错误时调用的回调函数。',
     },
     {
       name: 'onData',
       type: '(dataPart: DataUIPart) => void',
       isOptional: true,
       description:
-        '可选回调函数，在收到数据部分时被调用。',
+        '可选的回调函数，在收到数据部分时被调用。',
     },
     {
       name: 'throttle',
       type: 'number',
       isOptional: true,
       description:
-        '仅限 React 和 Vue。用于响应式聊天消息更新的自定义节流等待时间（毫秒）。正值可降低 UI 更新频率，而不会延迟流处理或回调，并且最新消息会在 ready 或 error 状态之前发布。默认值为 undefined，即禁用节流。',
+        '仅适用于 React 和 Vue。用于响应式聊天消息更新的自定义节流等待时间（毫秒）。正值可降低 UI 更新频率，而不会延迟流处理或回调，最新消息会在 ready 或 error 状态之前发布。默认值为 undefined，即禁用节流。',
     },
     {
       name: 'resume',
@@ -404,7 +404,7 @@ description: "useChat Hook 的 API 参考。"
       name: 'sendMessage',
       type: '(message?: { text: string; files?: FileList | FileUIPart[]; metadata?; messageId?: string } | CreateUIMessage, options?: ChatRequestOptions) => Promise<void>',
       description:
-        '向聊天发送新消息的函数。这将触发 API 调用以生成助手响应。如果提供了 messageId，消息将被替换（用于编辑）。当使用 CreateUIMessage 进行替换时，请提供其 id 以为替换消息分配新 ID。如果未提供消息，则重新提交当前消息（在添加工具输出后很有用）。',
+        '向聊天发送新消息的函数。这将触发 API 调用以生成助手响应。如果提供了 messageId，消息将被替换（用于编辑）。当使用 CreateUIMessage 替换时，提供其 id 以为替换消息分配新 ID。如果未提供消息，则重新提交当前消息（在添加工具输出后很有用）。',
       properties: [
         {
           type: 'ChatRequestOptions',
@@ -481,6 +481,19 @@ description: "useChat Hook 的 API 参考。"
     },
   ]}
 />
+
+## React 渲染与共享 Chat 实例
+
+在 React 中，`messages`、`status` 和 `error` 描述当前渲染的快照。
+底层的 `Chat` 会随着流式块的处理而更新。React 可能会批量处理更新，
+而 `throttle` 可以延迟消息渲染，但不会延迟流处理或回调。
+状态和错误更新包含最新消息，因此已完成或失败的响应
+会使用其最终消息快照进行渲染。
+
+每次 `useChat({ chat })` 调用都会独立订阅。共享同一个 `Chat` 的消费者
+在使用不同的节流间隔时，可能会显示不同的消息快照。
+函数式 `setMessages` 更新器接收的是 Chat 的最新消息，这些消息可能
+比当前渲染中的消息更新。
 
 ## 了解更多
 

@@ -15,20 +15,19 @@ Laminar 的功能包括：
 - [智能体调试器](https://laminar.sh/docs/debugger/introduction)
 
 <Note>
-  本指南的另一个版本可在 [Laminar
-  文档](https://laminar.sh/docs/tracing/integrations/vercel-ai-sdk)中找到。
+  本指南的另一个版本可在 [Laminar 的文档](https://laminar.sh/docs/tracing/integrations/vercel-ai-sdk)中找到。
 </Note>
 
 ## 设置
 
 你可以使用你的编码智能体来安装 Laminar，也可以手动安装。
 
-### 使用编码智能体设置
+### 使用编码智能体进行设置
 
 复制下面的提示词并粘贴给你的编码智能体，让它全自动完成集成。
 
 ```markdown
-1. 在项目根目录运行 `npx lmnr-cli setup` 开始使用 Laminar。该命令将对用户进行身份验证，将新的项目 API 密钥保存到 .env，并安装 Laminar skill。
+1. 在项目根目录运行 `npx lmnr-cli setup` 开始使用 Laminar。该命令将验证用户身份，将新的项目 API 密钥保存到 .env，并安装 Laminar skill。
 2. 使用已安装的 skill 或文档，为本项目接入 Laminar：
    https://laminar.sh/docs/tracing/integrations/vercel-ai-sdk
 3. 在你的应用中运行一条被追踪的路径。
@@ -48,9 +47,9 @@ Laminar 的功能包括：
 
 使用 `npx lmnr-cli@latest setup`。这将：
 
-- 使用 Laminar 对你的设备进行身份验证，
+- 使用 Laminar 验证你的设备，
 - 创建一个新的项目 API 密钥并将其作为 `LMNR_PROJECT_API_KEY` 保存到你的 .env 中，
-- 安装 Laminar skill，你的编码智能体将使用它来通过 Laminar SDK 为你的智能体接入。
+- 安装 Laminar skill，你的编码智能体将使用它来通过 Laminar SDK 为你的智能体接入追踪
 
 ## Next.js
 
@@ -82,7 +81,7 @@ const nextConfig = {
 export default nextConfig;
 ```
 
-这是因为 Laminar 依赖 OpenTelemetry，而 OpenTelemetry 使用了一些 Node.js 特有的功能，我们需要告知 Next.js 这一点。在 [Next.js 文档](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverExternalPackages)中了解更多。
+这是因为 Laminar 依赖 OpenTelemetry，而后者使用了一些 Node.js 特有的功能，我们需要告知 Next.js 这一点。在 [Next.js 文档](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverExternalPackages)中了解更多。
 
 ### 追踪 AI SDK 调用
 
@@ -106,7 +105,7 @@ const { text } = await generateText({
 - 使用的提供商和模型
 - 输入和输出 token
 - 输入和输出价格
-- 附加元数据和 span 属性
+- 额外的元数据和 span 属性
 
 ### 旧版本的 Next.js
 
@@ -120,14 +119,14 @@ module.exports = {
 };
 ```
 
-更多信息，请参阅 Laminar 的 [AI SDK 集成指南](https://laminar.sh/docs/tracing/integrations/vercel-ai-sdk)和 Next.js [instrumentation 文档](https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation)。你也可以在文档中了解如何为 Next.js 启用所有追踪。
+更多信息，请参阅 Laminar 的 [AI SDK 集成指南](https://laminar.sh/docs/tracing/integrations/vercel-ai-sdk)和 Next.js [instrumentation 文档](https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation)。你还可以在文档中了解如何为 Next.js 启用所有 trace。
 
 ### 与 `@vercel/otel` 一起使用
 
 Laminar 可以与 `@vercel/otel` 共存并追踪 AI SDK 调用。默认的 Laminar 设置将确保
 
-- 常规的 Next.js 追踪通过 `@vercel/otel` 发送到你在 Vercel 配置的遥测后端，
-- AI SDK 及其他 LLM 或浏览器智能体追踪通过 Laminar 发送。
+- 常规的 Next.js trace 通过 `@vercel/otel` 发送到你在 Vercel 上配置的遥测后端，
+- AI SDK 以及其他 LLM 或浏览器智能体 trace 通过 Laminar 发送。
 
 ```javascript
 import { registerOTel } from '@vercel/otel';
@@ -150,7 +149,7 @@ export async function register() {
 }
 ```
 
-关于允许你通过 Laminar 追踪所有 Next.js 追踪的高级配置，请参阅示例[仓库](https://github.com/lmnr-ai/lmnr-ts/tree/main/examples/nextjs)。
+关于允许你通过 Laminar 追踪所有 Next.js trace 的高级配置，请参阅示例[仓库](https://github.com/lmnr-ai/lmnr-ts/tree/main/examples/nextjs)。
 
 ### 与 `@sentry/node` 一起使用
 
@@ -158,8 +157,8 @@ Laminar 可以与 `@sentry/node` 共存并追踪 AI SDK 调用。请确保在 `S
 
 这将确保
 
-- 由 Sentry 接入的任何内容都发送到你的 Sentry 后端，
-- AI SDK 及其他 LLM 或浏览器智能体追踪通过 Laminar 发送。
+- 由 Sentry 接入追踪的任何内容都发送到你的 Sentry 后端，
+- AI SDK 以及其他 LLM 或浏览器智能体 trace 通过 Laminar 发送。
 
 ```javascript
 export async function register() {
@@ -191,7 +190,7 @@ import { LaminarAiSdkTelemetry } from '@lmnr-ai/lmnr';
 registerTelemetry(new LaminarAiSdkTelemetry());
 ```
 
-这必须在你的应用中执行一次，且尽可能早，但要在其他追踪库（例如 `@sentry/node`）初始化_之后_。
+这必须在你的应用中执行一次，且尽可能早，但要_在其他追踪库（例如 `@sentry/node`）初始化之后_。
 
 在 Laminar [文档](https://laminar.sh/docs/tracing/introduction)中了解更多。
 
@@ -217,7 +216,7 @@ const { text } = await generateText({
 - 使用的提供商和模型
 - 输入和输出 token
 - 输入和输出价格
-- 附加元数据和 span 属性
+- 额外的元数据和 span 属性
 
 ### 与 `@sentry/node` 一起使用
 
@@ -237,12 +236,12 @@ registerTelemetry(new LaminarAiSdkTelemetry());
 
 这将确保
 
-- 由 Sentry 接入的任何内容都发送到你的 Sentry 后端，
-- AI SDK 及其他 LLM 或浏览器智能体追踪通过 Laminar 发送。
+- 由 Sentry 接入追踪的任何内容都发送到你的 Sentry 后端，
+- AI SDK 以及其他 LLM 或浏览器智能体 trace 通过 Laminar 发送。
 
-这两个库允许进行额外的进阶配置，但推荐使用上面的默认设置。
+这两个库允许进行额外的高级配置，但推荐使用上面的默认设置。
 
-## 附加配置
+## 额外配置
 
 ### Laminar 选项
 
@@ -252,14 +251,16 @@ registerTelemetry(new LaminarAiSdkTelemetry());
 import { registerTelemetry } from 'ai';
 import { LaminarAiSdkTelemetry } from '@lmnr-ai/lmnr';
 
-registerTelemetry(new LaminarAiSdkTelemetry({
-  laminarOptions: {
-    projectApiKey: process.env.LMNR_PROJECT_API_KEY,
-    baseUrl: "http://localhost",
-    httpPort: 8000,
-    grpcPort: 8001,
-  },
-})));
+registerTelemetry(
+  new LaminarAiSdkTelemetry({
+    laminarOptions: {
+      projectApiKey: process.env.LMNR_PROJECT_API_KEY,
+      baseUrl: 'http://localhost',
+      httpPort: 8000,
+      grpcPort: 8001,
+    },
+  }),
+);
 ```
 
 ### 不记录输入或输出
@@ -270,23 +271,27 @@ registerTelemetry(new LaminarAiSdkTelemetry({
 import { registerTelemetry } from 'ai';
 import { LaminarAiSdkTelemetry } from '@lmnr-ai/lmnr';
 
-registerTelemetry(new LaminarAiSdkTelemetry({
-  recordInputs: false, // default true
-  recordOutputs: false, // default true
-})));
+registerTelemetry(
+  new LaminarAiSdkTelemetry({
+    recordInputs: false, // default true
+    recordOutputs: false, // default true
+  }),
+);
 ```
 
 ### 为每个智能体步骤添加 span
 
-AI SDK 遥测集成会为每个智能体步骤发出步骤 span。默认情况下，Laminar 会忽略这些 span。你可以在构造函数选项中配置此项。
+AI SDK 遥测集成会为每个智能体步骤发出步骤 span。默认情况下，Laminar 会忽略这些 span。你可以在构造函数选项中配置这一点。
 
 ```javascript
 import { registerTelemetry } from 'ai';
 import { LaminarAiSdkTelemetry } from '@lmnr-ai/lmnr';
 
-registerTelemetry(new LaminarAiSdkTelemetry({
-  createStepSpan: true, // default false
-})));
+registerTelemetry(
+  new LaminarAiSdkTelemetry({
+    createStepSpan: true, // default false
+  }),
+);
 ```
 
 ### Span 名称
@@ -321,7 +326,7 @@ const result = await observe({ name: 'my-function' }, async () => {
 
 这将创建一个名为 "my-function" 的 span 并追踪该函数调用。在其中，你将看到嵌套的 `ai.generateText` span。
 
-要追踪你用 `observe` 包装的函数的输入参数，请将它们作为附加参数传递给包装器。函数的返回值将从包装器返回，并作为 span 的输出被追踪。
+要追踪你用 `observe` 包装的函数的输入参数，请将它们作为额外参数传递给包装器。函数的返回值将从包装器返回，并作为 span 的输出被追踪。
 
 ```javascript
 const result = await observe(
