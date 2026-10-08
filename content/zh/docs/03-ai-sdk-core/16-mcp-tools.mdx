@@ -9,14 +9,14 @@ AI SDK 支持连接到 [模型上下文协议 (MCP)](https://modelcontextprotoco
 这使你的 AI 应用能够通过标准化接口发现并使用各种服务中的能力。
 
 <Note>
-  如果你使用的是 OpenAI 的 Responses API，你也可以使用内置的
-  `openai.tools.mcp` 工具，它提供了直接的 MCP 服务器集成，无需转换工具。详情请参阅
+  如果你使用的是 OpenAI 的 Responses API，你还可以使用内置的
+  `openai.tools.mcp` 工具，它提供直接的 MCP 服务器集成，无需转换工具。详情请参阅
   [OpenAI 提供商文档](/providers/ai-sdk-providers/openai#mcp-tool)。
 </Note>
 
 ## 初始化 MCP 客户端
 
-我们建议在生产部署中使用 HTTP 传输（例如 `StreamableHTTPClientTransport`）。stdio 传输仅应用于连接本地服务器，因为它无法部署到生产环境。
+对于生产部署，我们建议使用 HTTP 传输（例如 `StreamableHTTPClientTransport`）。stdio 传输仅应用于连接本地服务器，因为它无法部署到生产环境。
 
 使用以下传输选项之一创建 MCP 客户端：
 
@@ -50,8 +50,7 @@ const mcpClient = await createMCPClient({
 });
 ```
 
-如果旧版 MCP 服务器使用 Streamable HTTP 会话，你可以通过恢复之前的会话 ID 和初始化结果来重新连接到已保存的会话。
-MCP `2026-07-28` 是无状态的，不使用这些选项：
+如果旧版 MCP 服务器使用 Streamable HTTP 会话，你可以通过恢复之前的会话 ID 和初始化结果来重新连接到已保存的会话。MCP `2026-07-28` 是无状态的，不使用这些选项：
 
 ```typescript
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -89,7 +88,7 @@ if (currentSessionId) {
 }
 ```
 
-当提供了 `initialInitializeResult` 时，`createMCPClient` 会复用缓存的初始化元数据，不会再次发送 `initialize` 请求。当调用 `onSessionExpired` 时，传输层已经清除了会话 ID，请求仍会以底层 HTTP 错误失败。请通过创建一个不带 `initialSessionId` 或 `initialInitializeResult` 的新客户端来重试。
+当提供 `initialInitializeResult` 时，`createMCPClient` 会复用缓存的初始化元数据，不会再次发送 `initialize` 请求。当调用 `onSessionExpired` 时，传输层已经清除了会话 ID，请求仍会以底层 HTTP 错误失败。请通过创建一个不带 `initialSessionId` 或 `initialInitializeResult` 的新客户端来重试。
 当仅关闭本地客户端但保留 MCP 会话以便稍后重新连接时，请将 `terminateSessionOnClose` 设置为 `false`。
 
 或者，你可以使用 MCP 官方 TypeScript SDK 中的 `StreamableHTTPClientTransport`：
@@ -108,7 +107,7 @@ const mcpClient = await createMCPClient({
 
 ### SSE 传输
 
-SSE 提供了另一种基于 HTTP 的传输选项。使用 `type` 和 `url` 属性进行配置。你还可以为 OAuth 提供 `authProvider`：
+SSE 提供了另一种基于 HTTP 的传输选项。使用 `type` 和 `url` 属性进行配置。你还可以提供 `authProvider` 用于 OAuth：
 
 ```typescript
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -165,7 +164,7 @@ const mcpClient = await createMCPClient({
 
 ### 共享 OAuth 凭据存储
 
-当多个 MCP 客户端或副本共享 OAuth 凭据时，轮换的刷新令牌可能会被并发使用。一次刷新可能保存新令牌，而另一次则因旧刷新令牌收到 `invalid_grant`。
+当多个 MCP 客户端或副本共享 OAuth 凭据时，轮换刷新令牌可能会被并发使用。一次刷新可能保存新令牌，而另一次则因旧刷新令牌收到 `invalid_grant`。
 
 可选的 `OAuthClientProvider.invalidateCredentials` 方法会接收第二个参数，用于标识失败刷新所使用的令牌：
 
@@ -176,9 +175,11 @@ invalidateCredentials(
 ): void | Promise<void>;
 ```
 
-对于带有上下文的 `scope === 'tokens'`，仅当存储的访问令牌和刷新令牌仍与 `context.tokens` 匹配时才删除凭据。比较和删除必须是原子操作，使用条件数据库操作或事务。如果它们不再匹配，请保留较新的令牌。SDK 会重试授权并再次读取存储的令牌。
+对于带上下文的 `scope === 'tokens'`，仅当存储的访问令牌和刷新令牌仍与 `context.tokens` 匹配时才删除凭据。比较和删除必须是原子操作，使用条件数据库操作或事务。如果它们不再匹配，请保留较新的令牌。SDK 会重试授权并再次读取存储的令牌。
 
-当使缺少授权服务器绑定的存储令牌失效时，SDK 也会提供此上下文。其他失效操作可以省略上下文。
+当使缺少授权服务器绑定的已存储令牌失效时，SDK 也会提供此上下文。其他失效操作可以省略上下文。
+
+如果授权码交换返回 `invalid_grant`，SDK 会传播该错误，而不会使已存储的凭据失效或重试被拒绝的授权码。被拒绝的授权码并不表示现有的访问令牌或刷新令牌无效。
 
 ### OAuth 授权服务器验证
 
@@ -226,7 +227,7 @@ await auth(myOAuthClientProvider, {
 
 当 `iss` 存在时，它必须与发现的授权服务器签发者完全匹配。不匹配时不会交换授权码。
 
-动态客户端注册请求包含 OAuth `application_type`。客户端会为回环、localhost 和自定义 scheme 重定向推断为 `native`，为远程 HTTP(S) 重定向推断为 `web`。你可以通过在提供商的 `clientMetadata` 中设置 `application_type` 来覆盖此行为。
+动态客户端注册请求包含 OAuth `application_type`。客户端会为环回、localhost 和自定义 scheme 重定向推断为 `native`，为远程 HTTP(S) 重定向推断为 `web`。你可以通过在提供商的 `clientMetadata` 中设置 `application_type` 来覆盖此行为。
 
 ### 动态客户端凭据恢复
 
@@ -265,7 +266,7 @@ const mcpClient = await createMCPClient({
 });
 ```
 
-默认禁用重试。内置的重试匹配仅适用于瞬时 HTTP 和网络故障。JSON-RPC 应用错误（例如无效的工具参数）会立即抛出，不会重试。带有 `isError: true` 的成功 MCP 工具响应也会返回给模型，不会重试。
+默认情况下禁用重试。内置的重试匹配仅适用于瞬时 HTTP 和网络故障。JSON-RPC 应用错误（例如无效的工具参数）会立即呈现，不会重试。带有 `isError: true` 的成功 MCP 工具响应也会返回给模型，不会重试。
 
 `maxRetries` 适用于 `tools/call` 请求，不适用于客户端初始化。以下示例使用导出的 `MCPClientError` 类型守卫来识别可能瞬时的 HTTP 初始化失败：
 
@@ -301,17 +302,17 @@ try {
 此示例仅考虑 HTTP 状态码。缺少 `statusCode` 并不能确定失败是瞬时的：配置错误、协议错误和已取消的请求也可能缺少 HTTP 状态码。网络和超时重试需要单独的应用策略。此示例会重新抛出 `UnauthorizedError` 和 `MCPClientOAuthError` 等 OAuth 错误。
 
 <Note type="warning">
-  仅对重试安全的 MCP 工具启用重试。重试非幂等工具（例如发送电子邮件或创建记录的工具）可能会导致重复的副作用。
+  仅对重试安全的 MCP 工具启用重试。重试非幂等工具（例如发送电子邮件或创建记录的工具）可能会导致副作用重复。
 </Note>
 
 ### 关闭 MCP 客户端
 
 初始化后，你应该根据使用模式关闭 MCP 客户端：
 
-- 对于短生命周期使用（例如单个请求），在响应完成时关闭客户端
+- 对于短生命周期使用（例如单次请求），在响应完成时关闭客户端
 - 对于长时间运行的客户端（例如命令行应用），保持客户端打开，但确保在应用终止时关闭它
 
-在流式传输响应时，你可以在 LLM 响应完成后关闭客户端。例如，使用 `streamText` 时，你应该使用 `onEnd` 回调：
+在流式传输响应时，你可以在 LLM 响应完成后关闭客户端。例如，使用 `streamText` 时，应使用 `onEnd` 回调：
 
 ```typescript
 const mcpClient = await createMCPClient({
@@ -352,21 +353,21 @@ try {
 
 ### Schema 发现
 
-使用 schema 发现时，服务器提供的所有工具都会被自动列出，输入参数类型会根据服务器提供的 schema 推断：
+使用 schema 发现时，服务器提供的所有工具都会自动列出，输入参数类型会根据服务器提供的 schema 推断：
 
 ```typescript
 const tools = await mcpClient.tools();
 ```
 
-此方法实现更简单，并会自动与服务器变更保持同步。但是，你在开发过程中将没有 TypeScript 类型安全，并且服务器中的所有工具都会被加载。
+此方法实现更简单，并会自动与服务器更改保持同步。但是，你在开发期间将没有 TypeScript 类型安全，并且会加载服务器中的所有工具
 
 ### 工具注解与审批
 
-MCP 服务器可以通过 `readOnlyHint`、`destructiveHint`、`idempotentHint` 和 `openWorldHint` 等注解描述工具行为。MCP 客户端会在每个工具的 `metadata.annotations` 以及生成的工具调用的 `toolMetadata.annotations` 上公开这些注解。
+MCP 服务器可以通过 `readOnlyHint`、`destructiveHint`、`idempotentHint` 和 `openWorldHint` 等注解来描述工具行为。MCP 客户端会在每个工具的 `metadata.annotations` 以及生成的工具调用的 `toolMetadata.annotations` 上公开这些注解。
 
-注解是不可信的、由服务器提供的提示。MCP 客户端不会自动将它们转换为审批策略。应用应将它们与确定性控制措施结合使用，例如工具允许列表、限定范围的凭据以及它们自己的 [`toolApproval`](/docs/agents/tool-approvals) 策略。
+注解是不可信的、由服务器提供的提示。MCP 客户端不会自动将它们转换为审批策略。应用应将它们与确定性控制相结合，例如工具允许列表、限定范围的凭据以及自己的 [`toolApproval`](/docs/agents/tool-approvals) 策略。
 
-以下保守策略仅在服务器明确将工具标记为只读时才允许工具自动运行。带有 `readOnlyHint: false` 或没有 `readOnlyHint` 的工具需要用户审批：
+以下保守策略仅在服务器明确将工具标记为只读时允许其自动运行。带有 `readOnlyHint: false` 或没有 `readOnlyHint` 的工具需要用户审批：
 
 ```typescript
 import { type McpProviderMetadata } from '@ai-sdk/mcp';
@@ -431,7 +432,7 @@ const tools = await mcpClient.tools({
 });
 ```
 
-此方法提供完整的 TypeScript 类型安全和 IDE 自动补全，让你在开发过程中捕获参数不匹配。当你定义 `schemas` 时，客户端只会拉取显式定义的工具，使你的应用专注于它需要的工具。
+此方法提供完整的 TypeScript 类型安全和 IDE 自动补全，让你在开发期间捕获参数不匹配。当你定义 `schemas` 时，客户端只会拉取显式定义的工具，使你的应用专注于所需的工具
 
 ### 类型化工具输出
 
@@ -472,7 +473,7 @@ console.log(`Temperature: ${result.temperature}°C`);
 
 如果服务器不返回 `structuredContent`，客户端会回退到从文本内容中解析 JSON。如果两者都不可用或验证失败，则会抛出错误。
 
-如果服务器返回 `structuredContent` 但没有向后兼容的 `content` 字段，客户端会在返回结果之前添加一个包含序列化 JSON 的文本内容块。此兼容行为用于处理省略 MCP 规范推荐文本镜像的服务器。
+如果服务器返回 `structuredContent` 但没有向后兼容的 `content` 字段，客户端会在返回结果之前添加一个包含序列化 JSON 的文本内容块。此兼容行为可处理省略 MCP 规范推荐的文本镜像的服务器。
 
 <Note>
   如果没有 `outputSchema`，工具会返回包含 `content` 和可选 `isError` 字段的原始 `CallToolResult` 对象。
@@ -529,7 +530,7 @@ const completion = await mcpClient.complete({
 console.log(completion.completion.values);
 ```
 
-对于具有多个参数的资源模板或提示词，通过 `context.arguments` 传递已解析的值：
+对于具有多个参数的资源模板或提示词，请通过 `context.arguments` 传递已解析的值：
 
 ```typescript
 const completion = await mcpClient.complete({
@@ -557,7 +558,7 @@ const completion = await mcpClient.complete({
   MCP 提示词是一项实验性功能，未来可能会发生变化。
 </Note>
 
-根据 MCP 规范，提示词是用户控制的模板，服务器公开这些模板供客户端列出和检索，并支持可选参数。
+根据 MCP 规范，提示词是用户控制的模板，服务器公开这些模板供客户端列出和检索，并可带有可选参数。
 
 ### 列出提示词
 
@@ -581,7 +582,7 @@ const prompt = await mcpClient.experimental_getPrompt({
 引导（Elicitation）是一种机制，MCP 服务器可以在工具执行期间向客户端请求额外信息。例如，服务器可能需要用户输入来完成注册表单或确认敏感操作。
 
 <Note type="warning">
-  正确处理引导请求由客户端应用负责。MCP 客户端只是将这些请求从服务器传递到你的应用代码。
+  正确处理引导请求取决于客户端应用。MCP 客户端只是将这些请求从服务器呈现给你的应用代码。
 </Note>
 
 ### 启用引导支持
@@ -633,11 +634,11 @@ mcpClient.onElicitationRequest(ElicitationRequestSchema, async request => {
 - `'decline'`：用户选择不提供信息。
 - `'cancel'`：用户完全取消了操作。
 
-## 检测工具定义漂移（"rug pull"）
+## 检测工具定义漂移（“rug pull”）
 
-当你的应用首次连接时，MCP 服务器会发送工具定义（名称、描述、输入 schema），你通常会在此时审查并批准它们。协议中没有任何机制阻止服务器之后为同一工具名称提供_不同_的定义——例如带有注入指令的描述，或扩展了额外字段的输入 schema。由于 SDK 在每次调用时使用你传入的工具，后续 `mcpClient.tools()` 获取返回的变异定义会被直接使用，而不会与已批准的内容进行任何比较。这就是 MCP 的 ["rug pull"](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks) 类攻击。
+当你的应用首次连接时，MCP 服务器会发送工具定义（名称、描述、输入 schema），你通常会在此时审查并批准它们。协议中没有任何内容阻止服务器之后为同一工具名称提供_不同_的定义——例如带有注入指令的描述，或添加了额外字段而扩大的输入 schema。由于 SDK 在每次调用时使用你传入的工具，后续 `mcpClient.tools()` 获取返回的变异定义会被直接使用，而不会与已批准的内容进行任何比较。这就是 MCP 的 ["rug pull"](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks) 类攻击。
 
-AI SDK 提供两个函数来固定已批准的定义并检测变更。`fingerprintTools` 会将每个工具中由服务器控制、与安全相关的字段（字符串 `description`、解析后的输入 schema 和 `title`）摘要为工具名称到摘要的稳定映射。`detectToolDrift` 会比较两个这样的映射。你的应用负责基线存储和对漂移的响应（阻止、强制重新审批或告警）：
+AI SDK 提供两个函数来固定已批准的定义并检测更改。`fingerprintTools` 会将每个工具中由服务器控制、与安全相关的字段（字符串 `description`、解析后的输入 schema 和 `title`）摘要为工具名称到摘要的稳定映射。`detectToolDrift` 会比较两个这样的映射。你的应用负责基线存储和对漂移的响应（阻止、强制重新审批或告警）：
 
 ```typescript
 import { fingerprintTools, detectToolDrift } from 'ai';
@@ -656,7 +657,7 @@ if (drift.changed.length || drift.added.length) {
 ```
 
 <Note>
-  这可以检测工具描述、输入 schema 或标题的变异——即提示词注入和 schema 扩展向量。它无法检测名称、描述和 schema 都未改变的行为/端点替换，因为工具在 MCP 服务器上远程运行，这种变化对客户端不可见。Core 保持不持立场：它不会持久化基线或阻止调用——这些是你应用的责任。
+  这会检测工具描述、输入 schema 或标题的变异——即提示词注入和 schema 扩大向量。它无法检测名称、描述和 schema 都未改变的行为/端点替换，因为工具在 MCP 服务器上远程运行，该更改对客户端不可见。Core 保持不持立场：它不会持久化基线或阻止调用——这些是你应用的责任。
 </Note>
 
 ## 示例

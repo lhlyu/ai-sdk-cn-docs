@@ -11,20 +11,23 @@ description: "创建一个用于连接 MCP 服务器的客户端"
 - **资源**：用于列出、读取和发现 MCP 服务器资源模板的方法
 - **提示词**：用于列出可用提示词并获取提示词消息的方法
 - **补全**：用于为提示词参数和资源模板变量请求自动补全建议的方法
-- **引导请求（Elicitation）**：支持在工具执行期间处理服务器对额外输入的请求
+- **引导请求**：支持在工具执行期间处理服务器对额外输入的请求
+- **实验性事件**：通过 `client.experimental_events` 发现事件并管理 webhook 订阅
 
-目前尚不支持接收来自 MCP 服务器的通知。
+它目前不支持来自 MCP 服务器的带内通知。有关实验性 webhook 投递，请参阅 [MCP 事件指南](/docs/ai-sdk-core/mcp-events)、
+[事件方法参考](/docs/reference/ai-sdk-core/mcp-events) 以及
+[webhook 处理器参考](/docs/reference/ai-sdk-core/mcp-events#webhook-handler)。
 
-## 导入
+## Import
 
 <Snippet
   text={`import { createMCPClient } from "@ai-sdk/mcp"`}
   prompt={false}
 />
 
-## API 签名
+## API Signature
 
-### 参数
+### Parameters
 
 <PropertiesTable
   content={[
@@ -37,6 +40,41 @@ description: "创建一个用于连接 MCP 服务器的客户端"
           type: 'MCPClientConfig',
           parameters: [
             {
+              name: 'experimental_events',
+              type: 'Experimental_MCPEventsConfig',
+              isOptional: true,
+              description:
+                '实验性事件订阅。可配置用于直接 webhook 的私有持久化存储，或配置托管适配器。请参阅 [MCP 事件](/docs/reference/ai-sdk-core/mcp-events#managed-subscriptions)。',
+              properties: [
+                {
+                  type: 'Experimental_MCPEventsConfig',
+                  parameters: [
+                    {
+                      name: 'store',
+                      type: 'Experimental_MCPEventStore',
+                      isOptional: true,
+                      description:
+                        '在直接模式下为必填项。持久化订阅标识、回调 URL、签名密钥、游标和过期时间。与 webhook 接收器共享。不能与 adapter 同时使用。',
+                    },
+                    {
+                      name: 'adapter',
+                      type: 'Experimental_MCPEventsAdapter',
+                      isOptional: true,
+                      description:
+                        '将订阅管理委托给后端。不能与 store 或 validateArguments 同时使用。无需本地事件存储或刷新循环。',
+                    },
+                    {
+                      name: 'validateArguments',
+                      type: '({ definition, arguments }) => void | PromiseLike<void>',
+                      isOptional: true,
+                      description:
+                        '针对事件过滤器的可选应用层校验。抛出异常可在持久化密钥或发送 events/subscribe 之前拒绝订阅。',
+                    },
+                  ],
+                },
+              ],
+            },
+            {
               name: 'transport',
               type: 'MCPTransportConfig | MCPTransport',
               description: '消息传输层的配置。',
@@ -44,7 +82,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
                 {
                   type: 'MCPTransport',
                   description:
-                    '客户端传输实例，显式用于 stdio 或自定义传输',
+                    '客户端传输实例，明确用于 stdio 或自定义传输',
                   parameters: [
                     {
                       name: 'start',
@@ -114,21 +152,21 @@ description: "创建一个用于连接 MCP 服务器的客户端"
                       type: "'follow' | 'error'",
                       isOptional: true,
                       description:
-                        "控制传输请求的 HTTP 重定向处理方式。设置为 'follow' 以允许重定向响应。默认为 'error'，会拒绝任何重定向响应，防止服务器将请求重定向到非预期的 host。",
+                        "控制传输请求的 HTTP 重定向处理方式。设置为 'follow' 以允许重定向响应。默认为 'error'，拒绝任何重定向响应，防止服务器将请求重定向到非预期主机。",
                     },
                     {
                       name: 'initialSessionId',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '初始化后，在恢复的 Streamable HTTP 请求中发送的初始旧版 MCP 会话 id。在使用 createMCPClient 时与 initialInitializeResult 搭配使用。仅由 HTTP 传输和基于初始化的协议版本使用。',
+                        '初始化后随恢复的 Streamable HTTP 请求发送的初始旧版 MCP 会话 id。与 createMCPClient 一起使用时需搭配 initialInitializeResult。仅由 HTTP 传输和基于初始化的协议版本使用。',
                     },
                     {
                       name: 'initialProtocolVersion',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '在 initialize 协商出版本之前发送的初始旧版 MCP 协议版本。仅由 HTTP 传输使用。',
+                        '在 initialize 协商出协议版本之前发送的初始旧版 MCP 协议版本。仅由 HTTP 传输使用。',
                     },
                     {
                       name: 'onSessionIdChange',
@@ -149,14 +187,14 @@ description: "创建一个用于连接 MCP 服务器的客户端"
                       type: 'boolean',
                       isOptional: true,
                       description:
-                        'close() 是否应为当前 MCP 会话 id 发送 DELETE。当应用程序打算稍后重新附加到该会话时，设置为 false。默认为 true。仅由 HTTP 传输使用。',
+                        'close() 是否应为当前 MCP 会话 id 发送 DELETE。当应用打算稍后重新附加到该会话时设置为 false。默认为 true。仅由 HTTP 传输使用。',
                     },
                     {
                       name: 'fetch',
                       type: 'FetchFunction',
                       isOptional: true,
                       description:
-                        '用于 HTTP 请求的可选自定义 fetch 实现。对于需要请求局部 fetch 的运行时很有用。',
+                        '用于 HTTP 请求的可选自定义 fetch 实现。适用于需要请求本地 fetch 的运行时。',
                     },
                   ],
                 },
@@ -167,7 +205,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
               type: 'RequestOptions',
               isOptional: true,
               description:
-                '可选的 signal 和超时设置，用于限制传输启动和协议协商。超时或中止会关闭传输并拒绝 createMCPClient。',
+                '可选的 signal 和超时设置，用于限制传输启动和协议协商。超时或中止会关闭传输并使 createMCPClient 拒绝。',
             },
             {
               name: 'clientName',
@@ -213,7 +251,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
               type: 'ClientCapabilities',
               isOptional: true,
               description:
-                '可选的客户端能力，在旧版初始化期间或每个无状态现代请求中声明。例如，设置 { elicitation: {} } 以启用处理来自服务器的引导请求。',
+                '可选客户端能力，在旧版初始化期间或每个无状态现代请求中声明。例如，设置 { elicitation: {} } 以启用处理来自服务器的引导请求。',
             },
           ],
         },
@@ -222,17 +260,23 @@ description: "创建一个用于连接 MCP 服务器的客户端"
   ]}
 />
 
-### 返回值
+### Returns
 
-返回一个 Promise，解析为具有以下属性和方法的 `MCPClient`：
+返回一个 Promise，其解析为具有以下属性和方法的 `MCPClient`：
 
 <PropertiesTable
   content={[
     {
+      name: 'experimental_events',
+      type: 'Experimental_MCPEvents | Experimental_ManagedMCPEvents',
+      description:
+        '事件目录发现和特定模式的订阅方法。托管模式添加 getSubscription 和 listSubscriptions；直接模式具有 refresh。请参阅 [MCP 事件参考](/docs/reference/ai-sdk-core/mcp-events)。',
+    },
+    {
       name: 'initializeResult',
       type: 'InitializeResult',
       description:
-        '此客户端使用的连接元数据。对于旧版服务器，这是初始化结果；对于现代服务器，会从协议发现中推导出等效值。',
+        '此客户端使用的连接元数据。对于旧版服务器，这是 initialize 结果；对于现代服务器，等效值从协议发现中推导得出。',
     },
     {
       name: 'serverInfo',
@@ -245,7 +289,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
       type: 'string',
       isOptional: true,
       description:
-        '服务器在初始化握手期间提供的可选说明。描述如何使用服务器及其功能。可用于包含在 LLM 系统提示词中。',
+        '服务器在 initialize 握手期间提供的可选说明。描述如何使用服务器及其功能。可用于包含在 LLM 系统提示词中。',
     },
     {
       name: 'tools',
@@ -262,7 +306,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
               type: 'TOOL_SCHEMAS',
               isOptional: true,
               description:
-                '用于编译时类型检查的 schema 定义。未提供时，schema 会从服务器推断。每个工具 schema 可以包含用于类型化输入的 inputSchema，以及可选的用于类型化输出的 outputSchema（当服务器返回 structuredContent 时）。',
+                '用于编译时类型检查的 schema 定义。未提供时，schema 从服务器推断。每个工具 schema 可以包含用于类型化输入的 inputSchema，以及可选的用于类型化输出的 outputSchema（当服务器返回 structuredContent 时）。',
             },
           ],
         },
@@ -280,7 +324,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
               type: 'FlexibleSchema',
               isOptional: true,
               description:
-                '定义预期输出结构的 Zod schema 或 JSON schema。提供后，客户端会从工具结果中提取并验证 structuredContent，从而为你提供类型化输出。',
+                '定义预期输出结构的 Zod schema 或 JSON schema。提供后，客户端会从工具结果中提取并校验 structuredContent，从而提供类型化输出。',
             },
           ],
         },
@@ -293,7 +337,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<ListToolsResult>`,
       description:
-        '列出 MCP 服务器中可用的工具定义，而不将其转换为 AI SDK 工具。',
+        '列出 MCP 服务器提供的工具定义，而不将其转换为 AI SDK 工具。',
       properties: [
         {
           type: 'options',
@@ -323,7 +367,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<CallToolResult>`,
       description:
-        '调用 MCP 服务器上的工具。这对于宿主中介的调用很有用，例如 MCP Apps iframe 请求。',
+        '调用 MCP 服务器上的工具。这对于宿主中介调用很有用，例如 MCP Apps iframe 请求。',
       properties: [
         {
           type: 'args',
@@ -368,11 +412,24 @@ description: "创建一个用于连接 MCP 服务器的客户端"
                 '工具定义，通常由 `listTools` 返回。',
             },
             {
-              name: 'schemas',
-              type: 'TOOL_SCHEMAS',
+              name: 'options',
+              type: '{ schemas?: TOOL_SCHEMAS }',
               isOptional: true,
-              description:
-                '用于编译时类型检查和类型化输出的可选 schema 定义。',
+              description: '用于转换工具定义的选项。',
+              properties: [
+                {
+                  type: 'options',
+                  parameters: [
+                    {
+                      name: 'schemas',
+                      type: 'TOOL_SCHEMAS',
+                      isOptional: true,
+                      description:
+                        '用于编译时类型检查和类型化输出的可选 schema 定义。',
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -384,7 +441,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
         params?: PaginatedRequest['params'];
         options?: RequestOptions;
       }) => Promise<ListResourcesResult>`,
-      description: '列出 MCP 服务器中所有可用的资源。',
+      description: '列出 MCP 服务器提供的所有可用资源。',
       properties: [
         {
           type: 'options',
@@ -439,7 +496,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<ListResourceTemplatesResult>`,
       description:
-        '列出 MCP 服务器中所有可用的资源模板。',
+        '列出 MCP 服务器提供的所有可用资源模板。',
       properties: [
         {
           type: 'options',
@@ -503,7 +560,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<ListPromptsResult>`,
       description:
-        '列出 MCP 服务器中可用的提示词。此方法为实验性方法，未来可能发生变化。',
+        '列出 MCP 服务器提供的可用提示词。此方法为实验性，未来可能变更。',
       properties: [
         {
           type: 'options',
@@ -533,7 +590,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
         options?: RequestOptions;
       }) => Promise<GetPromptResult>`,
       description:
-        '按名称检索提示词，可选地传入参数。此方法为实验性方法，未来可能发生变化。',
+        '按名称检索提示词，可选地传递参数。此方法为实验性，未来可能变更。',
       properties: [
         {
           type: 'args',
@@ -547,7 +604,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
               name: 'arguments',
               type: 'Record<string, unknown>',
               isOptional: true,
-              description: '用于填充提示词的可选参数。',
+              description: '可选的要填入提示词的参数。',
             },
             {
               name: 'options',
@@ -576,7 +633,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
               name: 'schema',
               type: 'typeof ElicitationRequestSchema',
               description:
-                '用于验证请求的 schema。必须为 ElicitationRequestSchema。',
+                '用于校验请求的 schema。必须为 ElicitationRequestSchema。',
             },
             {
               name: 'handler',
@@ -597,7 +654,7 @@ description: "创建一个用于连接 MCP 服务器的客户端"
   ]}
 />
 
-## 示例
+## Example
 
 ```typescript
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -632,9 +689,9 @@ try {
 }
 ```
 
-## 错误处理
+## Error Handling
 
-客户端会在以下情况抛出 `MCPClientError`：
+客户端在以下情况会抛出 `MCPClientError`：
 
 - 客户端初始化失败
 - 协议版本不匹配
@@ -668,17 +725,18 @@ try {
 }
 ```
 
-该错误会暴露可选的 `code`、`statusCode`、`url` 和 `responseBody`
-属性。`code` 是 JSON-RPC 应用程序错误码。`statusCode`、`url`
-和 `responseBody` 在可用时包含 HTTP 传输上下文。对于没有 HTTP 响应的失败，
-例如网络错误、超时、中止的请求和 stdio 传输失败，它们为 `undefined`。
+该错误暴露可选的 `code`、`statusCode`、`url` 和 `responseBody`
+属性。`code` 是 JSON-RPC 应用错误码。`statusCode`、`url`
+和 `responseBody` 在可用时包含 HTTP 传输上下文。对于没有 HTTP 响应的失败，例如网络错误、
+超时、中止的请求和 stdio 传输失败，它们为 `undefined`。
 
-`MCPClientError` 也代表配置和协议错误，因此仅凭其类型或缺少 `statusCode`
-并不能表明失败可重试。
+`MCPClientError` 也代表配置和协议错误，因此仅凭其
+类型或缺少 `statusCode` 并不能表明失败可重试。
 OAuth 失败可能会改为抛出单独导出的 `UnauthorizedError`
 或 `MCPClientOAuthError`。
 
-避免在未脱敏敏感端点、查询参数或服务器响应数据的情况下记录 `url` 或 `responseBody`。
+避免在未脱敏敏感端点、
+查询参数或服务器响应数据的情况下记录 `url` 或 `responseBody`。
 
 对于工具执行，错误会作为 `CallToolError` 错误传播。
 

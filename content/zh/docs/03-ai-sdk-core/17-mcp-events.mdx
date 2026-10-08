@@ -1,0 +1,133 @@
+---
+title: "MCP 事件"
+description: "了解 MCP webhook 事件契约，以及用于订阅、验证和接收事件的 AI SDK API。"
+---
+
+# MCP 事件
+
+MCP 事件让服务器在发生变更时（例如新增文档评论）通知你的应用程序。你的 MCP 客户端负责管理订阅；你的 webhook 端点负责接收事件。
+
+<Note>
+  这些 API 是实验性的，实现了 [MCP 事件设计草案](https://github.com/modelcontextprotocol/experimental-ext-triggers-events/blob/main/docs/design-sketch-proposal.md) 中的 webhook 部分。
+  不支持轮询和推送流式传输。
+</Note>
+
+## 选择由谁管理订阅
+
+当由后端管理订阅、webhook 投递和续订时，使用 `experimental_events: { adapter }`。适配器暴露托管的 watch 句柄，且不需要 AI SDK 事件存储。参见[托管订阅](/docs/reference/ai-sdk-core/mcp-events#managed-subscriptions)。
+
+当你的应用程序直接注册 MCP webhook、持久化其密钥并安排续订时，使用 `experimental_events: { store }`。以下流程描述这种直接模式。事件目录发现功能在两种模式下均可工作，甚至无需任何配置。
+
+## MCP 事件的工作方式
+
+1. 客户端发送 `events/subscribe`，包含事件名称、过滤器、webhook URL 和签名密钥。可选的 `ttlMs` 和 `cursor` 参数用于设置请求的生命周期和重放位置。
+2. 服务器可以发送签名挑战，以在接受订阅前验证 webhook。验证通过后，它返回订阅 ID、`refreshBefore`、`cursor` 和 `truncated`。
+3. 当事件发生时，服务器向 webhook 发送签名的 POST 请求。webhook 验证每个签名、处理事件并确认投递。
+4. 客户端在 `refreshBefore` 之前通过发送具有相同身份的 `events/subscribe` 来续订订阅，或通过 `events/unsubscribe` 停止订阅。具有有限生命周期的订阅如果未续订将会过期。
+
+你的应用程序决定如何处理每个事件。投递可能会重复或乱序，因此请使用订阅 ID 和事件 ID 对处理进行去重。
+
+## 使用 MCP 事件
+
+使用 `createMCPClient` 创建 MCP 客户端，并通过 `client.experimental_events` 管理订阅。以下方法是实验性的：
+
+| 方法                                                                                    | 描述                                                                           |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`list()`](/docs/reference/ai-sdk-core/mcp-events#listing-events)                         | 使用 `events/list` 列出事件名称、schema 和投递模式。                     |
+| [`subscribe(options)`](/docs/reference/ai-sdk-core/mcp-events#subscribing-to-events)      | 保存签名密钥，发送 `events/subscribe`，并返回订阅结果。 |
+| [`refresh({ id })`](/docs/reference/ai-sdk-core/mcp-events#refreshing-a-subscription)     | 使用 `events/subscribe` 续订现有订阅。                               |
+| [`unsubscribe({ id })`](/docs/reference/ai-sdk-core/mcp-events#unsubscribing-from-events) | 发送 `events/unsubscribe`，并在成功后移除已保存的订阅。            |
+
+刷新会复用已保存的回调 URL、参数、签名密钥和最新 cursor。你的应用程序负责在 `refreshBefore` 之前安排续订。
+
+要接收事件，请使用
+[`experimental_createMCPEventWebhook({ store, onEvent })`](/docs/reference/ai-sdk-core/mcp-events#webhook-handler)
+作为你的 webhook 处理器。它处理签名验证挑战、验证传入的事件签名，并将每个事件直接传递给你的 `onEvent` 回调。
+
+## 连接 webhook 和客户端
+
+两者都使用应用程序提供的 `eventStore`，它实现了
+[`Experimental_MCPEventStore`](/docs/reference/ai-sdk-core/mcp-events#event-store)。这是一个 AI SDK 存储适配器，而不是 MCP
+协议原语。它私下持久化订阅身份、回调 URL、签名密钥和 cursor，以便双方都能访问它们。参见
+[文件存储示例](https://github.com/vercel/ai/blob/main/examples/mcp/src/events/event-store.ts)
+了解这五个方法：`get`、`getById`、`set`、`update` 和 `delete`。使用限定于单个 MCP 服务器和已认证主体的共享持久化存储；
+`update` 必须以原子方式合并提供的字段。
+
+**首先，暴露 webhook 路由。** 它必须在订阅之前可访问。
+
+```ts filename="app/api/mcp-events/route.ts"
+import { experimental_createMCPEventWebhook } from '@ai-sdk/mcp';
+import { eventStore } from '@/lib/event-store';
+
+export const POST = experimental_createMCPEventWebhook({
+  store: eventStore,
+  async onEvent({ subscription, event }) {
+    console.log(subscription.id, event.name, event.data);
+  },
+  async onGap({ subscription, gap }) {
+    // Some events cannot be replayed; reconcile state or notify the agent.
+    console.log('Replay gap:', subscription.id, gap.cursor, gap.truncated);
+  },
+  async onTerminated({ subscription, termination }) {
+    // The server ended the subscription; notify the agent of the reason.
+    console.log('Subscription terminated:', subscription.id, termination.error);
+  },
+});
+```
+
+该辅助函数会自动验证签名并回显挑战。它调用
+`onEvent` 时不暴露密钥，然后在成功处理后返回 `204`。处理失败返回 `503`，以便服务器可以重试。在你的应用程序中，只有在处理完成或持久化接受事件之后才 resolve `onEvent`。
+
+两个可选回调处理签名的订阅生命周期消息：
+
+- `onGap({ subscription, messageId, gap })`：某些事件已不再可用于重放。请协调应用程序状态或通知智能体。回调成功后，辅助函数会保存 `gap.cursor` 和 `truncated: true`；订阅保持活跃，事件投递继续。
+- `onTerminated({ subscription, messageId, termination })`：服务器已结束订阅。检查 `termination.error` 了解原因并通知智能体。回调成功后，辅助函数会移除已保存的订阅。
+
+当相应的回调被省略时，状态更新仍会发生。回调或存储失败会返回 `503` 以便重试。只有在处理完成或持久化接受之后才 resolve 回调，并按订阅 ID 和 `messageId`（签名的 `webhook-id`）去重。辅助函数不会自动运行或通知智能体。
+
+**然后使用相同的存储进行订阅。**
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+import { eventStore } from '@/lib/event-store';
+
+const client = await createMCPClient({
+  transport: { type: 'http', url: 'https://service.example/mcp' },
+  experimental_events: { store: eventStore },
+});
+
+try {
+  const { events } = await client.experimental_events.list();
+  console.log(events.map(event => event.name));
+
+  const subscription = await client.experimental_events.subscribe({
+    name: 'comment.created',
+    arguments: { document_id: 'doc_123' },
+    delivery: {
+      mode: 'webhook',
+      url: 'https://my-app.example/api/mcp-events',
+    },
+    ttlMs: 60 * 60 * 1000,
+  });
+
+  // Save the ID and schedule renewal before the server's granted deadline.
+  console.log(subscription.id, subscription.refreshBefore);
+} finally {
+  await client.close(); // Webhook delivery continues until unsubscribe or expiry.
+}
+```
+
+在发送订阅请求之前，SDK 会生成并保存
+`delivery.secret`。它会向回调 URL 追加一个 `mcp_event_subscription` 查询参数，以便 webhook 在验证待处理期间也能找到该密钥。请保留此参数，并将原始请求体传递给处理器。
+
+## 可运行示例
+
+[本地示例](https://github.com/vercel/ai/tree/main/examples/mcp/src/events)
+使用 `@modelcontextprotocol/server` 发出评论，并使用 AI SDK 订阅、验证和接收它。它不需要模型 API 密钥。本地 HTTP 回调需要
+`delivery.allowInsecureLocalhost: true`；生产环境回调使用 HTTPS。
+
+## API 参考
+
+- [事件发现和订阅方法](/docs/reference/ai-sdk-core/mcp-events)
+- [Webhook 处理器](/docs/reference/ai-sdk-core/mcp-events#webhook-handler)
+- [事件类型和存储接口](/docs/reference/ai-sdk-core/mcp-events#event-types)

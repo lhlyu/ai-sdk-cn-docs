@@ -1,0 +1,778 @@
+---
+title: "MCP 事件"
+description: "实验性 MCP 事件方法、webhook 处理器以及订阅和存储类型的参考文档。"
+---
+
+# MCP 事件
+
+本页介绍 `client.experimental_events` 上的实验性方法、webhook 处理器及其公开类型。使用
+[`createMCPClient`](/docs/reference/ai-sdk-core/create-mcp-client) 创建客户端。应用流程请参阅
+[MCP 事件指南](/docs/ai-sdk-core/mcp-events)。
+
+## 设置
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+import { eventStore } from './event-store';
+
+const client = await createMCPClient({
+  transport: { type: 'http', url: 'https://service.example/mcp' },
+  experimental_events: { store: eventStore },
+});
+```
+
+`experimental_events` 接受 [`Experimental_MCPEventsConfig`](/docs/reference/ai-sdk-core/mcp-events#client-configuration)。
+在直接模式下，subscribe、refresh 和 unsubscribe 需要提供 store。
+或者，按下文所述配置托管适配器。发现功能无需配置任一模式即可使用。在订阅之前，
+请先挂载 [webhook 处理器](/docs/reference/ai-sdk-core/mcp-events#webhook-handler)。
+
+以下方法属于 `client.experimental_events`；它们不是独立的导入项。
+
+## 列出事件
+
+### `client.experimental_events.list()`
+
+发送 `events/list` 并返回一页目录。
+
+```ts
+const { events, nextCursor } = await client.experimental_events.list();
+console.log(events.map(event => event.name));
+
+if (nextCursor != null) {
+  const nextPage = await client.experimental_events.list({
+    params: { cursor: nextCursor },
+  });
+  console.log(nextPage.events);
+}
+```
+
+### 参数
+
+可选参数具有以下属性：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'params',
+      type: '{ cursor?: string }',
+      description:
+        '分页参数。省略则读取第一页。传入上一次的 nextCursor 以读取下一页。',
+      isOptional: true,
+    },
+    {
+      name: 'options',
+      type: '{ signal?: AbortSignal; timeout?: number; maxTotalTimeout?: number }',
+      description:
+        '请求取消和超时设置。请参阅下方的请求选项。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+### 返回值
+
+`Promise<Experimental_ListEventsResult>`：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'events',
+      type: 'Experimental_MCPEventDefinition[]',
+      description:
+        '事件定义，包含 name、可选的 description、delivery modes、inputSchema 和 payloadSchema。请参阅事件定义类型参考。',
+    },
+    {
+      name: 'nextCursor',
+      type: 'string | null',
+      description:
+        '下一页目录的游标。缺失或为 null 表示没有下一页。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+定义字段请参阅 [`Experimental_MCPEventDefinition`](/docs/reference/ai-sdk-core/mcp-events#event-definition)。
+分页是显式的；此方法不会获取所有页面。
+
+## 托管订阅
+
+配置 `experimental_events: { adapter }` 可将订阅生命周期操作委托给后端。
+适配器实现来自 `@ai-sdk/mcp` 的 `Experimental_MCPEventsAdapter`；它由你的
+应用程序或集成包绑定到已授权的账户和目标。
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+import { authenticatedTransport, eventsAdapter } from '@/lib/mcp';
+
+const client = await createMCPClient({
+  transport: authenticatedTransport,
+  experimental_events: { adapter: eventsAdapter },
+});
+
+try {
+  // Authenticated MCP discovery; this does not list saved subscriptions.
+  const catalog = await client.experimental_events.list();
+
+  const watch = await client.experimental_events.subscribe({
+    name: 'comment.created',
+    arguments: { document_id: 'doc_123' },
+    context: { bindingId: 'saved_intent_123' },
+    expiresAt: null,
+    idempotencyKey: 'saved_intent_123',
+  });
+
+  const state = await client.experimental_events.getSubscription({
+    id: watch.id,
+  });
+  const page = await client.experimental_events.listSubscriptions({
+    status: 'active',
+    limit: 20,
+  });
+  const stopped = await client.experimental_events.unsubscribe({
+    id: watch.id,
+  });
+} finally {
+  await client.close();
+}
+```
+
+`authenticatedTransport` 和 `eventsAdapter` 由你的应用程序提供。
+发现和订阅管理应使用同一个已授权的账户。
+切勿从模型参数中推导账户身份、目标或授权。
+
+### 适配器契约
+
+```ts
+import type { JSONObject } from '@ai-sdk/provider';
+
+type ManagedSubscription = {
+  id: string;
+  name: string;
+  arguments: JSONObject;
+  status:
+    | 'pending'
+    | 'active'
+    | 'needs_auth'
+    | 'stopped'
+    | 'expired'
+    | 'failed';
+  expiresAt: string | null;
+  cleanupStatus?: 'pending' | 'complete' | 'exhausted';
+};
+
+type ManagedSubscribeInput = {
+  name: string;
+  arguments: JSONObject;
+  context?: JSONObject;
+  idempotencyKey: string;
+  options?: {
+    signal?: AbortSignal;
+    timeout?: number;
+    maxTotalTimeout?: number;
+  };
+} & (
+  | { ttlMs: number; expiresAt?: never }
+  | { expiresAt: string | null; ttlMs?: never }
+);
+```
+
+这些类型导出为 `Experimental_ManagedSubscription` 和
+`Experimental_ManagedSubscribeInput`。请恰好提供一种监控生命周期：
+正的 `ttlMs`、`expiresAt` 中的 ISO 截止时间，或 `expiresAt: null` 表示
+监控直到停止。后端会验证这些值并强制执行其限制。
+
+`Experimental_MCPEventsAdapter` 有四个操作：
+
+| 操作                | 输入                                              | 结果                               |
+| ------------------- | ------------------------------------------------- | ---------------------------------- |
+| `subscribe`         | `Experimental_ManagedSubscribeInput`              | `Experimental_ManagedSubscription` |
+| `getSubscription`   | `{ id, options? }`                                | `Experimental_ManagedSubscription` |
+| `listSubscriptions` | 可选的 `{ cursor?, limit?, status?, options? }`   | `{ subscriptions, nextCursor? }`   |
+| `unsubscribe`       | `{ id, options? }`                                | `Experimental_ManagedSubscription` |
+
+所有操作都返回 promise。客户端会原样传递输入、取消/超时选项、结果和错误，
+不进行重试或重新映射。适配器必须实现请求选项处理，并保留可操作的
+后端错误，例如需要同意、超出配额或临时不可用。
+
+托管 ID 标识后端记录。`expiresAt` 是应用程序的监控截止时间，
+而不是上游 MCP 的 `refreshBefore` 授权。pending 结果表示后端已持久接受；
+上游设置可能仍在运行。停止时可能返回 `cleanupStatus: 'pending'`，
+表示远程清理仍在继续。
+
+后端负责回调 URL、密钥、上游订阅调用、验证、续期和清理。
+托管的 `subscribe` 不会隐式发现目录、生成密钥、写入本地存储或调用
+上游 `events/subscribe`。`getSubscription` 和 `listSubscriptions` 是适配器方法，
+不是 MCP 线路方法。托管门面没有 `refresh()`；即使应用程序的 watch 没有截止时间，
+后端也会续期有限的上游租约。
+
+在创建结果不确定时，请在后端文档所述的恢复窗口内持久化应用程序意图
+并复用其幂等键。超时或中止的请求并不能证明远程订阅已被取消。
+关闭 MCP 客户端不会取消托管 watch 的订阅。
+
+托管投递与此客户端是分开的。请使用后端的投递验证器和接收器契约；
+`experimental_createMCPEventWebhook` 提供直接 MCP webhook。应用程序仍然负责
+已授权的路由、持久接收确认和幂等工作分发。适配器不会调用事件回调。
+
+### 配置和类型
+
+请选择 `experimental_events: { adapter }` 或 `experimental_events: { store }` 之一。
+混合使用会在 TypeScript 和运行时被拒绝。`validateArguments` 是直接模式的选项；
+托管验证属于后端。未发布的 `events` 配置拼写已被 `experimental_events` 取代。
+
+当配置了适配器时，`createMCPClient` 会推断出带有
+`Experimental_ManagedMCPEvents` 的 `Experimental_ManagedMCPClient`。两种模式都使用
+`MCPClientConfig`，其 `experimental_events` 属性接受
+`Experimental_MCPEventsConfig` 联合类型。直接客户端保留 `MCPClient` 和
+`Experimental_MCPEvents`。每种模式的输入和结果类型保持不同。
+
+保存配置时使用 `satisfies MCPClientConfig` 以保留所选模式的推断。
+模式仅在运行时才可知的配置会返回两种客户端类型的联合；
+它不会承诺仅直接模式可用的方法，例如 `refresh()`。若仅需目录发现而无需
+store 或适配器，请完全省略 `experimental_events`。
+
+其余 subscribe、refresh 和 unsubscribe 章节描述的是直接模式。
+
+## 订阅事件
+
+### `client.experimental_events.subscribe(options)`
+
+发现指定名称的事件、检查 webhook 支持、保存待处理的订阅，
+并发送 `events/subscribe`。
+
+```ts
+const subscription = await client.experimental_events.subscribe({
+  name: 'comment.created',
+  arguments: { document_id: 'doc_123' },
+  delivery: {
+    mode: 'webhook',
+    url: 'https://app.example/api/mcp-events',
+  },
+  ttlMs: 3_600_000,
+});
+
+console.log(subscription.id, subscription.refreshBefore);
+```
+
+### 参数
+
+`options` 的类型为 [`Experimental_SubscribeEventOptions`](/docs/reference/ai-sdk-core/mcp-events#subscription-options)：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'name',
+      type: 'string',
+      description: '要订阅的事件名称。',
+    },
+    {
+      name: 'arguments',
+      type: 'JSONObject',
+      description:
+        '事件过滤器。默认为 {}。SDK 不会自动根据 inputSchema 验证它们；experimental_events.validateArguments 可提供应用程序验证。',
+      isOptional: true,
+    },
+    {
+      name: 'delivery',
+      type: "{ mode: 'webhook'; url: string; secret?: string; allowInsecureLocalhost?: boolean }",
+      description: 'Webhook 投递配置。',
+      properties: [
+        {
+          type: 'Webhook 投递',
+          parameters: [
+            {
+              name: 'mode',
+              type: "'webhook'",
+              description: '唯一支持的投递模式。',
+            },
+            {
+              name: 'url',
+              type: 'string',
+              description:
+                '可访问的 HTTPS 回调 URL，不含凭据或片段。SDK 会添加一个 mcp_event_subscription 查询参数；转发请求时请保留它。',
+            },
+            {
+              name: 'secret',
+              type: 'string',
+              description:
+                'whsec_ 格式的 Standard Webhooks 密钥，包含 24\u201364 个 base64 编码的随机字节。省略时，SDK 会生成一个 32 字节的密钥。在发送 events/subscribe 之前，会私下保存在 delivery.secret 下。',
+              isOptional: true,
+            },
+            {
+              name: 'allowInsecureLocalhost',
+              type: 'boolean',
+              description:
+                '默认为 false。在本地开发期间，仅允许字面量 127.0.0.1 或 [::1] 回调地址使用 HTTP。此选项不会发送到服务器。',
+              isOptional: true,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'cursor',
+      type: 'string | null',
+      description: '重放位置。默认为 null。',
+      isOptional: true,
+    },
+    {
+      name: 'ttlMs',
+      type: 'number | null',
+      description:
+        '请求的生命周期（毫秒），为正的安全整数。省略则使用服务器默认值；null 表示请求无过期时间。服务器决定授予的截止时间。',
+      isOptional: true,
+    },
+    {
+      name: 'maxAgeMs',
+      type: 'number',
+      description:
+        '可选的重放时长上限（毫秒），为非负的安全整数。',
+      isOptional: true,
+    },
+    {
+      name: 'options',
+      type: '{ signal?: AbortSignal; timeout?: number; maxTotalTimeout?: number }',
+      description:
+        'MCP 请求的取消和超时设置。目录发现可能会发出多个请求。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+订阅创建失败时会保留待处理记录，因为超时的请求可能已在远程注册。
+从应用程序的 store 中获取待处理记录的 `key`，并使用 `refresh({ key })` 恢复，
+或使用 `unsubscribe({ key })` 取消。即使没有保存服务器 ID，两者也会复用
+已保存的回调身份。再次调用 `subscribe` 会创建新的回调身份。
+
+```ts
+// pending is the record retained by your application's store after a failed subscribe.
+const recovered = await client.experimental_events.refresh({
+  key: pending.key,
+});
+// Alternatively, cancel the uncertain remote subscription:
+await client.experimental_events.unsubscribe({ key: pending.key });
+```
+
+### 返回值
+
+`Promise<Experimental_SubscribeEventResult>`：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'id',
+      type: 'string',
+      description:
+        '服务器派生的订阅 ID。与 refresh 和 unsubscribe 一起使用。',
+    },
+    {
+      name: 'refreshBefore',
+      type: 'string | null',
+      description:
+        '服务器授予的续期截止时间，为 ISO 时间戳。Null 表示未授予续期截止时间。',
+    },
+    {
+      name: 'cursor',
+      type: 'string | null',
+      description:
+        '服务器提供的重放游标。如果服务器省略它，SDK 返回 null。Null 表示没有可用的重放游标。',
+    },
+    {
+      name: 'truncated',
+      type: 'boolean',
+      description:
+        '服务器是否报告请求的重放历史被截断。',
+    },
+  ]}
+/>
+
+结果不包含签名密钥。在此方法 resolve 之前，store 会更新服务器 ID、
+截止时间、游标和 active 状态。
+
+## 刷新订阅
+
+### `client.experimental_events.refresh(options)`
+
+通过 ID 或存储键加载已保存的订阅，并使用其原始名称、参数、回调 URL、密钥、
+请求的生命周期和最新保存的游标发送 `events/subscribe`。
+
+续期前订阅会被标记为 pending。在响应保存新的过期时间并恢复 active 状态之前，
+事件投递会返回 `503`。如果续期失败，记录会保持 pending，因为服务器可能已经续期；
+你可以使用已保存的 ID 或 key 重试 refresh 或 unsubscribe。
+
+对于已保存 ID 的订阅，即使续期处于 pending 状态，也会处理已验证的终止消息。
+例如，如果访问被撤销，`onTerminated` 仍可运行，成功处理后已保存的订阅会被移除。
+
+```ts
+const renewed = await client.experimental_events.refresh({
+  id: subscription.id,
+});
+console.log(renewed.refreshBefore);
+```
+
+### 参数
+
+请恰好提供 `id` 或 `key` 之一。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'id',
+      type: 'string',
+      description: '配置的 store 中已保存订阅的 ID。',
+      isOptional: true,
+    },
+    {
+      name: 'key',
+      type: 'string',
+      description:
+        '已保存订阅的存储键。用于恢复服务器 ID 未知的待处理订阅。',
+      isOptional: true,
+    },
+    {
+      name: 'options',
+      type: '{ signal?: AbortSignal; timeout?: number; maxTotalTimeout?: number }',
+      description: '请求取消和超时设置。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+### 返回值
+
+`Promise<Experimental_SubscribeEventResult>`，字段与
+[subscribe](#subscribing-to-events) 相同。新的截止时间和游标会保存在本地。
+
+你的应用程序应在 `refreshBefore` 之前安排续期。SDK 不会运行
+后台续期定时器。Refresh 会复用已保存的过滤器，不会再次调用
+`validateArguments`。
+
+## 取消订阅事件
+
+### `client.experimental_events.unsubscribe(options)`
+
+将 ID 或存储键解析为已保存的名称、参数和回调 URL，并
+发送 `events/unsubscribe`。仅在服务器成功后才会删除本地记录。
+
+```ts
+await client.experimental_events.unsubscribe({ id: subscription.id });
+```
+
+### 参数
+
+请恰好提供 `id` 或 `key` 之一。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'id',
+      type: 'string',
+      description: '配置的 store 中已保存订阅的 ID。',
+      isOptional: true,
+    },
+    {
+      name: 'key',
+      type: 'string',
+      description:
+        '已保存订阅的存储键。用于取消服务器 ID 未知的待处理订阅。',
+      isOptional: true,
+    },
+    {
+      name: 'options',
+      type: '{ signal?: AbortSignal; timeout?: number; maxTotalTimeout?: number }',
+      description: '请求取消和超时设置。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+### 返回值
+
+`Promise<void>`。如果服务器请求失败，本地记录会保留。
+调用 `client.close()` 只会关闭 MCP 连接；它不会取消订阅。
+
+## 请求选项
+
+所有四个方法都接受带有以下字段的 `options` 属性。
+列出方法接受 `{ params, options }`；其他方法将
+`options` 与它们自己的参数一起使用。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'signal',
+      type: 'AbortSignal',
+      description: '中止 MCP 请求。',
+      isOptional: true,
+    },
+    {
+      name: 'timeout',
+      type: 'number',
+      description: '请求超时（毫秒）。',
+      isOptional: true,
+    },
+    {
+      name: 'maxTotalTimeout',
+      type: 'number',
+      description:
+        '最大请求持续时间（毫秒）。如果同时提供了 timeout，则应用较小的限制。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+## 错误
+
+客户端会拒绝向不具备 `events` 能力的服务器发出的请求。
+订阅生命周期方法需要 `experimental_events.store`；refresh 和 unsubscribe
+还需要已知的订阅 ID 或存储键。Subscribe 会拒绝未知的
+事件名称、不支持的投递模式、无效的回调 URL、签名密钥
+或生命周期设置。这些检查使用 `MCPClientError`，但 URL 解析可能
+抛出 `TypeError`。
+
+MCP 请求错误、store 失败和应用程序验证错误会传播
+给调用方。事件请求不会按客户端的工具调用重试
+设置进行重试。请参阅 [MCP 客户端错误处理](/docs/reference/ai-sdk-core/create-mcp-client#error-handling)。
+
+## Webhook 处理器
+
+### `experimental_createMCPEventWebhook()`
+
+为实验性 MCP webhook 事件创建 Web Request/Response 处理器。
+它使用由
+[`client.experimental_events.subscribe`](/docs/reference/ai-sdk-core/mcp-events#subscribing-to-events) 保存的订阅来验证回调挑战和事件签名。
+
+### 导入
+
+<Snippet
+  text={`import { experimental_createMCPEventWebhook } from "@ai-sdk/mcp"`}
+  prompt={false}
+/>
+
+### 示例
+
+```ts filename="app/api/mcp-events/route.ts"
+import { experimental_createMCPEventWebhook } from '@ai-sdk/mcp';
+import { eventStore } from '@/lib/event-store';
+
+export const POST = experimental_createMCPEventWebhook({
+  store: eventStore,
+  async onEvent({ subscription, event }) {
+    console.log(subscription.id, event.name, event.data);
+  },
+  async onGap({ subscription, gap }) {
+    // Some events cannot be replayed; reconcile state or notify the agent.
+    console.log('Replay gap:', subscription.id, gap.cursor, gap.truncated);
+  },
+  async onTerminated({ subscription, termination }) {
+    // The server ended the subscription; notify the agent of the reason.
+    console.log('Subscription terminated:', subscription.id, termination.error);
+  },
+  onError(error) {
+    console.error(error);
+  },
+});
+```
+
+请在订阅之前挂载此路由。处理器和订阅客户端必须
+访问同一个私有订阅 store。
+
+### 参数
+
+参数的类型为
+[`Experimental_MCPEventWebhookOptions`](/docs/reference/ai-sdk-core/mcp-events#webhook-options)。
+
+<PropertiesTable
+  content={[
+    {
+      name: 'store',
+      type: 'Experimental_MCPEventStore',
+      description:
+        '共享的订阅存储。用于查找路由键和签名密钥，并在成功处理后保存游标。',
+    },
+    {
+      name: 'onEvent',
+      type: '({ subscription, event }) => Promise<void>',
+      description:
+        '已验证事件的必需应用程序处理器。在成功处理或持久接受后 resolve。抛出异常以返回 503 并允许重试。',
+    },
+    {
+      name: 'onGap',
+      type: '({ subscription, messageId, gap }) => Promise<void>',
+      description:
+        '当某些事件无法重放时的可选处理器。协调状态或通知智能体，然后在处理或持久接受后 resolve。辅助程序会保存新的游标和 truncated: true；订阅保持 active。抛出异常以返回 503 且不更改已保存状态。',
+      isOptional: true,
+    },
+    {
+      name: 'onTerminated',
+      type: '({ subscription, messageId, termination }) => Promise<void>',
+      description:
+        '当服务器结束订阅时的可选处理器。检查 termination.error 以了解原因并通知智能体，然后在处理或持久接受后 resolve。辅助程序会移除已保存的订阅。抛出异常以返回 503 且不更改已保存状态。',
+      isOptional: true,
+    },
+    {
+      name: 'validatePayload',
+      type: '({ definition, data }) => void | PromiseLike<void>',
+      description:
+        '在签名和信封检查之后、onEvent 之前的可选应用程序验证。接收已保存的事件定义和 event.data。抛出异常以返回 400，且不调用 onEvent 或推进游标。',
+      isOptional: true,
+    },
+    {
+      name: 'onError',
+      type: '(error: unknown) => void',
+      description:
+        '报告处理、存储和负载验证回调错误。不应抛出异常。无效签名和格式错误的请求会返回其 HTTP 状态，而不会调用此回调。',
+      isOptional: true,
+    },
+  ]}
+/>
+
+#### 回调参数
+
+`onEvent` 接收：
+
+<PropertiesTable
+  content={[
+    {
+      name: 'subscription',
+      type: 'Experimental_MCPEventSubscriptionInfo',
+      description:
+        '订阅 id、name、arguments、投递模式和 URL，以及 refreshBefore。不包含 delivery.secret。',
+    },
+    {
+      name: 'event',
+      type: 'Experimental_MCPEvent',
+      description:
+        'eventId、name、timestamp、data 对象，以及可选的可空 cursor。',
+    },
+  ]}
+/>
+
+完整类型请参阅 [订阅元数据](/docs/reference/ai-sdk-core/mcp-events#subscription-metadata)
+和 [事件字段](/docs/reference/ai-sdk-core/mcp-events#event)。
+
+`onGap` 和 `onTerminated` 接收相同的安全 `subscription` 元数据，以及来自
+已签名 `webhook-id` 头的 `messageId`。每个回调只接收其
+匹配的控制负载，因此无需进行 `type` 检查。按订阅 ID 和 `messageId` 去重重试。
+
+- `onGap` 接收 `gap: { type: 'gap', cursor, truncated: true }`。它表示某些
+  事件已无法重放。请协调应用程序状态或
+  通知智能体。辅助程序会在回调 resolve 后添加 `truncated: true` 并将其与新的
+  游标一起保存。订阅保持 active，事件投递继续。
+- `onTerminated` 接收
+  `termination: { type: 'terminated', error: { code, message, data? } }`。它表示
+  服务器已结束订阅。检查错误以了解原因并
+  通知智能体。回调 resolve 后，辅助程序会删除已保存的
+  订阅记录。
+
+两者在成功处理后都返回 `204`。当
+相应回调被省略时，状态更新也会发生。回调或存储失败会返回 `503`
+以进行重试。在激活或续期被持久化之前，事件和 gap 会返回 `503`。
+当订阅 ID 已保存时，在续期 pending 期间也会接受终止；没有已保存 ID 的订阅仍返回 `503`。
+即使已保存的过期时间已过，控制消息也会被处理。它们绝不会
+发送到 `onEvent` 或 `validatePayload`。辅助程序不会自动运行或通知智能体。
+
+### 返回值
+
+```ts
+(request: Request) => Promise<Response>;
+```
+
+处理器接受带有 `Content-Type: application/json` 的 `POST` 请求。
+请传递原始请求体字节，并保留订阅客户端添加的 `mcp_event_subscription`
+查询参数。在将其传递给此处理器之前，不要解析并重新序列化
+请求体。
+
+服务器必须包含 `webhook-id`、`webhook-timestamp`、`webhook-signature`
+和 `X-MCP-Subscription-Id`。辅助程序会验证 Standard Webhooks v1 HMAC-SHA256
+签名，并接受在当前时间五分钟内的签名时间戳。
+事件的 `eventId` 必须与 `webhook-id` 匹配，其名称必须与订阅匹配。
+
+## 事件类型
+
+以下类型从 `@ai-sdk/mcp` 导出，且为实验性。
+
+```ts
+import type {
+  Experimental_MCPEvents,
+  Experimental_MCPEventsConfig,
+  Experimental_MCPEventDefinition,
+  Experimental_ListEventsResult,
+  Experimental_SubscribeEventOptions,
+  Experimental_SubscribeEventResult,
+  Experimental_MCPEvent,
+  Experimental_MCPEventControl,
+  Experimental_MCPEventSubscription,
+  Experimental_MCPEventSubscriptionInfo,
+  Experimental_MCPEventStore,
+  Experimental_MCPEventWebhookOptions,
+} from '@ai-sdk/mcp';
+```
+
+以下形状使用来自 `@ai-sdk/provider` 的 `JSONObject` 表示 JSON 兼容的
+过滤器对象。请求设置以内联方式书写，因为 `RequestOptions`
+未从 `@ai-sdk/mcp` 导出。
+
+### Webhook 控制
+
+`Experimental_MCPEventControl` 是生命周期负载的联合。`onGap`
+接收其 `gap` 变体；`onTerminated` 接收其 `terminated` 变体作为
+`termination`：
+
+```ts
+type Experimental_MCPEventControl =
+  | { type: 'gap'; cursor: string; truncated: true }
+  | {
+      type: 'terminated';
+      error: { code: number; message: string; data?: unknown };
+    };
+```
+
+未知的扩展字段会被保留。验证挑战会自动回显，
+不会调用 `onEvent`、`onGap` 或 `onTerminated`。
+
+### 客户端方法
+
+`Experimental_MCPEvents` 描述 `client.experimental_events` 属性：
+
+```ts
+interface Experimental_MCPEvents {
+  list(options?: {
+    params?: { cursor?: string };
+    options?: {
+      signal?: AbortSignal;
+      timeout?: number;
+      maxTotalTimeout?: number;
+    };
+  }): Promise<Experimental_ListEventsResult>;
+
+  subscribe(
+    options: Experimental_SubscribeEventOptions,
+  ): Promise<Experimental_SubscribeEventResult>;
+
+  refresh(
+    options: ({ id: string; key?: never } | { key: string; id?: never }) & {
+      options?: {
+        signal?: AbortSignal;
+        timeout?: number;
+        maxTotalTimeout?: number;
+      };
+    },
+  ): Promise<Experimental_SubscribeEventResult>;
+
+  unsubscribe(
+    options: ({ id: string; key?: never } | { key: string; id?: never }) & {
+      options?: {
+        signal?: AbortSignal;
+        timeout?: number;
+        maxTotalTimeout?: number;
+      };
+    },
+  ): Promise<void>;
+}
+```
+
+## 相关指南
+
+- [MCP 事件指南](/docs/ai-sdk-core/mcp-events)
+- [MCP 客户端配置](/docs/reference/ai-sdk-core/create-mcp-client)
+- [可运行示例](https://github.com/vercel/ai/tree/main/examples/mcp/src/events)

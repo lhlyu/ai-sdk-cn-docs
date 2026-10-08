@@ -1,0 +1,256 @@
+---
+title: "决策"
+description: "针对共享状态，为 Choice、Score 和 Boolean 问题决定答案。"
+---
+
+# 决策
+
+`experimental_decide` 使用决策模型，针对一个共享状态为命名问题决定答案。状态可以是字符串、JSON 对象，或由有序的文本、文件和 JSON 部分组成的数组。
+
+此 API 和决策模型规范均为实验性，可能会在补丁版本中发生变化。传入决策模型实例、通过提供商注册表解析模型，或使用字符串 ID。除非你配置了支持决策的默认提供商，否则字符串会通过 Vercel AI Gateway 解析。
+
+```ts
+import { experimental_decide, type Experimental_DecisionModel } from 'ai';
+
+async function triage(model: Experimental_DecisionModel, message: string) {
+  return experimental_decide({
+    model,
+    state: { message },
+    questions: {
+      department: {
+        type: 'choice',
+        instructions: 'Which team should handle this?',
+        criteria: {
+          billing: 'Payments and refunds',
+          support: 'Other requests',
+        },
+      },
+      severity: {
+        type: 'score',
+        instructions: 'How severe is the issue?',
+        criteria: ['Cosmetic', 'Workaround exists', 'Blocking; no workaround'],
+      },
+      requestsRefund: {
+        type: 'boolean',
+        instructions: 'Is the customer requesting money back?',
+      },
+    },
+  });
+}
+```
+
+## 多模态状态
+
+将文本、结构化数据和图像组合在一个状态中：
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { experimental_decide } from 'ai';
+
+const result = await experimental_decide({
+  model: openai.decisionModel('gpt-6-luna'),
+  state: [
+    { type: 'text', text: 'Inspect this package for damage.' },
+    { type: 'json', value: { product: 'glass vase', packaging: 'cardboard' } },
+    {
+      type: 'file',
+      mediaType: 'image/png',
+      data: new URL('https://example.com/package.png'),
+    },
+  ],
+  questions: {
+    damaged: {
+      type: 'boolean',
+      instructions: 'Is the product visibly damaged?',
+    },
+  },
+});
+```
+
+`Experimental_DecisionState` 和 `Experimental_DecisionStatePart` 从 `ai` 导出。一个部分具有以下形状之一：
+
+- `TextPart`：`{ type: 'text', text: string }`。
+- `FilePart`：`{ type: 'file', mediaType: string, data: ... }`，使用 SDK 的文件约定。对于图像，使用字节、base64 字符串或 URL。也支持带标签的文件数据。URL 会在模型调用前下载。
+- JSON：`{ type: 'json', value: JSONValue }`。
+
+语言模型决策适配器仅接受图像文件。底层模型必须支持该文件数据形式。Gateway 和 TypeSafe AI 仅接受文本和 JSON 状态。
+
+直接作为 `state` 传入的数组包含部分。要发送 JSON 数组，请将其放入对象（`state: { records }`）或 JSON 部分（`state: [{ type: 'json', value: records }]`）中。空的 `state: []` 包含零个部分。问题指令和标准仍可直接接受 JSON 数组。
+
+## 提供商模型
+
+使用提供商的 `decisionModel` 工厂：
+
+| 提供商      | 示例模型                                               |
+| ----------- | ------------------------------------------------------ |
+| TypeSafe AI | `typeSafeAi.decisionModel('jev-latest')`               |
+| OpenAI      | `openai.decisionModel('gpt-6-luna')`                   |
+| Anthropic   | `anthropic.decisionModel('claude-haiku-4-5-20251001')` |
+| Google      | `google.decisionModel('gemini-3.5-flash-lite')`        |
+
+TypeSafe AI 的 [Jev](https://vercel.com/i/what-is-jev) 和 OpenAI 的
+[Decisions API](https://developers.openai.com/api/docs/guides/decisions)
+提供原生的 Choice、Score 和 Boolean 决策。每个问题独立评估。Choice 和 Score 答案包含原生概率分布。
+
+Anthropic 和 Google 为所有三种类型适配结构化语言模型输出，在一个提示词中评估所有问题。它们的 Boolean 答案包含 P(true) 的提示词估计值，而 Choice 和 Score 答案省略概率分布。选择支持提供商结构化输出 API 的模型，并在为任务选择模型之前，根据你自己的标注示例评估判断质量。
+
+Anthropic 和 Google 语言模型适配器默认请求 `reasoning: 'none'`。每个提供商将此设置映射到其模型的推理控制。通过 `providerOptions` 传入支持的推理设置以覆盖此默认值。OpenAI 决策模型使用 Decisions 端点，不接受 Responses API 推理选项。
+
+## 模型别名和注册表
+
+使用 `customProvider` 为模型提供应用程序特定的名称，然后使用 `createProviderRegistry` 注册提供商：
+
+```ts
+import { typeSafeAi } from '@ai-sdk/typesafe-ai';
+import { openai } from '@ai-sdk/openai';
+import {
+  customProvider,
+  createProviderRegistry,
+  experimental_decide,
+} from 'ai';
+
+const registry = createProviderRegistry({
+  triage: customProvider({
+    decisionModels: {
+      native: typeSafeAi.decisionModel('jev-latest'),
+      compact: openai.decisionModel('gpt-6-luna'),
+    },
+    fallbackProvider: typeSafeAi,
+  }),
+  openai,
+});
+
+const result = await experimental_decide({
+  model: registry.decisionModel('triage:native'),
+  state: 'I was charged twice.',
+  questions: {
+    department: {
+      type: 'choice',
+      instructions: 'Which team should handle this?',
+      criteria: { billing: 'Charges and refunds', support: 'Other requests' },
+    },
+  },
+});
+
+result.answers.department.choice; // 'billing' | 'support'
+```
+
+注册表 ID 使用 `providerId:modelId`；`separator` 选项可更改分隔符。仅使用第一个分隔符，因此模型 ID 可以包含它。自定义别名优先于回退提供商。回退仅解析未知模型 ID；它不会重试失败的决策，也不会在问题类型不受支持时替换模型。已注册的提供商保留自己的凭据和设置。注册表的语言/图像中间件不会包装决策模型。
+
+### 默认提供商字符串
+
+字符串 ID 默认使用 Vercel AI Gateway。使用 `AI_GATEWAY_API_KEY` 或 Vercel OIDC 配置 Gateway 身份验证，然后传入 Gateway 模型 ID：
+
+```ts
+import { experimental_decide } from 'ai';
+
+const result = await experimental_decide({
+  model: 'typesafe-ai/jev',
+  state: 'I was charged twice. Please refund the extra charge.',
+  questions: {
+    refund: {
+      type: 'boolean',
+      instructions: 'Is the customer asking for a refund?',
+    },
+  },
+});
+```
+
+要通过你自己的提供商或别名解析字符串，请在应用程序启动时配置一次默认提供商：
+
+```ts
+// Using the registry above, expose an alias through a custom provider:
+globalThis.AI_SDK_DEFAULT_PROVIDER = customProvider({
+  decisionModels: { native: registry.decisionModel('triage:native') },
+});
+
+const result = await experimental_decide({
+  model: 'native',
+  state: 'I was charged twice.',
+  questions: {
+    refund: {
+      type: 'boolean',
+      instructions: 'Is the customer asking for a refund?',
+    },
+  },
+});
+```
+
+像 `typeSafeAi` 这样的直接提供商也可以作为默认提供商；然后使用其不带前缀的模型 ID，例如 `'jev-latest'`。`decisionModels` 中的字符串值也通过此全局默认值解析。在别名中优先使用模型实例，以避免解析循环。全局配置也会影响其他 AI SDK 函数；在共享进程中避免按请求更改它。
+
+显式配置的默认提供商必须公开 `decisionModel` 方法；仅当未配置默认提供商时才使用 Gateway。缺少注册表提供商会抛出 `NoSuchProviderError`；缺少模型或决策能力会抛出
+`NoSuchModelError`，并带有 `modelType: 'decisionModel'`。不支持的模型版本会抛出 `UnsupportedModelVersionError`，包括注册表返回的模型。稳定的 `ProviderV4` 和 `ProviderRegistryProvider` 接口保持不变；保留推断的注册表类型，或使用 `Experimental_DecisionProviderRegistry`，以保留其实验性的 `decisionModel` 方法。
+
+## 问题类型
+
+| 类型      | 标准                                      | 答案                                                                     |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| `choice`  | 选项到描述的非空映射                      | `choice`，推断为选项键的联合类型；可选的 `probabilities`                 |
+| `score`   | 至少两个有序的等级描述                    | `[0, levels.length - 1]` 中的小数 `score`；可选的 `probabilities`        |
+| `boolean` | 可选的 `true` 和 `false` 描述             | 必需的 `probability`，即模型估计为 true 的概率                           |
+
+`Experimental_DecisionQuestion` 从 `ai` 导出。指令和描述可以是字符串、JSON 对象或 JSON 数组。描述也可以是 `null`。
+
+函数、类实例、循环引用、undefined 值和非有限数字不兼容 JSON。
+
+答案保留问题 ID，并具有与其问题相同的 `type`。当提供 Choice 分布时，它包含每个选项，且所选选项具有最大概率。Score 分布使用字符串键表示从零开始的等级索引，分数等于概率加权平均值。没有分布时，分数是模型在评分标准上的估计位置。
+
+分布必须总和为一，加权分数必须与其分布一致。默认绝对容差为 `0.000001`。对其输出进行舍入的提供商可以声明 `rounding.probabilityDecimals` 和
+`rounding.scoreDecimals`（0 到 15 的整数）。然后验证还允许每个舍入概率或分数在最后一位小数处有半个单位的误差，并在总和或加权平均值上累积。例如，舍入到两位小数的概率即使其未舍入值总和为一，也可以总和为 `0.99`。结果包含此 `rounding` 信息。无效输出会被拒绝；原生值会被保留，绝不会被静默规范化。
+
+## 概率和置信度
+
+Choice 和 Score 分布是可选的。Boolean 概率是必需的：
+`0.98` 表示强烈的肯定，`0.02` 表示强烈的否定。它不是对任一结果的置信度。SDK 不承诺跨提供商的校准。结构化语言模型适配器提示模型估计 P(true)；原生决策提供商返回其 API 概率。提供商特定的置信度统计应放在 `providerMetadata` 中。TypeSafe 在 `result.providerMetadata?.typesafe?.confidence` 公开其单独的 Choice/Score 置信度统计，以问题 ID 为键。它不是所选选项的概率，也不是可移植的置信度度量。
+
+在使用可选分布之前检查它们是否存在。例如，应用程序可以仅在提供商提供足够高的所选选项概率时进行路由：
+
+```ts
+const answer = result.answers.department;
+const selectedProbability = answer.probabilities?.[answer.choice];
+if (selectedProbability != null && selectedProbability >= 0.9) {
+  // Route automatically; otherwise use the application's review path.
+}
+```
+
+在应用程序代码中选择 Boolean 阈值，使用任务的标注数据，而不是假设相同的阈值在不同提供商之间表现相同：
+
+```ts
+if (result.answers.requestsRefund.probability >= 0.8) {
+  // Route to the refunds queue.
+}
+```
+
+## 错误和取消
+
+在调用提供商之前会检查模型的 `supportedQuestionTypes`。任何不受支持的问题都会使整个调用失败，并抛出
+`Experimental_DecisionUnsupportedQuestionTypeError`。成功的调用会为每个问题返回答案；没有部分成功，Core 不会自动替换模型。
+
+无效输入会抛出 `InvalidArgumentError`。缺少答案、答案类型不匹配、无效选项、分数或概率会抛出 `InvalidResponseDataError`。
+如果模型拒绝任何问题，调用会抛出
+`Experimental_DecisionRefusalError`，并带有被拒绝的问题 ID，且不会重试。
+瞬时提供商故障使用正常的重试策略（默认 `maxRetries: 2`）。使用 `abortSignal` 取消决策请求，`headers` 用于请求头，
+`providerOptions` 用于提供商特定设置。
+
+结果包含 `usage`、`warnings`、`providerMetadata` 和 `response`。
+未知的 token 计数保持为 `undefined`；仅当输入和输出计数都已知时，`totalTokens` 才可用。
+
+对于测试，请使用来自 `ai/test` 的 `Experimental_DecisionMockModelV4`。
+
+## 范围和示例
+
+`experimental_decide` 目前针对一个共享状态返回一个完整结果。它不会流式传输答案、执行多标签分类或批量处理不相关的状态。为不同的状态运行单独的调用。提供商支持和判断质量取决于所选的模型。Core 不会选择另一个模型，但提供商可以通过其提供商选项实现路由。例如，AI Gateway 支持在
+`providerOptions.gateway.models` 下的条件决策回退。
+
+可运行的示例位于
+[`examples/ai-functions/src/decide`](https://github.com/vercel/ai/tree/main/examples/ai-functions/src/decide)，
+包括 TypeSafe、OpenAI、Anthropic 和 Google 的基本示例、模型注册表、自定义别名、默认提供商字符串以及基于概率的路由。
+
+## 相关资源
+
+探索用例、实现指南以及将 TypeSafe AI 的 Jev 与 AI SDK 结合使用的可部署模板：
+
+- [Jev 用例](https://vercel.com/i/jev-use-cases)：探索在应用程序中应用决策的想法。
+- [使用 Jev 和 AI SDK 进行分类、路由和评分](https://vercel.com/kb/guide/typesafe-jev-and-ai-sdk)：了解如何提出类型化问题、使用概率路由答案，以及使用模拟决策模型测试路由逻辑。
+- [Jev 和 AI SDK 表单路由器指南](https://vercel.com/kb/guide/jev-ai-sdk-form-router)：探索使用 Jev 和 AI SDK 进行表单路由。
+- [Jev 和 AI SDK 表单路由器模板](https://vercel.com/templates/next.js/jev-and-ai-sdk)：部署一个 Next.js 应用程序，使用 Jev 路由表单提交，并使用语言模型回退处理不确定或失败的决策。

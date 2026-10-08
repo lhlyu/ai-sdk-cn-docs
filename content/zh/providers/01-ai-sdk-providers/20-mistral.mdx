@@ -21,7 +21,7 @@ Mistral 提供商位于 `@ai-sdk/mistral` 模块中。你可以使用以下命�
 import { mistral } from '@ai-sdk/mistral';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/mistral` 导入 `createMistral`，并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/mistral` 导入 `createMistral`，并使用你的设置创建一个提供商实例：
 
 ```ts
 import { createMistral } from '@ai-sdk/mistral';
@@ -40,19 +40,19 @@ const mistral = createMistral({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。
+  通过 `Authorization` 标头发送的 API 密钥。
   默认为 `MISTRAL_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  要包含在请求中的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
   你可以将其用作中间件来拦截请求，
-  或为测试等场景提供自定义 fetch 实现。
+  或为例如测试提供自定义 fetch 实现。
 
 ## 语言模型
 
@@ -65,7 +65,7 @@ const model = mistral('mistral-large-latest');
 ```
 
 Mistral 聊天模型还支持不属于[标准调用设置](/docs/ai-sdk-core/settings)的额外模型设置。
-你可以将它们作为选项参数传入，并使用 `MistralLanguageModelChatOptions` 进行类型标注：
+你可以将它们作为选项参数传递，并使用 `MistralLanguageModelChatOptions` 进行类型标注：
 
 ```ts
 import { mistral, type MistralLanguageModelChatOptions } from '@ai-sdk/mistral';
@@ -100,7 +100,7 @@ await generateText({
 
 - **strictJsonSchema** _boolean_
 
-  是否对结构化输出使用严格的 JSON schema 验证。仅在提供了 schema 时适用，并且除了使用[自定义结构化输出](https://docs.mistral.ai/capabilities/structured-output/custom_structured_output/)（如果提供了 schema，则默认使用）之外，还会设置 [`strict` 标志](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)。
+  是否对结构化输出使用严格的 JSON schema 验证。仅在提供 schema 时适用，并且除了使用[自定义结构化输出](https://docs.mistral.ai/capabilities/structured-output/custom_structured_output/)（如果提供了 schema，则默认使用）之外，还会设置 [`strict` 标志](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)。
 
   默认为 `false`。
 
@@ -118,14 +118,14 @@ await generateText({
 
 - **promptCacheKey** _string_
 
-  一个稳定的标识符，用于改善共享提示词前缀的请求的缓存亲和性。
+  一个稳定的标识符，用于提高共享提示词前缀的请求的缓存亲和性。
 
 ### 提示词缓存亲和性
 
 [Mistral 提示词缓存](https://docs.mistral.ai/studio/conversations/advanced/prompt-caching)
 会复用共享的提示词前缀。将 `promptCacheKey` 设置为稳定的工作流、
-会话或对话标识符，以改善缓存亲和性。提供商会
-将其作为 Mistral 的 `prompt_cache_key` 请求字段发送：
+会话或对话标识符，以提高缓存亲和性。提供商会将其作为 Mistral 的
+`prompt_cache_key` 请求字段发送：
 
 ```ts
 import { mistral, type MistralLanguageModelChatOptions } from '@ai-sdk/mistral';
@@ -145,7 +145,7 @@ const result = await generateText({
 console.log(result.usage.inputTokenDetails.cacheReadTokens);
 ```
 
-对具有相同稳定前缀的请求使用相同的键。多步骤的
+对具有相同稳定前缀的请求使用相同的键。多步
 `generateText` 和 `streamText` 调用会在每一步复用其提供商选项，
 因此单个键会应用于整个工具循环。提示词缓存
 亲和性是尽力而为的，并不保证缓存命中。
@@ -197,9 +197,9 @@ const result = await generateText({
 Mistral 提供具有逐步思考能力的推理模型：
 
 - **magistral-small-latest**：更小的推理模型，用于高效的逐步思考
-- **magistral-medium-latest**：更强大的推理模型，在性能和成本之间取得平衡
+- **magistral-medium-latest**：更强大的推理模型，平衡性能与成本
 
-这些模型返回结构化的推理内容，AI SDK 会自动提取。推理内容可通过结果中的 `reasoningText` 属性获取：
+这些模型返回结构化推理内容，AI SDK 会自动提取。推理内容可通过结果中的 `reasoningText` 属性获取：
 
 ```ts
 import { mistral } from '@ai-sdk/mistral';
@@ -222,7 +222,7 @@ SDK 会自动解析 Mistral 的原生推理格式，并在结果中提供单独�
 #### 可配置推理
 
 一些 Mistral 模型支持可配置推理，你可以通过 `reasoning` 参数进行控制。
-你可以使用 AI SDK 顶层的 `reasoning` 设置来控制推理力度：
+你可以使用 AI SDK 的顶层 `reasoning` 设置来控制推理力度：
 
 ```ts
 import { mistral } from '@ai-sdk/mistral';
@@ -318,9 +318,112 @@ const result = await generateText({
   标准结构化输出 API 自定义 schema 名称/描述。
 </Note>
 
+### Conversations API
+
+使用 `mistral.conversation(modelId)` 创建一个调用 Mistral
+Conversations API（`/v1/conversations`）的模型。它支持 `generateText` 和
+`streamText`，包括 Mistral 内置的网页搜索工具。
+
+#### 网页搜索
+
+提供商提供两个工具：
+
+- `mistral.tools.webSearch()`：搜索网页。
+- `mistral.tools.webSearchPremium()`：搜索网页并通过 Mistral 集成的新闻提供商
+  访问新闻文章。
+
+Mistral 在服务器上执行这些工具。无需 `execute` 函数。
+搜索调用和结果可在 `result.toolCalls` 和
+`result.toolResults` 中获取，URL 引用可在 `result.sources` 中获取。
+
+```ts
+import { mistral } from '@ai-sdk/mistral';
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: mistral.conversation('mistral-medium-latest'),
+  tools: {
+    web_search: mistral.tools.webSearch(),
+  },
+  prompt:
+    "Use web search to find Mistral AI's official website. Cite your source.",
+});
+
+console.log(result.text);
+console.log(result.sources);
+```
+
+将 `mistral.tools.webSearch()` 替换为 `mistral.tools.webSearchPremium()` 即可使用
+高级搜索。
+
+<Note>
+  网页搜索需要 `mistral.conversation()`。默认的 `mistral()` 工厂
+  和 `mistral.chat()` 使用 Chat Completions API，不支持
+  这些工具。参见 [Mistral 的网页搜索
+  文档](https://docs.mistral.ai/studio/agents/agent-tools/websearch)。
+</Note>
+
+你也可以流式传输答案并在流完成后访问引用：
+
+```ts
+import { mistral } from '@ai-sdk/mistral';
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: mistral.conversation('mistral-medium-latest'),
+  tools: {
+    web_search: mistral.tools.webSearch(),
+  },
+  prompt:
+    "Use web search to find Mistral AI's official website. Cite your source.",
+});
+
+for await (const text of result.textStream) {
+  process.stdout.write(text);
+}
+
+console.log(await result.sources);
+```
+
+#### 多轮对话
+
+将之前的用户消息和 `responseMessages` 传入下一次调用。
+保留完整的响应历史，包括搜索调用和结果，以便
+后续问题可以使用检索到的信息。模型在调用之间
+不会保留对话历史。
+
+```ts
+import { mistral } from '@ai-sdk/mistral';
+import { generateText, type ModelMessage } from 'ai';
+
+const model = mistral.conversation('mistral-medium-latest');
+const tools = { web_search: mistral.tools.webSearch() };
+const messages: ModelMessage[] = [
+  {
+    role: 'user',
+    content: "Use web search to find Mistral AI's official website.",
+  },
+];
+
+const first = await generateText({ model, tools, messages });
+messages.push(...first.responseMessages);
+messages.push({
+  role: 'user',
+  content:
+    'Where is that company headquartered? Use web search and cite your source.',
+});
+
+const second = await generateText({ model, tools, messages });
+console.log(second.text);
+console.log(second.sources);
+```
+
+对于 `streamText`，在将 `await result.responseMessages` 追加到你的消息历史之前，
+先消费完流。
+
 ### 模型能力
 
-| 模型                      | 图像输入    | 工具使用   |
+| 模型                      | 图像输入    | 工具使用    |
 | ------------------------- | ----------- | ---------- |
 | `labs-leanstral-1-5`      | <Check />   | <Check />  |
 | `magistral-medium-latest` | <Check />   | <Check />  |
@@ -335,7 +438,7 @@ const result = await generateText({
 
 <Note>
   上表列出了热门模型。请参阅 [Mistral
-  文档](https://docs.mistral.ai/models)以获取可用模型的完整列表。你
+  文档](https://docs.mistral.ai/models) 获取可用模型的完整列表。你
   也可以根据需要将任何可用的提供商模型 ID 作为字符串传入。
 </Note>
 
@@ -363,7 +466,7 @@ const result = await transcribe({
 ```
 
 Mistral 转录模型支持额外的提供商选项。通过
-`providerOptions.mistral` 传入它们，并使用
+`providerOptions.mistral` 传递它们，并使用
 `MistralTranscriptionModelOptions` 进行类型检查：
 
 ```ts highlight="9-13"
@@ -409,14 +512,14 @@ const result = await transcribe({
 
 - **contextBias** _string[]_
 
-  最多 100 个单词或短语，用于指导姓名、技术术语
+  最多 100 个单词或短语，用于指导名称、技术术语
   或领域特定词汇的拼写。条目不能包含逗号或空白；
   多词短语请使用下划线。
 
-规范化结果包含转录文本、语言、带时间戳的片段以及
-Mistral 返回时的时长。Mistral 的 token 和提示词音频用量
-可在 `result.providerMetadata.mistral.usage` 下获取。来自说话人分离的片段分数和
-说话人 ID 可在
+规范化结果包括转录文本、语言、带时间戳的片段以及
+Mistral 返回时的时长。Mistral token 和提示词音频用量
+可在 `result.providerMetadata.mistral.usage` 下获取。来自说话人分离的
+片段分数和说话人 ID 可在
 `result.providerMetadata.mistral.segments` 下获取。
 
 <Note>
@@ -426,9 +529,9 @@ Mistral 返回时的时长。Mistral 的 token 和提示词音频用量
 
 ### 模型能力
 
-| 模型                  | 时间戳     | 说话人分离 | 上下文偏置 |
-| --------------------- | ---------- | ---------- | ---------- |
-| `voxtral-mini-latest` | <Check />  | <Check />  | <Check />  |
+| 模型                  | 时间戳     | 说话人分离  | 上下文偏置   |
+| --------------------- | ---------- | ----------- | ------------ |
+| `voxtral-mini-latest` | <Check />  | <Check />   | <Check />    |
 
 ## 语音模型
 
@@ -458,11 +561,11 @@ const audio = result.audio.uint8Array;
 
 Mistral 语音模型将 `voice` 映射到 Mistral 的 `voice_id`。它支持
 `mp3`、`wav`、`pcm`、`flac` 和 `opus` 输出格式，默认为 `mp3`。
-不支持 `instructions`、`speed` 和 `language` 设置，提供它们时
+不支持 `instructions`、`speed` 和 `language` 设置，提供时
 会产生警告。
 
 Mistral 还支持使用 base64 编码的参考
-音频进行一次性语音克隆。通过 `providerOptions.mistral.refAudio` 传入它，并使用
+音频进行一次性语音克隆。通过 `providerOptions.mistral.refAudio` 传递它，并使用
 `MistralSpeechModelOptions` 进行类型检查：
 
 ```ts highlight="9-13"
@@ -487,17 +590,17 @@ const result = await generateSpeech({
 会从提供商返回的请求元数据和 API 调用错误中隐去。
 
 <Note>
-  仅在获得说话人明确同意的情况下使用参考音频。请遵循 Mistral 的
+  仅在获得说话人明确同意的情况下使用参考音频。遵循 Mistral 的
   语音克隆使用政策，并在需要时披露 AI 生成的音频。此
   提供商集成支持非流式语音生成；Mistral 的
-  流式语音 API 未通过 `SpeechModelV4` 暴露。
+  流式语音 API 不通过 `SpeechModelV4` 暴露。
 </Note>
 
 ### 模型能力
 
-| 模型                    | 已保存语音 | 参考音频        | 非流式        |
-| ----------------------- | ---------- | --------------- | ------------- |
-| `voxtral-mini-tts-2603` | <Check />  | <Check />       | <Check />     |
+| 模型                    | 已保存语音   | 参考音频        | 非流式        |
+| ----------------------- | ------------ | --------------- | ------------- |
+| `voxtral-mini-tts-2603` | <Check />    | <Check />       | <Check />     |
 
 ## 嵌入模型
 
@@ -520,9 +623,8 @@ const { embedding } = await embed({
 });
 ```
 
-Mistral 嵌入模型通过
-`providerOptions.mistral` 支持额外的提供商选项。你可以使用
-`MistralEmbeddingModelOptions` 验证它们：
+Mistral 嵌入模型通过 `providerOptions.mistral` 支持额外的提供商选项。
+你可以使用 `MistralEmbeddingModelOptions` 验证它们：
 
 ```ts
 import { mistral, type MistralEmbeddingModelOptions } from '@ai-sdk/mistral';
@@ -559,6 +661,6 @@ const { embedding } = await embed({
 
 ### 模型能力
 
-| 模型            | 默认维度           |
+| 模型            | 默认维度            |
 | --------------- | ------------------ |
 | `mistral-embed` | 1024               |

@@ -5,7 +5,7 @@ description: "了解如何在 AI SDK 中使用 Black Forest Labs 模型。"
 
 # Black Forest Labs 提供商
 
-[Black Forest Labs](https://bfl.ai/) 为开发者提供基于 FLUX 模型的生成式媒体平台。其平台提供快速、高质量且支持上下文感知的图像生成与编辑，以及使用 FLUX 3 的视频生成。
+[Black Forest Labs](https://bfl.ai/) 为开发者提供了一个基于 FLUX 模型的生成式媒体平台。其平台提供快速、高质量且具备上下文感知能力的图像生成与编辑功能，以及使用 FLUX 3 的视频生成功能。
 
 ## 设置
 
@@ -91,32 +91,93 @@ console.log(`Image saved to ${filename}`);
 
 ### 模型能力
 
-Black Forest Labs 提供许多针对不同用例优化的模型。以下是一些常用示例。完整模型列表请参阅 [Black Forest Labs 模型页面](https://bfl.ai/models)。
+Black Forest Labs 提供了许多针对不同用例优化的模型。以下是一些常用示例。完整模型列表请参阅 [Black Forest Labs 模型页面](https://bfl.ai/models)。
 
 | 模型                 | 描述                                                                                                                       |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `flux-2-pro`         | FLUX.2 [pro]，在单个端点中实现文本到图像和基于参考的编辑                                                                   |
+| `flux-3-image`       | FLUX 3，用于文本到图像和编辑，支持最多十张参考图像以及可选的网络接地（grounding）                                          |
+| `flux-2-pro`         | FLUX.2 [pro]，在单个端点中支持文本到图像和基于参考的编辑                                                                   |
 | `flux-2-max`         | FLUX.2 [max]，在 FLUX.2 系列中具有最高的提示词遵循度和细节                                                                 |
 | `flux-2-flex`        | FLUX.2 [flex] 暴露 `steps` 和 `guidance`，让你可以在速度与质量之间权衡                                                     |
 | `flux-2-klein-9b`    | FLUX.2 [klein] 9B，一个开放权重的蒸馏模型                                                                                  |
 | `flux-2-klein-4b`    | FLUX.2 [klein] 4B，最小且最便宜的开放权重 FLUX.2 模型                                                                      |
 | `flux-kontext-pro`   | FLUX.1 Kontext [pro] 同时处理文本和参考图像作为输入，支持定向编辑和复杂变换                                                |
-| `flux-kontext-max`   | FLUX.1 Kontext [max]，具有改进的提示词遵循度和排版生成                                                                     |
+| `flux-kontext-max`   | FLUX.1 Kontext [max]，具有改进的提示词遵循度和排版生成能力                                                                 |
 | `flux-pro-1.1-ultra` | 超快速、超高分辨率图像创建                                                                                                 |
 | `flux-pro-1.1`       | 从文本快速生成高质量图像。                                                                                                 |
-| `flux-pro-1.0-fill`  | 用于用新内容填充图像蒙版区域的内补模型                                                                                     |
+| `flux-pro-1.0-fill`  | 用于用新内容填充图像中被遮罩区域的修复（inpainting）模型                                                                   |
 
-Black Forest Labs 模型支持从 3:7（竖版）到 7:3（横版）的宽高比。
+FLUX.1 和 FLUX.2 模型支持从 3:7（竖屏）到 7:3（横屏）的宽高比。
+FLUX 3 仅接受 `21:9`、`2:1`、`16:9`、`3:2`、`7:5`、`4:3`、`5:4`、
+`1:1`、`4:5`、`3:4`、`5:7`、`2:3`、`9:16`、`1:2` 和 `9:21`。
+省略 `aspectRatio` 将使用端点的 `auto` 默认值。不支持的宽高比
+将被省略并给出警告。
 
 FLUX.2 模型在与 Kontext 模型相同的 `prompt.images` 字段上接收参考图像，
-因此单个模型 ID 即可覆盖文本到图像和编辑两种场景。请参阅下方的
-[图像编辑](#image-editing)。
+因此单个模型 ID 即可同时覆盖文本到图像和编辑。请参阅
+下方的[图像编辑](#image-editing)。
 
 <Note>
-  FLUX.2 生成可能超过默认的 60 秒轮询超时，
-  尤其是在使用参考图像时。当请求报告
-  `Black Forest Labs generation timed out.` 时，请提高 `pollTimeoutMillis`。
+  FLUX.2 生成可能超过 60 秒的默认轮询超时，
+  尤其是在使用参考图像时。当请求
+  报告 `Black Forest Labs generation timed out.` 时，请提高 `pollTimeoutMillis`。
 </Note>
+
+### FLUX 3 图像生成与编辑
+
+`flux-3-image` 模型通过同一端点从文本生成图像并编辑参考图像。
+通过 `prompt.images` 传入参考图像，并使用
+`providerOptions.blackForestLabs.resolution` 选择输出分辨率：
+
+```ts
+import {
+  blackForestLabs,
+  type BlackForestLabsImageModelOptions,
+} from '@ai-sdk/black-forest-labs';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: blackForestLabs.image('flux-3-image'),
+  prompt: 'A watercolor illustration of a coastal village at dawn',
+  aspectRatio: '16:9',
+  providerOptions: {
+    blackForestLabs: {
+      resolution: '2k',
+      grounding: false,
+      version: 'latest',
+      pollTimeoutMillis: 240000,
+    } satisfies BlackForestLabsImageModelOptions,
+  },
+});
+```
+
+对于编辑，请使用如下提示词：
+
+```ts
+const { image } = await generateImage({
+  model: blackForestLabs.image('flux-3-image'),
+  prompt: {
+    text: 'Change the sky to sunset while preserving the buildings',
+    images: ['https://example.com/village.png'],
+  },
+});
+```
+
+FLUX 3 最多接受十张参考图像，可以是 URL 或 base64 编码数据。每张
+参考图像必须至少为 256 × 256 像素，且不超过 16 兆像素。
+省略 `aspectRatio` 会让端点根据提示词或
+第一张参考图像选择宽高比。默认分辨率为 `1k`，且接地（grounding）默认启用。
+
+FLUX 3 不接受 `seed`、遮罩、显式 `width`/`height`，或诸如
+`outputFormat`、`steps` 和 `promptUpsampling` 等旧版
+图像选项。`size` 仅用于推导受支持的宽高比；上述列表之外的宽高比
+将被省略并给出警告。使用 `resolution` 选择像素面积
+层级。不支持的选项将被省略并给出警告；遮罩会被拒绝。
+
+提供商轮询 `Pending`、`Reasoning` 和 `Generating` 状态，直到
+图像准备就绪。对于超过默认
+60 秒轮询超时的请求，请增加 `pollTimeoutMillis`。它会在审核或任务失败时停止，并下载签名
+图像 URL，而不会发送 API 凭据。
 
 ### 图像编辑
 
@@ -152,7 +213,7 @@ const { images } = await generateImage({
 
 #### 多参考编辑
 
-组合多个参考图像以实现复杂变换。Black Forest Labs 最多支持 10 张输入图像：
+组合多张参考图像以实现复杂变换。Black Forest Labs 支持最多 10 张输入图像：
 
 ```ts
 import { blackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -177,7 +238,7 @@ const { images } = await generateImage({
 
 #### FLUX.2 编辑
 
-FLUX.2 模型在相同的 `prompt.images` 字段上接受参考图像，因此无需
+FLUX.2 模型在同一 `prompt.images` 字段上接受参考图像，因此无需
 单独的编辑模型 ID：
 
 ```ts
@@ -218,9 +279,9 @@ const { image } = await generateImage({
 });
 ```
 
-#### 内补
+#### 修复（Inpainting）
 
-`flux-pro-1.0-fill` 模型支持内补，允许你用新内容填充图像的蒙版区域。通过 `prompt.images` 传入源图像，并通过 `prompt.mask` 传入蒙版图像：
+`flux-pro-1.0-fill` 模型支持修复（inpainting），允许你用新内容填充图像中被遮罩的区域。通过 `prompt.images` 传入源图像，并通过 `prompt.mask` 传入遮罩图像：
 
 ```ts
 import { blackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -236,22 +297,25 @@ const { images } = await generateImage({
 });
 ```
 
-蒙版图像应为灰度图像，其中白色区域表示要填充的区域，黑色区域表示要保留的区域。
+遮罩图像应为灰度图像，其中白色区域表示要填充的区域，黑色区域表示要保留的区域。
 
 ### 提供商选项
 
 Black Forest Labs 图像模型通过 `providerOptions.blackForestLabs` 对象支持灵活的提供商选项。支持的参数取决于所使用的模型 ID：
 
-- **width** _number_ - 输出宽度（像素，256–1920）。设置后，将覆盖从 `size` 派生的任何宽度。
-- **height** _number_ - 输出高度（像素，256–1920）。设置后，将覆盖从 `size` 派生的任何高度。
+- **resolution** _"768sq" | "1k" | "1.5k" | "2k" | "4k"_ - FLUX 3 输出分辨率层级。默认为 `"1k"`；确切尺寸随宽高比而变化。
+- **grounding** _boolean_ - FLUX 3 网络和图像搜索接地。默认为 `true`。
+- **version** _"latest"_ - FLUX 3 端点版本。目前仅提供 `"latest"`。
+- **width** _number_ - 输出宽度（像素，256–1920）。设置后，将覆盖从 `size` 推导出的任何宽度。
+- **height** _number_ - 输出高度（像素，256–1920）。设置后，将覆盖从 `size` 推导出的任何高度。
 - **outputFormat** _string_ - 输出图像的期望格式（`"jpeg"` 或 `"png"`）。
 - **steps** _number_ - 推理步数。更高的值可能提高质量，但会增加生成时间。
 - **guidance** _number_ - 生成的引导比例。更高的值会更紧密地遵循提示词。
 - **imagePrompt** _string_ - 用作生成附加视觉上下文的 base64 编码图像。
 - **imagePromptStrength** _number_ - 图像提示词对生成影响的强度（0.0 到 1.0）。
 - **promptUpsampling** _boolean_ - 如果为 true，则对提示词执行上采样。
-- **raw** _boolean_ - 启用原始模式以获得更自然、真实的美学效果。
-- **safetyTolerance** _number_ - 输入和输出的审核级别（0 = 最严格，6 = 更宽松）。
+- **raw** _boolean_ - 启用原始模式，以获得更自然、真实的美学效果。
+- **safetyTolerance** _number_ - 输入和输出的审核级别（0 = 最严格，6 = 更宽松）。FLUX 3 仅接受 0–4，默认为 2。
 - **pollIntervalMillis** _number_ - 轮询尝试之间的间隔（毫秒，默认 500ms）。
 - **pollTimeoutMillis** _number_ - 超时之前轮询的总超时时间（毫秒，默认 60s）。
 - **webhookUrl** _string_ - 用于异步完成通知的 URL。必须是有效的 HTTP/HTTPS URL。
@@ -292,7 +356,7 @@ console.log('Duration:', metadata?.duration);
 
 ### 区域端点
 
-默认情况下，请求发送到 `https://api.bfl.ai/v1`。你可以在创建提供商实例时通过设置 `baseURL` 来选择[区域端点](https://docs.bfl.ai/api_integration/integration_guidelines#regional-endpoints)：
+默认情况下，请求会发送到 `https://api.bfl.ai/v1`。你可以在创建提供商实例时设置 `baseURL` 来选择[区域端点](https://docs.bfl.ai/api_integration/integration_guidelines#regional-endpoints)：
 
 ```ts
 import { createBlackForestLabs } from '@ai-sdk/black-forest-labs';
@@ -333,8 +397,8 @@ const { video } = await generateVideo({
 ```
 
 FLUX 3 每次调用生成一个视频。生成是异步的——模型
-提交一个任务并轮询直到完成，然后将签名的 MP4 URL 传递给 AI
-SDK Core。`generateVideo` 在解析之前下载它，因此 `video` 是一个
+提交任务并轮询直到完成，然后将签名 MP4 URL 传递给 AI
+SDK Core。`generateVideo` 在解析之前会下载它，因此 `video` 是一个
 `GeneratedFile`。签名 URL 仍可在
 `providerMetadata.blackForestLabs.videos[0].videoUrl` 中获取。
 
@@ -342,66 +406,66 @@ SDK Core。`generateVideo` 在解析之前下载它，因此 `video` 是一个
 间隔和超时。FLUX 3 视频 API 目前不暴露
 webhook 回调输入，因此顶层 `webhook` 会回退到轮询。
 
-`duration` 接受从 5 到 20 的整数秒。小数值会被
-四舍五入，超出范围的值会被钳制，两者都会发出警告。省略它可让
+`duration` 接受 5 到 20 之间的整数秒。小数值会被
+四舍五入，超出范围的值会被限制，两者都会给出警告。省略它可让
 FLUX 3 根据内容调整时长。
 
-音频默认生成，因此只需将 `generateAudio` 设置为关闭它。`fps` 和 `seed` 不受 API 支持，会作为警告报告。
+音频默认生成，因此只需将 `generateAudio` 设置为关闭它。`fps` 和 `seed` 不受 API 支持，并会报告为警告。
 
 <Note>
-  提供商元数据中的 URL 有时间限制。请将返回的 `video`
+  提供商元数据中的 URL 是有时间限制的。请将返回的 `video`
   字节持久化到你自己的存储中。
 </Note>
 
 ### 分辨率和宽高比
 
-API 采用命名的分辨率层级，`hd` 或 `fhd`（默认为 `hd`），其中
+API 采用命名的分辨率层级 `hd` 或 `fhd`（默认为 `hd`），其中
 `fhd` 由视频上采样器完成。确切的帧大小取决于
 宽高比。
 
-顶层 `resolution` 选项是 `{width}x{height}`，因此它按其较短边映射到
+顶层 `resolution` 选项是 `{width}x{height}`，因此它会根据其较短边映射到
 层级——`1280x720` 变为 `hd`，`1920x1080` 变为 `fhd`。
-其他值在较短边最多为 720 像素时映射到 `hd`，超过 720 时映射到
-`fhd`，并发出报告映射的警告。使用
+当较短边最多为 720 像素时，其他值映射到 `hd`，超过 720 时映射到
+`fhd`，并给出报告映射的警告。使用
 `providerOptions.blackForestLabs.resolution` 直接设置层级。
 
-`aspectRatio` 接受 `21:9`、`2:1`、`16:9`、`4:3`、`1:1`、`3:4` 和 `9:16`。API
-默认值为 `auto`，它会从提示词和任何
+`aspectRatio` 接受 `21:9`、`2:1`、`16:9`、`4:3`、`1:1`、`3:4` 和 `9:16`。
+API 默认值为 `auto`，它会根据提示词和任何
 条件媒体推断比例；由于顶层选项必须是 `{width}:{height}`，
 `auto` 只能通过
 `providerOptions.blackForestLabs.aspectRatio` 请求。
 
 ### 生成模式
 
-FLUX 3 是带有 `mode` 判别器的单个端点。模式从你传入的输入
+FLUX 3 是一个带有 `mode` 判别器的单一端点。模式根据你传入的输入
 推断：
 
 - **文本到视频** — 仅 `prompt`。
 - **图像到视频** — 传入 `image`（或带有
-  `frameType: 'first_frame'` 的 `frameImages` 条目）来为起始图像添加动画。添加 `last_frame`
+  `frameType: 'first_frame'` 的 `frameImages` 条目）以动画化起始图像。添加 `last_frame`
   会在该图像上结束片段。没有 `first_frame` 的 `last_frame` 无法
-  表达，会被丢弃并发出警告。
+  表达，会被丢弃并给出警告。
 - **关键帧** — 对于超过两张图像，或固定到特定
-  秒的图像，传入 `providerOptions.blackForestLabs.keyframes`。它优先于
+  秒的图像，请传入 `providerOptions.blackForestLabs.keyframes`。它优先于
   `image` 和 `frameImages`。
 - **视频续接** — 在 `inputReferences` 中传入视频类型的条目，以
-  从现有 MP4 的最后帧继续。FLUX 3 接受单个
+  从现有 MP4 的最后几帧继续。FLUX 3 接受单个
   视频；关键帧和续接是互斥的。
 - **草稿增强** — 传入 `providerOptions.blackForestLabs.draftCache`。请参阅
   [草稿模式](#draft-mode)。
 
 FLUX 3 没有参考图像输入，因此在 `inputReferences` 中传入的图像会被
-忽略，并发出指向 `image`、`frameImages` 或 `keyframes` 的警告。
+忽略，并给出指向 `image`、`frameImages` 或 `keyframes` 的警告。
 
 ### 关键帧
 
-关键帧是位置性的：一张图像打开片段，两张打开并关闭它，而
-更多时第一张和最后一张是端点，其他图像在它们之间均匀
-分布。每张图像是 `http(s)` URL 或 base64 字符串，一个请求
+关键帧是按位置排列的：一张图像打开片段，两张图像打开并关闭它，而
+更多图像时，第一张和最后一张是端点，其他图像在它们之间均匀
+分布。每张图像是 `http(s)` URL 或 base64 字符串，请求
 接受 1 到 10 张。
 
-三个或更多未定时的关键帧需要显式的 `duration`；提供商
-在发送该组合时报告警告，因为 API 会拒绝它。
+三个或更多未定时的关键帧需要显式 `duration`；提供商
+在发送该组合时会报告警告，因为 API 会拒绝它。
 
 改为按时间顺序传入 `[seconds, image]` 对，将每张图像固定到
 片段的某一秒：
@@ -434,13 +498,13 @@ const { video } = await generateVideo({
 
 ### 草稿模式
 
-设置 `draft: true` 会渲染快速、较低质量的预览，并留下一个
+设置 `draft: true` 会渲染一个快速、较低质量的预览，并留下一个
 加密包，报告为
-`providerMetadata.blackForestLabs.videos[0].draftCache`。将该包作为 `draftCache` 传回
-会以完整质量复现相同的生成。
+`providerMetadata.blackForestLabs.videos[0].draftCache`。将该包作为
+`draftCache` 传回，会以完整质量复现相同的生成。
 
-该包固定原始模式、提示词、种子和条件媒体，因此增强
-请求除了 `safetyTolerance` 之外不接受任何内容。调用中设置的任何其他选项
+该包固定了原始模式、提示词、种子和条件媒体，因此
+增强请求除 `safetyTolerance` 外不接受任何内容。调用中设置的任何其他选项
 都会报告为 `unsupported` 警告。`generateVideo` 需要一个
 `prompt` 参数，因此传入空字符串表示没有要添加的内容。
 
@@ -483,8 +547,7 @@ const enhanced = await generateVideo({
 ```
 
 <Note>
-  草稿及其增强是两次单独的生成，每次都会
-  单独计费。
+  草稿及其增强是两次独立的生成，各自单独计费。
 </Note>
 
 ### 视频提供商选项
@@ -508,9 +571,9 @@ const enhanced = await generateVideo({
 
 - **safetyTolerance** _number_
 
-  审核严格程度，从 0（最严格）到 4。默认为 2。无论
-  请求如何，性内容上限为 3，仇恨内容上限为 2，任何携带
-  条件媒体的请求上限为 2。
+  审核严格程度，从 0（最严格）到 4。默认为 2。无论请求如何，
+  性内容上限为 3，仇恨内容上限为 2，任何携带条件媒体的请求
+  上限为 2。
 
 - **draft** _boolean_
 
@@ -532,13 +595,13 @@ FLUX 3 视频结果包含 `providerMetadata.blackForestLabs.videos[]`。每个
 视频对象可能包含以下属性：
 
 - **id** _string_ - Black Forest Labs 生成请求的 ID。
-- **videoUrl** _string_ - 签名的 MP4 URL（与 `video` 相同的 URL）。有时间限制。
+- **videoUrl** _string_ - 签名 MP4 URL（与 `video` 相同的 URL）。有时间限制。
 - **draftCache** _string_ - 草稿包的下载 URL。仅在 `draft` 生成时存在。
-- **seed** _number_ - 用于生成的种子，当 API 报告时提供。
+- **seed** _number_ - 用于生成的种子，由 API 报告时提供。
 - **start_time** _number_ - 生成开始时的 Unix 时间戳。
 - **end_time** _number_ - 生成完成时的 Unix 时间戳。
 - **duration** _number_ - API 报告的持续时间（秒）。
-- **cost** _number_ - 生成请求的成本（以积分为单位）。
+- **cost** _number_ - 生成请求的成本（以积分计）。
 - **inputMegapixels** _number_ - 输入大小（兆像素）。
 - **outputMegapixels** _number_ - 输出大小（兆像素）。
 

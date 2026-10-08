@@ -22,7 +22,7 @@ tags: ['agents', 'chatbot']
    - `im:write`
    - `assistant:write`
 5. 将应用安装到你的工作区（"OAuth Tokens" 子部分下的按钮）
-6. 复制 Bot User OAuth Token 和 Signing Secret 以供下一步使用
+6. 复制 Bot User OAuth Token 和 Signing Secret，以备下一步使用
 7. 在 App Home -> Show Tabs -> Chat Tab 下，勾选 "Allow users to send Slash commands and messages from the chat tab"
 
 ## 项目设置
@@ -54,14 +54,14 @@ tags: ['agents', 'chatbot']
 
 起始仓库已包含：
 
-- Slack 工具函数（`lib/slack-utils.ts`），包括用于验证传入请求、将 Slack 线程转换为 AI SDK 兼容消息格式以及获取 Slackbot 用户 ID 的函数
+- Slack 工具函数（`lib/slack-utils.ts`），包括验证传入请求、将 Slack 线程转换为 AI SDK 兼容的消息格式，以及获取 Slackbot 用户 ID 的函数
 - 通用工具函数（`lib/utils.ts`），包括初始的 Exa 设置
 - 用于处理不同类型 Slack 事件的文件（`lib/handle-messages.ts` 和 `lib/handle-app-mention.ts`）
 - 用于 Slack 事件的 API 端点（`POST`）（`api/events.ts`）
 
 ## 事件处理器
 
-首先，让我们看一下我们的 API 路由（`api/events.ts`）：
+首先，让我们看一下 API 路由（`api/events.ts`）：
 
 ```typescript
 import type { SlackEvent } from '@slack/web-api';
@@ -117,19 +117,19 @@ export async function POST(request: Request) {
 }
 ```
 
-该文件定义了一个 `POST` 函数，用于处理来自 Slack 的传入请求。首先，你检查请求类型，看它是否是 URL 验证请求。如果是，则用 Slack 提供的 challenge 字符串进行响应。如果是事件回调，则验证请求，然后就可以访问事件数据了。这里就是你可以实现事件处理逻辑的地方。
+该文件定义了一个 `POST` 函数，用于处理来自 Slack 的传入请求。首先，你检查请求类型，看它是否为 URL 验证请求。如果是，则用 Slack 提供的 challenge 字符串进行响应。如果是事件回调，则验证请求，然后就可以访问事件数据。这里就是你可以实现事件处理逻辑的地方。
 
 然后你处理三种类型的事件：`app_mention`、`assistant_thread_started` 和 `message`：
 
-- 对于 `app_mention`，你使用事件和机器人用户 ID 调用 `handleNewAppMention`。
-- 对于 `assistant_thread_started`，你使用事件调用 `assistantThreadMessage`。
-- 对于 `message`，你使用事件和机器人用户 ID 调用 `handleNewAssistantMessage`。
+- 对于 `app_mention`，你调用 `handleNewAppMention`，传入事件和机器人用户 ID。
+- 对于 `assistant_thread_started`，你调用 `assistantThreadMessage`，传入事件。
+- 对于 `message`，你调用 `handleNewAssistantMessage`，传入事件和机器人用户 ID。
 
-最后，你向 Slack 返回成功消息。注意，每个处理函数都包裹在 `waitUntil` 函数中。让我们看看这意味着什么以及为什么它很重要。
+最后，你向 Slack 返回一条成功消息。注意，每个处理函数都包裹在 `waitUntil` 函数中。让我们看看这意味着什么，以及为什么它很重要。
 
 ### waitUntil 函数
 
-Slack 期望在 3 秒内收到响应，以确认请求正在被处理。然而，生成 AI 响应可能需要更长时间。如果你没有在 3 秒内响应 Slack 请求，Slack 将发送另一个请求，导致你的 API 路由再次被调用、再次调用 LLM，最终再次向用户发送响应。为了解决这个问题，你可以使用 `waitUntil` 函数，它允许你在响应发送后运行 AI 逻辑，而不会阻塞响应本身。
+Slack 期望在 3 秒内收到响应，以确认请求正在被处理。然而，生成 AI 响应可能需要更长时间。如果你没有在 3 秒内响应 Slack 请求，Slack 将发送另一个请求，导致你的 API 路由被再次调用、LLM 被再次调用，最终向用户发送另一个响应。为了解决这个问题，你可以使用 `waitUntil` 函数，它允许你在响应发送后运行 AI 逻辑，而不会阻塞响应本身。
 
 这意味着，你的 API 端点将：
 
@@ -139,7 +139,7 @@ Slack 期望在 3 秒内收到响应，以确认请求正在被处理。然而�
 
 ## 事件处理器
 
-让我们看看每种事件类型目前是如何处理的。
+让我们看看当前每个事件类型是如何处理的。
 
 ### 应用提及
 
@@ -148,7 +148,7 @@ Slack 期望在 3 秒内收到响应，以确认请求正在被处理。然而�
 1. 检查消息是否来自机器人，以避免无限响应循环
 2. 创建一个状态更新器，显示机器人正在"思考"
 3. 如果提及发生在线程中，则检索线程历史记录
-4. 使用消息内容调用 LLM（使用你将在下一节中实现的 `generateResponse` 函数）
+4. 使用消息内容调用 LLM（使用 `generateResponse` 函数，你将在下一节中实现它）
 5. 用 AI 响应更新初始的"思考中"消息
 
 以下是 `handleNewAppMention` 函数的代码：
@@ -338,10 +338,10 @@ export const generateResponse = async (
 };
 ```
 
-这个基础实现：
+这个基本实现：
 
-1. 使用 AI SDK 的 `generateText` 函数调用 Anthropic 的 `claude-sonnet-4.5` 模型
-2. 提供系统提示词来引导模型的行为
+1. 使用 AI SDK 的 `generateText` 函数调用已配置的模型
+2. 提供一个系统提示词来引导模型的行为
 3. 将响应格式化为 Slack 的 markdown 格式
 
 ## 使用工具增强功能
@@ -432,7 +432,7 @@ export const generateResponse = async (
    - `getWeather`：获取指定位置的天气数据
    - `searchWeb`：使用 Exa API 在网络上搜索信息
 
-2. 你设置了 `stopWhen: isStepCount(10)` 来启用多步对话。这定义了智能体的停止条件，即当模型生成工具调用时。这会自动将任何工具结果发送回 LLM，以触发额外的工具调用或响应（由 LLM 自行判断是否需要）。这将你的 LLM 调用从一次性操作转变为多步智能体流程。
+2. 你设置了 `stopWhen: isStepCount(10)` 来启用多步对话。这定义了智能体的停止条件，即当模型生成工具调用时。这将自动把任何工具结果发送回 LLM，以触发额外的工具调用或响应（如果 LLM 认为有必要）。这将你的 LLM 调用从一次性操作转变为多步智能体流程。
 
 ## 工作原理
 
@@ -489,7 +489,7 @@ https://your-vercel-url.vercel.app/api/events
 
 ## 后续步骤
 
-你已经构建了一个由 AI SDK 驱动的 Slack 聊天机器人！以下是一些可以扩展它的方式：
+你已经构建了一个由 AI SDK 驱动的 Slack 聊天机器人！以下是一些扩展它的方法：
 
 1. 为特定用户添加记忆，以便为 LLM 提供之前交互的上下文
 2. 实现更多工具，如数据库查询或知识库搜索
@@ -500,4 +500,4 @@ https://your-vercel-url.vercel.app/api/events
   在生产环境中，建议实现一个健壮的队列系统，以确保消息得到妥善处理。
 </Note>
 
-如需了解具有持久化线程会话、输入指示器、审批按钮和多频道支持的框架托管替代方案，请参阅 [eve 的 Slack 频道](https://eve.dev/docs/channels/slack)。
+如需一个由框架管理、具有持久化线程会话、输入指示器、审批按钮和多频道支持的替代方案，请参阅 [eve 的 Slack 频道](https://eve.dev/docs/channels/slack)。

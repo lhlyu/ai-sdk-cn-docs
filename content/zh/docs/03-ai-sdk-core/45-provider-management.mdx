@@ -70,7 +70,7 @@ export const openai = customProvider({
 
 ### 示例：模型名称别名
 
-你也可以提供模型名称别名，这样将来就可以在一个地方更新模型版本：
+你还可以提供模型名称别名，这样将来就可以在一个地方更新模型版本：
 
 ```ts
 import { customProvider, gateway } from 'ai';
@@ -80,7 +80,7 @@ export const anthropic = customProvider({
   languageModels: {
     opus: gateway('anthropic/claude-opus-5.5'),
     sonnet: gateway('anthropic/claude-sonnet-5.5'),
-    haiku: gateway('anthropic/claude-haiku-4.5'),
+    haiku: gateway('anthropic/claude-haiku-5.5'),
   },
   fallbackProvider: gateway,
 });
@@ -88,7 +88,7 @@ export const anthropic = customProvider({
 
 ### 示例：限制可用模型
 
-即使你有多个提供商，也可以限制系统中可用的模型。
+即使你有多个提供商，你也可以限制系统中可用的模型。
 
 ```ts
 import {
@@ -136,7 +136,7 @@ export const myProvider = customProvider({
 
 ### 示例：files 和 skills 接口
 
-你可以将提供商的 `files` 或 `skills` 接口附加到你的自定义提供商上。这样你就可以通过相同的提供商抽象来使用 `uploadFile` 和 `uploadSkill`。
+你可以将提供商的 `files` 或 `skills` 接口附加到你的自定义提供商上。这样你就可以通过同一个提供商抽象使用 `uploadFile` 和 `uploadSkill`。
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -172,11 +172,11 @@ await uploadSkill({
 });
 ```
 
-如果没有设置 `files` 或 `skills` 选项，但配置了 `fallbackProvider`，则自定义提供商将从回退提供商继承这些接口。
+如果未设置 `files` 或 `skills` 选项，但配置了 `fallbackProvider`，则自定义提供商将从回退提供商继承这些接口。
 
 ## 提供商注册表
 
-你可以使用 `createProviderRegistry` 创建一个包含多个提供商和模型的[提供商注册表](/docs/reference/ai-sdk-core/provider-registry)。
+你可以使用 `createProviderRegistry` 创建包含多个提供商和模型的[提供商注册表](/docs/reference/ai-sdk-core/provider-registry)。
 
 ### 设置
 
@@ -282,7 +282,7 @@ const { videos } = await experimental_generateVideo({
 ### 示例：使用 files 接口
 
 你可以通过调用 `registry.files(providerId)` 访问提供商的 files 接口。
-当你想要在模型请求中引用文件之前，先通过注册表中的某个提供商上传文件时，这非常有用。
+当你想在模型请求中引用文件之前，先通过注册表中的提供商上传文件时，这非常有用。
 
 ```ts highlight={"12,17"}
 import { openai } from '@ai-sdk/openai';
@@ -347,7 +347,7 @@ await uploadSkill({
 提供商管理的核心思想是设置一个文件，其中包含你想要使用的所有提供商和模型。
 你可能希望预先配置模型设置、提供模型名称别名、限制可用模型等等。
 
-下面是一个实现了以下概念的示例：
+以下是一个实现了以下概念的示例：
 
 - 使用命名空间前缀透传 gateway（此处为：`gateway > *`）
 - 使用命名空间前缀透传完整的提供商（此处为：`xai > *`）
@@ -356,7 +356,7 @@ await uploadSkill({
 - 预先配置模型设置（此处为：`anthropic > reasoning`）
 - 验证提供商特定的选项（此处为：`AnthropicLanguageModelOptions`）
 - 使用回退提供商（此处为：`anthropic > *`）
-- 将某个提供商限制为特定模型且不使用回退（此处为：`groq > llama-3.1-8b-instant`、`groq > qwen/qwen3.6-27b`）
+- 将提供商限制为某些模型且不使用回退（此处为：`groq > llama-3.1-8b-instant`、`groq > qwen/qwen3.6-27b`）
 - 为提供商注册表定义自定义分隔符（此处为：`>`）
 
 ```ts
@@ -390,7 +390,7 @@ export const registry = createProviderRegistry(
     // setup model name aliases
     anthropic: customProvider({
       languageModels: {
-        fast: anthropic('claude-haiku-4-5'),
+        fast: anthropic('claude-haiku-5-5'),
 
         // simple model
         writing: anthropic('claude-sonnet-4-5'),
@@ -467,12 +467,13 @@ const result = await streamText({
 });
 ```
 
-这简化了提供商的使用，并使你更容易在提供商之间切换，而无需在整个代码库中更改模型引用。
+这简化了提供商的使用，并使你更容易在提供商之间切换，而无需更改代码库中的模型引用。
 
-## 实验性评估模型
+## 实验性决策模型
 
-自定义提供商接受 `evaluationModels` 别名，注册表则暴露
-`evaluationModel('provider:model')`。这些方法返回用于
-`experimental_evaluate` 的模型实例。直接使用字符串 ID 时默认使用 Gateway，或使用显式配置的、带有 `evaluationModel` 方法的默认提供商。语言和图像模型的注册表
-中间件不适用于评估。
-有关别名、默认提供商配置以及能力差异，请参阅[评估](/docs/ai-sdk-core/evaluation#model-aliases-and-registries)。
+自定义提供商接受 `decisionModels` 别名，注册表则暴露
+`decisionModel('provider:model')`。这些方法返回用于
+`experimental_decide` 的模型实例。直接使用字符串 ID 时默认使用 Gateway，或使用
+显式配置了 `decisionModel` 方法的默认提供商。语言和图像模型的注册表
+中间件不适用于决策。
+有关别名、默认提供商配置以及能力差异，请参阅[决策](/docs/ai-sdk-core/decisions#model-aliases-and-registries)。

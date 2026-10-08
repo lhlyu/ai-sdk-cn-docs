@@ -1,0 +1,29 @@
+---
+title: "AI_DecisionRefusalError"
+description: "识别模型拒绝回答的决策问题。"
+---
+
+# AI_DecisionRefusalError
+
+这个实验性错误用于标识决策模型拒绝回答的问题，例如提供商的安全策略所拒绝的问题。它从 `ai` 和 `@ai-sdk/provider` 导出为 `Experimental_DecisionRefusalError`。
+
+决策模型将拒绝报告为 `type: 'refusal'` 的答案。当任何答案为拒绝时，`experimental_decide` 会在提供商调用之后抛出此错误，且不会重试该调用。
+
+## 属性
+
+- `questionIds`：被拒绝问题的 ID。
+- `provider`：决策模型的提供商。
+- `modelId`：决策模型 ID。
+- `message`：对被拒绝问题及模型的描述。
+
+## 检查此错误
+
+使用基于标记的 `isInstance` 检查，它可跨包副本正常工作：
+
+```typescript
+import { Experimental_DecisionRefusalError as DecisionRefusalError } from 'ai';
+
+if (DecisionRefusalError.isInstance(error)) {
+  console.log(error.questionIds, error.modelId);
+}
+```

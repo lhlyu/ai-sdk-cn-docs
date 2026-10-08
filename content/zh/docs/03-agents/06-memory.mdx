@@ -5,13 +5,13 @@ description: "使用提供商定义的工具、记忆提供商或自定义工具
 
 # 记忆
 
-记忆让智能体能够保存信息并在之后回忆起来。没有记忆，每次对话都从零开始。有了记忆，智能体会随时间积累上下文、回忆之前的交互，并适应用户。
+记忆让智能体能够保存信息并在之后回忆起来。没有记忆时，每次对话都从零开始。有了记忆，智能体会随时间积累上下文、回忆之前的交互，并适应用户。
 
 ## 三种方式
 
-你可以通过三种方式使用 AI SDK 为智能体添加记忆，每种方式各有取舍：
+你可以通过三种方式使用 AI SDK 为智能体添加记忆，每种方式各有不同的权衡：
 
-| 方式                                          | 工作量 | 灵活性 | 提供商锁定           |
+| 方式                                          | 投入 | 灵活性 | 提供商锁定           |
 | ------------------------------------------------- | ------ | ----------- | -------------------------- |
 | [提供商定义的工具](#provider-defined-tools) | 低    | 中      | 是                        |
 | [记忆提供商](#memory-providers)             | 低    | 低         | 取决于记忆提供商 |
@@ -23,7 +23,7 @@ description: "使用提供商定义的工具、记忆提供商或自定义工具
 
 ### Anthropic 记忆工具
 
-[Anthropic 记忆工具](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool)为 Claude 提供了一个管理 `/memories` 目录的结构化接口。Claude 在开始任务前读取记忆，在工作过程中创建和更新文件，并在未来的对话中引用它们。
+[Anthropic 记忆工具](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool)为 Claude 提供了一个用于管理 `/memories` 目录的结构化接口。Claude 在开始任务前读取其记忆，在工作过程中创建和更新文件，并在未来的对话中引用它们。
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic';
@@ -40,7 +40,7 @@ const memory = anthropic.tools.memory_20250818({
 });
 
 const agent = new ToolLoopAgent({
-  model: 'anthropic/claude-haiku-4.5',
+  model: 'anthropic/claude-haiku-5.5',
   tools: { memory },
 });
 
@@ -49,17 +49,17 @@ const result = await agent.generate({
 });
 ```
 
-该工具接收结构化命令（`view`、`create`、`str_replace`、`insert`、`delete`、`rename`），每个命令都有一个限定在 `/memories` 下的 `path`。你的 `execute` 函数将这些命令映射到你的存储后端（文件系统、数据库或任何其他持久化层）。
+该工具接收结构化命令（`view`、`create`、`str_replace`、`insert`、`delete`、`rename`），每个命令都带有一个限定在 `/memories` 下的 `path`。你的 `execute` 函数将这些命令映射到你的存储后端（文件系统、数据库或任何其他持久化层）。
 
-**何时使用**：你希望以最小的实现工作量获得记忆，并且已经在使用 Anthropic 模型。代价是提供商锁定，因为此工具仅适用于 Claude。
+**何时使用**：你希望以最少的实现投入获得记忆功能，并且已经在使用 Anthropic 模型。代价是提供商锁定，因为该工具仅适用于 Claude。
 
 ## 记忆提供商
 
-另一种方式是使用内置记忆的提供商。这些提供商封装了外部记忆服务，并通过 AI SDK 的标准接口暴露出来。记忆的存储、检索和注入都是透明进行的，你无需自己定义任何工具。
+另一种方式是使用内置记忆功能的提供商。这些提供商封装了外部记忆服务，并通过 AI SDK 的标准接口将其暴露出来。记忆的存储、检索和注入都是透明进行的，你无需自己定义任何工具。
 
 ### Letta
 
-[Letta](https://letta.com) 为智能体提供持久长期记忆。你在 Letta 平台（云端或自托管）上创建智能体，在那里配置其记忆，然后使用 AI SDK 提供商与其交互。Letta 的智能体运行时负责记忆管理（核心记忆、归档记忆、回忆）。
+[Letta](https://letta.com) 为智能体提供持久的长期记忆。你在 Letta 平台上（云端或自托管）创建一个智能体，在那里配置其记忆，然后使用 AI SDK 提供商与其交互。Letta 的智能体运行时负责记忆管理（核心记忆、归档记忆、回忆）。
 
 ```bash
 pnpm add @letta-ai/vercel-ai-sdk-provider
@@ -83,7 +83,7 @@ const result = await agent.generate({
 });
 ```
 
-你也可以将 Letta 的内置记忆工具与自定义工具一起使用：
+你也可以将 Letta 内置的记忆工具与自定义工具一起使用：
 
 ```ts
 import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
@@ -171,7 +171,7 @@ const result = await agent.generate({
 });
 ```
 
-Supermemory 可与任何 AI SDK 提供商配合使用。这些工具为模型提供 `addMemory` 和 `searchMemories` 操作，用于处理存储和检索。
+Supermemory 可与任何 AI SDK 提供商配合使用。这些工具为模型提供 `addMemory` 和 `searchMemories` 操作来处理存储和检索。
 
 完整的设置和配置请参阅 [Supermemory 提供商文档](/providers/community-providers/supermemory)。
 
@@ -209,7 +209,7 @@ const result = await agent.generate({
 
 ### MongoDB
 
-[`@mongodb-developer/vercel-ai-memory`](https://www.npmjs.com/package/@mongodb-developer/vercel-ai-memory) 提供由 MongoDB Atlas 支持的持久记忆，包含五个结构化层级：**Session**、**Semantic**、**Procedural**、**Episodic** 和 **Scratchpad**。检索由 Atlas Vector Search 驱动，可使用任何 AI SDK 嵌入模型，并支持自动创建索引和按类型保留策略。
+[`@mongodb-developer/vercel-ai-memory`](https://www.npmjs.com/package/@mongodb-developer/vercel-ai-memory) 提供由 MongoDB Atlas 支持的持久记忆，包含五个结构化层级：**Session**、**Semantic**、**Procedural**、**Episodic** 和 **Scratchpad**。检索由 Atlas Vector Search 驱动，可使用任何 AI SDK 嵌入模型，并支持自动创建索引和按类型设置的保留策略。
 
 ```bash
 pnpm add @mongodb-developer/vercel-ai-memory
@@ -252,11 +252,11 @@ const result = await agent.generate({
 
 `isLoopFinished()` 让智能体持续运行，直到工具循环自然结束，这在记忆工具需要在最终响应之前进行读写时非常有用。
 
-Session 记忆支持两种模式：**工具驱动**（由 LLM 决定何时读/写——适合原型）和 **Hook 驱动**（运行时通过 `prepareCall` + `onEnd` Hook 持久化每一轮——推荐用于生产环境）。其他记忆层级（semantic、procedural、episodic、scratchpad）始终由 LLM 控制，并且设计上具有选择性。
+会话记忆支持两种模式：**工具驱动**（由 LLM 决定何时读取/写入——适合原型）和 **Hook 驱动**（运行时通过 `prepareCall` + `onEnd` Hook 持久化每一轮——推荐用于生产环境）。其他记忆层级（semantic、procedural、episodic、scratchpad）始终由 LLM 控制，并且设计上具有选择性。
 
 MongoDB 记忆可与任何 AI SDK 模型和嵌入提供商配合使用，除 MongoDB Atlas 外没有供应商锁定。
 
-**何时使用记忆提供商**：当你希望无需构建任何存储基础设施即可获得记忆时，这些提供商是很好的选择。代价是提供商控制记忆行为，因此你对存储内容和检索方式的可见性较低。你还需要承担对外部服务的依赖。
+**何时使用记忆提供商**：当你希望无需构建任何存储基础设施就能获得记忆功能时，这些提供商是很好的选择。代价是提供商控制着记忆行为，因此你对存储内容和检索方式的可见性较低。你还需要承担对外部服务的依赖。
 
 ## 自定义工具
 
@@ -264,7 +264,7 @@ MongoDB 记忆可与任何 AI SDK 模型和嵌入提供商配合使用，除 Mon
 
 有两种常见模式：
 
-- **结构化操作**：你定义显式操作（`view`、`create`、`update`、`search`）并自行处理结构化输入。由于你控制每个操作，因此设计上是安全的。
-- **Bash 支持**：你为模型提供一个沙箱化的 bash 环境，用于组合 shell 命令（`cat`、`grep`、`sed`、`echo`）以实现灵活的记忆访问。功能更强大，但为了安全需要命令验证。
+- **结构化操作**：你定义显式操作（`view`、`create`、`update`、`search`）并自行处理结构化输入。由于你控制每一个操作，因此设计上是安全的。
+- **Bash 支持**：你给模型一个沙箱化的 bash 环境来组合 shell 命令（`cat`、`grep`、`sed`、`echo`），以实现灵活的记忆访问。功能更强大，但出于安全考虑需要命令验证。
 
-关于实现带有 bash 支持接口、基于 AST 的命令验证和文件系统持久化的自定义记忆工具的完整演练，请参阅 **[构建自定义记忆工具](/cookbook/guides/custom-memory-tool)** 配方。
+关于实现带有 bash 支持接口、基于 AST 的命令验证和文件系统持久化的自定义记忆工具的完整演练，请参阅 **[构建自定义记忆工具](/cookbook/guides/custom-memory-tool)** 教程。

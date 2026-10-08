@@ -1,22 +1,22 @@
 ---
 title: "生命周期回调"
-description: "在 generateText、streamText、embed、embedMany、rerank 和 experimental_evaluate 调用中观察 AI SDK 生命周期事件"
+description: "在 generateText、streamText、embed、embedMany、rerank 和 experimental_decide 调用中观察 AI SDK 生命周期事件"
 ---
 
 # 生命周期回调
 
 事件回调让你可以在 AI SDK 调用的重要节点运行自己的代码。
-你可以将它们直接附加到 `generateText`、`streamText`、`embed`、`embedMany`、`rerank` 和 `experimental_evaluate` 调用上，以观察发生了什么、记录用量、调试多步生成以及监控工具执行。
+你可以将它们直接附加到 `generateText`、`streamText`、`embed`、`embedMany`、`rerank` 和 `experimental_decide` 调用上，以观察发生了什么、记录用量、调试多步生成以及监控工具执行。
 
-当你希望将应用特定的逻辑靠近调用点时，它们特别有用：
+当你希望将特定于应用的逻辑靠近调用点时，它们尤其有用：
 
-- 记录请求使用了哪个模型、提示词结构和设置。
-- 记录 token 用量、延迟、结束原因和警告，用于分析或计费。
+- 记录某个请求使用了哪个模型、提示词形态和设置。
+- 记录 token 用量、延迟、完成原因和警告，用于分析或计费。
 - 理解多步工具调用如何从模型响应到工具执行再到最终答案。
 - 跟踪工具输入、工具输出、执行时间和错误。
 - 通过 `runtimeContext` 和 `toolsContext` 附加你自己的请求、用户、租户或工作流标识符。
 
-如需在整个应用中自动进行 OpenTelemetry 插桩，请使用 [Telemetry](/docs/ai-sdk-core/telemetry)。
+如需在整个应用中自动进行 OpenTelemetry 埋点，请使用 [Telemetry](/docs/ai-sdk-core/telemetry)。
 当你希望为特定的 AI SDK 调用运行自定义代码时，请使用事件回调。
 
 ## 基本用法
@@ -45,8 +45,8 @@ const result = await generateText({
 });
 ```
 
-回调可以是同步或异步的。如果回调抛出错误，该错误会在内部被捕获，AI SDK 调用会继续执行。
-由于回调是生命周期的一部分，请保持它们快速执行，或将耗时工作放入后台系统队列中。
+回调可以是同步或异步的。如果回调抛出异常，错误会在内部被捕获，AI SDK 调用会继续执行。
+由于回调是生命周期的一部分，请保持它们快速执行，或将耗时工作放入后台系统排队处理。
 
 ## 使用场景
 
@@ -84,10 +84,10 @@ const result = await generateText({
 
 这种模式非常适合审计日志、内部仪表盘以及跟踪特定功能的使用情况。
 
-### 测量模型性能
+### 衡量模型性能
 
 `onLanguageModelCallEnd` 在提供商响应被规范化并解析后运行。
-对于 `streamText`，该事件还包含流式传输特定的计时数据，例如首个输出的时间和输出块之间的间隔。
+对于 `streamText`，该事件还包含流式传输特有的计时数据，例如首个输出的时间以及输出块之间的间隔。
 
 ```tsx highlight="8-19"
 import { streamText } from 'ai';
@@ -127,7 +127,7 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-当你想要专门测量提供商的工作时，请使用模型调用事件。
+当你想要专门衡量提供商的工作时，请使用模型调用事件。
 当你想要包含 SDK 管理的工作（例如本地工具执行）的计时时，请使用步骤事件。
 
 ### 调试多步工具调用
@@ -174,12 +174,12 @@ const result = await generateText({
 
 - 模型是调用了工具还是直接回答？
 - 请求经过了多少个步骤？
-- 哪个步骤使用了最多的 token？
+- 哪个步骤使用的 token 最多？
 - 时间花在了模型响应上还是本地工具执行上？
 
 ### 监控工具执行
 
-工具执行回调在工具的 `execute` 函数前后运行。
+工具执行回调围绕工具的 `execute` 函数运行。
 使用它们来记录工具使用情况、延迟、成功结果和工具错误。
 
 ```tsx highlight="19-36"
@@ -222,12 +222,12 @@ const result = await generateText({
 });
 ```
 
-`toolOutput` 是一个可辨识联合类型。当 `toolOutput.type` 为 `'tool-result'` 时，输出可通过 `toolOutput.output` 获取。当它为 `'tool-error'` 时，错误可通过 `toolOutput.error` 获取。
+`toolOutput` 是一个可辨识联合。当 `toolOutput.type` 为 `'tool-result'` 时，输出可通过 `toolOutput.output` 获取。当它为 `'tool-error'` 时，错误可通过 `toolOutput.error` 获取。
 
 ### 观察嵌入和重排序
 
 嵌入和重排序回调更简单：它们在操作前后暴露 `onStart` 和 `onEnd`。
-这对于检索管道非常有用，你可以借此了解嵌入的频率、嵌入值的数量以及重排序如何改变结果集。
+这对于检索管道非常有用，你可以借此了解嵌入的频率、嵌入的值的数量以及重排序如何改变结果集。
 
 ```tsx highlight="10-24,32-37"
 import { embedMany, rerank } from 'ai';
@@ -292,19 +292,19 @@ const { ranking } = await rerank({
 5. `onToolExecutionStart`
 6. `onToolExecutionEnd`
 7. `onStepEnd`
-8. 重复步骤回调直到满足停止条件
+8. 重复步骤回调，直到满足停止条件
 9. `onEnd`
 
-`onStepStart` 和 `onStepEnd` 描述完整的步骤。
+`onStepStart` 和 `onStepEnd` 描述整个步骤。
 `onLanguageModelCallStart` 和 `onLanguageModelCallEnd` 仅描述该步骤内的模型调用。
 当步骤包含本地工具执行时，这一区别很重要：步骤持续时间可能比模型响应持续时间更长。
 
-## 运行时和工具上下文
+## 运行时上下文和工具上下文
 
-生成和步骤生命周期回调接收流经调用的完整 `runtimeContext` 和
-`toolsContext` 值。工具执行回调接收正在执行的工具的
-作用域内 `toolContext`。这使得回调可用于
-附加应用上下文，而无需更改提示词或工具输入。
+生成和步骤生命周期回调会接收流经调用的完整 `runtimeContext` 和
+`toolsContext` 值。工具执行回调会接收正在执行的工具的
+作用域内 `toolContext`。这使得回调非常适合在不更改提示词或工具输入的情况下
+附加应用上下文。
 
 ```tsx highlight="8-24,26-39"
 import { generateText, tool } from 'ai';
@@ -350,9 +350,10 @@ const result = await generateText({
 ```
 
 <Note>
-  Telemetry 集成可以在导出 `runtimeContext` 和 `toolsContext` 之前对其进行过滤。生成和步骤回调接收完整的上下文
-  对象；工具执行回调接收作用域内的工具上下文。请注意不要
-  在回调中记录密钥或敏感用户数据。
+  Telemetry 集成可以在导出 `runtimeContext` 和 `toolsContext` 之前对其进行过滤。
+  生成和步骤回调会接收完整的上下文
+  对象；工具执行回调会接收作用域内的工具上下文。请注意
+  不要在回调中记录密钥或敏感用户数据。
 </Note>
 
 ## 可用回调
@@ -451,21 +452,20 @@ const result = await generateText({
   ]}
 />
 
-### `experimental_evaluate`
+### `experimental_decide`
 
 <PropertiesTable
   content={[
     {
       name: 'onStart',
-      type: '(event: Experimental_EvaluateStartEvent) => void | Promise<void>',
+      type: '(event: Experimental_DecideStartEvent) => void | Promise<void>',
       description:
-        'Called when the evaluation operation begins, before the evaluation model is called.',
+        'Called when the decision operation begins, before the decision model is called.',
     },
     {
       name: 'onEnd',
-      type: '(event: Experimental_EvaluateEndEvent) => void | Promise<void>',
-      description:
-        'Called when the evaluation operation completes successfully.',
+      type: '(event: Experimental_DecideEndEvent) => void | Promise<void>',
+      description: 'Called when the decision operation completes successfully.',
     },
   ]}
 />
@@ -478,7 +478,7 @@ const result = await generateText({
 
 #### onStart
 
-在任何模型调用之前调用一次。
+在任何模型调用发生之前调用一次。
 
 <PropertiesTable
   content={[
@@ -796,7 +796,7 @@ const result = await generateText({
 
 #### onStepEnd
 
-在每个步骤完成后调用。事件是该步骤的完整 `StepResult`。
+在每个步骤完成后调用。该事件是该步骤的完整 `StepResult`。
 
 <PropertiesTable
   content={[
@@ -1173,10 +1173,10 @@ const result = await generateText({
   ]}
 />
 
-### 评估事件
+### 决策事件
 
-评估回调是实验性的。它们导出的类型为
-`Experimental_EvaluateStartEvent` 和 `Experimental_EvaluateEndEvent`。
+决策回调是实验性的。它们导出的类型是
+`Experimental_DecideStartEvent` 和 `Experimental_DecideEndEvent`。
 
 #### onStart
 
@@ -1185,12 +1185,12 @@ const result = await generateText({
     {
       name: 'callId',
       type: 'string',
-      description: 'Unique identifier for this evaluation call.',
+      description: 'Unique identifier for this decision call.',
     },
     {
       name: 'operationId',
-      type: "'ai.evaluate'",
-      description: 'Evaluation operation identifier.',
+      type: "'ai.decide'",
+      description: 'Decision operation identifier.',
     },
     {
       name: 'runtimeContext',
@@ -1200,22 +1200,22 @@ const result = await generateText({
     {
       name: 'provider',
       type: 'string',
-      description: 'Provider identifier for the evaluation model.',
+      description: 'Provider identifier for the decision model.',
     },
     {
       name: 'modelId',
       type: 'string',
-      description: 'Evaluation model identifier.',
+      description: 'Decision model identifier.',
     },
     {
       name: 'state',
       type: 'string | object | array',
-      description: 'Shared state being evaluated.',
+      description: 'Shared state used to make decisions.',
     },
     {
       name: 'questions',
-      type: 'Readonly<Record<string, Experimental_EvaluationQuestion>>',
-      description: 'Questions being evaluated against the shared state.',
+      type: 'Readonly<Record<string, Experimental_DecisionQuestion>>',
+      description: 'Questions to decide against the shared state.',
     },
     {
       name: 'maxRetries',
@@ -1237,24 +1237,24 @@ const result = await generateText({
 
 #### onEnd
 
-包含所有 `onStart` 字段以及：
+包含所有 `onStart` 字段，外加：
 
 <PropertiesTable
   content={[
     {
       name: 'answers',
-      type: 'Record<string, Experimental_EvaluationAnswer>',
+      type: 'Record<string, Experimental_DecisionAnswer>',
       description: 'Exactly one typed answer per question ID.',
     },
     {
       name: 'usage',
       type: '{ inputTokens: number | undefined; outputTokens: number | undefined; totalTokens: number | undefined }',
-      description: 'Token usage for the evaluation operation.',
+      description: 'Token usage for the decision operation.',
     },
     {
       name: 'warnings',
       type: 'Array<Warning>',
-      description: 'Warnings from the evaluation model.',
+      description: 'Warnings from the decision model.',
     },
     {
       name: 'rounding',

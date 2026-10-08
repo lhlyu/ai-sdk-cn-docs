@@ -1,11 +1,11 @@
 ---
 title: "推理"
-description: "了解如何通过顶层 reasoning 参数在各大提供商之间控制推理。"
+description: "了解如何通过顶层 reasoning 参数在各提供商之间控制推理。"
 ---
 
 # 推理
 
-许多语言模型在生成响应之前支持一个内部的“推理”阶段（有时也称为“思考”）。AI SDK 在 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 上提供了一个顶层 `reasoning` 参数，通过一个单一且可移植的设置，在各大提供商之间控制这一行为。
+许多语言模型在生成响应之前支持一个内部的“推理”阶段（有时也称为“思考”）。AI SDK 在 [`generateText`](/docs/reference/ai-sdk-core/generate-text) 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 上提供了一个顶层 `reasoning` 参数，通过一个单一、可移植的设置来控制各提供商的这一行为。
 
 ## 基本用法
 
@@ -28,8 +28,9 @@ const { text, reasoning, reasoningText } = await generateText({
 | `'minimal'`          | 最低限度的推理                                               |
 | `'low'`              | 快速、简洁的推理                                              |
 | `'medium'`           | 均衡的推理                                                   |
-| `'high'`             | 详尽的推理                                                   |
-| `'xhigh'`            | 最大程度的推理                                                    |
+| `'high'`             | 全面的推理                                                   |
+| `'xhigh'`            | 超高推理                                                 |
+| `'max'`              | 最大推理                                                    |
 
 ## 流式传输
 
@@ -55,7 +56,7 @@ for await (const part of result.stream) {
 
 ## 优先级规则
 
-顶层 `reasoning` 参数与提供商特定的 `providerOptions` **永远不会合并**。如果你在 `providerOptions` 中设置了与推理相关的选项，它们将完全优先，顶层 `reasoning` 参数会被忽略。
+提供商特定的设置优先于从 `reasoning` 派生的相应字段。部分配置仍可使用可移植的推理来填充缺失的字段；摘要和显示设置可以与其一起使用。
 
 ```ts
 import { generateText } from 'ai';
@@ -73,13 +74,19 @@ const { text } = await generateText({
 });
 ```
 
-这种设计让你默认使用可移植的 `reasoning` 参数，仅在需要提供商特定功能（例如精确的 token 预算）时才回退到 `providerOptions`。
+这种设计让你默认使用可移植的 `reasoning` 参数，仅在需要提供商特定功能（如精确的 token 预算）时才回退到 `providerOptions`。
 
 ## 提供商支持
 
-以下提供商支持 `reasoning` 参数：OpenAI、Anthropic、Google、xAI、Groq、DeepSeek、Fireworks、Amazon Bedrock 和 Perplexity。每个提供商都会将该值转换为其原生的推理 API。有些提供商原生支持全部六个级别，而其他提供商会强制转换为更少的级别（发生强制转换时会发出警告）。有些提供商使用数字 token 预算而非枚举来控制推理；在这些情况下，顶层 `reasoning` 值会被映射为按模型最大输出 token 数百分比计算的预算。
+`reasoning` 参数受到包括 OpenAI、Anthropic、Google、xAI、Groq、DeepSeek、Moonshot AI、Fireworks、Amazon Bedrock、Mistral、Cohere、Alibaba、Open Responses、OpenAI Compatible 和 Perplexity 在内的提供商支持。每个提供商都会将该值转换为其原生的推理 API。
 
-不支持推理的提供商（例如 Mistral 和 Cohere）会发出 `unsupported` 警告并忽略该参数。
+具有独特原生最高档位的提供商，例如受支持的 OpenAI、Anthropic、DeepSeek 和 Moonshot AI 模型，会直接接收 `'max'`。Amazon Bedrock 为其 Anthropic 和 OpenAI 的 effort 映射保留 `'max'`，而 Amazon Nova 2 会将 `'xhigh'` 和 `'max'` 映射为 `'high'` 并发出兼容性警告。最高原生档位较低的提供商会将 `'max'` 强制转换为其最接近的受支持档位，并在其适配器支持警告传播时发出兼容性警告。OpenAI 兼容和 Open Responses 端点会直接接收 `'max'`，以便兼容的服务器可以解释它。
+
+一些提供商使用数字 token 预算而非枚举来控制推理。在这些情况下，`'max'` 默认映射为模型最大输出 token 的 95%，并受提供商的推理预算最小和最大限制约束。
+
+最大推理可能会大幅增加 token 使用量、延迟、成本以及达到请求或输出限制的可能性。当模型额外的推理深度值得这些权衡时，请使用它。
+
+不支持推理配置的提供商和模型会发出 `unsupported` 警告并忽略该参数。
 
 ## 从 `providerOptions` 迁移
 
@@ -188,4 +195,4 @@ const { text } = await generateText({
 });
 ```
 
-请注意，`providerOptions` 仍可与 `reasoning` 一起使用，以支持与推理强度无关的提供商特定功能。但是，如果 `providerOptions` 包含推理强度/预算设置（例如 `reasoningEffort`、`thinking`、`thinkingConfig.thinkingBudget`），这些设置将完全优先，顶层 `reasoning` 参数会被忽略。
+你可以将 `providerOptions` 与 `reasoning` 结合使用，以实现提供商特定功能，例如推理摘要或显示设置。显式的 effort 或预算值会覆盖相应的映射字段；部分配置仍可使用可移植的推理来填充缺失的字段。详情请参阅[优先级规则](#precedence-rules)。

@@ -5,7 +5,7 @@ description: "createAgentUIStream 工具的 API 参考。"
 
 # `createAgentUIStream`
 
-`createAgentUIStream` 函数会执行一个 [Agent](/docs/reference/ai-sdk-core/agent)，消费一个 UI 消息数组，并通过异步可迭代对象将智能体的输出以 UI 消息块的形式流式传输。这使你能够在自己的运行时中实时、增量地渲染 AI 助手的输出，并完全访问工具使用、中间推理和交互式 UI 功能——非常适合构建由智能体驱动的聊天 API、仪表盘或机器人。
+`createAgentUIStream` 函数会执行一个 [Agent](/docs/reference/ai-sdk-core/agent)，消费一个 UI 消息数组，并通过异步可迭代对象将智能体的输出以 UI 消息块的形式进行流式传输。这使你能够在自己的运行时中实时、增量地渲染 AI 助手的输出，并完整访问工具使用、中间推理和交互式 UI 功能——非常适合构建由智能体驱动的聊天 API、仪表盘或机器人。
 
 ## 导入
 
@@ -116,18 +116,25 @@ export async function* streamAgent(
         'Deprecated. Use `onStepEnd` instead. This alias is only used as a fallback when `onStepEnd` is not provided.',
     },
     {
+      name: 'onUIMessageStepEnd',
+      type: 'UIMessageStreamOnStepEndCallback',
+      isRequired: false,
+      description:
+        'Callback invoked after each UI message step is assembled. It receives `messages`, `isContinuation`, and the accumulated `responseMessage`, making it suitable for persisting intermediate UI message state.',
+    },
+    {
       name: '...UIMessageStreamOptions',
       type: 'UIMessageStreamOptions',
       isRequired: false,
       description:
-        'Additional options to control the output stream, such as including sources or usage data.',
+        'Additional options to control the UI message stream, including message IDs, metadata, final callbacks, sources, and reasoning.',
     },
   ]}
 />
 
 ## 返回值
 
-一个 `Promise<AsyncIterableStream<UIMessageChunk>>`，其中每个产出的块都是智能体输出的 UI 消息（参见 [`UIMessage`](/docs/reference/ai-sdk-core/ui-message)）。可以使用任何异步迭代器循环来消费它，或将其管道传输到流式 HTTP 响应、套接字或任何其他接收端。
+一个 `Promise<AsyncIterableStream<UIMessageChunk>>`，其中每个产出的块都是智能体输出的 UI 消息（参见 [`UIMessage`](/docs/reference/ai-sdk-core/ui-message)）。可以使用任何异步迭代器循环来消费它，或将其管道传输到流式 HTTP 响应、socket 或任何其他接收端。
 
 ## 示例
 
@@ -153,21 +160,53 @@ for await (const chunk of stream) {
 // Call controller.abort() to cancel the agent operation early.
 ```
 
+## 在每一步之后持久化 UI 消息
+
+当你需要在每个智能体步骤之后获取累积的 [`UIMessage`](/docs/reference/ai-sdk-core/ui-message) 时，使用 `onUIMessageStepEnd`：
+
+```ts
+const stream = await createAgentUIStream({
+  agent,
+  uiMessages,
+  generateMessageId: () => crypto.randomUUID(),
+  onUIMessageStepEnd: async ({ messages, responseMessage, isContinuation }) => {
+    await upsertConversation({
+      messages,
+      responseMessage,
+      isContinuation,
+    });
+  },
+  onEnd: async ({ responseMessage }) => {
+    // Save final metadata and any partial message when the stream ends.
+    await upsertMessage(responseMessage);
+  },
+});
+
+for await (const chunk of stream) {
+  // Consume or forward the stream so the callback can run.
+}
+```
+
+`onStepEnd` 和 `onUIMessageStepEnd` 服务于不同的层级。`onStepEnd` 接收底层的生成步骤结果，包括用量、完成原因和工具调用详情。`onUIMessageStepEnd` 在该步骤被转换为 UI 消息部分之后运行，并接收到目前为止累积的响应消息。
+
+该回调在 UI 流被消费时运行，并在 `finish-step` 块继续通过流之前被等待。这会延迟 UI 流的传递；它并不保证下一次模型调用尚未开始。如果它抛出异常，错误会被传递给 `onError`，流式传输会继续。请使用幂等写入，因为每次回调都包含同一响应消息的不断增长的快照。UI 消息可能包含模型输出、推理、工具输入和工具输出，因此请应用与最终对话持久化相同的访问控制和敏感数据处理措施。
+
 ## 工作原理
 
 1. **UI 消息验证：** 输入的 `uiMessages` 数组会使用智能体的 `tools` 定义进行验证和规范化。任何无效消息都会导致错误。
 2. **转换为模型消息：** 验证后的 UI 消息会按照智能体的要求转换为模型特定的消息格式。
 3. **智能体流式传输：** 使用转换后的模型消息、可选的调用选项、中止信号、experimental_sandbox 以及任何实验性转换来调用智能体的 `.stream({ prompt, ... })` 方法。
-4. **UI 消息流构建：** 结果流会被转换并作为 UI 消息块的流式异步可迭代对象暴露出来，供你消费。
+4. **构建 UI 消息流：** 结果流会被转换并作为 UI 消息块的流式异步可迭代对象暴露出来，供你消费。
 
 ## 注意事项
 
 - 智能体**必须**实现 `.stream({ prompt, ... })` 方法，并定义其支持的 `tools` 属性。
-- 此工具返回一个异步可迭代对象，以实现最大的流式传输灵活性。对于 HTTP 响应，请参阅 [`createAgentUIStreamResponse`](/docs/reference/ai-sdk-core/create-agent-ui-stream-response)（Web）或 [`pipeAgentUIStreamToResponse`](/docs/reference/ai-sdk-core/pipe-agent-ui-stream-to-response)（Node.js）。
+- 此工具返回异步可迭代对象，以实现最大的流式传输灵活性。对于 HTTP 响应，请参见 [`createAgentUIStreamResponse`](/docs/reference/ai-sdk-core/create-agent-ui-stream-response)（Web）或 [`pipeAgentUIStreamToResponse`](/docs/reference/ai-sdk-core/pipe-agent-ui-stream-to-response)（Node.js）。
 - `uiMessages` 参数命名为 `uiMessages`，**而不是**简单的 `messages`。
-- 你可以通过 `UIMessageStreamOptions` 提供高级选项（例如，包含来源或使用情况）。
-- 要取消流，请通过 `abortSignal` 参数传入一个 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)。
-- 当你的智能体工具在执行期间需要实验性沙箱环境时，请传入 `experimental_sandbox`。
+- 你可以通过 `UIMessageStreamOptions` 提供高级选项（例如，包含来源或消息元数据）。
+- 使用 `onUIMessageStepEnd` 进行每步的 UI 消息持久化。使用 `onStepEnd` 获取底层生成遥测和步骤详情。
+- 要取消流，请通过 `abortSignal` 参数传入 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)。
+- 当你的智能体工具在执行期间需要实验性沙箱环境时，传入 `experimental_sandbox`。
 
 ## 另请参阅
 

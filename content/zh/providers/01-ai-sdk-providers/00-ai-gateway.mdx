@@ -7,11 +7,11 @@ description: "了解如何将 AI Gateway 提供商与 AI SDK 配合使用。"
 
 [AI Gateway](https://vercel.com/docs/ai-gateway) 提供商通过单一接口将你连接到来自多个 AI 提供商的模型。无需分别与每个提供商集成，你就可以访问 OpenAI、Anthropic、Google、Meta、xAI 以及其他提供商及其模型。
 
-## 功能
+## 特性
 
-- 访问来自多个提供商的模型，无需安装额外的提供商模块/依赖项
+- 无需安装额外的提供商模块/依赖即可访问来自多个提供商的模型
 - 在不同的 AI 提供商之间使用相同的代码结构
-- 轻松在模型和提供商之间切换
+- 轻松切换模型和提供商
 - 部署在 Vercel 上时自动进行身份验证
 - 查看各提供商的定价信息
 - 通过 Vercel 仪表盘对 AI 模型使用情况进行可观测性监控
@@ -49,7 +49,7 @@ const { text } = await generateText({
 ## 提供商实例
 
 <Note>
-  `gateway` 提供商实例可从 5.0.36 及更高版本的 `ai` 包中获取。
+  `gateway` 提供商实例在 5.0.36 及更高版本的 `ai` 包中可用。
 </Note>
 
 你也可以从 `ai` 导入默认提供商实例 `gateway`：
@@ -58,7 +58,7 @@ const { text } = await generateText({
 import { gateway } from 'ai';
 ```
 
-当你需要以下情况时，可能需要创建自定义提供商实例：
+当你需要以下情况时，你可能想要创建自定义提供商实例：
 
 - 设置自定义配置选项（API key、Vercel access token、base URL、headers）
 - 在[提供商注册表](/docs/ai-sdk-core/provider-management)中使用该提供商
@@ -77,19 +77,28 @@ const gateway = createGateway({
 
 你可以使用以下可选设置来自定义 AI Gateway 提供商实例：
 
+- **batchResultDownloads** _object_
+
+  下载 JSON Lines 批处理结果的设置。
+  - **maxLineBytes** _number_
+
+    每行的最大 UTF-8 字节数，不包括 LF 分隔符。默认为 64 MiB
+    (67,108,864 字节)。必须是正的安全整数。超大的行会抛出
+    `DownloadError` 并取消下载。
+
 - **baseURL** _string_
 
-  为 API 调用使用不同的 URL 前缀。默认前缀为 `https://ai-gateway.vercel.sh/v4/ai`。
+  为 API 调用使用不同的 URL 前缀。默认前缀是 `https://ai-gateway.vercel.sh/v4/ai`。
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API key 或 Vercel access token。默认使用 `AI_GATEWAY_API_KEY` 环境变量。
+  通过 `Authorization` 头发送的 API key 或 Vercel access token。它默认使用 `AI_GATEWAY_API_KEY` 环境变量。
   支持 AI Gateway API key、Vercel personal access token 和 Vercel app
   access token。
 
 - **teamIdOrSlug** _string_
 
-  在使用多团队 Vercel access token 进行身份验证时，用于限定模型请求范围的 Vercel 团队 ID 或 slug。
+  使用多团队 Vercel access token 进行身份验证时，用于限定模型请求范围的 Vercel 团队 ID 或 slug。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -104,7 +113,7 @@ const gateway = createGateway({
 
 - **metadataCacheRefreshMillis** _number_
 
-  刷新元数据缓存的频率（以毫秒为单位）。默认为 5 分钟（300,000ms）。
+  刷新元数据缓存的频率（以毫秒为单位）。默认为 5 分钟 (300,000ms)。
 
 ## 身份验证
 
@@ -152,7 +161,7 @@ const gateway = createGateway({
 
 ### OIDC 身份验证（Vercel 部署）
 
-部署到 Vercel 时，AI Gateway 提供商支持使用 [OIDC（OpenID Connect）token](https://vercel.com/docs/oidc)
+部署到 Vercel 时，AI Gateway 提供商支持使用 [OIDC (OpenID Connect) token](https://vercel.com/docs/oidc)
 对模型请求进行身份验证，而无需 API Key。
 
 #### OIDC 身份验证的工作原理
@@ -164,29 +173,29 @@ const gateway = createGateway({
 
 2. **在本地开发中**：
    - 首先，安装 [Vercel CLI](https://vercel.com/docs/cli) 并进行身份验证
-   - 运行 `vercel env pull` 将项目的 OIDC token 下载到本地
-   - 如需自动管理 token：
-     - 使用 `vercel dev` 启动开发服务器 - 这将自动处理 token 刷新
-   - 如需手动管理 token：
+   - 运行 `vercel env pull` 以在本地下载项目的 OIDC token
+   - 对于自动 token 管理：
+     - 使用 `vercel dev` 启动你的开发服务器 - 这将自动处理 token 刷新
+   - 对于手动 token 管理：
      - 如果不使用 `vercel dev`，请注意 OIDC token 会在 12 小时后过期
      - 你需要在 token 过期前再次运行 `vercel env pull` 来刷新 token
 
 <Note>
-  如果存在 API key 或 Vercel access token（无论是直接传入还是通过
-  环境变量传入），它将始终优先于 OIDC 使用，即使它无效。
+  如果存在 API key 或 Vercel access token（无论是直接传递还是通过
+  环境变量传递），它将始终优先于 OIDC 使用，即使它无效。
 </Note>
 
 在 [Vercel AI Gateway 文档](https://vercel.com/docs/ai-gateway#using-the-ai-gateway-with-a-vercel-oidc-token)中阅读更多关于使用 OIDC token 的内容。
 
-## 自带密钥（BYOK）
+## 自带密钥 (BYOK)
 
-你可以连接自己的提供商凭据以与 Vercel AI Gateway 一起使用。这样你就可以使用现有的提供商账户并访问私有资源。
+你可以连接自己的提供商凭据以与 Vercel AI Gateway 一起使用。这让你可以使用现有的提供商账户并访问私有资源。
 
-要设置 BYOK，请在你的 Vercel 团队的 AI Gateway 设置中添加提供商凭据。配置完成后，AI Gateway 会自动使用你的凭据。无需更改代码。
+要设置 BYOK，请在你的 Vercel 团队的 AI Gateway 设置中添加你的提供商凭据。配置完成后，AI Gateway 会自动使用你的凭据。无需更改代码。
 
 对于像 Azure 这样可以使用自定义部署名称的提供商，你可以配置模型映射，将 gateway 模型 slug 映射到你的部署名称。有关详细信息，请参阅[模型映射](https://vercel.com/docs/ai-gateway/byok#model-mappings)。
 
-在 [BYOK 文档](https://vercel.com/docs/ai-gateway/byok)中了解更多。
+在 [BYOK 文档](https://vercel.com/docs/ai-gateway/byok)中了解更多信息。
 
 ## 语言模型
 
@@ -206,7 +215,7 @@ AI Gateway 语言模型也可以在 `streamText` 函数中使用，并支持使�
 当上游提供商在流式传输开始后报告格式良好的错误时，AI SDK Core 会将其暴露为
 [`StreamProviderError`](/docs/reference/ai-sdk-errors/ai-stream-provider-error)。
 使用其 `type`、`code`、`statusCode` 和 `isRetryable` 元数据来对
-失败进行分类，而无需检查 Gateway 序列化的错误负载。
+失败进行分类，而无需检查 Gateway 的序列化错误负载。
 
 ## 批处理
 
@@ -232,7 +241,7 @@ import {
 // The receiver uses this token to look up the expected batch and signing
 // secret before trusting anything in the webhook body.
 const token = randomUUID();
-const model = 'anthropic/claude-haiku-4.5' as const;
+const model = 'anthropic/claude-haiku-5.5' as const;
 
 // Reserve the token before starting so an early delivery finds a retryable
 // pending record rather than an unknown callback.
@@ -281,9 +290,9 @@ await completeBatchWebhookReservation(token, {
 });
 ```
 
-签名密钥仅在启动响应中返回。在提交批处理之前预留回调 token，然后在进程退出之前持久化该密钥和最小的 `batch` 引用。稳定的 `providerOptions.gateway.idempotencyKey` 使重试不明确的启动变得安全。重试时重用预留的 token；不要生成新的 token。在明确的启动失败后删除预留。当预留仍处于待处理状态时，接收方应返回可重试的响应，以便在设置完成后重新发送提前送达的通知。
+签名密钥仅在启动响应中返回。在提交批处理之前预留回调 token，然后在进程退出之前持久化密钥和最小的 `batch` 引用。稳定的 `providerOptions.gateway.idempotencyKey` 使重试不明确的启动变得安全。重试时重用预留的 token；不要生成新的 token。在明确的启动失败后删除预留。当预留仍处于待处理状态时，接收方应返回可重试的响应，以便在设置完成后再次发送提前送达的通知。
 
-接收方必须在信任事件之前，针对有界的原始请求体验证 `x-ai-gateway-signature` 标头：
+接收方必须在信任事件之前，针对有界的原始请求体验证 `x-ai-gateway-signature` 头：
 
 ```ts filename="app/api/batch-webhook/route.ts"
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -400,9 +409,9 @@ function verifySignature({
 }
 ```
 
-签名标头的格式为 `t=<unix seconds>,v1=<hex digest>`，其中 `v1` 是 `"<t>.<raw body>"` 的 HMAC-SHA256 摘要。验证有大小限制的原始请求体，而不是重新序列化的对象，使用时间安全的比较，拒绝过期的时戳，并拒绝 `data.jobId` 与持久化的 `batch.id` 不匹配的事件。
+签名头的格式为 `t=<unix seconds>,v1=<hex digest>`，其中 `v1` 是 `"<t>.<raw body>"` 的 HMAC-SHA256 摘要。验证有大小限制的原始请求体，而不是重新序列化的对象，使用时间安全的比较，拒绝过期的时戳，并拒绝 `data.jobId` 与持久化的 `batch.id` 不匹配的事件。
 
-AI Gateway 期望在 10 秒内收到 2xx 响应，并会重试失败的投递。它不遵循重定向，因此回调端点本身必须返回 2xx 响应。重试携带相同的 `x-ai-gateway-idempotency-key` 值（`<jobId>-<status>`），接收方可以使用它进行去重。验证后，将持久化的 `batch` 引用传递给 `experimental_getBatchStatus` 和 `experimental_getBatchResults`。投递是尽力而为的，因此请定期按状态对持久化的批处理进行对账，作为通知重试耗尽的回退方案。
+AI Gateway 期望在 10 秒内收到 2xx 响应，并会重试失败的送达。它不遵循重定向，因此回调端点本身必须返回 2xx 响应。重试携带相同的 `x-ai-gateway-idempotency-key` 值（`<jobId>-<status>`），接收方可以使用它进行去重。验证后，将持久化的 `batch` 引用传递给 `experimental_getBatchStatus` 和 `experimental_getBatchResults`。送达是尽力而为的，因此请定期按状态对持久化的批处理进行对账，作为通知耗尽重试后的回退方案。
 
 每个请求都指定其 `type` 和 `model`。AI Gateway 目前要求
 批处理中的每个文本请求使用相同的模型，并在模型不同时于提交前抛出错误。
@@ -418,7 +427,7 @@ import { experimental_cancelBatch as cancelBatch } from 'ai';
 await cancelBatch({ provider: gateway, batch });
 ```
 
-取消是异步的。继续检查 `experimental_getBatchStatus` 直到批处理终止，然后读取 `experimental_getBatchResults` 以获取任何部分结果。批处理可能在取消生效之前完成，成功的请求仍然会计费。取消返回确认元数据，而不是提供商执行已停止的确认。
+取消是异步的。继续检查 `experimental_getBatchStatus` 直到批处理达到终止状态，然后读取 `experimental_getBatchResults` 以获取任何部分结果。批处理可能在取消生效之前完成，成功的请求仍然会计费。取消返回确认元数据，而不是提供商执行已停止的确认。
 
 ## 重排序模型
 
@@ -446,7 +455,7 @@ console.log(ranking);
 // ]
 ```
 
-重排序模型通过在初始检索步骤之后对候选文档重新评分，有助于改进检索增强生成（RAG）管道中的搜索结果。
+重排序模型通过在初始检索步骤之后对候选文档重新评分，有助于改进检索增强生成 (RAG) 管道中的搜索结果。
 
 ## 实时模型
 
@@ -462,9 +471,9 @@ import { gateway } from '@ai-sdk/gateway';
 const model = gateway.experimental_realtime('openai/gpt-realtime-2');
 ```
 
-Gateway 对实时模型的规范化方式与它对所有其他模态的规范化方式相同：你的客户端使用[规范化 AI SDK 实时协议](/docs/ai-sdk-core/realtime)，而 Gateway 在服务端与上游提供商之间进行转换。这意味着无论模型由哪个提供商支持，相同的客户端代码都能正常工作。
+Gateway 对实时进行规范化的方式与它对其他所有模态进行规范化的方式相同：你的客户端使用[规范化的 AI SDK 实时协议](/docs/ai-sdk-core/realtime)，而 Gateway 在服务端与上游提供商之间进行转换。这意味着无论模型由哪个提供商支持，相同的客户端代码都能工作。
 
-实时会话在浏览器中运行，需要你在服务器上使用 `gateway.experimental_realtime.getToken()` 创建的短期 Gateway 客户端密钥。该方法使用你的 Gateway 凭据（`apiKey`、`AI_GATEWAY_API_KEY` 或 Vercel OIDC token）来生成 `vcst_` 客户端密钥，并返回该模型的 WebSocket URL。
+实时会话在浏览器中运行，需要在你服务器上使用 `gateway.experimental_realtime.getToken()` 创建的短期 Gateway 客户端密钥。该方法使用你的 Gateway 凭据（`apiKey`、`AI_GATEWAY_API_KEY` 或 Vercel OIDC token）来生成 `vcst_` 客户端密钥，并返回该模型的 WebSocket URL。
 
 ```ts filename='app/api/realtime/setup/route.ts'
 import { gateway } from 'ai';
@@ -504,16 +513,16 @@ export default function RealtimePage() {
 来自 `getToken()` 的短期设置响应。
 
 <Note>
-  Gateway WebSocket 路由通过带版本的 `Sec-WebSocket-Protocol` 子协议传输短期认证 token，并通过
-  `?ai-model-id=` 查询参数传输模型 id - 这是 HTTP 路由使用的 `Authorization` 和
-  `ai-model-id` 标头的 WebSocket 传输方式。子协议值必须符合
-  WebSocket token 语法，并且完整的 `Sec-WebSocket-Protocol` 标头
-  应保持紧凑（在 8 KiB 安全标头预算之内）。
+  Gateway WebSocket 路由通过带版本的 `Sec-WebSocket-Protocol` 子协议传输短期
+  身份验证 token，并通过 `?ai-model-id=` 查询参数传输模型 id - 这是 HTTP 路由使用的
+  `Authorization` 和 `ai-model-id` 头的 WebSocket 传输方式。子协议值必须符合
+  WebSocket token 语法，并且完整的 `Sec-WebSocket-Protocol` 头
+  应保持紧凑（在 8 KiB 的安全头预算内）。
 </Note>
 
 ### 提供商选项
 
-Gateway [提供商选项](#gateway-provider-options) — `tags`、`user`、`byok`、合规标志等 — 在**会话配置**中设置于 `providerOptions.gateway` 下，与它们在非实时路由上随请求体传递的方式一致。将它们包含在你发送给 Gateway 的会话配置中，Gateway 会在服务端应用它们：
+Gateway [提供商选项](#gateway-provider-options) — `tags`、`user`、`byok`、合规标志等 — 在**会话配置**中的 `providerOptions.gateway` 下设置，与非实时路由上它们随请求体传递的方式一致。将它们包含在你发送给 Gateway 的会话配置中，Gateway 会在服务端应用它们：
 
 ```ts
 import type { GatewayProviderOptions } from '@ai-sdk/gateway';
@@ -529,11 +538,12 @@ const sessionConfig = {
 };
 ```
 
-`GatewayProviderOptions` 类型从 `@ai-sdk/gateway` 导出，用于稳定的面向客户端字段。该类型还接受服务拥有的选项键，以便 Gateway 服务可以添加或更改服务端选项，而无需为每次 schema 更改发布 SDK。运行时验证由 Gateway 服务负责。
+`GatewayProviderOptions` 类型从 `@ai-sdk/gateway` 导出，用于稳定的面向客户端的字段。该类型也接受服务拥有的选项键，以便 Gateway 服务可以添加或更改服务端选项，而无需为每次模式更改发布 SDK。运行时验证由 Gateway 服务负责。
 
 <Note>
-  提供商选项在套接字打开后的初始会话更新中发送，因此连接时选项（如 `byok` 和配额选择）需要 Gateway 从该更新中解析它们。像 `order` /
-  `only` 这样的路由调节项不适用于实时，因为 Gateway 会选择
+  提供商选项在套接字打开后的初始会话更新中发送，因此连接时选项（如 `byok`
+  和配额选择）需要 Gateway 从该更新中解析它们。像 `order` /
+  `only` 这样的路由调节项不适用于实时，在实时中 Gateway 会选择
   支持 WebSocket 的提供商。
 </Note>
 
@@ -583,7 +593,7 @@ const { text } = await generateText({
 
 ## 额度使用
 
-你可以查看团队当前的额度余额和使用情况：
+你可以检查你团队当前的额度余额和使用情况：
 
 ```ts
 import { gateway } from 'ai';
@@ -601,9 +611,9 @@ console.log(`Team total used: ${credits.total_used} credits`);
 
 ## 生成查询
 
-通过 ID 查询特定生成的详细信息，包括成本、token 使用量、延迟和提供商详细信息。生成 ID 可在 `generateText` 和 `streamText` 响应的 `providerMetadata.gateway.generationId` 中获取。
+通过 ID 查询特定生成的详细信息，包括成本、token 使用量、延迟和提供商详情。生成 ID 可在 `generateText` 和 `streamText` 响应的 `providerMetadata.gateway.generationId` 中获取。
 
-在流式传输时，生成 ID 会在第一个内容块上注入，因此你可以在流中尽早捕获它，而无需等待完成。这在网络中断或流中途错误可能导致你无法收到最终响应的情况下特别有用 — 由于 gateway 在服务端记录最终状态，你可以稍后通过 `getGenerationInfo()` 使用生成 ID 查询结果（包括成本、token 使用量和完成原因）。
+在流式传输时，生成 ID 会在第一个内容块上注入，因此你可以在流的早期捕获它，而无需等待完成。这在网络中断或流中途错误可能导致你无法收到最终响应的情况下特别有用——由于 gateway 在服务端记录最终状态，你可以使用生成 ID 稍后通过 `getGenerationInfo()` 查询结果（包括成本、token 使用量和完成原因）。
 
 ```ts
 import { gateway, generateText } from 'ai';
@@ -686,8 +696,8 @@ await generateText({
 
 - **id** _string_ - 生成 ID
 - **totalCost** _number_ - 总成本（美元）
-- **upstreamInferenceCost** _number_ - 上游推理成本（美元）（与 BYOK 相关）
-- **usage** _number_ - 使用成本（美元）（与 totalCost 相同）
+- **upstreamInferenceCost** _number_ - 上游推理成本（美元，与 BYOK 相关）
+- **usage** _number_ - 使用成本（美元，与 totalCost 相同）
 - **createdAt** _string_ - 生成创建时的 ISO 8601 时间戳
 - **model** _string_ - 使用的模型标识符
 - **isByok** _boolean_ - 是否使用了 Bring Your Own Key 凭据
@@ -780,7 +790,7 @@ console.dir(result.text);
 <Note>
   一些提供商执行的工具需要账户特定的配置（例如
   Claude Agent Skills），可能无法通过 AI Gateway 工作。要使用这些工具，
-  你必须直接将自带密钥（BYOK）提供给提供商。
+  你必须直接将你自己的密钥 (BYOK) 提供给提供商。
 </Note>
 
 ### Gateway 工具
@@ -859,7 +869,7 @@ Perplexity Search 工具支持以下可选配置选项：
 
 - **searchRecencyFilter** _'day' | 'week' | 'month' | 'year'_
 
-  按相对时间段筛选搜索结果。对于始终获取最新结果很有用（例如，'week' 表示过去一周的结果）。
+  按相对时间段筛选搜索结果。对于始终获取最近结果很有用（例如，'week' 表示过去一周的结果）。
 
 该工具可与 `generateText` 和 `streamText` 一起使用：
 
@@ -973,7 +983,7 @@ Exa Search 工具支持以下可选配置选项：
 
 此初始 Gateway 集成支持 Exa 的普通 Search 模式和
 token 高效的内容控制。深度合成模式和生成的摘要
-有意暂未公开，因为它们与标准 Search 有单独的定价。
+有意暂不公开，因为它们与标准 Search 有单独的定价。
 
 #### Browserbase Search
 
@@ -1025,7 +1035,7 @@ Browserbase Search 工具支持以下可选配置选项：
 
 #### Browserbase Fetch
 
-Browserbase Fetch 工具使模型能够使用 [Browserbase 的 Fetch API](https://docs.browserbase.com/platform/fetch/overview)检索页面内容。对于不需要 JavaScript 执行或浏览器交互的页面，它是一个轻量级选项，并支持 raw、Markdown 和 schema 驱动的 JSON 输出。
+Browserbase Fetch 工具使模型能够使用 [Browserbase 的 Fetch API](https://docs.browserbase.com/platform/fetch/overview)检索页面内容。对于不需要 JavaScript 执行或浏览器交互的页面，它是一个轻量级选项，并支持原始、Markdown 和模式驱动的 JSON 输出。
 
 ```ts
 import { gateway, generateText } from 'ai';
@@ -1081,7 +1091,7 @@ Browserbase Fetch 工具支持以下可选配置选项：
 
 - **format** _'raw' | 'markdown' | 'json'_
 
-  获取内容的输出格式。`raw` 原样返回上游响应体，是默认值。`markdown` 将页面转换为 Markdown。`json` 执行结构化提取，需要 `schema`。
+  获取内容的输出格式。`raw` 原样返回上游响应体，是默认值。`markdown` 将页面转换为 Markdown。`json` 执行结构化提取并需要 `schema`。
 
 - **schema** _object_
 
@@ -1103,7 +1113,7 @@ Fetch API 不执行 JavaScript。对于交互式或 JavaScript 渲染的页面�
 
 #### Tako Search
 
-Tako Search 工具使模型能够在一次调用中使用 [Tako 的搜索 API](https://docs.tako.com/documentation/integrating-tako/search/overview)搜索网络和 Tako 精选的知识图谱。此工具由 AI Gateway 执行，并返回 token 高效的网络摘录，以及携带结构化数据、优质来源归属和可嵌入可视化的知识图谱结果。
+Tako Search 工具使模型能够使用 [Tako 的搜索 API](https://docs.tako.com/documentation/integrating-tako/search/overview)在单次调用中搜索网络和 Tako 精选的知识图谱。此工具由 AI Gateway 执行，并返回 token 高效的网络摘录，以及携带结构化数据、优质来源归属和可嵌入可视化的知识图谱结果。
 
 ```ts
 import { gateway, generateText } from 'ai';
@@ -1153,7 +1163,7 @@ console.log(result.text);
 
 Tako Search 工具支持以下可选配置选项：
 
-- **effort** _'fast' | 'instant' | 'deep'_ - 搜索力度。`'fast'` 是平衡的默认值，`'instant'` 倾向于缓存的低延迟结果，`'deep'` 以更高的成本和延迟通过重排序扩大检索范围。
+- **effort** _'fast' | 'instant' | 'deep'_ - 搜索 effort。`'fast'` 是平衡的默认值，`'instant'` 倾向于缓存的低延迟结果，`'deep'` 以更高的成本和延迟通过重排序扩大检索范围。
 - **sources** _object_ - 省略则同时搜索精选的 Tako 数据和实时网络。设置后，仅搜索存在的来源键。
 - **sources.web** _object_ - 配置网络结果：
   - **count** _number_ - 最大网络结果数，1-20。
@@ -1162,15 +1172,15 @@ Tako Search 工具支持以下可选配置选项：
   - **publishedAfter** / **publishedBefore** _string_ - 保留在此 `YYYY-MM-DD` 日期当天或之后，或当天或之前发布的结果。
   - **snippetMaxChars** _number_ - 每个结果文本摘录的字符上限。默认值为 4,000；最大值为 20,000。
   - **highlights** _boolean_ - 返回与查询相关的段落作为每个结果的摘要，而不是页面的开头文本。摘要可以包含多个由 `' ... '` 连接的段落，没有高亮的页面返回 `snippet: null`。在 AI Gateway 中默认值为 `true`。
-  - **includeContents** _boolean_ - 在 `content` 中内联每个页面提取的完整文本。**articleContentMaxChars** 限制它，默认值为 30,000 个字符（最大值为 1,000,000）。
+  - **includeContents** _boolean_ - 将每个页面提取的完整文本内联到 `content` 中。**articleContentMaxChars** 限制它，默认值为 30,000 个字符（最大值 1,000,000）。
 - **sources.data** _object_ - 配置数据结果：
   - **count** _number_ - 最大数据结果数，1-20。默认值为 5。
-  - **includeContents** _boolean_ - 在 `content.dataset` 中内联每张卡片的底层行，作为带类型、带单位标签的列。这会根据行数和数据集来源增加数据附加费。要估算成本，请先使用 `includeContents: false` 搜索并检查 `cards.content.export_pricing`。由于这适用于每个返回的卡片，请使用 `count` 和 `maxRows` 控制成本。
+  - **includeContents** _boolean_ - 将每张卡片的底层行内联到 `content.dataset` 中，作为带类型、带单位标签的列。这会根据行数和数据集来源增加数据附加费。要估算成本，请先使用 `includeContents: false` 搜索并检查 `cards.content.export_pricing`。由于这适用于每个返回的卡片，请使用 `count` 和 `maxRows` 控制成本。
   - **contentFormat** _'json_compact' | 'json_records' | 'csv' | 'card_json'_ - 内联卡片数据的序列化方式。默认值为 `'json_compact'`。
   - **maxRows** _number_ - 每个结果的行数上限。省略则使用 `cards.content.export_pricing` 中的允许量。每导出 1,000 行会收取数据附加费；较低的值可降低成本。
   - **nodeIds** _string[]_ - 要优先考虑的数据图谱节点 ID。最多 20 个。
   - **strict** _boolean_ - 仅返回匹配 `nodeIds` 的卡片。需要至少一个 `nodeIds` 值。
-- **location** _object_ - 最终用户的 `{ latitude, longitude }` 坐标，用于本地化结果。
+- **location** _object_ - 用于本地化结果的最终用户 `{ latitude, longitude }` 坐标。
 - **countryCode** _string_ - ISO 3166-1 alpha-2 国家代码，例如 `'US'`。
 - **locale** _string_ - BCP-47 区域设置，例如 `'en-US'`。
 - **timezone** _string_ - IANA 时区，例如 `'America/New_York'`。
@@ -1209,7 +1219,7 @@ for await (const part of result.stream) {
 
 #### Parallel Search
 
-Parallel Search 工具使模型能够使用 [Parallel AI 的搜索 API](https://docs.parallel.ai/api-reference/search-beta/search)搜索网络。此工具针对 LLM 消费进行了优化，返回来自网页的相关摘录，可以用单次调用替代多个关键词搜索。
+Parallel Search 工具使模型能够使用 [Parallel AI 的搜索 API](https://docs.parallel.ai/api-reference/search-beta/search)搜索网络。此工具针对 LLM 消费进行了优化，返回来自网页的相关摘录，可以用单次调用替代多次关键词搜索。
 
 ```ts
 import { gateway, generateText } from 'ai';
@@ -1259,8 +1269,8 @@ Parallel Search 工具支持以下可选配置选项：
 - **mode** _'one-shot' | 'agentic'_
 
   针对不同用例的模式预设：
-  - `'one-shot'` - 为单响应答案提供更全面结果和更长摘录（默认）
-  - `'agentic'` - 为多步骤智能体工作流优化的简洁、token 高效的结果
+  - `'one-shot'` - 用于单响应答案的综合结果，带有更长的摘录（默认）
+  - `'agentic'` - 针对多步智能体工作流优化的简洁、token 高效的结果
 
 - **maxResults** _number_
 
@@ -1334,7 +1344,7 @@ const { text } = await generateText({
 });
 ```
 
-这使你可以：
+这允许你：
 
 - 在分析中查看按最终用户细分的使用情况和成本
 - 使用标签按功能或用例筛选和分析支出
@@ -1364,11 +1374,11 @@ for (const row of report.results) {
 - **endDate** _string_ - `YYYY-MM-DD` 格式的结束日期（含，必填）
 - **groupBy** _string_ - 聚合维度：`'day'`（默认）、`'user'`、`'model'`、`'tag'`、`'provider'` 或 `'credential_type'`
 - **datePart** _string_ - 当 `groupBy` 为 `'day'` 时的时间粒度：`'day'` 或 `'hour'`
-- **userId** _string_ - 筛选特定用户
-- **model** _string_ - 筛选特定模型（例如 `'anthropic/claude-sonnet-5.5'`）
-- **provider** _string_ - 筛选特定提供商（例如 `'anthropic'`）
+- **userId** _string_ - 筛选到特定用户
+- **model** _string_ - 筛选到特定模型（例如 `'anthropic/claude-sonnet-5.5'`）
+- **provider** _string_ - 筛选到特定提供商（例如 `'anthropic'`）
 - **credentialType** _string_ - 按 `'byok'` 或 `'system'` 凭据筛选
-- **tags** _string[]_ - 筛选匹配这些标签的请求
+- **tags** _string[]_ - 筛选到匹配这些标签的请求
 
 `results` 中的每一行包含一个分组字段（与你的 `groupBy` 选择匹配）和指标：
 
@@ -1389,7 +1399,7 @@ import { gateway, streamText } from 'ai';
 
 // 1. Make requests with tags
 const result = streamText({
-  model: gateway('anthropic/claude-haiku-4.5'),
+  model: gateway('anthropic/claude-haiku-5.5'),
   prompt: 'Summarize this quarter's results',
   providerOptions: {
     gateway: {
@@ -1439,24 +1449,24 @@ const { text } = await generateText({
 
 - **order** _string[]_
 
-  指定路由请求时尝试提供商的顺序。gateway 将按指定顺序尝试提供商。如果某个提供商失败或不可用，它将移至列表中的下一个提供商。
+  指定路由请求时要尝试的提供商顺序。gateway 将按指定的顺序尝试提供商。如果某个提供商失败或不可用，它将移动到列表中的下一个提供商。
 
   示例：`order: ['bedrock', 'anthropic']` 将首先尝试 Amazon Bedrock，然后回退到 Anthropic。
 
 - **only** _string[]_
 
-  将路由限制为仅指定的提供商。设置后，gateway 永远不会路由到不在此列表中的提供商，即使它们本来可用。
+  将路由限制为仅指定的提供商。设置后，gateway 永远不会路由到不在此列表中的提供商，即使它们在其他情况下可用。
 
   示例：`only: ['anthropic', 'vertex']` 将仅允许路由到 Anthropic 或 Vertex AI。
 
 - **sort** _'cost' | 'ttft' | 'tps'_
 
-  在路由之前按性能或成本指标对可用提供商进行排序。gateway 将首先尝试得分最佳的提供商，并按排序顺序回退到其余提供商。如果未指定，提供商将使用 gateway 的默认系统排名进行排序。
+  在路由之前按性能或成本指标对可用提供商进行排序。gateway 将首先尝试得分最高的提供商，并按排序顺序回退到其余提供商。如果未指定，提供商将使用 gateway 的默认系统排名进行排序。
   - `'cost'` — 成本最低优先
   - `'ttft'` — 首个 token 时间最短优先
   - `'tps'` — 每秒 token 数最高优先
 
-  与 `order` 结合使用时，用户指定的提供商会提升到前面，而其余提供商则遵循排序顺序。
+  与 `order` 结合使用时，用户指定的提供商会提升到前面，而其余提供商遵循排序顺序。
 
   示例：`sort: 'ttft'` 将路由到首个 token 时间最快的提供商。
 
@@ -1464,13 +1474,13 @@ const { text } = await generateText({
 
 - **models** _string[] | [GatewayModelFallback, ...string[]]_
 
-  按尝试顺序指定回退模型。字符串条目保持其现有行为：当主模型失败或不可用时，gateway 会尝试它们。评估请求还可以在列表开头使用一个条件 `{ model, when }` 条目，以使用另一个模型重试成功但不确定的评估。只有第一个条目可以是条件性的，并且只允许一个条件条目。如果主模型失败，gateway 也会在其现有错误回退行为下推进到条件条目。条件条目在非评估请求上会被拒绝。
+  按尝试顺序指定回退模型。字符串条目保持其现有行为：当主模型失败或不可用时，gateway 会尝试它们。决策请求还可以在列表开头使用一个条件 `{ model, when }` 条目，以使用另一个模型重试成功但不确定的决策。只有第一个条目可以是条件性的，并且只允许一个条件条目。如果主模型失败，gateway 也会在其现有错误回退行为下推进到条件条目。条件条目在非决策请求上会被拒绝。
 
   示例：`models: ['openai/gpt-5.4-nano', 'google/gemini-3.8-flash']` 将在主模型失败时按顺序尝试回退模型。
 
   直接条件对 Choice 和 Score 问题使用 `{ question, confidenceBelow }`，对 Boolean 问题使用 `{ question, probabilityBetween: [minimum, maximum] }`。省略 `question` 以检查该类型的每个问题：`{ confidenceBelow: 0.6 }` 在任何 Choice 或 Score 答案低于 0.6 时匹配，而没有 Choice 或 Score 问题的请求永远不会匹配它。Boolean 概率是 P(true)，而不是对所选 Boolean 结果的置信度。边界是包含性的、有限的、有序的，并且在 `[0, 1]` 范围内。
 
-  使用 `{ any: [...] }`、`{ all: [...] }` 或 `{ atLeast: { count, conditions: [...] } }` 组合条件。每个条件列表包含 1 到 20 个条件。`atLeast.count` 必须是从 `1` 到条件数量的整数。条件最多嵌套 5 层。问题 ID 为 1 到 256 个字符，条件 `model` 不能为空。SDK 在发送请求之前检查这些边界，gateway 还会检查每个问题是否存在并且其类型与其条件匹配。字符串错误回退可以跟在条件条目之后。
+  使用 `{ any: [...] }`、`{ all: [...] }` 或 `{ atLeast: { count, conditions: [...] } }` 组合条件。每个条件列表包含 1 到 20 个条件。`atLeast.count` 必须是从 `1` 到条件数量的整数。条件最多嵌套 5 层。问题 ID 为 1 到 256 个字符，条件 `model` 不能为空。SDK 在发送请求之前检查这些边界，gateway 还会检查每个问题是否存在以及其类型是否与其条件匹配。字符串错误回退可以跟在条件条目之后。
 
 - **user** _string_
 
@@ -1486,11 +1496,11 @@ const { text } = await generateText({
 
 - **byok** _Record&lt;string, Array&lt;Record&lt;string, unknown&gt;&gt;&gt;_
 
-  用于此请求的请求范围 BYOK（Bring Your Own Key）凭据。提供后，不会考虑 gateway 系统中配置的任何缓存 BYOK 凭据。如果提供的凭据失败，请求仍可能回退到使用系统凭据。
+  用于此请求的请求范围 BYOK（Bring Your Own Key）凭据。提供后，不考虑 gateway 系统中配置的任何缓存 BYOK 凭据。如果提供的凭据失败，请求仍可能回退到使用系统凭据。
 
-  每个提供商可以有多个凭据（按顺序尝试）。该结构是一个记录，其中键是提供商 slug，值是凭据对象数组。
+  每个提供商可以有多个凭据（按顺序尝试）。结构是一个 record，其中键是提供商 slug，值是凭据对象数组。
 
-  每个凭据可以可选地包含一个 `modelMappings` 数组，用于将 AI Gateway 模型 slug 映射到你的部署名称（例如，自定义 Azure 部署名称）。如果 BYOK 请求失败，gateway 会使用默认模型名称回退到系统凭据。
+  每个凭据可以可选地包含 `modelMappings` 数组，以将 AI Gateway 模型 slug 映射到你的部署名称（例如，自定义 Azure 部署名称）。如果 BYOK 请求失败，gateway 会使用默认模型名称回退到系统凭据。
 
   示例：
   - 单个提供商：`byok: { 'anthropic': [{ apiKey: 'sk-ant-...' }] }`
@@ -1500,7 +1510,7 @@ const { text } = await generateText({
 
 - **zeroDataRetention** _boolean_
 
-  将路由限制为与 Vercel 就 AI Gateway 签订零数据保留协议的提供商。默认情况下会跳过 BYOK 凭据，因为你的提供商协议与 Vercel 的不同。当此筛选器开启时，AI Gateway 仅路由到 Vercel 就该模型签订 ZDR 协议的提供商。如果你有标记为 ZDR 的 BYOK 密钥，将首先尝试这些密钥，然后 AI Gateway 回退到其系统凭据。你对该标记的准确性负责。适用于账户范围和请求级 ZDR。如果没有可用的符合 ZDR 条件的凭据，请求将失败。请求级 ZDR 仅适用于 Vercel Pro 和 Enterprise 计划。
+  将路由限制为与 Vercel 就 AI Gateway 签订零数据保留协议的提供商。默认情况下会跳过 BYOK 凭据，因为你与提供商的协议与 Vercel 的不同。当此筛选器开启时，AI Gateway 仅路由到 Vercel 就该模型签订 ZDR 协议的提供商。如果你有标记为 ZDR 的 BYOK 密钥，将首先尝试这些密钥，然后 AI Gateway 回退到其系统凭据。你对该标记的准确性负责。适用于账户范围和请求级 ZDR。如果没有可用的符合 ZDR 条件的凭据，请求将失败。请求级 ZDR 仅适用于 Vercel Pro 和 Enterprise 计划。
 
 - **disallowPromptTraining** _boolean_
 
@@ -1508,7 +1518,7 @@ const { text } = await generateText({
 
 - **quotaEntityId** _string_
 
-  用于跟踪配额的实体的唯一标识符。用于配额管理和执行目的。
+  针对其跟踪配额的实体的唯一标识符。用于配额管理和执行目的。
 
 - **has** _Array&lt;'implicit-caching' | 'reasoning' | 'structured-output' | 'tool-use' | 'vision' | `quantization:${string}` | `!quantization:${string}`&gt;_
 
@@ -1517,17 +1527,17 @@ const { text } = await generateText({
   支持的能力：
   - `'implicit-caching'` — 执行自动（隐式）提示词缓存的模型。
   - `'reasoning'` — 支持推理的模型。
-  - `'structured-output'` — 支持 schema 约束输出的模型。
+  - `'structured-output'` — 支持模式约束输出的模型。
   - `'tool-use'` — 支持工具调用的模型。
   - `'vision'` — 接受图像输入的模型。
 
-  权重格式条件根据服务提供商记录的权重格式进行路由：`'quantization:fp8'` 要求提供商提供 fp8 权重，而 `'!quantization:fp8'` 排除 fp8 提供商。否定条件也会匹配未记录权重格式的提供商，因此在目录填充期间排除仍然可用。
+  权重格式条件根据服务提供商记录的权重格式进行路由：`'quantization:fp8'` 要求提供 fp8 权重的提供商，而 `'!quantization:fp8'` 排除 fp8 提供商。否定条件也会匹配未记录权重格式的提供商，因此在目录填充期间排除仍然可用。
 
   示例：`has: ['implicit-caching']` 将仅路由到支持隐式缓存的模型。示例：`has: ['vision']` 将仅路由到接受图像输入的模型。示例：`has: ['tool-use']` 将仅路由到支持工具调用的模型。示例：`has: ['!quantization:fp8']` 将仅路由到不提供 fp8 权重的提供商。
 
 - **providerTimeouts** _object_
 
-  BYOK 凭据的每个提供商超时（毫秒）。控制在回退到下一个可用提供商之前等待提供商开始响应的时长。
+  BYOK 凭据的每个提供商超时（毫秒）。控制等待提供商开始响应的时间，然后回退到下一个可用提供商。
 
   示例：`providerTimeouts: { byok: { openai: 5000, anthropic: 2000 } }`
 
@@ -1536,10 +1546,10 @@ const { text } = await generateText({
 - **serviceTier** _'flex' | 'priority'_
 
   统一的服务层级意图。gateway 会将其转换为每个提供商期望的
-  每提供商选项，并覆盖在每提供商选项中
+  每个提供商选项，并覆盖在每提供商选项中
   也设置的任何层级。留空以使用提供商
-  默认值。有关层级语义、模型可用性以及每个提供商上的
-  优雅降级行为，请参阅 [OpenAI](/providers/ai-sdk-providers/openai)、
+  默认值。有关各提供商的层级语义、模型可用性和优雅
+  降级行为，请参阅 [OpenAI](/providers/ai-sdk-providers/openai)、
   [Google Generative AI](/providers/ai-sdk-providers/google)
   和 [Google Vertex AI](/providers/ai-sdk-providers/google-vertex)
   提供商文档。
@@ -1602,15 +1612,15 @@ const { text } = await generateText({
 // 4. Return the result from the first model that succeeds
 ```
 
-#### 条件评估回退示例
+#### 条件决策回退示例
 
-条件模型条目仅适用于评估请求。将
-配置保留在 `providerOptions.gateway.models` 下。`experimental_evaluate`
+条件模型条目仅适用于决策请求。将
+配置保留在 `providerOptions.gateway.models` 下。`experimental_decide`
 没有顶层回退选项。
 
 ```ts
 import type { GatewayProviderOptions } from '@ai-sdk/gateway';
-import { experimental_evaluate } from 'ai';
+import { experimental_decide } from 'ai';
 
 const questions = {
   department: {
@@ -1624,7 +1634,7 @@ const questions = {
   },
 } as const;
 
-const result = await experimental_evaluate({
+const result = await experimental_decide({
   model: 'typesafe-ai/jev',
   state: 'I was charged twice. Please refund the duplicate.',
   questions,
@@ -1653,7 +1663,7 @@ console.log(result.response.modelId);
 console.log(JSON.stringify(result.providerMetadata?.gateway?.routing, null, 2));
 ```
 
-当条件匹配时，`result.response.modelId` 会指明回退模型，
+当条件匹配时，`result.response.modelId` 会指出回退模型，
 并且 `providerMetadata.gateway.routing.modelAttempts` 列出主尝试和
 回退尝试。每个阶段的成功尝试都带有自己的
 `generationId`、`usage` 和成本字段，并且第一个回退尝试在 `triggeredBy` 中列出
@@ -1661,7 +1671,7 @@ console.log(JSON.stringify(result.providerMetadata?.gateway?.routing, null, 2));
 
 #### 零数据保留示例
 
-将 `zeroDataRetention` 设置为 true，以将请求路由到与 Vercel 就 AI Gateway 签订零数据保留协议的提供商。默认情况下会跳过 BYOK 凭据，因为你的提供商协议与 Vercel 的不同。当此筛选器开启时，AI Gateway 仅路由到 Vercel 就该模型签订 ZDR 协议的提供商。如果你有标记为 ZDR 的 BYOK 密钥，将首先尝试这些密钥，然后 AI Gateway 回退到其系统凭据。你对该标记的准确性负责。适用于账户范围和请求级 ZDR。如果没有可用的符合 ZDR 条件的凭据，请求将失败。当 `zeroDataRetention` 为 `false` 或未指定时，不强制执行路由限制。请求级 ZDR 仅适用于 Vercel Pro 和 Enterprise 计划。
+将 `zeroDataRetention` 设置为 true，以将请求路由到与 Vercel 就 AI Gateway 签订零数据保留协议的提供商。默认情况下会跳过 BYOK 凭据，因为你与提供商的协议与 Vercel 的不同。当此筛选器开启时，AI Gateway 仅路由到 Vercel 就该模型签订 ZDR 协议的提供商。如果你有标记为 ZDR 的 BYOK 密钥，将首先尝试这些密钥，然后 AI Gateway 回退到其系统凭据。你对该标记的准确性负责。适用于账户范围和请求级 ZDR。如果没有可用的符合 ZDR 条件的凭据，请求将失败。当 `zeroDataRetention` 为 `false` 或未指定时，不强制执行路由限制。请求级 ZDR 仅适用于 Vercel Pro 和 Enterprise 计划。
 
 ```ts
 import type { GatewayProviderOptions } from '@ai-sdk/gateway';
@@ -1718,7 +1728,7 @@ const { text } = await generateText({
 
 #### 按模型能力筛选
 
-设置 `has` 以将路由限制为具有指定能力的提供商模型。这适用于 BYOK 和系统凭据，因为能力是模型的属性而不是凭据的属性。`'implicit-caching'` 将路由限制为执行自动提示词缓存的模型，`'vision'` 将路由限制为接受图像输入的模型，`'reasoning'` 将路由限制为支持推理的模型，`'structured-output'` 将路由限制为支持 schema 约束输出的模型，`'tool-use'` 将路由限制为支持工具调用的模型。权重格式条件（`'quantization:fp8'` 表示要求，`'!quantization:fp8'` 表示排除）根据服务提供商记录的权重格式限制路由。如果所请求模型没有提供商模型满足这些能力，请求将失败。
+设置 `has` 以将路由限制为具有指定能力的提供商模型。这适用于 BYOK 和系统凭据，因为能力是模型的属性而不是凭据的属性。`'implicit-caching'` 将路由限制为执行自动提示词缓存的模型，`'vision'` 将路由限制为接受图像输入的模型，`'reasoning'` 将路由限制为支持推理的模型，`'structured-output'` 将路由限制为支持模式约束输出的模型，`'tool-use'` 将路由限制为支持工具调用的模型。权重格式条件（`'quantization:fp8'` 要求，`'!quantization:fp8'` 排除）根据服务提供商记录的权重格式限制路由。如果所请求模型没有提供商模型满足这些能力，请求将失败。
 
 ```ts
 import type { GatewayProviderOptions } from '@ai-sdk/gateway';
@@ -1801,5 +1811,5 @@ AI Gateway 支持路由到 20 多个提供商。
 
 模型能力取决于你使用的特定提供商和模型。有关详细的能力信息，请参阅：
 
-- [AI Gateway 提供商选项](https://vercel.com/docs/ai-gateway/provider-options#available-providers)以了解可用提供商概览
-- 各个 [AI SDK 提供商页面](/providers/ai-sdk-providers)以了解特定模型能力和功能
+- [AI Gateway 提供商选项](https://vercel.com/docs/ai-gateway/provider-options#available-providers)以了解可用提供商的概览
+- 各个 [AI SDK 提供商页面](/providers/ai-sdk-providers)以了解特定模型的能力和特性

@@ -1,17 +1,17 @@
 ---
 title: "Moonshot AI"
-description: "了解如何将 Moonshot AI 模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用 Moonshot AI 模型。"
 ---
 
 # Moonshot AI 提供商
 
-[Moonshot AI](https://www.moonshot.ai) 提供商通过 Moonshot API 提供对强大语言模型的访问，包括具有推理能力的 Kimi 系列模型。
+[Moonshot AI](https://www.moonshot.ai) 提供商通过 Moonshot API 提供对强大语言模型的访问，包括具备推理能力的 Kimi 系列模型。
 
-API 密钥可以从 [Kimi API 平台](https://platform.kimi.ai/console/api-keys) 获取。
+API 密钥可从 [Kimi API 平台](https://platform.kimi.ai/console/api-keys)获取。
 
 ## 设置
 
-Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。你可以使用以下命令安装它：
+Moonshot AI 提供商通过 `@ai-sdk/moonshotai` 模块提供。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/moonshotai" />
 
@@ -23,7 +23,7 @@ Moonshot AI 提供商可通过 `@ai-sdk/moonshotai` 模块获得。你可以使�
 import { moonshotai } from '@ai-sdk/moonshotai';
 ```
 
-对于自定义配置，你可以导入 `createMoonshotAI` 并使用你的设置创建提供商实例：
+如需自定义配置，你可以导入 `createMoonshotAI` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createMoonshotAI } from '@ai-sdk/moonshotai';
@@ -42,12 +42,12 @@ const moonshotai = createMoonshotAI({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。它默认为
+  通过 `Authorization` 请求头发送的 API 密钥。默认使用
   `MOONSHOT_API_KEY` 环境变量
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头
+  要包含在请求中的自定义请求头
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -63,7 +63,7 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: moonshotai('kimi-k3'),
-  prompt: '写一份供 4 人食用的素食千层面食谱。',
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
 
@@ -71,40 +71,40 @@ const { text } = await generateText({
 
 ```ts
 const model = moonshotai.chatModel('kimi-k3');
-// 或
+// or
 const model = moonshotai.languageModel('kimi-k3');
 ```
 
-Moonshot AI 语言模型可以在 `streamText` 函数中使用
+Moonshot AI 语言模型可用于 `streamText` 函数
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 Moonshot V1 模型支持标准的 `temperature`、`topP`、
 `presencePenalty` 和 `frequencyPenalty` 设置。Kimi 模型使用固定的
-采样参数；提供商为 Kimi 请求省略这些设置，并在提供这些设置时返回
-不支持设置警告。
+采样参数；提供商会在 Kimi 请求中省略这些设置，并在提供这些设置时
+返回不支持设置的警告。
 
 Kimi K3 支持 `toolChoice: 'required'`。Kimi K2.6 和 Kimi K2.7 Code
-模型拒绝该设置，因此提供商省略它并为这些模型 ID 返回不支持
-警告。其他工具选择模式将原样传递。
+模型拒绝该设置，因此提供商会对这些模型 ID 省略该设置并返回不支持
+警告。其他工具选择模式会原样传递。
 
 #### 结构化输出
 
-Kimi K 模型以及官方的
-Moonshot V1 文本、自动和视觉模型已启用原生结构化输出。
+Kimi K 模型以及官方 Moonshot V1 文本、auto 和视觉模型已启用原生
+结构化输出。
 
-提供商将模式规范化为 Moonshot 支持的 JSON Schema 子集，并
-默认启用严格模式验证。
+提供商会将 schema 规范化为 Moonshot 支持的 JSON Schema 子集，并
+默认启用严格 schema 验证。
 
-对于未知的自定义模型 ID，对象生成回退到 JSON 模式，而不是
-模式约束解码。
+对于未知的自定义模型 ID，对象生成会回退到 JSON 模式，而不是
+schema 约束解码。
 
-为了获得最佳可靠性，强烈建议在提示词中包含你的模式要求，除了通过 `Output` 传递模式之外。
+为了获得最佳可靠性，强烈建议除了通过 `Output` 传递 schema 之外，
+还在提示词中包含你的 schema 要求。
 
 ### 消息名称
 
-Moonshot AI 支持在系统、用户和助手
-消息上使用可选的参与者名称。在每个应包含
-名称的消息上设置 `providerOptions.moonshotai.name`：
+Moonshot AI 支持在 system、user 和 assistant 消息上使用可选的参与者
+名称。在每条应包含名称的消息上设置 `providerOptions.moonshotai.name`：
 
 ```ts
 import {
@@ -118,7 +118,7 @@ const { text } = await generateText({
   messages: [
     {
       role: 'user',
-      content: '为我的社区读书俱乐部建议一个名字。',
+      content: 'Suggest a name for my neighborhood book club.',
       providerOptions: {
         moonshotai: {
           name: 'organizer',
@@ -129,15 +129,15 @@ const { text } = await generateText({
 });
 ```
 
-相同的选项也适用于 `streamText`。未设置时名称会被省略。提供商
-忽略工具消息上的名称并返回不支持警告。
-避免在消息名称中包含不必要的个人或身份信息。
+同样的选项也适用于 `streamText`。未设置时会省略名称。提供商
+会忽略工具消息上的名称并返回不支持警告。避免在消息名称中包含
+不必要的个人或身份识别信息。
 
 ### 部分模式
 
-Moonshot AI 的 [部分模式](https://platform.moonshot.ai/docs/api/partial)
-继续最终助手消息的内容。在该
-助手消息的提供商选项中设置 `partial: true`：
+Moonshot AI 的[部分模式](https://platform.moonshot.ai/docs/api/partial)
+会续写最终 assistant 消息的内容。在该 assistant 消息的提供商选项中
+设置 `partial: true`：
 
 ```ts
 import {
@@ -146,14 +146,14 @@ import {
 } from '@ai-sdk/moonshotai';
 import { generateText } from 'ai';
 
-const prefix = '天空是';
+const prefix = 'The sky is';
 
 const { text } = await generateText({
   model: moonshotai('kimi-k3'),
   messages: [
     {
       role: 'user',
-      content: '写一句关于天空颜色的短句。',
+      content: 'Write one short sentence about the color of the sky.',
     },
     {
       role: 'assistant',
@@ -170,21 +170,22 @@ const { text } = await generateText({
 const completeResponse = prefix + text;
 ```
 
-部分消息必须是提示词中的最终助手消息。Moonshot
-仅返回续写内容，因此当你需要完整响应时，请连接前缀和生成的文本。
+部分消息必须是提示词中的最后一条 assistant 消息。Moonshot
+只返回续写内容，因此当你需要完整响应时，请将前缀与生成的文本
+拼接起来。
 
 <Note>
-  部分模式不能与 Moonshot 的 `json_object` 响应格式结合使用。
-  提供商在发送请求前会拒绝该组合。受支持的
-  `json_schema` 响应仍然可用，但结构化输出解析
-  仅验证返回的续写内容。
+  部分模式不能与 Moonshot 的 `json_object` 响应格式组合使用。
+  提供商会在发送请求前拒绝该组合。受支持的 `json_schema` 响应
+  仍然可用，但结构化输出解析仅验证返回的续写内容。
 </Note>
 
 ### Kimi K3 动态工具加载
 
-Kimi K3 可以在对话中的任意位置加载完整的函数工具定义。将 `tools` 添加到空系统
-消息的 Moonshot 提供商选项中。提供商发送 `{ role: 'system', tools: [...] }`，不带
-`content` 字段，并应用与顶级工具相同的 Moonshot 风格 JSON Schema 规范化。
+Kimi K3 可以在对话中的任意位置加载完整的函数工具定义。将 `tools`
+添加到空 system 消息的 Moonshot 提供商选项中。提供商发送
+`{ role: 'system', tools: [...] }`，不带 `content` 字段，并应用与
+顶层工具相同的 Moonshot Flavored JSON Schema 规范化。
 
 ```ts
 import {
@@ -197,8 +198,8 @@ const result = await generateText({
   model: moonshotai('kimi-k3'),
   allowSystemInMessages: true,
   messages: [
-    { role: 'user', content: '帮我准备一次旅行。' },
-    { role: 'assistant', content: '我可以帮你。' },
+    { role: 'user', content: 'Help me prepare for a trip.' },
+    { role: 'assistant', content: 'I can help with that.' },
     {
       role: 'system',
       content: '',
@@ -208,7 +209,7 @@ const result = await generateText({
             {
               type: 'function',
               name: 'get_weather',
-              description: '获取某个城市的当前天气',
+              description: 'Get the current weather for a city',
               inputSchema: {
                 type: 'object',
                 properties: { city: { type: 'string' } },
@@ -221,29 +222,27 @@ const result = await generateText({
         } satisfies MoonshotAISystemMessageProviderOptions,
       },
     },
-    { role: 'user', content: '旧金山的天气怎么样？' },
+    { role: 'user', content: 'What is the weather in San Francisco?' },
   ],
 });
 ```
 
-每个条目必须包含其完整的函数定义。顶级工具和
-动态加载的工具可以在同一请求中使用。已知不支持的
-官方模型会省略动态消息并返回不支持警告；
-自定义模型 ID 会保留它以保持向前兼容。
+每个条目都必须包含其完整的函数定义。顶层工具和动态加载的工具
+可以在同一请求中使用。已知不支持的官方模型会省略动态消息并返回
+不支持警告；自定义模型 ID 会保留该消息以保持向前兼容。
 
 <Note>
-  将动态系统消息保存在受信任的服务器端状态中。工具名称、
-  描述和模式会发送给 Moonshot 并消耗上下文。动态
-  声明是请求本地的，因此在后续请求中保留早期声明，同时
-  这些工具应保持可用。追加消息也比重写早期声明
-  更好地保留提示词缓存前缀。
+  请将动态 system 消息保存在受信任的服务端状态中。工具名称、
+  描述和 schema 会发送给 Moonshot 并消耗上下文。动态声明是请求
+  局部的，因此当这些工具应保持可用时，请在后续请求中保留先前的
+  声明。追加消息也比重写先前的声明能更好地保留提示词缓存前缀。
 </Note>
 
 ### 推理模型
 
-Kimi K3 始终进行推理，并支持 `low`、`high` 和 `max` 推理努力。
-默认值为 `max`。你可以通过提供商选项或
-通用的 `reasoning` 设置来配置努力程度：
+Kimi K3 始终进行推理，并支持 `low`、`high` 和 `max` 推理强度。
+默认值为 `max`。你可以通过提供商选项或通用的 `reasoning` 设置来
+配置强度：
 
 ```ts
 import {
@@ -259,17 +258,16 @@ const { text, reasoningText } = await generateText({
       reasoningEffort: 'high',
     } satisfies MoonshotAILanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个 "r"？',
+  prompt: 'How many "r"s are in the word "strawberry"?',
 });
 
 console.log(reasoningText);
 console.log(text);
 ```
 
-Kimi K2.5 和 K2.6 可以启用或禁用思考。Kimi K2.7 始终
-启用思考并保留推理。在多轮
-Kimi K2.7 对话中保留推理历史。推理输出通过标准的
-AI SDK 推理部分公开。
+Kimi K2.5 和 K2.6 可以启用或禁用思考。Kimi K2.7 始终启用思考
+并保留推理。在多轮 Kimi K2.7 对话中保留推理历史。推理输出通过
+标准 AI SDK 推理部分暴露。
 
 ```ts
 import {
@@ -286,7 +284,7 @@ const result = streamText({
       reasoningHistory: 'preserved',
     } satisfies MoonshotAILanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个 "r"？',
+  prompt: 'How many "r"s are in the word "strawberry"?',
 });
 
 for await (const part of result.fullStream) {
@@ -298,14 +296,15 @@ for await (const part of result.fullStream) {
 }
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参见
+[AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 对数概率
 
-Moonshot AI 可以为聊天补全返回令牌对数概率。设置
-`logprobs` 以请求令牌概率，或设置 `topLogprobs` 以请求
-每个令牌位置最可能的替代项。设置 `topLogprobs`
-会自动启用 `logprobs`。
+Moonshot AI 可以为 Chat Completions 返回 token 对数概率。设置
+`logprobs` 以请求 token 概率，或设置 `topLogprobs` 以请求每个
+token 位置上最可能的备选项。设置 `topLogprobs` 会自动启用
+`logprobs`。
 
 ```ts
 import {
@@ -316,7 +315,7 @@ import { generateText } from 'ai';
 
 const result = await generateText({
   model: moonshotai('moonshot-v1-8k'),
-  prompt: '用一个词回复，表示快乐。',
+  prompt: 'Reply with one word that means happy.',
   providerOptions: {
     moonshotai: {
       topLogprobs: 3,
@@ -329,25 +328,23 @@ console.log(result.providerMetadata?.moonshotai?.logprobs);
 ```
 
 对于 `generateText`，对数概率可在
-`providerMetadata.moonshotai.logprobs` 处获得。对于 `streamText`，累积的对数
-概率包含在最终完成部分中，位于相同的元数据
-路径下。
+`providerMetadata.moonshotai.logprobs` 处获取。对于 `streamText`，
+累积的对数概率会包含在最终 finish 部分中，位于相同的元数据路径下。
 
-Moonshot 记录了请求选项和 OpenAI Chat Completions
-兼容性，但未单独指定对数概率响应
-模式。因此，提供商保留 OpenAI 兼容的 `content`
-条目，包括每个令牌的 `logprob`、可空的 `bytes` 和
+Moonshot 记录了请求选项和 OpenAI Chat Completions 兼容性，但
+没有单独指定对数概率响应 schema。因此提供商保留 OpenAI 兼容的
+`content` 条目，包括每个 token 的 `logprob`、可为空的 `bytes` 和
 `top_logprobs`。
 
 <Note>
-  令牌概率和替代项会显著增加响应大小。
-  仅在需要时请求它们，并避免转发或持久记录提供商
-  元数据，除非你的应用程序需要它。
+  Token 概率和备选项可能会显著增加响应大小。仅在需要时请求它们，
+  并且除非你的应用程序需要，否则避免转发或持久记录提供商元数据。
 </Note>
 
 ### 视频输入
 
-Kimi K3、Kimi K2.7 Code、Kimi K2.6 和 Kimi K2.5 支持视频输入。将视频作为带有视频媒体类型的 `file` 内容部分传递：
+Kimi K3、Kimi K2.7 Code、Kimi K2.6 和 Kimi K2.5 支持视频输入。
+将视频作为带有视频媒体类型的 `file` 内容部分传递：
 
 ```ts
 import { moonshotai } from '@ai-sdk/moonshotai';
@@ -360,7 +357,7 @@ const { text } = await generateText({
     {
       role: 'user',
       content: [
-        { type: 'text', text: '总结这个视频中发生的事情。' },
+        { type: 'text', text: 'Summarize what happens in this video.' },
         {
           type: 'file',
           data: fs.readFileSync('./video.mp4'),
@@ -374,7 +371,8 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-你也可以传递 URL。由于 Moonshot AI 不获取外部 URL，AI SDK 会下载视频并在发送前将其内联为 base64：
+你也可以传递 URL。由于 Moonshot AI 不会获取外部 URL，AI SDK 会
+在发送前下载视频并将其以内联 base64 形式嵌入：
 
 ```ts
 {
@@ -388,21 +386,21 @@ console.log(text);
   支持的图像媒体类型为 `image/jpeg`、`image/png`、`image/gif`、
   `image/webp`、`image/bmp`、`image/heic` 和 `image/heif`。支持的视频
   媒体类型为 `video/mp4`、`video/mpeg`、`video/mov`、`video/avi`、
-  `video/x-flv`、`video/mpg`、`video/webm`、`video/wmv` 和 `video/3gpp`。其他
-  图像和视频媒体类型会在发送请求前被拒绝。
+  `video/x-flv`、`video/mpg`、`video/webm`、`video/wmv` 和 `video/3gpp`。
+  其他图像和视频媒体类型会在发送请求前被拒绝。
 </Note>
 
 <Note>
-  Moonshot AI 建议视频最高 1080p。对于较大的视频，或你在许多请求中重复使用的视频，
-  请改用 [Moonshot Files
-  API](https://platform.kimi.ai/docs/api/files) 上传。Moonshot AI 聊天补全不支持音频和 PDF 输入。
+  Moonshot AI 建议视频最高为 1080p。对于更大的视频，或在多个请求中
+  重复使用的视频，请改用 [Moonshot Files
+  API](https://platform.kimi.ai/docs/api/files) 上传。Moonshot AI
+  chat completions 不支持音频和 PDF 输入。
 </Note>
 
 ### 文件引用和文本文件
 
-通过 Moonshot Files API 上传的图像和视频可以作为
-提供商引用传递。将上传的文件 ID 前缀为 `ms://`，并使用图像
-或视频媒体类型：
+通过 Moonshot Files API 上传的图像和视频可以作为提供商引用传递。
+在上传的文件 ID 前加上 `ms://` 前缀，并使用图像或视频媒体类型：
 
 ```ts
 {
@@ -417,14 +415,14 @@ console.log(text);
 }
 ```
 
-内联文本文件数据作为原生文本内容部分发送：
+内联文本文件数据会作为原生文本内容部分发送：
 
 ```ts
 {
   type: 'file',
   data: {
     type: 'text',
-    text: '文档内容',
+    text: 'Document contents',
   },
   mediaType: 'text/plain',
 }
@@ -432,7 +430,8 @@ console.log(text);
 
 ### 预测输出
 
-当预期响应的大部分内容已知时，你可以提供静态预测内容。Moonshot AI 可以使用预测来加速响应，同时仍然生成任何更改的内容：
+当预期响应的大部分内容已知时，你可以提供静态预测内容。Moonshot AI
+可以使用该预测来加速响应，同时仍生成任何更改的内容：
 
 ```ts
 import {
@@ -451,7 +450,7 @@ const result = streamText({
     {
       role: 'user',
       content:
-        '将函数改为说 "Welcome" 而不是 "Hello"。仅回复更新后的代码。',
+        'Change the function to say "Welcome" instead of "Hello". Respond only with the updated code.',
     },
     { role: 'user', content: source },
   ],
@@ -470,49 +469,51 @@ for await (const textPart of result.textStream) {
 }
 ```
 
-`content` 也可以是文本部分的数组：
+`content` 也可以是文本部分数组：
 
 ```ts
 prediction: {
   type: 'content',
   content: [
-    { type: 'text', text: '第一个已知部分' },
-    { type: 'text', text: '第二个已知部分' },
+    { type: 'text', text: 'First known section' },
+    { type: 'text', text: 'Second known section' },
   ],
 }
 ```
 
 <Note>
-  预测内容作为请求的一部分发送给 Moonshot AI。除非你打算与提供商共享，否则避免包含敏感或专有文本。
+  预测内容会作为请求的一部分发送给 Moonshot AI。除非你打算与提供商
+  共享，否则避免包含敏感或专有文本。
 </Note>
 
 ### 提供商选项
 
-以下可选的提供商选项可用于 Moonshot AI 语言模型：
+以下可选提供商选项适用于 Moonshot AI 语言模型：
 
 - **strictJsonSchema** _boolean_
 
-  是否对结构化输出使用严格的 JSON 模式验证。默认值
-  为 `true`。
+  是否对结构化输出使用严格 JSON schema 验证。默认为
+  `true`。
 
 - **logprobs** _boolean_
 
-  是否返回生成令牌的对数概率。结果可在
-  `providerMetadata.moonshotai.logprobs` 中获得。
+  是否返回生成 token 的对数概率。结果可在
+  `providerMetadata.moonshotai.logprobs` 中获取。
 
 - **topLogprobs** _number_
 
-  在每个令牌位置返回的最可能令牌数。接受
-  从 `0` 到 `20` 的整数值，并自动启用 `logprobs`。
+  每个 token 位置返回的最可能 token 数量。接受从 `0` 到 `20` 的
+  整数值，并自动启用 `logprobs`。
 
 - **reasoningEffort** _'low' | 'high' | 'max'_
 
-  Kimi K3 的推理努力。默认为 `'max'`。你也可以使用
-  通用的 `reasoning` 设置。
+  Kimi K3 的推理强度。默认为 `'max'`。你也可以使用通用的
+  `reasoning` 设置。可移植的 `reasoning: 'max'` 会直接发送；
+  `minimal` 映射为 `low`，而 `medium` 和 `high` 映射为 `high`。
 
 - **prediction** _&#123; type: 'content'; content: string | Array&lt;&#123; type: 'text'; text: string &#125;&gt; &#125;_
 
-  提供静态预测输出，可以在响应大部分已知时加速请求。
+  提供静态预测输出，可在响应大部分内容已知时加速请求。
 
 - **thinking** _object_
 
@@ -525,53 +526,53 @@ prediction: {
   - **budgetTokens** _number_
 
     已弃用。Moonshot Chat Completions 不支持思考预算。
-    提供商省略此值并返回警告。为了向后兼容，它仍然被接受。
+    提供商会省略此值并返回警告。为向后兼容仍接受该值。
 
 - **reasoningHistory** _'disabled' | 'interleaved' | 'preserved'_
 
-  控制多轮对话中的保留推理行为：
-  - `'disabled'` 和 `'interleaved'` 为兼容性而保留。它们
-    不会改变请求，因此模型的服务器默认行为适用。
-  - `'preserved'` 映射到 Kimi K2.6 的 `thinking.keep: 'all'`。Kimi K2.7 和
-    K3 默认保留推理。
+  控制多轮对话中保留推理的行为：
+  - `'disabled'` 和 `'interleaved'` 为兼容性而保留。它们不会
+    更改请求，因此应用模型的服务器默认行为。
+  - `'preserved'` 对于 Kimi K2.6 映射为 `thinking.keep: 'all'`。
+    Kimi K2.7 和 K3 默认保留推理。
 
-### 聊天响应元数据
+### Chat 响应元数据
 
-Moonshot AI 在
-`providerMetadata.moonshotai` 中保留特定于提供商的响应字段，用于生成和流式响应：
+Moonshot AI 在 `providerMetadata.moonshotai` 中为生成和流式响应
+保留提供商特定的响应字段：
 
 - `responseObject`：`chat.completion` 或 `chat.completion.chunk`
-- `choiceIndex`：选定的响应选择索引
+- `choiceIndex`：所选的响应选项索引
 - `messageRole`：响应消息角色（如果提供）
 - `toolCallTypes`：每个返回调用的工具调用类型
 
-这些字段保留在提供商元数据中，因为它们特定于
-Moonshot 的 Chat Completions 响应，而不是共享的 AI SDK 结果字段。
+这些字段保留在提供商元数据中，因为它们是 Moonshot Chat Completions
+响应特有的，而不是共享的 AI SDK 结果字段。
 
 ## 模型能力
 
-Moonshot V1 系列和 Kimi K2.5 对新注册用户不可用，
-并计划于 2026 年 8 月 31 日全面下线。它们仍然列出，
-因为它们仍然是 Chat Completions API 模型表面的一部分，
-但新应用程序应使用 Kimi K3、Kimi K2.7 Code 或 Kimi K2.6。
+Moonshot V1 系列和 Kimi K2.5 对新注册用户不可用，并计划于
+2026 年 8 月 31 日全面下线。它们仍然列出，因为它们仍是 Chat
+Completions API 模型范围的一部分，但新应用程序应使用 Kimi K3、
+Kimi K2.7 Code 或 Kimi K2.6。
 
-| 模型                               | 图像输入 | 视频输入 | 对象生成 | 工具使用 | 工具流式传输 |
-| --------------------------------- | ----------- | ----------- | ----------------- | ---------- | -------------- |
-| `moonshot-v1-auto`                | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `moonshot-v1-8k`                  | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `moonshot-v1-32k`                 | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `moonshot-v1-128k`                | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `moonshot-v1-8k-vision-preview`   | <Check />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `moonshot-v1-32k-vision-preview`  | <Check />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `moonshot-v1-128k-vision-preview` | <Check />   | <Cross />   | <Check />         | <Check />  | <Check />      |
-| `kimi-k2.5`                       | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
-| `kimi-k2.6`                       | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
-| `kimi-k2.7-code`                  | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
-| `kimi-k2.7-code-highspeed`        | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
-| `kimi-k3`                         | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
+| 模型                              | 图像输入    | 视频输入    | 对象生成   | 工具使用   | 工具流式传输 |
+| --------------------------------- | ----------- | ----------- | ---------- | ---------- | ------------ |
+| `moonshot-v1-auto`                | <Cross />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `moonshot-v1-8k`                  | <Cross />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `moonshot-v1-32k`                 | <Cross />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `moonshot-v1-128k`                | <Cross />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `moonshot-v1-8k-vision-preview`   | <Check />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `moonshot-v1-32k-vision-preview`  | <Check />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `moonshot-v1-128k-vision-preview` | <Check />   | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `kimi-k2.5`                       | <Check />   | <Check />   | <Check />  | <Check />  | <Check />    |
+| `kimi-k2.6`                       | <Check />   | <Check />   | <Check />  | <Check />  | <Check />    |
+| `kimi-k2.7-code`                  | <Check />   | <Check />   | <Check />  | <Check />  | <Check />    |
+| `kimi-k2.7-code-highspeed`        | <Check />   | <Check />   | <Check />  | <Check />  | <Check />    |
+| `kimi-k3`                         | <Check />   | <Check />   | <Check />  | <Check />  | <Check />    |
 
 <Note>
-  有关当前可用性和特定于模型的约束，请参阅 [Kimi 模型列表](https://platform.kimi.ai/docs/models) 和 [模型
-  参数参考](https://platform.kimi.ai/docs/api/models-overview)。你也可以在需要时传递自定义
-  或已退役的提供商模型 ID 作为字符串。
+  有关当前可用性和模型特定约束，请参见 [Kimi 模型列表](https://platform.kimi.ai/docs/models)
+  和[模型参数参考](https://platform.kimi.ai/docs/api/models-overview)。
+  你也可以在需要时以字符串形式传递自定义或已下线的提供商模型 ID。
 </Note>

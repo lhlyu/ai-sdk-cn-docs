@@ -6,12 +6,12 @@ description: "用于管理多个提供商和模型的注册表（API 参考）"
 # `createProviderRegistry()`
 
 当你使用多个提供商和模型时，通常希望在一个中心位置管理它们，
-并通过简单的字符串 id 来访问模型。
+并通过简单的字符串 id 访问模型。
 
 `createProviderRegistry` 允许你创建一个包含多个提供商的注册表，
-你可以通过 `providerId:modelId` 格式的 id 来访问它们。
+你可以通过 `providerId:modelId` 格式的 id 访问它们。
 
-在 TypeScript 中，注册表模型 ID 会根据已注册的提供商 ID 进行推断。
+在 TypeScript 中，注册表模型 ID 会从已注册的提供商 ID 推断出来。
 当提供商暴露字面量模型 ID 类型时，编辑器可以提示组合后的
 `providerId:modelId` 值。
 
@@ -54,7 +54,7 @@ const model = registry.languageModel('anthropic > claude-3-opus-20240229');
 
 ### 语言模型
 
-你可以使用注册表上的 `languageModel` 方法来访问语言模型。
+你可以使用注册表上的 `languageModel` 方法访问语言模型。
 提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"5"}
@@ -69,7 +69,7 @@ const { text } = await generateText({
 
 ### 文本嵌入模型
 
-你可以使用注册表上的 `.embeddingModel` 方法来访问文本嵌入模型。
+你可以使用注册表上的 `.embeddingModel` 方法访问文本嵌入模型。
 提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"5"}
@@ -84,7 +84,7 @@ const { embedding } = await embed({
 
 ### 图像模型
 
-你可以使用注册表上的 `imageModel` 方法来访问图像模型。
+你可以使用注册表上的 `imageModel` 方法访问图像模型。
 提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"5"}
@@ -99,7 +99,7 @@ const { image } = await generateImage({
 
 ### 视频模型
 
-你可以使用注册表上的 `videoModel` 方法来访问视频模型。
+你可以使用注册表上的 `videoModel` 方法访问视频模型。
 提供商 id 将成为模型 id 的前缀：`providerId:modelId`。
 
 ```ts highlight={"7"}
@@ -117,7 +117,7 @@ const { videos } = await experimental_generateVideo({
 ### 文件和技能
 
 你可以通过调用 `registry.files(providerId)` 和 `registry.skills(providerId)`
-来访问提供商的文件和技能接口。
+访问提供商的文件和技能接口。
 
 ## 导入
 
@@ -299,19 +299,19 @@ const { videos } = await experimental_generateVideo({
   ]}
 />
 
-## 实验性评估模型
+## 实验性决策模型
 
-推断出的返回类型还暴露了 `evaluationModel('providerId:modelId')`，
-返回 `Experimental_EvaluationModelV4`。提供商必须暴露一个
-`evaluationModel` 工厂。自定义分隔符和模型 ID
+推断出的返回类型还会暴露 `decisionModel('providerId:modelId')`，
+返回 `Experimental_DecisionModelV4`。提供商必须暴露一个
+`decisionModel` 工厂。自定义分隔符和模型 ID
 推断的工作方式与视频模型相同。语言和图像中间件不会
-包装评估模型。`ProviderRegistryProvider` 仍然是一个稳定的接口；
-使用推断出的返回类型或 `Experimental_EvaluationProviderRegistry` 来
-保留实验性评估访问。
+包装决策模型。`ProviderRegistryProvider` 仍然是一个稳定的接口；
+使用推断出的返回类型或 `Experimental_DecisionProviderRegistry` 来
+保留实验性决策访问。
 
-不可用的评估能力或模型会抛出 `NoSuchModelError`，并带有
-`modelType: 'evaluationModel'`；未知的注册表提供商会抛出
+不可用的决策能力或模型会抛出 `NoSuchModelError`，并带有
+`modelType: 'decisionModel'`；未知的注册表提供商会抛出
 `NoSuchProviderError`。这些能力是结构性扩展，并未
-添加到稳定的 `ProviderV4` 契约中。当未配置默认提供商时，直接评估字符串 ID 默认
-使用 Gateway。
-有关可运行的用法模式，请参阅[评估](/docs/ai-sdk-core/evaluation#model-aliases-and-registries)。
+添加到稳定的 `ProviderV4` 契约中。当未配置默认提供商时，直接的决策字符串 ID 默认
+指向 Gateway。
+有关可运行的用法模式，请参阅 [Decisions](/docs/ai-sdk-core/decisions#model-aliases-and-registries)。

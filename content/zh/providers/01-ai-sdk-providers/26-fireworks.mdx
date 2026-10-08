@@ -1,6 +1,6 @@
 ---
 title: "Fireworks"
-description: "了解如何将 Fireworks 模型与 AI SDK 结合使用。"
+description: "了解如何在 AI SDK 中使用 Fireworks 模型。"
 ---
 
 # Fireworks 提供商
@@ -9,19 +9,19 @@ description: "了解如何将 Fireworks 模型与 AI SDK 结合使用。"
 
 ## 设置
 
-Fireworks 提供商可通过 `@ai-sdk/fireworks` 模块获得。你可以使用以下命令安装它：
+Fireworks 提供商通过 `@ai-sdk/fireworks` 模块提供。你可以使用以下命令安装：
 
 <InstallPackages packages="@ai-sdk/fireworks" />
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/fireworks` 导入默认的提供商实例 `fireworks`：
+你可以从 `@ai-sdk/fireworks` 导入默认提供商实例 `fireworks`：
 
 ```ts
 import { fireworks } from '@ai-sdk/fireworks';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/fireworks` 导入 `createFireworks`，并使用你的设置创建一个提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/fireworks` 导入 `createFireworks`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createFireworks } from '@ai-sdk/fireworks';
@@ -40,11 +40,12 @@ const fireworks = createFireworks({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。它默认为 `FIREWORKS_API_KEY` 环境变量。
+  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  `FIREWORKS_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  请求中包含的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -52,7 +53,8 @@ const fireworks = createFireworks({
 
 ## 语言模型
 
-你可以使用提供商实例创建 [Fireworks 模型](https://fireworks.ai/models)。第一个参数是模型 ID，例如 `accounts/fireworks/models/firefunction-v1`：
+你可以使用提供商实例创建 [Fireworks 模型](https://fireworks.ai/models)。
+第一个参数是模型 ID，例如 `accounts/fireworks/models/firefunction-v1`：
 
 ```ts
 const model = fireworks('accounts/fireworks/models/firefunction-v1');
@@ -60,8 +62,12 @@ const model = fireworks('accounts/fireworks/models/firefunction-v1');
 
 ### 推理模型
 
-Fireworks 在生成的文本中使用 `<think>` 标签暴露 `deepseek-r1` 的思考过程。
-你可以使用 `extractReasoningMiddleware` 来提取此推理过程，并将其作为结果上的 `reasoning` 属性暴露出来：
+对于支持推理强度的模型，请使用顶层 `reasoning` 参数。
+Fireworks 会将 `'minimal'` 映射为 `'low'`，将 `'xhigh'` 或 `'max'` 映射为 `'high'`，并在强制转换推理强度时返回兼容性警告。流式传输调用会在 `stream-start` 事件中包含该警告。显式的
+`providerOptions.fireworks.reasoningEffort` 优先于顶层设置。
+
+Fireworks 使用 `<think>` 标签在生成的文本中暴露 `deepseek-r1` 的思考过程。
+你可以使用 `extractReasoningMiddleware` 提取该推理内容，并将其作为结果中的 `reasoning` 属性暴露：
 
 ```ts
 import { fireworks } from '@ai-sdk/fireworks';
@@ -73,7 +79,7 @@ const enhancedModel = wrapLanguageModel({
 });
 ```
 
-然后，你可以在 `generateText` 和 `streamText` 等函数中使用这个增强模型。
+然后你可以在 `generateText` 和 `streamText` 等函数中使用该增强模型。
 
 ### 示例
 
@@ -85,15 +91,17 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: fireworks('accounts/fireworks/models/firefunction-v1'),
-  prompt: '写一份供 4 人食用的素食千层面食谱。',
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
 
-Fireworks 语言模型也可以在 `streamText` 函数中使用（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+Fireworks 语言模型也可以在 `streamText` 函数中使用
+（参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ### 提供商选项
 
-Fireworks 聊天模型支持额外的提供商选项，这些选项不属于[标准调用设置](/docs/ai-sdk-core/settings)。你可以在 `providerOptions` 参数中传递它们：
+Fireworks 聊天模型支持不属于
+[标准调用设置](/docs/ai-sdk-core/settings)的额外提供商选项。你可以在 `providerOptions` 参数中传入它们：
 
 ```ts
 import {
@@ -110,43 +118,48 @@ const { text, reasoningText } = await generateText({
       reasoningHistory: 'interleaved',
     } satisfies FireworksLanguageModelOptions,
   },
-  prompt: '单词 "strawberry" 中有多少个字母 "r"？',
+  prompt: 'How many "r"s are in the word "strawberry"?',
 });
 ```
 
-Fireworks 聊天模型提供以下可选的提供商选项：
+Fireworks 聊天模型可以使用以下可选提供商选项：
 
 - **promptCacheKey** _string_
 
-  一个稳定的、不透明的键，通过将具有共享提示词前缀的请求路由到同一个 Fireworks 副本，来提高提示词缓存命中率。在同一个对话的所有步骤和调用中重复使用相同的键，并为不相关的对话使用不同的键。
+  一个稳定的、不透明的键，通过将具有共享提示词前缀的请求路由到同一个 Fireworks 副本来提高提示词缓存命中率。在一次对话的所有步骤和调用中复用同一个键，并为不相关的对话使用不同的键。
 
 - **serviceTier** _'priority'_
 
-  使用 Fireworks Priority 服务路径，以在高峰流量期间获得更高的可靠性。提供商将其作为 Fireworks 的 `service_tier` 请求字段发送。
+  使用 Fireworks Priority 服务路径，在流量高峰期获得更高的可靠性。提供商会将其作为 Fireworks 的 `service_tier` 请求字段发送。
 
 - **thinking** _object_
 
-  用于 Kimi K2.6 等思考/推理模型的配置。
+  针对 Kimi K2.6 等思考/推理模型的配置。
   - **type** _'enabled' | 'disabled'_
 
     是否启用思考模式。
 
   - **budgetTokens** _number_
 
-    用于思考的最大 token 数（最小 1024）。
+    思考的最大 token 数（最小 1024）。
 
 - **reasoningHistory** _'disabled' | 'interleaved' | 'preserved'_
 
-  控制多轮对话中如何处理推理历史：
-  - `'disabled'`：从历史中移除推理
-  - `'interleaved'`：在单轮对话中，在工具调用之间包含推理
-  - `'preserved'`：保留历史中的所有推理
+  控制多轮对话中推理历史的处理方式：
+  - `'disabled'`：从历史中移除推理内容
+  - `'interleaved'`：在单轮对话中包含工具调用之间的推理内容
+  - `'preserved'`：在历史中保留所有推理内容
 
 ### 提示词缓存亲和性
 
-[Fireworks 提示词缓存](https://docs.fireworks.ai/guides/prompt-caching)是自动的，但缓存的前缀是特定于副本的。将 `promptCacheKey` 设置为一个不透明的会话或对话标识符，以提高缓存亲和性。提供商将其作为 Fireworks 的 [`prompt_cache_key`](https://docs.fireworks.ai/api-reference/post-chatcompletions) 请求字段发送。
+[Fireworks 提示词缓存](https://docs.fireworks.ai/guides/prompt-caching)
+是自动的，但缓存前缀是副本本地的。将
+`promptCacheKey` 设置为不透明的会话或对话标识符以提高
+缓存亲和性。提供商会将其作为 Fireworks 的
+[`prompt_cache_key`](https://docs.fireworks.ai/api-reference/post-chatcompletions)
+请求字段发送。
 
-AI SDK 在多步骤的 `generateText` 或 `streamText` 调用中，为每个模型步骤重用相同的提供商选项，因此一个键覆盖整个工具循环：
+AI SDK 会在多步 `generateText` 或 `streamText` 调用中为每个模型步骤复用相同的提供商选项，因此一个键即可覆盖完整的工具循环：
 
 ```ts
 import {
@@ -167,19 +180,19 @@ const result = await generateText({
   },
   tools: {
     weather: tool({
-      description: '获取某个城市的天气。',
+      description: 'Get the weather for a city.',
       inputSchema: z.object({ city: z.string() }),
-      execute: async ({ city }) => `${city} 天气晴朗。`,
+      execute: async ({ city }) => `It is sunny in ${city}.`,
     }),
   },
   stopWhen: isStepCount(5),
-  prompt: '旧金山的天气怎么样？',
+  prompt: 'What is the weather in San Francisco?',
 });
 
 console.log(result.usage.inputTokenDetails.cacheReadTokens);
 ```
 
-对于可重用的 `ToolLoopAgent`，使用调用选项为每个对话提供一个键。在后续继续该对话的智能体调用中，再次传递相同的键：
+对于可复用的 `ToolLoopAgent`，使用调用选项为每个对话提供键。对于继续该对话的后续智能体调用，再次传入相同的键：
 
 ```ts
 import {
@@ -207,18 +220,20 @@ const agent = new ToolLoopAgent({
 });
 
 const result = await agent.generate({
-  prompt: '旧金山的天气怎么样？',
+  prompt: 'What is the weather in San Francisco?',
   options: {
     sessionId: 'conversation-123',
   },
 });
 ```
 
-对缓存键使用非标识性值，而不是电子邮件地址或其他个人信息。
+缓存键请使用非身份标识的值，而不要使用电子邮件地址或其他个人信息。
 
-### 优先级服务层级
+### 优先服务层级
 
-[Fireworks Priority 层级](https://docs.fireworks.ai/serverless/serving-paths) 将受支持的模型优先于标准流量。将 `serviceTier` 设置为 `'priority'` 以发送 Fireworks 的 `service_tier` 请求字段：
+[Fireworks Priority 层级](https://docs.fireworks.ai/serverless/serving-paths)
+会将支持的模型优先于 Standard 流量处理。将 `serviceTier` 设置为
+`'priority'` 以发送 Fireworks 的 `service_tier` 请求字段：
 
 ```ts
 import {
@@ -234,7 +249,7 @@ const result = await generateText({
       serviceTier: 'priority',
     } satisfies FireworksLanguageModelOptions,
   },
-  prompt: '写一首关于可靠推理的俳句。',
+  prompt: 'Write a haiku about reliable inference.',
 });
 ```
 
@@ -250,32 +265,33 @@ const model = fireworks.completionModel(
 
 ### 模型能力
 
-| 模型                                                         | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
-| ------------------------------------------------------------ | -------- | -------- | -------- | ------------ |
-| `accounts/fireworks/models/firefunction-v1`                  | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `accounts/fireworks/models/deepseek-r1`                      | <Cross /> | <Check /> | <Cross /> | <Cross />    |
-| `accounts/fireworks/models/deepseek-v3`                      | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/llama-v3p1-405b-instruct`         | <Cross /> | <Check /> | <Check /> | <Check />    |
-| `accounts/fireworks/models/llama-v3p1-8b-instruct`           | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/llama-v3p2-3b-instruct`           | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/llama-v3p3-70b-instruct`          | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/mixtral-8x7b-instruct`            | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/mixtral-8x7b-instruct-hf`         | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/mixtral-8x22b-instruct`           | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/qwen2p5-coder-32b-instruct`       | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/qwen2p5-72b-instruct`             | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/qwen-qwq-32b-preview`             | <Cross /> | <Check /> | <Cross /> | <Cross />    |
-| `accounts/fireworks/models/qwen2-vl-72b-instruct`            | <Check /> | <Check /> | <Cross /> | <Cross />    |
-| `accounts/fireworks/models/llama-v3p2-11b-vision-instruct`   | <Check /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/qwq-32b`                          | <Cross /> | <Check /> | <Cross /> | <Cross />    |
-| `accounts/fireworks/models/yi-large`                         | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/kimi-k2-instruct`                 | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/kimi-k2-thinking`                 | <Cross /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/kimi-k2p6`                        | <Check /> | <Check /> | <Check /> | <Cross />    |
-| `accounts/fireworks/models/minimax-m2`                       | <Cross /> | <Check /> | <Check /> | <Cross />    |
+| 模型                                                       | 图像输入    | 对象生成   | 工具使用   | 工具流式传输 |
+| ---------------------------------------------------------- | ----------- | ---------- | ---------- | ------------ |
+| `accounts/fireworks/models/firefunction-v1`                | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `accounts/fireworks/models/deepseek-r1`                    | <Cross />   | <Check />  | <Cross />  | <Cross />    |
+| `accounts/fireworks/models/deepseek-v3`                    | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/llama-v3p1-405b-instruct`       | <Cross />   | <Check />  | <Check />  | <Check />    |
+| `accounts/fireworks/models/llama-v3p1-8b-instruct`         | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/llama-v3p2-3b-instruct`         | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/llama-v3p3-70b-instruct`        | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/mixtral-8x7b-instruct`          | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/mixtral-8x7b-instruct-hf`       | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/mixtral-8x22b-instruct`         | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/qwen2p5-coder-32b-instruct`     | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/qwen2p5-72b-instruct`           | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/qwen-qwq-32b-preview`           | <Cross />   | <Check />  | <Cross />  | <Cross />    |
+| `accounts/fireworks/models/qwen2-vl-72b-instruct`          | <Check />   | <Check />  | <Cross />  | <Cross />    |
+| `accounts/fireworks/models/llama-v3p2-11b-vision-instruct` | <Check />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/qwq-32b`                        | <Cross />   | <Check />  | <Cross />  | <Cross />    |
+| `accounts/fireworks/models/yi-large`                       | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/kimi-k2-instruct`               | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/kimi-k2-thinking`               | <Cross />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/kimi-k2p6`                      | <Check />   | <Check />  | <Check />  | <Cross />    |
+| `accounts/fireworks/models/minimax-m2`                     | <Cross />   | <Check />  | <Check />  | <Cross />    |
 
 <Note>
-  上表列出了流行的模型。请参阅 [Fireworks 模型页面](https://fireworks.ai/models) 获取可用模型的完整列表。
+  上表列出了热门模型。请查看 [Fireworks 模型
+  页面](https://fireworks.ai/models) 以获取可用模型的完整列表。
 </Note>
 
 ## 嵌入模型
@@ -294,24 +310,25 @@ import { embed } from 'ai';
 
 const { embedding } = await embed({
   model: fireworks.embeddingModel('nomic-ai/nomic-embed-text-v1.5'),
-  value: '阳光明媚的海滩日',
+  value: 'sunny day at the beach',
 });
 ```
 
 ### 模型能力
 
-| 模型                            | 维度 | 最大 Token 数 |
-| -------------------------------- | ---- | ------------- |
-| `nomic-ai/nomic-embed-text-v1.5` | 768  | 8192          |
+| 模型                             | 维度       | 最大 Token 数 |
+| -------------------------------- | ---------- | ------------- |
+| `nomic-ai/nomic-embed-text-v1.5` | 768        | 8192          |
 
 <Note>
-  更多嵌入模型，请参阅 [Fireworks 模型页面](https://fireworks.ai/models) 获取可用模型的完整列表。
+  有关更多嵌入模型，请查看 [Fireworks 模型
+  页面](https://fireworks.ai/models) 以获取可用模型的完整列表。
 </Note>
 
 ## 图像模型
 
 你可以使用 `.image()` 工厂方法创建 Fireworks 图像模型。
-有关使用 AI SDK 生成图像的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ```ts
 import { fireworks, type FireworksImageModelOptions } from '@ai-sdk/fireworks';
@@ -319,7 +336,7 @@ import { generateImage } from 'ai';
 
 const { image } = await generateImage({
   model: fireworks.image('accounts/fireworks/models/flux-1-dev-fp8'),
-  prompt: '日落时分的未来城市景观',
+  prompt: 'A futuristic cityscape at sunset',
   aspectRatio: '16:9',
   providerOptions: {
     fireworks: {
@@ -331,18 +348,20 @@ const { image } = await generateImage({
 ```
 
 <Note>
-  模型对 `size` 和 `aspectRatio` 参数的支持各不相同。请参阅下面的[模型能力](#模型能力-1)部分了解支持的尺寸，或查看 [Fireworks 模型页面](https://fireworks.ai/models) 上模型的文档以获取更多详细信息。
+  模型对 `size` 和 `aspectRatio` 参数的支持各不相同。请参见下方
+  [模型能力](#model-capabilities-1) 部分了解支持的尺寸，
+  或查看 [Fireworks 模型页面](https://fireworks.ai/models) 上模型的文档以获取更多详细信息。
 </Note>
 
 ### 提供商选项
 
-Fireworks 图像模型通过 `providerOptions.fireworks` 对象支持灵活的提供商选项。使用 `FireworksImageModelOptions` 类型来验证已知的 Fireworks 图像选项，同时允许特定于模型的选项通过。
+Fireworks 图像模型通过 `providerOptions.fireworks` 对象支持灵活的提供商选项。使用 `FireworksImageModelOptions` 类型来验证已知的 Fireworks 图像选项，同时仍允许模型特定的选项通过。
 
 以下类型化的提供商选项可用：
 
 - **guidance_scale** _number_
 
-  图像扩散过程的无分类器引导尺度。
+  图像扩散过程的无分类器引导比例。
 
 - **num_inference_steps** _number_
 
@@ -350,19 +369,19 @@ Fireworks 图像模型通过 `providerOptions.fireworks` 对象支持灵活的�
 
 - **output_format** _'jpeg' | 'png'_
 
-  FLUX Kontext 图像生成和编辑所需的输出格式。
+  FLUX Kontext 图像生成和编辑的期望输出格式。
 
 - **prompt_upsampling** _boolean_
 
-  Fireworks 是否应自动修改提示词以进行更具创意的生成。
+  Fireworks 是否应自动修改提示词以实现更具创意的生成。
 
 - **safety_tolerance** _number_
 
-  输入和输出的审核容忍级别，范围从 `0` 到 `6`。Fireworks 将图像到图像的请求限制为 `2`。
+  输入和输出的审核容忍级别，从 `0` 到 `6`。Fireworks 将图像到图像请求限制为 `2`。
 
 - **webhook_url** _string_
 
-  用于接收异步 Kontext 请求的 webhook 通知的 URL。
+  用于接收异步 Kontext 请求 webhook 通知的 URL。
 
 - **webhook_secret** _string_
 
@@ -370,7 +389,7 @@ Fireworks 图像模型通过 `providerOptions.fireworks` 对象支持灵活的�
 
 - **cfg_scale** _number_
 
-  旧版 `image_generation` 模型的引导尺度。
+  旧版 `image_generation` 模型的引导比例。
 
 - **steps** _number_
 
@@ -378,10 +397,11 @@ Fireworks 图像模型通过 `providerOptions.fireworks` 对象支持灵活的�
 
 ### 图像编辑
 
-Fireworks 通过 FLUX Kontext 模型（`flux-kontext-pro` 和 `flux-kontext-max`）支持图像编辑。通过 `prompt.images` 传递输入图像以转换或编辑现有图像。
+Fireworks 通过 FLUX Kontext 模型（`flux-kontext-pro` 和 `flux-kontext-max`）支持图像编辑。通过 `prompt.images` 传入输入图像以转换或编辑现有图像。
 
 <Note>
-  Fireworks Kontext 模型不支持显式遮罩。编辑由提示词驱动——在文本提示词中描述你想要更改的内容。
+  Fireworks Kontext 模型不支持显式蒙版。编辑是
+  提示词驱动的——在文本提示词中描述你想要更改的内容。
 </Note>
 
 #### 基本图像编辑
@@ -394,7 +414,7 @@ const imageBuffer = readFileSync('./input-image.png');
 const { images } = await generateImage({
   model: fireworks.image('accounts/fireworks/models/flux-kontext-pro'),
   prompt: {
-    text: '把猫变成一只金毛寻回犬',
+    text: 'Turn the cat into a golden retriever dog',
     images: [imageBuffer],
   },
   providerOptions: {
@@ -408,7 +428,7 @@ const { images } = await generateImage({
 
 #### 风格迁移
 
-将艺术风格应用于图像：
+为图像应用艺术风格：
 
 ```ts
 const imageBuffer = readFileSync('./input-image.png');
@@ -416,7 +436,7 @@ const imageBuffer = readFileSync('./input-image.png');
 const { images } = await generateImage({
   model: fireworks.image('accounts/fireworks/models/flux-kontext-pro'),
   prompt: {
-    text: '将此转换为水彩画风格',
+    text: 'Transform this into a watercolor painting style',
     images: [imageBuffer],
   },
   aspectRatio: '1:1',
@@ -424,38 +444,41 @@ const { images } = await generateImage({
 ```
 
 <Note>
-  输入图像可以作为 `Buffer`、`ArrayBuffer`、`Uint8Array` 或 base64 编码的字符串提供。Fireworks 每个请求仅支持单个输入图像。
+  输入图像可以提供为 `Buffer`、`ArrayBuffer`、`Uint8Array` 或
+  base64 编码的字符串。Fireworks 每个请求仅支持单个输入图像。
 </Note>
 
 ### 模型能力
 
 对于所有支持宽高比的模型，支持以下宽高比：
 
-`1:1 (默认), 2:3, 3:2, 4:5, 5:4, 16:9, 9:16, 9:21, 21:9`
+`1:1 (default), 2:3, 3:2, 4:5, 5:4, 16:9, 9:16, 9:21, 21:9`
 
 对于所有支持尺寸的模型，支持以下尺寸：
 
-`640 x 1536, 768 x 1344, 832 x 1216, 896 x 1152, 1024x1024 (默认), 1152 x 896, 1216 x 832, 1344 x 768, 1536 x 640`
+`640 x 1536, 768 x 1344, 832 x 1216, 896 x 1152, 1024x1024 (default), 1152 x 896, 1216 x 832, 1344 x 768, 1536 x 640`
 
-| 模型                                                          | 尺寸规格 | 图像编辑 |
-| ------------------------------------------------------------ | -------- | -------- |
-| `accounts/fireworks/models/flux-kontext-pro`                 | 宽高比   | <Check /> |
-| `accounts/fireworks/models/flux-kontext-max`                 | 宽高比   | <Check /> |
-| `accounts/fireworks/models/flux-1-dev-fp8`                   | 宽高比   | <Cross /> |
-| `accounts/fireworks/models/flux-1-schnell-fp8`               | 宽高比   | <Cross /> |
-| `accounts/fireworks/models/playground-v2-5-1024px-aesthetic` | 尺寸     | <Cross /> |
-| `accounts/fireworks/models/japanese-stable-diffusion-xl`     | 尺寸     | <Cross /> |
-| `accounts/fireworks/models/playground-v2-1024px-aesthetic`   | 尺寸     | <Cross /> |
-| `accounts/fireworks/models/SSD-1B`                           | 尺寸     | <Cross /> |
-| `accounts/fireworks/models/stable-diffusion-xl-1024-v1-0`    | 尺寸     | <Cross /> |
+| 模型                                                         | 尺寸规格   | 图像编辑   |
+| ------------------------------------------------------------ | ---------- | ---------- |
+| `accounts/fireworks/models/flux-kontext-pro`                 | 宽高比     | <Check />  |
+| `accounts/fireworks/models/flux-kontext-max`                 | 宽高比     | <Check />  |
+| `accounts/fireworks/models/flux-1-dev-fp8`                   | 宽高比     | <Cross />  |
+| `accounts/fireworks/models/flux-1-schnell-fp8`               | 宽高比     | <Cross />  |
+| `accounts/fireworks/models/playground-v2-5-1024px-aesthetic` | 尺寸       | <Cross />  |
+| `accounts/fireworks/models/japanese-stable-diffusion-xl`     | 尺寸       | <Cross />  |
+| `accounts/fireworks/models/playground-v2-1024px-aesthetic`   | 尺寸       | <Cross />  |
+| `accounts/fireworks/models/SSD-1B`                           | 尺寸       | <Cross />  |
+| `accounts/fireworks/models/stable-diffusion-xl-1024-v1-0`    | 尺寸       | <Cross />  |
 
-更多详情，请参阅 [Fireworks 模型页面](https://fireworks.ai/models)。
+有关更多详细信息，请参见 [Fireworks 模型页面](https://fireworks.ai/models)。
 
 #### Stability AI 模型
 
-Fireworks 还提供了一些由 Stability AI API 密钥和端点支持的 Stability AI 模型。AI SDK Fireworks 提供商目前不包含对这些模型的支持：
+Fireworks 还提供若干由 Stability AI API
+密钥和端点支持的 Stability AI 模型。AI SDK Fireworks 提供商目前不包含
+对这些模型的支持：
 
-| 模型 ID                                 |
+| 模型 ID                                |
 | -------------------------------------- |
 | `accounts/stability/models/sd3-turbo`  |
 | `accounts/stability/models/sd3-medium` |
