@@ -43,7 +43,7 @@ const groq = createGroq({
 - **apiKey** _string_
 
   通过 `Authorization` 请求头发送的 API 密钥。
-  默认使用 `GROQ_API_KEY` 环境变量。
+  默认为 `GROQ_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -54,12 +54,12 @@ const groq = createGroq({
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
   你可以将其用作中间件来拦截请求，
-  或为例如测试提供自定义 fetch 实现。
+  或提供自定义 fetch 实现，例如用于测试。
 
 ## 语言模型
 
 你可以使用提供商实例创建 [Groq 模型](https://console.groq.com/docs/models)。
-第一个参数是模型 id，例如 `llama-3.1-8b-instant`。
+第一个参数是模型 ID，例如 `llama-3.1-8b-instant`。
 
 ```ts
 const model = groq('llama-3.1-8b-instant');
@@ -90,11 +90,11 @@ const result = await generateText({
 });
 ```
 
-Groq 语言模型可以使用以下可选提供商选项：
+以下可选提供商选项可用于 Groq 语言模型：
 
 - **reasoningFormat** _'parsed' | 'raw' | 'hidden'_
 
-  控制推理在生成文本中的呈现方式。受 `qwen/qwen3.6-27b` 等推理模型支持；可用格式取决于模型。
+  控制推理在生成文本中的呈现方式。由 `qwen/qwen3.6-27b` 等推理模型支持；可用格式取决于模型。
 
   有关推理模型及其功能的完整列表，请参阅 [Groq 的推理模型文档](https://console.groq.com/docs/reasoning)。
 
@@ -142,8 +142,8 @@ Groq 语言模型可以使用以下可选提供商选项：
   请求的服务层级。默认为 `'on_demand'`。
   - `'on_demand'`：默认层级，具有一致的性能和公平性
   - `'performance'`：针对延迟敏感型工作负载的优先层级
-  - `'flex'`：更高吞吐量层级（10 倍速率限制），针对可以处理偶尔请求失败的工作负载进行优化
-  - `'auto'`：先使用 on_demand 速率限制，如果超出则回退到 flex 层级
+  - `'flex'`：更高吞吐量的层级（10 倍速率限制），针对可以处理偶尔请求失败的工作负载进行优化
+  - `'auto'`：首先使用 on_demand 速率限制，如果超出则回退到 flex 层级
 
   有关服务层级及其优势的更多详细信息，请参阅 [Groq 的服务层级文档](https://console.groq.com/docs/service-tiers)。
 
@@ -176,7 +176,7 @@ const result = await generateText({
 console.log(JSON.stringify(result.output, null, 2));
 ```
 
-你可以为不支持结构化输出的模型禁用结构化输出：
+你可以为不支持结构化输出的模型禁用该功能：
 
 ```ts highlight="9"
 import { groq, type GroqLanguageModelChatOptions } from '@ai-sdk/groq';
@@ -206,10 +206,10 @@ console.log(JSON.stringify(result.output, null, 2));
 ```
 
 <Note type="warning">
-  结构化输出仅受较新的 Groq 模型支持，例如
+  结构化输出仅由较新的 Groq 模型支持，例如
   `moonshotai/kimi-k2-instruct-0905`。对于不支持的模型，你可以通过设置
   `structuredOutputs: false` 来禁用结构化输出。禁用后，Groq
-  使用 `json_object` 格式，这要求你的消息中包含 "JSON" 一词。
+  使用 `json_object` 格式，这要求你的消息中包含单词 "JSON"。
 </Note>
 
 ### 示例
@@ -228,7 +228,7 @@ const { text } = await generateText({
 
 ### 图像输入
 
-Groq 的多模态模型（如 `meta-llama/llama-4-scout-17b-16e-instruct`）支持图像输入。你可以使用 URL 或 base64 编码的数据在消息中包含图像：
+Groq 的多模态模型（如 `meta-llama/llama-4-scout-17b-16e-instruct`）支持图像输入。你可以使用 URL 或 base64 编码数据在消息中包含图像：
 
 ```ts
 import { groq } from '@ai-sdk/groq';
@@ -306,24 +306,26 @@ const { text } = await generateText({
 
 <Note>
   上表列出了最常用的模型。请参阅 [Groq
-  文档](https://console.groq.com/docs/models) 获取可用模型的完整列表。
+  文档](https://console.groq.com/docs/models)以获取可用模型的完整列表。
   如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传入。
 </Note>
 
 ## 浏览器搜索工具
 
-Groq 提供浏览器搜索工具，可提供交互式网页浏览功能。与传统网页搜索不同，浏览器搜索以交互方式浏览网站，提供更详细、更全面的结果。
+Groq 提供浏览器搜索工具，可提供交互式网页浏览能力。与传统网页搜索不同，浏览器搜索以交互方式浏览网站，提供更详细、更全面的结果。
 
 ### 支持的模型
 
-浏览器搜索仅适用于以下特定模型：
+浏览器搜索在 Groq 的 GPT-OSS 模型上可用，例如：
 
 - `openai/gpt-oss-20b`
 - `openai/gpt-oss-120b`
 
 <Note type="warning">
-  浏览器搜索仅适用于上面列出的受支持模型。将其
-  与其他模型一起使用将生成警告，并且该工具将被忽略。
+  已知不支持浏览器搜索的模型 ID（例如 Llama、Qwen 和
+  Kimi 模型）将生成警告，并且该工具将被忽略。未知
+  模型 ID 会连同工具一起转发，由 Groq API 决定是否
+  支持。
 </Note>
 
 ### 基本用法
@@ -378,13 +380,13 @@ for await (const delta of result.stream) {
 ### 最佳实践
 
 - 使用 `toolChoice: 'required'` 确保浏览器搜索被激活
-- 仅在 `openai/gpt-oss-20b` 和 `openai/gpt-oss-120b` 模型上受支持
+- 使用支持浏览器搜索的模型，例如 `openai/gpt-oss-20b` 或 `openai/gpt-oss-120b`
 - 该工具自动工作 - 无需配置参数
 - 服务端执行意味着无需额外的 API 密钥或设置
 
 ### 模型验证
 
-提供商会自动验证模型兼容性：
+对于已知不支持浏览器搜索的模型 ID，提供商会忽略该工具：
 
 ```ts
 // ✅ Supported - will work
@@ -398,11 +400,11 @@ const result = await generateText({
   model: groq('llama-3.1-8b-instant'),
   tools: { browser_search: groq.tools.browserSearch({}) },
 });
-// Warning: "Browser search is only supported on models: openai/gpt-oss-20b, openai/gpt-oss-120b"
+// Warning: "Browser search is not supported on model llama-3.1-8b-instant."
 ```
 
 <Note>
-  有关浏览器搜索功能和限制的更多详细信息，请参阅
+  有关浏览器搜索功能及限制的更多详细信息，请参阅
   [Groq 浏览器搜索
   文档](https://console.groq.com/docs/browser-search)。
 </Note>
@@ -412,13 +414,13 @@ const result = await generateText({
 你可以使用 `.transcription()` 工厂方法创建调用 [Groq 转录 API](https://console.groq.com/docs/speech-to-text)
 的模型。
 
-第一个参数是模型 id，例如 `whisper-large-v3`。
+第一个参数是模型 ID，例如 `whisper-large-v3`。
 
 ```ts
 const model = groq.transcription('whisper-large-v3');
 ```
 
-你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，以 ISO-639-1（例如 `en`）格式提供输入语言将提高准确性和降低延迟。
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，以 ISO-639-1 格式（例如 `en`）提供输入语言将提高准确性和降低延迟。
 
 ```ts highlight="6"
 import { transcribe } from 'ai';
@@ -434,7 +436,7 @@ const result = await transcribe({
 });
 ```
 
-可以使用以下提供商选项：
+以下提供商选项可用：
 
 - **timestampGranularities** _string[]_
   转录中时间戳的粒度。

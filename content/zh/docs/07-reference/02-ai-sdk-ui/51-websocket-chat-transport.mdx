@@ -1,0 +1,350 @@
+---
+title: "WebSocketChatTransport"
+description: "WebSocketChatTransport 类的 API 参考。"
+---
+
+# `WebSocketChatTransport`
+
+一个 [`ChatTransport`](/docs/ai-sdk-ui/transport) 实现，通过单个持久 WebSocket 连接发送聊天请求并接收 `UIMessageChunk` 流。
+
+```tsx
+import { useChat } from '@ai-sdk/react';
+import { WebSocketChatTransport } from 'ai';
+import { useMemo } from 'react';
+
+export default function Chat() {
+  const transport = useMemo(
+    () => new WebSocketChatTransport({ url: '/api/chat' }),
+    [],
+  );
+
+  const { messages, sendMessage, stop } = useChat({ transport });
+
+  // ... render the chat
+}
+```
+
+## Import
+
+<Snippet text={`import { WebSocketChatTransport } from "ai"`} prompt={false} />
+
+## Constructor
+
+<PropertiesTable
+  content={[
+    {
+      name: 'url',
+      type: 'string',
+      isRequired: true,
+      description:
+        'WebSocket 端点。相对 URL 会基于浏览器位置进行解析。HTTP 和 HTTPS URL 会转换为 WS 和 WSS。',
+    },
+    {
+      name: 'protocols',
+      type: 'string | string[]',
+      isOptional: true,
+      description: '握手期间发送的 WebSocket 子协议。',
+    },
+    {
+      name: 'params',
+      type: 'Resolvable<Record<string, string>>',
+      isOptional: true,
+      description:
+        '每次打开新连接时解析并追加的查询参数。',
+    },
+    {
+      name: 'headers',
+      type: 'Resolvable<Record<string, string> | Headers>',
+      isOptional: true,
+      description:
+        '包含在每个应用层 send 或 resume 帧中的请求头。这些不是 WebSocket 握手请求头。',
+    },
+    {
+      name: 'body',
+      type: 'Resolvable<object>',
+      isOptional: true,
+      description:
+        '与每个请求的 body 数据合并的额外应用数据，包含在 send 和 resume 帧中。',
+    },
+    {
+      name: 'webSocket',
+      type: 'WebSocketConstructor',
+      isOptional: true,
+      description:
+        '自定义 WebSocket 构造函数。用于 Node.js WebSocket 实现或测试。默认为 globalThis.WebSocket。',
+    },
+    {
+      name: 'prepareSendMessagesRequest',
+      type: 'PrepareWebSocketChatTransportSendMessagesRequest',
+      isOptional: true,
+      description:
+        '在发送 send 帧之前转换 messages、headers 或 body。',
+    },
+    {
+      name: 'prepareReconnectToStreamRequest',
+      type: 'PrepareWebSocketChatTransportReconnectToStreamRequest',
+      isOptional: true,
+      description:
+        '在发送 resume 帧之前转换 headers 或 body。',
+    },
+  ]}
+/>
+
+传递给 `sendMessage`、`regenerate` 或自动工具后续调用的 `headers` 会以相同的小写名称覆盖传输层级的请求头。每个请求的 `body` 属性会覆盖传输层级的 body 属性。准备回调接收合并后的值；它们返回的值会替换对应的合并值。
+
+## Methods
+
+### `sendMessages()`
+
+在需要时打开 socket，发送 `send` 帧，并返回关联的 `ReadableStream<UIMessageChunk>`。多个请求可以共享同一连接，并通过 `requestId` 进行路由。
+
+### `reconnectToStream()`
+
+发送 `resume` 帧。Promise 的解析结果如下：
+
+- `start`、第一个 `chunk` 或 `end` 解析为可读流。
+- `no-active` 解析为 `null`。
+- 如果尚未返回流，`error`、取消或连接失败会拒绝该 Promise。
+
+服务器应在确认可恢复流处于活动状态后立即发送 `start`，然后从序列零开始重放保留的响应。传输层会省略 `lastSequence`，因为 Chat 在恢复时会启动新的消息解析器：文本、推理和工具增量需要它们之前的 chunk。保留并重放原始 UI `start` chunk，并使用稳定的 `messageId`，以便 Chat 替换部分助手消息而不是追加另一条消息。传输层会拒绝间隙，并忽略每个响应流（包括重放）中的重复序列号。
+
+### `close()`
+
+关闭当前 socket 并使活动流出错。之后的 send 或 resume 请求会打开新连接。
+
+创建传输层的代码拥有其生命周期。React 和 Vue 的 `useChat` 在替换或清理期间不会关闭调用方提供的传输层，因为一个传输层可以被多个聊天共享。在其最后一个消费者消失后调用 `close()`。
+
+如果直接管理的 `Chat` 实例独占拥有该传输层，请调用 `dispose()`：
+
+```ts
+await chat.dispose();
+```
+
+对于共享传输层，停止或丢弃各个聊天而不销毁它们共享的传输层，然后在所有消费者完成后调用 `transport.close()`。
+
+## Wire Protocol
+
+每个帧都是一个 JSON 对象，包含 `type` 和关联的 `requestId`。
+
+### Client-to-server frames
+
+| Type     | Purpose                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send`   | 开始新的或重新生成的轮次，包含 `id`、`messages`、`trigger`、`messageId`、请求 `headers`、`body` 和 `metadata`。                      |
+| `resume` | 请求聊天 `id` 的保留响应，包含请求 `headers`、`body` 和 `metadata`。省略 `lastSequence` 以请求完整重放。 |
+| `abort`  | 取消由 `requestId` 标识的操作。                                                                                                        |
+
+使用 `WebSocketChatTransportRequest<UI_MESSAGE>`、`WebSocketChatTransportSendRequest`、`WebSocketChatTransportResumeRequest` 和 `WebSocketChatTransportAbortRequest` 为这些帧添加类型。
+
+### Server-to-client frames
+
+| Type        | Purpose                                                                       |
+| ----------- | ----------------------------------------------------------------------------- |
+| `start`     | 确认 resume 请求具有活动流。                          |
+| `chunk`     | 携带单调递增的 `sequence` 和 `chunk` 中的一个有效 `UIMessageChunk`。     |
+| `end`       | 关闭关联的响应流。                                        |
+| `error`     | 使用可选的 `errorText` 使关联的流出错。                   |
+| `no-active` | 将 resume 请求解析为 `null`；对于 send 请求，它会关闭流。 |
+
+使用 `WebSocketChatTransportResponse` 为服务器帧添加类型。
+
+未知或已完成请求 ID 的响应会被忽略。格式错误的帧、未知的响应类型和无效的 UI 消息 chunk 会被视为协议错误：连接会被关闭，所有活动流都会出错。
+
+在使用每个不受信任的客户端帧的字段之前，请先验证它：
+
+```ts
+const validated = await safeValidateWebSocketChatTransportRequest({
+  value: parsed.value,
+});
+
+if (!validated.success) {
+  socket.close(1008, 'Invalid frame');
+  return;
+}
+
+const frame = validated.data;
+```
+
+## Server Example
+
+服务器负责身份验证、授权、消息验证、模型执行、可恢复流存储和取消。以下 Node.js 大纲转发 `streamText` UI 消息流：
+
+```ts
+import { WebSocket, WebSocketServer } from 'ws';
+import {
+  convertToModelMessages,
+  safeValidateWebSocketChatTransportRequest,
+  streamText,
+  toUIMessageStream,
+  validateUIMessages,
+  type UIMessage,
+  type UIMessageChunk,
+  type WebSocketChatTransportResponse,
+} from 'ai';
+import { generateId, safeParseJSON } from '@ai-sdk/provider-utils';
+__PROVIDER_IMPORT__;
+
+const server = new WebSocketServer({ port: 8080 });
+
+type RetainedStream = {
+  abortController: AbortController;
+  chunks: Array<{ sequence: number; chunk: UIMessageChunk }>;
+  subscribers: Map<WebSocket, string>;
+  ended: boolean;
+};
+
+// Scope retained streams to an authenticated user. Use durable storage when
+// reconnects can land in another process.
+const streamsByUser = new Map<string, Map<string, RetainedStream>>();
+
+server.on('connection', (socket, request) => {
+  const userId = authenticateAndValidateOrigin(request);
+  const streams =
+    streamsByUser.get(userId) ?? new Map<string, RetainedStream>();
+  streamsByUser.set(userId, streams);
+
+  socket.on('message', async data => {
+    const parsed = await safeParseJSON({ text: data.toString() });
+    if (!parsed.success) {
+      socket.close(1008, 'Invalid frame');
+      return;
+    }
+
+    const validated =
+      await safeValidateWebSocketChatTransportRequest<UIMessage>({
+        value: parsed.value,
+      });
+    if (!validated.success) {
+      socket.close(1008, 'Invalid frame');
+      return;
+    }
+    const frame = validated.data;
+
+    const send = (response: WebSocketChatTransportResponse) => {
+      socket.send(JSON.stringify(response));
+    };
+
+    if (frame.type === 'abort') {
+      for (const stream of streams.values()) {
+        if (stream.subscribers.get(socket) === frame.requestId) {
+          stream.subscribers.delete(socket);
+          stream.abortController.abort();
+        }
+      }
+      return;
+    }
+
+    if (frame.type === 'resume') {
+      const stream = streams.get(frame.id);
+      if (stream == null) {
+        send({ type: 'no-active', requestId: frame.requestId });
+        return;
+      }
+
+      send({ type: 'start', requestId: frame.requestId });
+      if (!stream.ended) {
+        stream.subscribers.set(socket, frame.requestId);
+      }
+      for (const stored of stream.chunks) {
+        if (stored.sequence > (frame.lastSequence ?? -1)) {
+          send({
+            type: 'chunk',
+            requestId: frame.requestId,
+            ...stored,
+          });
+        }
+      }
+      if (stream.ended) {
+        send({ type: 'end', requestId: frame.requestId });
+      }
+      return;
+    }
+
+    if (streams.get(frame.id)?.ended === false) {
+      send({
+        type: 'error',
+        requestId: frame.requestId,
+        errorText: 'A response is already active for this chat.',
+      });
+      return;
+    }
+
+    const abortController = new AbortController();
+    const stream: RetainedStream = {
+      abortController,
+      chunks: [],
+      subscribers: new Map([[socket, frame.requestId]]),
+      ended: false,
+    };
+    streams.set(frame.id, stream);
+
+    try {
+      const messages = await validateUIMessages({
+        messages: frame.messages,
+      });
+      const result = streamText({
+        model: __MODEL__,
+        messages: await convertToModelMessages(messages),
+        abortSignal: abortController.signal,
+      });
+
+      for await (const chunk of toUIMessageStream({
+        stream: result.stream,
+        originalMessages: messages,
+        generateMessageId: generateId,
+      })) {
+        const stored = { sequence: stream.chunks.length, chunk };
+        stream.chunks.push(stored);
+        for (const [subscriber, requestId] of stream.subscribers) {
+          subscriber.send(
+            JSON.stringify({ type: 'chunk', requestId, ...stored }),
+          );
+        }
+      }
+      stream.ended = true;
+      for (const [subscriber, requestId] of stream.subscribers) {
+        subscriber.send(JSON.stringify({ type: 'end', requestId }));
+      }
+    } catch (error) {
+      // Failed responses cannot resume. Remove the retained entry so a retry
+      // can start a new response and resume requests receive no-active.
+      streams.delete(frame.id);
+      // Log the internal error server-side, but do not expose it to the client.
+      console.error(error);
+      for (const [subscriber, requestId] of stream.subscribers) {
+        subscriber.send(
+          JSON.stringify({
+            type: 'error',
+            requestId,
+            errorText: 'Chat request failed.',
+          }),
+        );
+      }
+    } finally {
+      stream.subscribers.clear();
+    }
+  });
+
+  socket.on('close', () => {
+    for (const stream of streams.values()) {
+      stream.subscribers.delete(socket);
+    }
+  });
+});
+```
+
+此大纲将已完成的 chunk 保留在内存中，以清晰展示重放行为。生产服务器应使已完成的流过​​期，并在重连可能到达另一个进程时持久存储可恢复状态。如果响应设置或流式传输抛出异常，该大纲会在报告错误之前从保留状态中移除该响应。之后的 resume 会返回 `no-active`，新的 send 可以重试聊天。
+
+## Authentication and Deployment
+
+- 在生产环境中使用 WSS。
+- 浏览器 WebSocket 无法设置任意握手请求头。优先使用安全 cookie、短期查询令牌或子协议。
+- 验证握手来源、授权聊天 ID、验证每个帧和 UI 消息、限制帧大小，并对连接进行速率限制。
+- 当你的部署可能重启或将连接移动到另一个进程时，不要依赖进程内存进行重连。
+- 传输层不会自动重放中断的 `send` 请求，因为重放可能会重复模型输出或工具副作用。
+
+`WebSocketChatTransport` 与实验性 Realtime API 是分开的。Realtime 传输层实现提供商实时会话；此传输层承载 `useChat` 使用的与提供商无关的 AI SDK UI 消息协议。
+
+## Client-side Tool Follow-ups
+
+当客户端工具输出添加后 `sendAutomaticallyWhen` 触发时，下一轮会复用同一个 WebSocket。这避免了另一个 HTTP 连接，但当前的 `ChatTransport` 契约仍然是基于轮次的：工具输出不会注入到仍在活动的模型生成中。

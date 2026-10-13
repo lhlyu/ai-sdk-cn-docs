@@ -10,7 +10,7 @@ description: "了解如何在客户端断开连接后恢复聊天机器人流。
 <Note type="warning">
   在可恢复流设置中，客户端中止被视为断开连接。
   关闭标签页、刷新页面或调用 `stop()` 只会关闭
-  当前的 HTTP 连接，不应取消底层的生成。若要
+  当前的 HTTP 连接，不应取消底层的生成。要
   让用户停止生成，请添加一个专用的停止端点，该端点会持久化
   部分响应、取消活动工作并清除活动流。有关
   更多详细信息，请参阅
@@ -30,7 +30,7 @@ description: "了解如何在客户端断开连接后恢复聊天机器人流。
 
 **你需要构建：**
 
-- 用于跟踪每个聊天对应哪个流的存储
+- 用于跟踪每个聊天属于哪个流的存储
 - 用于存储 UIMessage 流的 Redis
 - 两个 API 端点：POST 用于创建流，GET 用于恢复流
 - 与 [`resumable-stream`](https://www.npmjs.com/package/resumable-stream) 集成以管理 Redis 存储
@@ -40,7 +40,7 @@ description: "了解如何在客户端断开连接后恢复聊天机器人流。
 要在你的聊天应用中实现可恢复流，你需要：
 
 1. **`resumable-stream` 包** - 处理流的发布者/订阅者机制
-2. **一个 Redis 实例** - 存储流数据（例如[通过 Vercel 使用 Redis](https://vercel.com/marketplace/redis)）
+2. **一个 Redis 实例** - 存储流数据（例如 [通过 Vercel 使用 Redis](https://vercel.com/marketplace/redis)）
 3. **一个持久化层** - 跟踪每个聊天当前活动的流 ID（例如数据库）
 
 ## 实现
@@ -88,7 +88,29 @@ export function Chat({
   `prepareSendMessagesRequest`）。
 </Note>
 
-当你启用 `resume` 时，`useChat` Hook 会在挂载时向 `/api/chat/[id]/stream` 发出 `GET` 请求，以检查并恢复任何活动流。
+当你启用 `resume` 时，`useChat` Hook 会在挂载时向 `/api/chat/[id]/stream` 发送一个 `GET` 请求，以检查并恢复任何活动流。
+
+该 Hook 还会在页面从后台重新变为可见时重新连接（例如，切换浏览器标签页或返回移动应用后）。这仅在流因网络断开而中断时发生。健康的流和其他错误不受影响。
+
+`DefaultChatTransport` 默认将恢复的流视为完整重放，
+如下方 `resumable-stream` 设置所返回的那样。在第一个 `start` 块上，
+客户端会重置中断的响应并根据重放重新构建它。这
+可以防止网络断开后出现重复的文本、推理和步骤部分。
+
+如果你的恢复端点只发送剩余的块，请设置
+`resumeStreamIsReplay: false`。即使续传包含具有相同消息 ID 的 `start` 块，
+这也会保留中断的响应：
+
+```ts
+const transport = new DefaultChatTransport({
+  resumeStreamIsReplay: false,
+});
+```
+
+当续传省略 `start` 块时，无论使用哪种设置，客户端都会保留其中断的
+流式传输状态。继续活动的文本或推理部分
+需要相同的聊天实例；页面重新加载不会保留该流式
+状态，因此对于重新加载请使用完整重放。
 
 默认传输会将聊天 ID 进行 URL 编码为单个路径段。等于
 `.` 或 `..` 的 ID 会被拒绝并返回 `InvalidArgumentError`，因为 URL 解析器
@@ -200,31 +222,29 @@ export async function GET(
 ```
 
 <Note>
-  Next.js 的 `after` 函数允许在响应发送后继续工作。这确保了
-  可恢复流即使在初始响应返回给客户端后仍会持久化在 Redis 中，
-  从而支持稍后重新连接。
+  Next.js 的 `after` 函数允许在响应发送后继续工作。这确保了可恢复流在初始响应返回给客户端后仍保留在 Redis 中，从而支持稍后重新连接。
 </Note>
 
 ## 工作原理
 
 ### 请求生命周期
 
-![展示可恢复流请求的架构和生命周期的图表](https://e742qlubrjnjqpp0.public.blob.vercel-storage.com/resume-stream-diagram.png)
+![显示可恢复流请求的架构和生命周期的图表](https://e742qlubrjnjqpp0.public.blob.vercel-storage.com/resume-stream-diagram.png)
 
-上图展示了可恢复流的完整生命周期：
+上图显示了可恢复流的完整生命周期：
 
 1. **流创建**：当你发送新消息时，POST 处理器使用 `streamText` 生成响应。`consumeSseStream` 回调创建一个具有唯一 ID 的可恢复流，并通过 `resumable-stream` 包将其存储在 Redis 中
 2. **流跟踪**：你的持久化层将 `activeStreamId` 保存在聊天数据中
-3. **客户端重新连接**：当客户端重新连接（页面重新加载）时，`resume` 选项会触发向 `/api/chat/[id]/stream` 的 GET 请求
+3. **客户端重新连接**：当客户端重新连接时（页面重新加载，或网络断开后返回后台页面），`resume` 选项会触发向 `/api/chat/[id]/stream` 发送 GET 请求
 4. **流恢复**：GET 处理器检查 `activeStreamId` 并使用 `resumeExistingStream` 重新连接。如果没有活动流，则返回 204（No Content）响应
-5. **完成清理**：当流结束时，`onEnd` 回调通过将 `activeStreamId` 设置为 `null` 来清除它
+5. **完成清理**：当流完成时，`onEnd` 回调通过将 `activeStreamId` 设置为 `null` 来清除它
 
 ## 自定义恢复端点
 
-默认情况下，`useChat` Hook 在恢复时会向 `/api/chat/[id]/stream` 发出 GET 请求。使用 `DefaultChatTransport` 中的 `prepareReconnectToStreamRequest` 选项自定义此端点、凭据和请求头：
+默认情况下，`useChat` Hook 在恢复时会向 `/api/chat/[id]/stream` 发送 GET 请求。使用 `DefaultChatTransport` 中的 `prepareReconnectToStreamRequest` 选项自定义此端点、凭据和请求头：
 
-该回调接收原始的、未编码的 ID。它返回的 `api` URL 会被原样使用，
-因此你需要自行对自定义 URL 中包含的任何 ID 进行编码和验证。
+回调接收原始的、未编码的 ID。其返回的 `api` URL 会被
+原样使用，因此你需要自行对自定义 URL 中包含的任何 ID 进行编码和验证。
 
 ```tsx filename="app/chat/[chatId]/chat.tsx"
 import { useChat } from '@ai-sdk/react';
@@ -267,7 +287,7 @@ export function Chat({ chatData, resume }) {
 
 `useChat` 包含一个 `stop()` 函数，用于中止当前客户端请求。在可恢复流设置中，该中止是断开连接信号，而不是停止生成的请求。
 
-流恢复允许客户端在原始连接关闭后重新连接到活动流。为实现这一点，即使没有客户端主动消费流，服务器也会保持流运行。如果用户刷新页面、关闭标签页、失去连接或导航离开，客户端可以稍后通过 `resumeStream()` 重新连接。
+流恢复允许客户端在原始连接关闭后重新连接到活动流。为实现这一点，即使没有客户端主动消费流，服务器也会保持流运行。如果用户刷新页面、关闭标签页、失去连接或导航离开，客户端稍后可以使用 `resumeStream()` 重新连接。
 
 因此，客户端中止（例如关闭页面或刷新）只会关闭当前 HTTP 连接。它不是取消底层工作的请求。如果你的停止按钮只调用 `stop()`，模型请求、后台作业、工作流或流写入器可能会继续运行，客户端可以重新连接到同一个活动流。
 
@@ -329,7 +349,7 @@ export function Chat({
 }
 ```
 
-停止请求会告诉你的服务器取消活动工作。`chat.stop()` 会停止本地客户端读取更多数据块。
+停止请求告诉你的服务器取消活动工作。`chat.stop()` 会阻止本地客户端读取更多块。
 
 ### 服务端：停止活动工作并清除流
 
@@ -398,11 +418,11 @@ export async function POST(
 
 仅对显式用户操作（例如按下停止按钮）调用停止端点。
 
-用户停止流后，避免对该聊天进行自动重新连接尝试，直到用户发送另一条消息或显式重试。否则客户端可能会在取消完成之前重新连接。
+在用户停止流后，避免对该聊天进行自动重新连接尝试，直到用户发送另一条消息或显式重试。否则客户端可能会在取消完成之前重新连接。
 
 ## 重要注意事项
 
-- **流过期**：Redis 中的流会在设定时间后过期（可在 `resumable-stream` 包中配置）
+- **流过期的**：Redis 中的流会在设定时间后过期（可在 `resumable-stream` 包中配置）
 - **多个客户端**：多个客户端可以同时连接到同一个流
 - **错误处理**：当没有活动流时，GET 处理器返回 204（No Content）状态码
 - **安全性**：确保创建和恢复流都有适当的身份验证和授权

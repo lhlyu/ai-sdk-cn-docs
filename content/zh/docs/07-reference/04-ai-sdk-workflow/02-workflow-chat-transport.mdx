@@ -45,56 +45,56 @@ export default function Chat() {
       type: 'string',
       isOptional: true,
       description:
-        "聊天请求的 API 端点。重连端点由此派生为 `{api}/{runId}/stream`。默认值：'/api/chat'。",
+        "API endpoint for chat requests. The reconnection endpoint is derived from this as `{api}/{runId}/stream`. Default: '/api/chat'.",
     },
     {
       name: 'fetch',
       type: 'typeof fetch',
       isOptional: true,
       description:
-        '用于 HTTP 请求的自定义 fetch 实现。默认值：全局 fetch。',
+        'Custom fetch implementation to use for HTTP requests. Default: global fetch.',
     },
     {
       name: 'maxConsecutiveErrors',
       type: 'number',
       isOptional: true,
       description:
-        '在放弃之前，重连尝试期间允许的最大连续错误数。默认值：3。',
+        'Maximum number of consecutive errors allowed during reconnection attempts before giving up. Streams that end without receiving any UI message chunks count as errors. Default: 3.',
     },
     {
       name: 'initialStartIndex',
       type: 'number',
       isOptional: true,
       description:
-        '重连时默认的起始 chunk 索引。负值从持久化 UIMessageChunk 流的末尾读取（例如，-50 获取最后 50 个 chunk），适用于在页面刷新后恢复而无需重放整个对话。原始 ModelCallStreamPart 流不支持负的 UI chunk 索引。可通过 reconnectToStream 选项按调用覆盖。默认值：0。',
+        'Default chunk index to start from when reconnecting. Negative values read from the end of a durable UIMessageChunk stream (e.g., -50 fetches the last 50 chunks), useful for resuming after a page refresh without replaying the full conversation. Raw ModelCallStreamPart streams do not support negative UI chunk indexes. Can be overridden per-call via reconnectToStream options. Default: 0.',
     },
     {
       name: 'onChatSendMessage',
       type: '(response: Response, options: SendMessagesOptions) => void | Promise<void>',
       isOptional: true,
       description:
-        '初始 POST 请求成功后调用的回调。适用于检查响应头（例如，提取工作流运行 ID）或在客户端跟踪聊天历史。',
+        'Callback invoked after the initial POST request succeeds. Useful for inspecting response headers (e.g., extracting workflow run ID) or tracking chat history on the client side.',
     },
     {
       name: 'onChatEnd',
       type: '({ chatId, chunkIndex }) => void | Promise<void>',
       isOptional: true,
       description:
-        '流结束时（收到 finish chunk）调用的回调。接收聊天 ID 和总 chunk 数。适用于清理或状态更新。',
+        'Callback invoked when the stream ends (receives a finish chunk). Receives the chat ID and total chunk count. Useful for cleanup or state updates.',
     },
     {
       name: 'prepareSendMessagesRequest',
       type: 'PrepareSendMessagesRequest',
       isOptional: true,
       description:
-        '在发送前自定义 POST 请求的函数。可覆盖 API 端点、请求头、凭据和请求体。',
+        'Function to customize the POST request before sending. Can override the API endpoint, headers, credentials, and body.',
     },
     {
       name: 'prepareReconnectToStreamRequest',
       type: 'PrepareReconnectToStreamRequest',
       isOptional: true,
       description:
-        '自定义重连 GET 请求的函数。可覆盖 API 端点、请求头和凭据。',
+        'Function to customize the reconnection GET request. Can override the API endpoint, headers, and credentials.',
     },
   ]}
 />
@@ -103,9 +103,9 @@ export default function Chat() {
 
 ### `sendMessages()`
 
-通过 POST 向聊天端点发送消息并返回流式响应。如果流被中断（未收到 `finish` 事件），该传输会自动通过 GET 重连到 `{api}/{runId}/stream?startIndex={chunkIndex}` 以从断点继续。
+通过 POST 向聊天端点发送消息并返回流式响应。如果流被中断（未收到 `finish` 事件），该传输会自动通过 GET 重连到 `{api}/{runId}/stream?startIndex={chunkIndex}`，以从断点处继续。
 
-POST 请求将消息作为 JSON 包含在内，并期望响应包含标识工作流运行的 `x-workflow-run-id` 头。
+POST 请求将消息以 JSON 形式包含在内，并期望响应中包含标识工作流运行的 `x-workflow-run-id` 响应头。
 
 ```ts
 const stream = await transport.sendMessages({
@@ -121,41 +121,41 @@ const stream = await transport.sendMessages({
     {
       name: 'chatId',
       type: 'string',
-      description: '聊天会话的唯一标识符。',
+      description: 'Unique identifier for the chat session.',
     },
     {
       name: 'trigger',
       type: "'submit-message' | 'regenerate-message'",
-      description: '消息提交的类型。',
+      description: 'The type of message submission.',
     },
     {
       name: 'messageId',
       type: 'string | undefined',
       description:
-        '要重新生成的消息 ID，新消息则为 undefined。',
+        'ID of the message to regenerate, or undefined for new messages.',
     },
     {
       name: 'messages',
       type: 'UIMessage[]',
       description:
-        '表示对话历史的 UI 消息数组。',
+        'Array of UI messages representing the conversation history.',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal | undefined',
       description:
-        '用于中止请求的信号。会传播到初始 POST 和任何重连 GET 请求。',
+        'Signal to abort the request. Propagated to both the initial POST and any reconnection GET requests.',
     },
   ]}
 />
 
 #### Returns
 
-返回一个 `Promise<ReadableStream<UIMessageChunk>>`，其中包含来自初始 POST 响应和任何自动重连的 chunk。
+返回一个 `Promise<ReadableStream<UIMessageChunk>>`，其中包含来自初始 POST 响应以及任何自动重连的 chunk。
 
 ### `reconnectToStream()`
 
-重连到之前中断的现有聊天流。适用于在页面刷新后恢复，或客户端需要重新建立连接时。
+重连到之前被中断的现有聊天流。适用于在页面刷新后恢复，或客户端需要重新建立连接时。
 
 ```ts
 const stream = await transport.reconnectToStream({
@@ -170,19 +170,19 @@ const stream = await transport.reconnectToStream({
       name: 'chatId',
       type: 'string',
       description:
-        '要重连的聊天 ID。用于构造重连 URL。',
+        'The chat ID to reconnect to. Used to construct the reconnection URL.',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal | undefined',
-      description: '用于中止重连请求的信号。',
+      description: 'Signal to abort the reconnection request.',
     },
     {
       name: 'startIndex',
       type: 'number',
       isOptional: true,
       description:
-        "覆盖本次重连的起始索引。当服务器的持久化流和 tail-index 头使用相同的 UIMessageChunk 索引空间时，负值从末尾读取。省略时，回退到构造函数的 initialStartIndex。",
+        "Override the start index for this reconnection. Negative values read from the end when the server's durable stream and tail-index header use the same UIMessageChunk index space. When omitted, falls back to the constructor's initialStartIndex.",
     },
   ]}
 />
@@ -195,21 +195,21 @@ const stream = await transport.reconnectToStream({
 
 该传输遵循以下流程：
 
-1. **POST** 到 `{api}` 并携带消息。响应必须包含 `x-workflow-run-id` 头。
+1. **POST** 到 `{api}`，携带消息。响应必须包含 `x-workflow-run-id` 响应头。
 2. **流式传输** SSE 响应，在 chunk 到达时进行计数。
-3. **检测中断**：如果流在没有 `finish` 事件的情况下关闭（例如，函数超时、网络错误），该传输会知道响应不完整。
-4. **重连**：通过 GET 到 `{api}/{runId}/stream?startIndex={chunkIndex}` 以从最后接收的 chunk 继续。
-5. **重试**：如果重连流也中断，最多重试 `maxConsecutiveErrors` 次。
+3. **检测中断**：如果流在没有 `finish` 事件的情况下关闭（例如函数超时、网络错误），该传输会知道响应不完整。
+4. **重连**：通过 GET 到 `{api}/{runId}/stream?startIndex={chunkIndex}`，从最后接收到的 chunk 继续。
+5. **重试**：如果重连流也中断，则从更新后的 chunk 索引继续。未收到任何 UI 消息 chunk 就结束的流会计入 `maxConsecutiveErrors`，流解析错误也是如此。成功解析并接收到 chunk 的流会重置连续错误计数。
 6. **完成**：一旦收到 `finish` 事件，调用 `onChatEnd` 并关闭流。
 
 ### Negative Start Index
 
-当 `initialStartIndex` 为负值（例如 `-50`）时，该传输会在首次重连请求中按原样发送它。服务器应将其解析为绝对位置，并返回 `x-workflow-stream-tail-index` 响应头，以便该传输可以为后续重试计算正确的位置。
+当 `initialStartIndex` 为负数（例如 `-50`）时，该传输会在首次重连请求中按原样发送它。服务器应将其解析为绝对位置，并返回 `x-workflow-stream-tail-index` 响应头，以便该传输为后续重试计算正确的位置。
 
-如果该头缺失或无效，该传输会回退到从头开始重放（`startIndex=0`）。
+如果该响应头缺失或无效，该传输会回退到从头开始重放（`startIndex=0`）。
 
-负索引需要持久化服务器流，其存储的对象
-已经是 `UIMessageChunk` 对象。下面展示的原始 `WorkflowAgent` 转换
+负数索引要求服务器具有持久化流，且其存储的对象已经是
+`UIMessageChunk` 对象。下面展示的原始 `WorkflowAgent` 转换
 仅支持非负索引。
 
 ## Server Requirements
@@ -226,9 +226,9 @@ const stream = await transport.reconnectToStream({
 
 - 接受 `startIndex` 查询参数
 - 返回从给定 chunk 索引开始的 SSE 流
-- 对于负的 `startIndex`，解析到尾部并包含 `x-workflow-stream-tail-index` 响应头
+- 对于负数 `startIndex`，解析到尾部并包含 `x-workflow-stream-tail-index` 响应头
 
-有关完整的端点示例，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent)。
+完整的端点示例请参见 [WorkflowAgent 指南](/docs/agents/workflow-agent)。
 
 ## Examples
 
@@ -355,6 +355,7 @@ export async function GET(
 }
 ```
 
-这个 `WorkflowAgent` 端点从索引 `0` 重放原始 `ModelCallStreamPart` 对象，
-然后在将它们转换为 `UIMessageChunk` 对象后应用该传输的非负游标。
-负起始索引需要持久化流，其存储的对象已经是 `UIMessageChunk` 对象。
+此 `WorkflowAgent` 端点从索引 `0` 开始重放原始 `ModelCallStreamPart`
+对象，然后在将它们转换为 `UIMessageChunk` 对象后应用该传输的非负
+游标。负数起始索引要求持久化流，且其存储的对象已经是
+`UIMessageChunk` 对象。

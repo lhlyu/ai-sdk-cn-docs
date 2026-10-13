@@ -1,0 +1,181 @@
+---
+title: "HeyGen"
+description: "了解如何使用 HeyGen 视频生成提供商进行 AI SDK 开发。"
+---
+
+# HeyGen 提供商
+
+[HeyGen](https://developers.heygen.com/docs/models/heygen-video) 提供商支持 `heygen-video-1`，这是一个视频生成模型，具备文本转视频、图像转视频和参考转视频模式。生成的片段包含音频。
+
+此提供商仅支持视频生成。不包含 HeyGen 的头像、语音、翻译和视频编辑 API。
+
+## 设置
+
+<InstallPackages packages="@ai-sdk/heygen" />
+
+## 提供商实例
+
+导入默认实例：
+
+```ts
+import { heygen } from '@ai-sdk/heygen';
+```
+
+或创建自定义实例：
+
+```ts
+import { createHeyGen } from '@ai-sdk/heygen';
+
+const heygen = createHeyGen({
+  apiKey: process.env.HEYGEN_API_KEY,
+});
+```
+
+以下设置为可选：
+
+- **apiKey** _string_：在 `x-api-key` 请求头中发送的密钥。默认为 `HEYGEN_API_KEY` 环境变量。
+- **baseURL** _string_：API URL 前缀。默认为 `https://api.heygen.com`。
+- **headers** _Record&lt;string, string&gt;_：额外的请求头。
+- **fetch** _typeof fetch_：自定义 fetch 实现。
+
+## 视频模型
+
+使用 `heygen.video('heygen-video-1')` 或 `heygen.videoModel('heygen-video-1')` 创建模型。
+
+### 文本转视频
+
+```ts
+import { heygen } from '@ai-sdk/heygen';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: heygen.video('heygen-video-1'),
+  prompt:
+    'A paper boat floats down a quiet stream. Static camera, soft morning light, the sound of flowing water. No music.',
+  duration: 5,
+  aspectRatio: '16:9',
+});
+```
+
+### 图像转视频
+
+在提示词中传入图像以将其用作第一帧。视频将遵循图像的宽高比；提供的 `aspectRatio` 将被忽略并产生警告。
+
+```ts
+const { videos } = await generateVideo({
+  model: heygen.video('heygen-video-1'),
+  prompt: {
+    text: 'The subject moves slowly. Preserve the composition and natural lighting.',
+    image: 'https://example.com/first-frame.jpg',
+  },
+  duration: 5,
+});
+```
+
+也支持在 `frameImages` 中使用单个 `first_frame`。不支持尾帧条件和多个首帧。
+
+### 参考转视频
+
+使用 `inputReferences` 基于图像或视频来约束新场景。为显式 URL 引用包含 `mediaType`，以便提供商选择引用类型。
+
+```ts
+const { videos } = await generateVideo({
+  model: heygen.video('heygen-video-1'),
+  prompt: 'The product in <Picture 1> sits on a desk beside a sunlit window.',
+  inputReferences: [
+    {
+      data: 'https://example.com/product.jpg',
+      mediaType: 'image/jpeg',
+    },
+  ],
+  duration: 5,
+  aspectRatio: '16:9',
+});
+```
+
+引用按媒体类型分组，并在每组内保持顺序。在提示词中使用 `<Picture 1>`、`<Video 1>` 和 `<Audio 1>` 来引用它们。提供商选项引用会追加在相同类型的标准引用之后。
+
+参考转视频需要至少一个图像或视频。不支持仅音频条件。HeyGen 最多接受 9 个图像引用、3 个视频引用和 3 个音频引用，合计最多 12 个。每个参考视频仅使用前 5 秒。
+
+### 提供商选项
+
+```ts
+import { heygen, type HeyGenVideoModelOptions } from '@ai-sdk/heygen';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: heygen.video('heygen-video-1'),
+  prompt: 'The product in <Picture 1> rotates slowly on a table. No music.',
+  aspectRatio: '16:9',
+  providerOptions: {
+    heygen: {
+      resolution: '1080p',
+      promptEnhancement: 'disabled',
+      referenceImages: [{ type: 'asset_id', assetId: 'YOUR_ASSET_ID' }],
+    } satisfies HeyGenVideoModelOptions,
+  },
+});
+```
+
+- **mode** _'text_to_video' | 'image_to_video' | 'reference_to_video'_：省略时根据输入推断。显式模式必须与提供的输入匹配。首帧图像不能与引用组合使用。
+- **resolution** _'480p' | '768p' | '1080p' | '2k'_：输出尺寸类别。默认为 `768p`。优先于标准 `resolution` 选项。
+- **promptEnhancement** _'turbo' | 'quality' | 'disabled'_：HeyGen 的提示词增强设置。API 默认为 `turbo`。
+- **image** _HeyGenVideoAsset_：首帧输入，包括现有资产 ID。不能与标准图像或 `frameImages` 组合使用。
+- **referenceImages** _HeyGenVideoAsset[]_：额外的图像引用。
+- **referenceVideos** _HeyGenVideoAsset[]_：额外的视频引用。
+- **referenceAudio** _HeyGenVideoAsset[]_：额外的音频引用。
+
+`HeyGenVideoAsset` 支持以下表示形式：
+
+```ts
+{ type: 'url', url: 'https://example.com/input.jpg' }
+{ type: 'asset_id', assetId: 'YOUR_ASSET_ID' }
+{ type: 'base64', mediaType: 'image/jpeg', data: 'BASE64_DATA' }
+```
+
+资产 ID 必须已存在于与 API 密钥关联的工作区中。此提供商不会上传或管理 HeyGen 资产。标准文件输入以内联 base64 形式发送。HeyGen 允许每个内联图像最大 5 MB，每个内联视频或音频输入最大 16 MB。URL 输入必须使用 HTTPS，并且可以直接访问且无重定向；HeyGen 允许每个图像 URL 最大 16 MB，每个视频或音频 URL 最大 32 MB。
+
+### 分辨率和宽高比
+
+优先使用 `providerOptions.heygen.resolution` 选择尺寸类别。标准 `resolution` 选项接受以下精确帧尺寸，并在省略 `aspectRatio` 时推断相应的宽高比：
+
+| 宽高比 | `480p`    | `768p`     | `1080p`     | `2k`        |
+| ------------ | --------- | ---------- | ----------- | ----------- |
+| `21:9`       | `960x416` | `1536x672` | —           | —           |
+| `16:9`       | `832x480` | `1344x768` | `1890x1080` | `2688x1536` |
+| `4:3`        | `640x480` | `1024x768` | —           | —           |
+| `1:1`        | `480x480` | `768x768`  | —           | —           |
+| `3:4`        | `480x640` | `768x1024` | —           | —           |
+| `9:16`       | `480x832` | `768x1344` | `1080x1890` | `1536x2688` |
+
+文本转视频默认为 `16:9`。参考转视频默认为 `adaptive`，继承第一个参考图像或视频的形状。在 `1080p` 或 `2k` 下，文本转视频和参考转视频需要 `16:9` 或 `9:16`。图像转视频始终继承首帧的形状，即使提供了标准帧尺寸；仅使用其尺寸类别。
+
+### 其他约束
+
+- 提示词必须包含 1 到 32,000 个字符。
+- 时长必须是 5 到 15 秒之间的整数；默认为 5。
+- 种子必须是无符号 32 位整数。
+- 每次提供商调用生成一个视频。
+- 输出为 24 fps 的 MP4，包含生成的音频。不支持的 `fps` 值和 `generateAudio: false` 会产生警告。
+
+### 异步生成
+
+提供商实现了 `doStart` 和 `doStatus`。AI SDK 为 `generateVideo` 编排轮询。未实现原生 webhook 完成；使用轮询。
+
+HeyGen 任务在提交后继续运行。中止本地请求不会取消远程生成。返回的视频 URL 是签名的；再次检索同一操作的状态会刷新 URL。
+
+在重试同一提交时，通过标准 `headers` 选项传递 `Idempotency-Key`。HeyGen 保留密钥 24 小时；并发重复请求返回 HTTP 409 错误。
+
+### 提供商元数据
+
+`providerMetadata.heygen.videos` 为每个完成的视频包含一个条目。当请求多个视频时，AI SDK 会合并这些条目。每个条目包含：
+
+- `videoId`：HeyGen 视频标识符。
+- `mode`：提交给 HeyGen 的生成模式。
+- `resolution`：提交给 HeyGen 的已解析尺寸类别，在异步状态调用中保留。这与实际输出尺寸不同。
+- `duration`、`width`、`height`、`aspectRatio` 和 `seed`：HeyGen 在完成时报告的值（如果可用）。
+- `timings.inference`：HeyGen 报告的推理计时（如果可用）。
+
+提交和进行中操作的元数据在 `providerMetadata.heygen` 下直接暴露 `videoId`、`mode` 和 `resolution`。失败或取消的操作在 HeyGen 报告时也会暴露 `failureCode`。
+
+当前 HeyGen 视频端点未在其生成响应中记录 token 数量或积分消耗。提供商返回报告的时长和尺寸，而不估算这些数量。报告的推理计时按视频保留。

@@ -7,8 +7,8 @@ description: "使用 stopWhen 和 prepareStep 通过内置循环管理控制智�
 
 你可以控制智能体循环中每一步的执行流程和设置。循环会持续进行，直到：
 
-- 返回了除 tool-calls 之外的 finish reasoning，或
-- 被调用的工具没有 execute 函数，或
+- 返回了非 tool-calls 的 finish reasoning，或
+- 调用的工具没有 execute 函数，或
 - 某个工具调用需要审批，或
 - 满足停止条件
 
@@ -16,21 +16,23 @@ AI SDK 通过两个参数提供内置的循环控制：`stopWhen` 用于定义�
 
 ## 停止条件
 
-当最后一步存在工具结果时，`stopWhen` 参数控制何时停止执行。默认情况下，`ToolLoopAgent` 在使用 `isStepCount(20)` 后于 20 步停止。此默认值是一种安全措施，用于防止失控循环导致过多的 API 调用和成本。
+当最后一步存在工具结果时，`stopWhen` 参数控制何时停止执行。默认情况下，`ToolLoopAgent` 使用 `isStepCount(20)` 在 20 步后停止。此默认值是一种安全措施，用于防止失控循环导致过多的 API 调用和成本。
 
-`WorkflowAgent` 不应用默认的步数限制。它会持续运行，直到模型停止调用工具或满足其他自然终止条件。当你需要限制其模型调用次数时，请配置显式条件，例如 `isStepCount(20)`。详情请参阅 [WorkflowAgent 循环控制](/docs/agents/workflow-agent#loop-control)。
+如果此默认限制停止了本可继续的工具循环，SDK 会记录一条警告，并给出配置 `stopWhen` 的指导。请显式设置 `stopWhen` 以选择限制，即使你想保留 `isStepCount(20)`。显式停止条件不会产生此警告。
 
-当你提供 `stopWhen` 时，智能体在工具调用之后会继续执行，直到满足停止条件。当条件为数组时，满足其中任意一个条件即停止执行。
+`WorkflowAgent` 不应用默认步数限制。它会持续运行，直到模型停止调用工具或满足其他自然终止条件。当你需要限制其模型调用时，请配置显式条件，例如 `isStepCount(20)`。详情请参阅 [WorkflowAgent 循环控制](/docs/agents/workflow-agent#loop-control)。
+
+当你提供 `stopWhen` 时，智能体在工具调用后继续执行，直到满足停止条件。当条件为数组时，满足任一条件即停止执行。
 
 ### 使用内置条件
 
-AI SDK 提供了几个内置的停止条件：
+AI SDK 提供了几个内置停止条件：
 
 - `isStepCount(count)` — 在指定步数后停止
-- `hasToolCall(...toolNames)` — 当调用任意指定工具时停止
+- `hasToolCall(...toolNames)` — 当调用任一指定工具时停止
 - `isLoopFinished()` — 永不触发，让循环运行直到智能体自然结束
 
-### 运行至最大步数
+### 运行到最大步数
 
 ```ts
 import { ToolLoopAgent, isStepCount } from 'ai';
@@ -51,7 +53,7 @@ const result = await agent.generate({
 
 ### 运行直到结束
 
-如果你希望 `ToolLoopAgent` 运行到模型自然停止调用工具为止，请使用 `isLoopFinished()`。这会移除其默认步数限制：
+如果你希望 `ToolLoopAgent` 运行到模型自然停止调用工具，请使用 `isLoopFinished()`。这会移除其默认步数限制：
 
 ```ts
 import { ToolLoopAgent, isLoopFinished } from 'ai';
@@ -71,12 +73,12 @@ const result = await agent.generate({
 ```
 
 <Note>
-  请谨慎使用 `isLoopFinished()`。如果没有步数限制，智能体可能会无限期运行，或者如果模型持续调用工具，可能会产生大量成本。
+  请谨慎使用 `isLoopFinished()`。如果没有步数限制，智能体可能会无限期运行，或者如果模型持续调用工具，可能会产生高昂成本。
 </Note>
 
 ### 组合多个条件
 
-组合多个停止条件。循环在满足任意一个条件时停止：
+组合多个停止条件。满足任一条件时循环即停止：
 
 ```ts
 import { ToolLoopAgent, isStepCount, hasToolCall } from 'ai';
@@ -146,9 +148,9 @@ const budgetExceeded: StopCondition<typeof tools> = ({ steps }) => {
 
 ## 准备步骤
 
-`prepareStep` 回调在循环中的每一步之前运行，如果你不返回任何更改，则默认使用初始设置。使用它可以修改设置、管理上下文，或根据执行历史实现动态行为。
+`prepareStep` 回调在循环中的每一步之前运行，如果你不返回任何更改，则默认使用初始设置。使用它来修改设置、管理上下文，或基于执行历史实现动态行为。
 
-它会接收当前步骤的 `messages`，以及当你需要区分原始输入与之前步骤中累积的 assistant/tool 消息时，还会接收 `initialMessages` 和 `responseMessages`。将 `messages` 视为循环的当前消息状态：如果你返回 `messages` 覆盖，该覆盖将作为后续步骤的基础持续存在，并与每个已完成步骤的响应消息一起使用。
+它会接收当前步骤的 `messages`，以及当你需要区分原始输入与之前步骤中累积的助手/工具消息时所需的 `initialMessages` 和 `responseMessages`。将 `messages` 视为循环的当前消息状态：如果你返回 `messages` 覆盖，该覆盖会作为后续步骤的基础持续存在，并与每个已完成步骤的响应消息一起使用。
 
 ### 动态模型选择
 
@@ -211,13 +213,13 @@ const result = await agent.generate({
 });
 ```
 
-`prepareStep` 可以覆盖 `maxOutputTokens`、`temperature`、`topP`、`topK`、`presencePenalty`、`frequencyPenalty`、`stopSequences`、`seed` 和 `reasoning`。这些覆盖仅适用于当前步骤。当某个设置被省略或为 `undefined` 时，该步骤将使用顶层值。已定义的假值（如 `temperature: 0`、`seed: 0` 以及空的 `stopSequences` 数组）会被保留。
+`prepareStep` 可以覆盖 `maxOutputTokens`、`temperature`、`topP`、`topK`、`presencePenalty`、`frequencyPenalty`、`stopSequences`、`seed` 和 `reasoning`。这些覆盖仅适用于当前步骤。当某个设置被省略或为 `undefined` 时，该步骤将使用顶层值。已定义的假值（例如 `temperature: 0`、`seed: 0` 以及空的 `stopSequences` 数组）会被保留。
 
 ### 上下文管理
 
-长时间运行的智能体可能会累积大量工具结果、推理部分和 assistant 消息。使用 `prepareStep` 来修改后续步骤将使用的消息状态。这对于压缩很有用，你可以决定何时进行压缩。
+长时间运行的智能体可能会累积大量工具结果、推理部分和助手消息。使用 `prepareStep` 修改后续步骤将使用的消息状态。这对于压缩很有用，你可以决定何时进行压缩。
 
-`messages` 值包含将为当前步骤发送的消息。当你从 `prepareStep` 返回 `messages` 覆盖时，该更改后的列表将成为后续步骤的基础。随着循环继续，新的 assistant 和 tool 响应消息会追加到其中。如果你需要从离散片段而不是持久化的消息状态重建某个步骤，请使用 `initialMessages` 获取原始输入，使用 `responseMessages` 获取到目前为止累积的模型/工具响应消息。
+`messages` 值包含当前步骤将发送的消息。当你从 `prepareStep` 返回 `messages` 覆盖时，该更改后的列表会成为后续步骤的基础。随着循环继续，新的助手和工具响应消息会追加到其中。如果你需要从离散片段而不是持久化的消息状态重建某个步骤，请使用 `initialMessages` 获取原始输入，使用 `responseMessages` 获取到目前为止累积的模型/工具响应消息。
 
 `pruneMessages` 辅助函数提供了一种内置方式来移除选定的消息。当你想要一个简单的压缩策略时，可以在 `prepareStep` 中使用它。
 
@@ -255,7 +257,7 @@ const result = await agent.generate({
 });
 ```
 
-上面的 token 估算器有意保持简单，仅演示了一种决定何时压缩的方式。重点在于 `prepareStep` 可以返回新的 `messages` 数组，而该数组会成为后续步骤的消息状态。同样的模式也适用于 `generateText` 和 `streamText`。
+上面的 token 估算器有意保持简单，仅演示一种决定何时压缩的方式。重点在于 `prepareStep` 可以返回新的 `messages` 数组，而该数组会成为后续步骤的消息状态。同样的模式也适用于 `generateText` 和 `streamText`。
 
 ### 工具选择
 
@@ -325,7 +327,7 @@ prepareStep: async ({ stepNumber }) => {
 
 ### 消息修改
 
-在将消息发送给模型之前对其进行转换。返回的消息会延续到后续步骤，因此后续的 `messages` 值会包含你转换后的消息，以及已完成步骤中的 assistant/tool 响应消息：
+在将消息发送给模型之前对其进行转换。返回的消息会传递到后续步骤，因此后续的 `messages` 值会包含你转换后的消息，以及已完成步骤中的助手/工具响应消息：
 
 ```ts
 import { ToolLoopAgent } from 'ai';
@@ -417,7 +419,7 @@ prepareStep: async ({
 
 ## 强制工具调用
 
-你可以通过将 `toolChoice: 'required'` 与一个没有 `execute` 函数的 `done` 工具结合使用，强制智能体始终使用工具。此模式确保智能体在每一步都使用工具，并且仅在明确表示完成时停止。
+你可以通过将 `toolChoice: 'required'` 与一个没有 `execute` 函数的 `done` 工具结合使用，强制智能体始终使用工具。此模式确保智能体在每一步都使用工具，并且仅当它明确表示完成时才停止。
 
 ```ts
 import { ToolLoopAgent, tool } from 'ai';
@@ -453,11 +455,11 @@ if (toolCall?.toolName === 'done') {
 
 此模式的关键方面：
 
-- **`toolChoice: 'required'`**：强制模型在每一步调用工具，而不是直接生成文本。这确保智能体遵循结构化的工作流。
-- **没有 `execute` 的 `done` 工具**：没有 `execute` 函数的工具充当终止信号。当智能体调用此工具时，循环会停止，因为没有要执行的函数。
+- **`toolChoice: 'required'`**：强制模型在每一步调用工具，而不是直接生成文本。这确保智能体遵循结构化工作流。
+- **没有 `execute` 的 `done` 工具**：没有 `execute` 函数的工具充当终止信号。当智能体调用此工具时，由于没有可执行的函数，循环会停止。
 - **访问结果**：最终答案可在 `result.staticToolCalls` 中获取，其中包含未执行的工具调用。
 
-当你希望智能体始终使用特定工具进行操作（如代码执行或数据检索），而不是尝试直接回答时，此模式很有用。
+当你希望智能体始终使用特定工具执行操作（例如代码执行或数据检索），而不是尝试直接回答时，此模式非常有用。
 
 ## 手动循环控制
 
@@ -503,4 +505,4 @@ while (step < maxSteps) {
 - 动态工具和模型选择
 - 错误处理与恢复
 
-[在 cookbook 中了解有关手动智能体循环的更多信息](/cookbook/node/manual-agent-loop)。
+[在 cookbook 中了解更多关于手动智能体循环的内容](/cookbook/node/manual-agent-loop)。

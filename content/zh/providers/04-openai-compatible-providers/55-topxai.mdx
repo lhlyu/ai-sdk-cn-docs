@@ -1,0 +1,117 @@
+---
+title: "TopxAI"
+description: "使用 AI SDK 调用 TopxAI 的 OpenAI 兼容 API。"
+---
+
+# TopxAI 提供商
+
+[TopxAI](https://ai.topxea.com/) 是一个 API 网关，通过 OpenAI 兼容 API 提供对多个 AI 提供商模型的访问。你可以通过 `@ai-sdk/openai-compatible` 模块，使用其 Chat Completions 端点配合 AI SDK。
+
+## 设置
+
+安装 OpenAI 兼容提供商：
+
+<InstallPackages packages="@ai-sdk/openai-compatible" />
+
+创建一个 [TopxAI API 密钥](https://ai.topxea.com/keys)，选择一条包含你想要使用的模型的路由，并将该密钥设置为服务端环境变量：
+
+```bash
+export TOPXAI_API_KEY=your-api-key
+```
+
+详情请参阅 [TopxAI API 密钥指南](https://ai.topxea.com/docs/create-an-api-key-and-choose-a-route)。
+
+## 提供商实例
+
+使用 `createOpenAICompatible` 创建 TopxAI 提供商实例：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const topxai = createOpenAICompatible({
+  name: 'topxai',
+  apiKey: process.env.TOPXAI_API_KEY,
+  baseURL: 'https://ai.topxea.com/v1',
+  includeUsage: true,
+});
+```
+
+`apiKey` 设置会将密钥作为 Bearer token 发送到 `Authorization` 请求头中。`includeUsage: true` 会请求在流式传输响应中包含用量信息。
+
+## 语言模型
+
+通过向提供商实例传入 TopxAI 模型 ID 来创建语言模型：
+
+```ts
+const model = topxai('kimi-k3');
+```
+
+### 示例
+
+使用 `generateText` 通过该模型生成文本：
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const topxai = createOpenAICompatible({
+  name: 'topxai',
+  apiKey: process.env.TOPXAI_API_KEY,
+  baseURL: 'https://ai.topxea.com/v1',
+  includeUsage: true,
+});
+
+const { text } = await generateText({
+  model: topxai('kimi-k3'),
+  prompt: 'Explain what an API gateway does in one sentence.',
+});
+
+console.log(text);
+```
+
+你也可以将 TopxAI 语言模型与 `streamText` 一起使用。
+
+## 支持的模型与能力
+
+TopxAI 通过其 OpenAI 兼容的 Chat Completions 端点提供以下文本模型 ID：
+
+| 提供商    | 模型 ID                                                    |
+| --------- | ---------------------------------------------------------- |
+| Anthropic | `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5` |
+| OpenAI    | `gpt-6-astra`, `gpt-6.1-sol`                               |
+| xAI       | `grok-4.7`                                                 |
+| Zhipu AI  | `GLM-5.3-Abliterated`                                      |
+| Moonshot  | `kimi-k3`                                                  |
+| DeepSeek  | `deepseek-flash`, `deepseek-v4-pro`                        |
+
+可用模型以及为某个密钥启用的路由可能会发生变化。请使用需要身份验证的 [`GET /v1/models`](https://ai.topxea.com/v1/models) 端点或 [TopxAI 模型与定价目录](https://ai.topxea.com/pricing) 获取当前模型 ID。
+
+TopxAI 目录中的 `jev-1.13.0` 模型使用单独的 System One 端点，无法通过此 Chat Completions 集成使用。
+
+支持的能力取决于所选模型，包括：
+
+- 文本生成与流式传输；
+- 工具调用，包括使用 `stopWhen` 的多步工具使用；
+- 推理模型的推理内容和推理 token 用量，例如 `deepseek-flash`；以及
+- 支持 JSON Schema 的模型的结构化输出。
+
+要发送 JSON Schema 结构化输出请求，请启用 `supportsStructuredOutputs`：
+
+```ts
+const topxai = createOpenAICompatible({
+  name: 'topxai',
+  apiKey: process.env.TOPXAI_API_KEY,
+  baseURL: 'https://ai.topxea.com/v1',
+  supportsStructuredOutputs: true,
+});
+```
+
+本指南涵盖 TopxAI 的 OpenAI 兼容 Chat Completions 端点。TopxAI 还记录了如何将其 Responses 和 Messages API 与 AI SDK 的 OpenAI 和 Anthropic 提供商一起使用。
+
+## 资源
+
+- [TopxAI AI SDK 指南](https://ai.topxea.com/docs/use-topxai-with-vercel-ai-sdk)
+- [TopxAI API 参考](https://ai.topxea.com/docs/api-reference)
+- [TopxAI API 密钥指南](https://ai.topxea.com/docs/create-an-api-key-and-choose-a-route)
+- [TopxAI 模型与定价目录](https://ai.topxea.com/pricing)
+- [AI SDK OpenAI 兼容提供商](/providers/openai-compatible-providers)

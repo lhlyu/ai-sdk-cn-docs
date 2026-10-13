@@ -17,7 +17,7 @@ description: "了解如何在 AI SDK UI 中处理错误"
 - **不支持的功能**：你使用了 AI 模型不支持的功能或设置（例如某些选项或参数）。
 - **兼容性警告**：某功能在兼容模式下使用，其工作方式可能与预期不同或不够理想。
 - **弃用**：你使用了已弃用的 API、选项或消息格式。
-- **其他警告**：AI 模型报告了其他类型的问题，例如一般性问题或提示信息。
+- **其他警告**：AI 模型报告了其他类型的问题，例如一般性问题或提示性消息。
 
 ### 警告消息
 
@@ -33,7 +33,7 @@ AI SDK Warning: The feature "temperature" is not supported by this model
 
 #### 关闭所有警告
 
-设置一个全局变量以完全关闭警告：
+设置一个全局变量即可完全关闭警告：
 
 ```ts
 globalThis.AI_SDK_LOG_WARNINGS = false;
@@ -43,7 +43,7 @@ globalThis.AI_SDK_LOG_WARNINGS = false;
 
 你也可以提供自己的函数来处理警告。
 它会接收一个警告列表以及可选的提供商和模型 id。自定义
-处理器会接收每一条警告，包括重复的弃用警告。
+处理器会接收所有警告，包括重复的弃用警告。
 
 ```ts
 globalThis.AI_SDK_LOG_WARNINGS = ({ warnings, provider, model }) => {
@@ -51,14 +51,47 @@ globalThis.AI_SDK_LOG_WARNINGS = ({ warnings, provider, model }) => {
 };
 ```
 
+如果你的应用在同一运行时中加载了多个 AI SDK 版本，它们都会
+共享 `globalThis.AI_SDK_LOG_WARNINGS`。每个版本都会用自己的
+参数和警告类型调用该 logger。合并后的全局类型声明可防止
+TypeScript 声明冲突，但不会在运行时转换这些参数。
+因此，仅针对一个版本进行类型标注的处理器在另一个版本
+调用它时可能会失败。
+
+从每个可能调用该 logger 的已安装版本中导入 `LogWarningsFunction`，
+并接受它们参数类型的联合。例如，当 AI SDK 7 以 `ai` 安装，
+而 AI SDK 6 以包别名 `ai-v6`（`npm:ai@6`）安装时：
+
+```ts
+import type { LogWarningsFunction as LogWarningsFunctionV7 } from 'ai';
+import type { LogWarningsFunction as LogWarningsFunctionV6 } from 'ai-v6';
+
+type LoggerOptions =
+  | Parameters<LogWarningsFunctionV7>[0]
+  | Parameters<LogWarningsFunctionV6>[0];
+
+const logger = ({ warnings, provider, model }: LoggerOptions) => {
+  for (const warning of warnings) {
+    console.warn('AI SDK Warning:', warning, { provider, model });
+  }
+};
+
+globalThis.AI_SDK_LOG_WARNINGS = logger;
+```
+
+在访问特定版本的字段之前，请检查参数结构和警告类型。如果还安装了
+AI SDK 5，请包含其 `Experimental_LogWarningsFunction` 参数类型，
+并在访问 AI SDK 6 和 7 使用的选项对象之前，使用 `Array.isArray`
+处理其警告数组。
+
 ### 弃用警告
 
-默认日志记录器会为每个已加载的 SDK 实例输出一次每个弃用代码。
+默认 logger 会针对每个已加载的 SDK 实例，为每个弃用代码发出一次警告。
 在 Node.js 中，这些警告的类型为 `DeprecationWarning`，并带有稳定的
-`AISDK_DEP_*` 代码，可通过 `process.on('warning', handler)` 中的 `warning.code` 获取。
-浏览器/边缘控制台消息会在方括号中包含该代码。
+`AISDK_DEP_*` 代码，可通过 `process.on('warning', handler)` 中的
+`warning.code` 获取。浏览器/边缘控制台消息会在方括号中包含该代码。
 
-| 代码                                     | 弃用用法 / 替代方案                                                        |
+| 代码                                     | 已弃用的用法 / 替代方案                                                    |
 | ---------------------------------------- | -------------------------------------------------------------------------- |
 | `AISDK_DEP_GENERATE_OBJECT`              | 使用带 `output` 的 `generateText` 代替 `generateObject`。                  |
 | `AISDK_DEP_STREAM_OBJECT`                | 使用带 `output` 的 `streamText` 代替 `streamObject`。                      |
@@ -68,21 +101,21 @@ globalThis.AI_SDK_LOG_WARNINGS = ({ warnings, provider, model }) => {
 | `AISDK_DEP_UI_MESSAGE_RAW_INPUT`         | 在 UI 工具部件中使用 `input` 代替 `rawInput`。                             |
 | `AISDK_DEP_IMAGE_CONTENT_PART`           | 使用带图像 `mediaType` 的 `file` 代替 `image` 消息部件。                   |
 
-以 `--throw-deprecation` 运行 Node.js 可在使用弃用功能时失败，
+以 `--throw-deprecation` 运行 Node.js 可在使用已弃用功能时失败，
 `--no-deprecation` 可抑制弃用警告，`--trace-deprecation` 可获取堆栈
-跟踪。这些标志会影响所有 `DeprecationWarning`，而非单个
-代码，并且仅适用于默认的 Node.js 日志记录器。
+跟踪。这些标志会影响所有 `DeprecationWarning`，而非单个代码，并且
+仅适用于默认的 Node.js logger。
 
 ## 错误处理
 
 ### 错误辅助对象
 
 每个 AI SDK UI Hook 还会返回一个 [error](/docs/reference/ai-sdk-ui/use-chat#error) 对象，你可以用它来在 UI 中渲染错误。
-你可以使用该错误对象来显示错误消息、禁用提交按钮或显示重试按钮。
+你可以使用该 error 对象来显示错误消息、禁用提交按钮或显示重试按钮。
 
 <Note>
   我们建议向用户显示通用的错误消息，例如 "Something
-  went wrong."。这是避免从服务器泄露信息的好做法。
+  went wrong."。这是避免泄露服务器信息的好做法。
 </Note>
 
 ```tsx file="app/page.tsx" highlight="8,28-35,41"
@@ -136,9 +169,8 @@ export default function Chat() {
 
 #### 替代方案：替换失败的消息
 
-或者，你可以编写一个自定义提交处理器，用新的输入替换失败
-的用户消息。如果助手响应在错误发生前已开始流式传输，
-则同时移除部分助手响应及其用户消息。
+或者，你可以编写一个自定义提交处理器，用新的输入替换失败的用户消息。
+如果助手响应在错误发生前已开始流式传输，请同时移除部分助手响应及其用户消息。
 
 ```tsx file="app/page.tsx" highlight="13-19,21-22,39"
 'use client';
@@ -189,19 +221,19 @@ export default function Chat() {
 
 ### 错误处理回调
 
-可以通过向 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 或 [`useCompletion`](/docs/reference/ai-sdk-ui/use-completion) Hook 传递 [`onError`](/docs/reference/ai-sdk-ui/use-chat#on-error) 回调函数作为选项来处理错误。
-该回调函数会接收一个错误对象作为参数。
+可以通过向 [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 或 [`useCompletion`](/docs/reference/ai-sdk-ui/use-completion) Hook 传入 [`onError`](/docs/reference/ai-sdk-ui/use-chat#on-error) 回调函数作为选项来处理错误。
+该回调函数会接收一个 error 对象作为参数。
 
 AI SDK 创建的客户端错误使用导出的错误类，并带有基于标记的
 `.isInstance()` 守卫：
 
 | 错误类                                                                                              | AI SDK UI 故障                                                                             |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [`APICallError`](/docs/reference/ai-sdk-errors/ai-api-call-error)                                   | 聊天传输或补全请求返回非成功的 HTTP 响应。                                                 |
+| [`APICallError`](/docs/reference/ai-sdk-errors/ai-api-call-error)                                   | 聊天传输或补全请求返回了非成功的 HTTP 响应。                                               |
 | [`EmptyResponseBodyError`](/docs/reference/ai-sdk-errors/ai-empty-response-body-error)              | 成功的聊天传输或补全响应没有正文。                                                         |
-| [`UIMessageStreamError`](/docs/reference/ai-sdk-errors/ai-ui-message-stream-error)                  | 补全数据流报告错误，或 UI 消息流包含无效的数据块。                                         |
+| [`UIMessageStreamError`](/docs/reference/ai-sdk-errors/ai-ui-message-stream-error)                  | 补全数据流报告了错误，或 UI 消息流包含无效的数据块。                                       |
 | [`InvalidArgumentError`](/docs/reference/ai-sdk-errors/ai-invalid-argument-error)                   | 使用了无效的流协议或消息 ID。                                                              |
-| [`UnsupportedFunctionalityError`](/docs/reference/ai-sdk-errors/ai-unsupported-functionality-error) | 在不支持 `FileList` 的环境中使用 `FileList`。                                              |
+| [`UnsupportedFunctionalityError`](/docs/reference/ai-sdk-errors/ai-unsupported-functionality-error) | 在不支持 `FileList` 的环境中使用了它。                                                     |
 
 自定义 fetch 实现、回调和流解析器抛出的错误
 会继续原样传播。
@@ -228,14 +260,15 @@ export default function Page() {
 }
 ```
 
-对于 AI SDK UI 请求，`APICallError.requestBodyValues` 为 `undefined`，因此
-提示词和消息不会被复制到面向客户端的错误对象中。响应文本仍可作为
-`message` 和 `responseBody` 使用；向用户显示通用消息以避免泄露服务器信息。
+对于 AI SDK UI 请求，`APICallError.requestBodyValues` 为 `undefined`，
+因此提示词和消息不会被复制到面向客户端的错误对象中。响应文本仍可
+通过 `message` 和 `responseBody` 获取；请向用户显示通用消息，以避免
+泄露服务器信息。
 
-### 注入错误以进行测试
+### 为测试注入错误
 
 你可能想要创建错误以进行测试。
-你可以通过在路由处理器中抛出错误来轻松实现：
+你可以通过在路由处理器中抛出错误轻松实现：
 
 ```ts file="app/api/chat/route.ts"
 export async function POST(req: Request) {

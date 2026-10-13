@@ -7,7 +7,7 @@ description: "embedMany 的 API 参考。"
 
 使用嵌入模型嵌入多个值。
 
-当模型对单次调用可处理的嵌入数量或 UTF-8 输入字节数有限制时，`embedMany` 会自动将大型请求拆分为较小的块。提供商可以使用保守的字节预算，将请求保持在聚合 token 限制以下，而无需在 AI SDK 核心包中添加分词器。大于字节预算的单个值会在其自己的调用中发送，因为拆分它会改变生成的嵌入。
+当模型对单次调用可处理的嵌入数量或 UTF-8 输入字节数有限制时，`embedMany` 会自动将大型请求拆分为较小的块。提供商可以使用保守的字节预算，将请求保持在聚合 token 限制以下，而无需在 AI SDK 核心包中添加分词器。单个值如果超过字节预算，则会单独发起一次调用，因为拆分它会改变生成的嵌入。
 
 ```ts
 import { embedMany } from 'ai';
@@ -36,60 +36,67 @@ const { embeddings } = await embedMany({
       name: 'model',
       type: 'EmbeddingModel',
       description:
-        "要使用的嵌入模型。示例：openai.embeddingModel('text-embedding-3-small')",
+        "The embedding model to use. Example: openai.embeddingModel('text-embedding-3-small')",
     },
     {
       name: 'values',
       type: 'Array<string>',
-      description: '要嵌入的值。',
+      description: 'The values to embed.',
+    },
+    {
+      name: 'dimensions',
+      type: 'number',
+      isOptional: true,
+      description:
+        'Requested output embedding dimensions. Must be a positive integer. Forwarded to the model; requires support in the provider implementation. Provider mappings are being added separately. Use providerOptions until your provider supports this setting.',
     },
     {
       name: 'maxRetries',
       type: 'number',
       isOptional: true,
       description:
-        '最大重试次数。设置为 0 可禁用重试。默认值：2。',
+        'Maximum number of retries. Set to 0 to disable retries. Default: 2.',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
       description:
-        '可选的中止信号，可用于取消调用。',
+        'An optional abort signal that can be used to cancel the call.',
     },
     {
       name: 'headers',
       type: 'Record<string, string>',
       isOptional: true,
       description:
-        '随请求发送的额外 HTTP 头。仅适用于基于 HTTP 的提供商。',
+        'Additional HTTP headers to be sent with the request. Only applicable for HTTP-based providers.',
     },
     {
       name: 'providerOptions',
       type: 'ProviderOptions',
       isOptional: true,
       description:
-        '传递给提供商的提供商特定选项。',
+        'Provider-specific options that are passed through to the provider.',
     },
     {
       name: 'maxParallelCalls',
       type: 'number',
       isOptional: true,
       description:
-        '当请求被拆分为多个模型调用时的最大并发请求数。当分块处于活动状态且模型支持并行调用时，必须大于 0；无效值会抛出 AI_InvalidArgumentError。默认值：Infinity。',
+        'Maximum number of concurrent requests when a request is split into multiple model calls. Must be greater than 0 when chunking is active and the model supports parallel calls; invalid values throw AI_InvalidArgumentError. Default: Infinity.',
     },
     {
       name: 'runtimeContext',
       type: 'RUNTIME_CONTEXT',
       isOptional: true,
       description:
-        '传递给生命周期回调的用户定义运行时上下文。默认为空对象。遥测集成仅接收通过 telemetry.includeRuntimeContext 显式包含的顶层属性。',
+        'User-defined runtime context passed to lifecycle callbacks. Defaults to an empty object. Telemetry integrations only receive top-level properties explicitly included with telemetry.includeRuntimeContext.',
     },
     {
       name: 'telemetry',
       type: 'TelemetryOptions<RUNTIME_CONTEXT>',
       isOptional: true,
-      description: '遥测配置。',
+      description: 'Telemetry configuration.',
       properties: [
         {
           type: 'TelemetryOptions',
@@ -99,42 +106,42 @@ const { embeddings } = await embedMany({
               type: 'boolean',
               isOptional: true,
               description:
-                '启用或禁用遥测。默认启用。设置为 `false` 可选择退出。',
+                'Enable or disable telemetry. Enabled by default. Set to `false` to opt out.',
             },
             {
               name: 'recordInputs',
               type: 'boolean',
               isOptional: true,
               description:
-                '启用或禁用输入记录。默认启用。',
+                'Enable or disable input recording. Enabled by default.',
             },
             {
               name: 'recordOutputs',
               type: 'boolean',
               isOptional: true,
               description:
-                '启用或禁用输出记录。默认启用。',
+                'Enable or disable output recording. Enabled by default.',
             },
             {
               name: 'functionId',
               type: 'string',
               isOptional: true,
               description:
-                '此函数的标识符。用于按函数对遥测数据进行分组。',
+                'Identifier for this function. Used to group telemetry data by function.',
             },
             {
               name: 'includeRuntimeContext',
               type: '{ [KEY in keyof RUNTIME_CONTEXT]?: boolean }',
               isOptional: true,
               description:
-                '要包含在遥测中的顶层运行时上下文属性。仅包含设置为 true 的属性。默认排除所有属性。用户回调仍会接收完整上下文。',
+                'Top-level runtime context properties to include in telemetry. Only properties set to true are included. All properties are excluded by default. User callbacks still receive the full context.',
             },
             {
               name: 'integrations',
               isOptional: true,
               type: 'Telemetry | Telemetry[]',
               description:
-                '接收生命周期事件的每次调用遥测集成。提供后，这些集成将替换此调用中任何全局注册的集成。',
+                'Per-call telemetry integrations that receive lifecycle events. When provided, these replace any globally registered integrations for this call.',
             },
           ],
         },
@@ -145,7 +152,7 @@ const { embeddings } = await embedMany({
       type: '(event: EmbedStartEvent<RUNTIME_CONTEXT>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '在 embedMany 操作开始、调用嵌入模型之前调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+        'Callback that is called when the embedMany operation begins, before the embedding model is called. Errors thrown in this callback are silently caught and do not break the embedding flow.',
       properties: [
         {
           type: 'EmbedStartEvent<RUNTIME_CONTEXT>',
@@ -154,48 +161,55 @@ const { embeddings } = await embedMany({
               name: 'runtimeContext',
               type: 'RUNTIME_CONTEXT',
               description:
-                '提供给操作的完整、未过滤的运行时上下文。',
+                'The full, unfiltered runtime context supplied to the operation.',
             },
             {
               name: 'callId',
               type: 'string',
-              description: '此 embedMany 调用的唯一标识符。',
+              description: 'Unique identifier for this embedMany call.',
             },
             {
               name: 'operationId',
               type: 'string',
-              description: "标识操作类型（'ai.embedMany'）。",
+              description: "Identifies the operation type ('ai.embedMany').",
             },
             {
               name: 'model',
               type: '{ provider: string; modelId: string }',
-              description: '正在使用的嵌入模型。',
+              description: 'The embedding model being used.',
             },
             {
               name: 'value',
               type: 'string | Array<string>',
               description:
-                '正在嵌入的值（对于 embedMany 为字符串数组）。',
+                'The values being embedded (array of strings for embedMany).',
+            },
+            {
+              name: 'dimensions',
+              type: 'number',
+              isOptional: true,
+              description:
+                'Requested output embedding dimensions, when specified.',
             },
             {
               name: 'maxRetries',
               type: 'number',
-              description: '失败请求的最大重试次数。',
+              description: 'Maximum number of retries for failed requests.',
             },
             {
               name: 'abortSignal',
               type: 'AbortSignal | undefined',
-              description: '用于取消操作的中止信号。',
+              description: 'Abort signal for cancelling the operation.',
             },
             {
               name: 'headers',
               type: 'Record<string, string | undefined> | undefined',
-              description: '随请求发送的额外 HTTP 头。',
+              description: 'Additional HTTP headers sent with the request.',
             },
             {
               name: 'providerOptions',
               type: 'ProviderOptions | undefined',
-              description: '额外的提供商特定选项。',
+              description: 'Additional provider-specific options.',
             },
           ],
         },
@@ -206,7 +220,7 @@ const { embeddings } = await embedMany({
       type: '(event: EmbedEndEvent<RUNTIME_CONTEXT>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '在 embedMany 操作完成、所有嵌入模型调用返回之后调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+        'Callback that is called when the embedMany operation completes, after all embedding model calls return. Errors thrown in this callback are silently caught and do not break the embedding flow.',
       properties: [
         {
           type: 'EmbedEndEvent<RUNTIME_CONTEXT>',
@@ -215,55 +229,55 @@ const { embeddings } = await embedMany({
               name: 'runtimeContext',
               type: 'RUNTIME_CONTEXT',
               description:
-                '提供给操作的完整、未过滤的运行时上下文。',
+                'The full, unfiltered runtime context supplied to the operation.',
             },
             {
               name: 'callId',
               type: 'string',
-              description: '此 embedMany 调用的唯一标识符。',
+              description: 'Unique identifier for this embedMany call.',
             },
             {
               name: 'operationId',
               type: 'string',
-              description: "标识操作类型（'ai.embedMany'）。",
+              description: "Identifies the operation type ('ai.embedMany').",
             },
             {
               name: 'model',
               type: '{ provider: string; modelId: string }',
-              description: '所使用的嵌入模型。',
+              description: 'The embedding model that was used.',
             },
             {
               name: 'value',
               type: 'string | Array<string>',
               description:
-                '已嵌入的值（对于 embedMany 为字符串数组）。',
+                'The values that were embedded (array of strings for embedMany).',
             },
             {
               name: 'embedding',
               type: 'Embedding | Array<Embedding>',
               description:
-                '生成的嵌入向量（对于 embedMany 为嵌入数组）。',
+                'The resulting embedding vectors (array of embeddings for embedMany).',
             },
             {
               name: 'usage',
               type: 'EmbeddingModelUsage',
-              description: '嵌入操作的 token 使用量。',
+              description: 'Token usage for the embedding operation.',
             },
             {
               name: 'warnings',
               type: 'Array<Warning>',
-              description: '来自嵌入模型的警告。',
+              description: 'Warnings from the embedding model.',
             },
             {
               name: 'providerMetadata',
               type: 'ProviderMetadata | undefined',
-              description: '可选的提供商特定元数据。',
+              description: 'Optional provider-specific metadata.',
             },
             {
               name: 'response',
               type: 'Array<{ headers?: Record<string, string>; body?: unknown } | undefined>',
               description:
-                '每次嵌入调用的响应数据。如果请求被拆分为多个块，可能会有多个响应。',
+                'Response data from each embedding call. There may be multiple responses if the request was split into chunks.',
             },
           ],
         },
@@ -279,17 +293,17 @@ const { embeddings } = await embedMany({
     {
       name: 'values',
       type: 'Array<string>',
-      description: '已嵌入的值。',
+      description: 'The values that were embedded.',
     },
     {
       name: 'embeddings',
       type: 'number[][]',
-      description: '嵌入。它们与值的顺序相同。',
+      description: 'The embeddings. They are in the same order as the values.',
     },
     {
       name: 'usage',
       type: 'EmbeddingModelUsage',
-      description: '生成嵌入的 token 使用量。',
+      description: 'The token usage for generating the embeddings.',
       properties: [
         {
           type: 'EmbeddingModelUsage',
@@ -297,7 +311,7 @@ const { embeddings } = await embedMany({
             {
               name: 'tokens',
               type: 'number',
-              description: '输入 token 的总数。',
+              description: 'The total number of input tokens.',
             },
           ],
         },
@@ -307,21 +321,21 @@ const { embeddings } = await embedMany({
       name: 'warnings',
       type: 'Warning[]',
       description:
-        '来自模型提供商的警告（例如不支持的设置）。',
+        'Warnings from the model provider (e.g. unsupported settings).',
     },
     {
       name: 'providerMetadata',
       type: 'ProviderMetadata | undefined',
       isOptional: true,
       description:
-        '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详细信息取决于提供商。',
+        'Optional metadata from the provider. The outer key is the provider name. The inner values are the metadata. Details depend on the provider.',
     },
     {
       name: 'responses',
       type: 'Array<{ headers?: Record<string, string>; body?: unknown } | undefined>',
       isOptional: true,
       description:
-        '来自每个块请求的可选原始响应数据。如果请求被拆分为多个块，可能会有多个响应。',
+        'Optional raw response data from each chunk request. There may be multiple responses if the request was split into multiple chunks.',
     },
   ]}
 />

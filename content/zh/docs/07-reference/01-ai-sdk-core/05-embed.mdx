@@ -40,6 +40,13 @@ const { embedding } = await embed({
       description: '要嵌入的值。类型取决于模型。',
     },
     {
+      name: 'dimensions',
+      type: 'number',
+      isOptional: true,
+      description:
+        '请求的输出嵌入维度。必须是正整数。会转发给模型；需要提供商实现支持。提供商映射正在单独添加。在你的提供商支持此设置之前，请使用 providerOptions。',
+    },
+    {
       name: 'maxRetries',
       type: 'number',
       isOptional: true,
@@ -134,7 +141,7 @@ const { embedding } = await embed({
       type: '(event: EmbedStartEvent<RUNTIME_CONTEXT>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '在嵌入操作开始时（调用嵌入模型之前）调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+        '在 embed 操作开始、调用嵌入模型之前调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
       properties: [
         {
           type: 'EmbedStartEvent<RUNTIME_CONTEXT>',
@@ -148,7 +155,7 @@ const { embedding } = await embed({
             {
               name: 'callId',
               type: 'string',
-              description: '此嵌入调用的唯一标识符。',
+              description: '此 embed 调用的唯一标识符。',
             },
             {
               name: 'operationId',
@@ -164,6 +171,13 @@ const { embedding } = await embed({
               name: 'value',
               type: 'string | Array<string>',
               description: '正在嵌入的值。',
+            },
+            {
+              name: 'dimensions',
+              type: 'number',
+              isOptional: true,
+              description:
+                '指定时，请求的输出嵌入维度。',
             },
             {
               name: 'maxRetries',
@@ -194,7 +208,7 @@ const { embedding } = await embed({
       type: '(event: EmbedEndEvent<RUNTIME_CONTEXT>) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '在嵌入操作完成时（嵌入模型返回之后）调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
+        '在 embed 操作完成、嵌入模型返回之后调用的回调。此回调中抛出的错误会被静默捕获，不会中断嵌入流程。',
       properties: [
         {
           type: 'EmbedEndEvent<RUNTIME_CONTEXT>',
@@ -208,7 +222,7 @@ const { embedding } = await embed({
             {
               name: 'callId',
               type: 'string',
-              description: '此嵌入调用的唯一标识符。',
+              description: '此 embed 调用的唯一标识符。',
             },
             {
               name: 'operationId',

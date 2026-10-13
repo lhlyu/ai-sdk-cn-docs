@@ -5,7 +5,7 @@ description: "了解如何在 useChat 中使用自定义 transport。"
 
 # Transport
 
-`useChat` 的 transport 系统让你可以精细控制消息如何发送到 API 端点以及响应如何处理。这对于 WebSockets 等替代通信协议、自定义认证模式或专门的后端集成特别有用。
+`useChat` 的 transport 系统提供了对消息如何发送到 API 端点以及响应如何被处理的细粒度控制。这对于 WebSockets 等替代通信协议、自定义认证模式或专门的后端集成特别有用。
 
 ## 默认 Transport
 
@@ -96,15 +96,56 @@ const { messages, sendMessage } = useChat({
 });
 ```
 
-## 直接智能体 Transport
+## WebSocket Transport
 
-对于希望直接与 [智能体](/docs/reference/ai-sdk-core/agent) 通信而不经过 HTTP 的场景，你可以使用 `DirectChatTransport`。该 transport 会在进程内直接调用智能体的 `stream()` 方法。
+当你希望聊天轮次共享一个持久化的 WebSocket 连接，而不是为每个轮次打开一个 HTTP 请求时，可以使用 `WebSocketChatTransport`。这对于频繁产生客户端工具结果或其他多步交互的聊天非常有用。
+
+```tsx
+import { useChat } from '@ai-sdk/react';
+import { WebSocketChatTransport } from 'ai';
+import { useMemo } from 'react';
+
+export default function Chat() {
+  const transport = useMemo(
+    () =>
+      new WebSocketChatTransport({
+        url: '/api/chat',
+        params: () => ({ token: getShortLivedToken() }),
+      }),
+    [],
+  );
+
+  const { messages, sendMessage } = useChat({ transport });
+
+  // ... render the chat
+}
+```
+
+该 transport 通过 `requestId` 多路复用请求，验证传入的 `UIMessageChunk` 值，将中止操作转发到服务器，并为后续轮次复用已打开的 socket。HTTP 和 HTTPS URL 会自动转换为 WS 和 WSS URL。
+
+创建 transport 的代码负责其生命周期。React 和 Vue 的聊天 Hook 在选项变化或组件被销毁时不会关闭调用方提供的 transport，因为同一个 transport 可能被多个聊天共享。在最后一个使用者消失后调用 `transport.close()`。如果直接管理的 `Chat` 实例独占该 transport，请调用 `chat.dispose()`；对于共享的 transport，请停止各个聊天，并在所有使用者完成后才关闭 transport。
+
+你的 WebSocket 服务器必须实现 [`WebSocketChatTransport` 协议](/docs/reference/ai-sdk-ui/websocket-chat-transport#wire-protocol)。导出的 `WebSocketChatTransportRequest` 和 `WebSocketChatTransportResponse` 类型可用于为服务器帧提供类型。在处理不受信任的客户端帧之前，请使用 `safeValidateWebSocketChatTransportRequest`。
+
+<Note>
+  浏览器 WebSocket API 无法设置任意握手头。`headers` 选项包含在每个应用层请求帧内部。请使用安全 cookie、短期查询参数或子协议对握手进行认证，并在服务器上验证连接来源和每一帧。
+</Note>
+
+`sendAutomaticallyWhen` 仍会在前一个 UI 消息流完成后启动新的聊天轮次。`WebSocketChatTransport` 避免为该轮次打开另一个 HTTP 连接，但它不会将工具结果发送到正在进行的模型生成中。
+
+如果 socket 在响应期间关闭，活动流会报错。后续发送会打开新连接。该 transport 不会自动重放请求，因为重放一次生成可能会重复模型输出或工具副作用。`reconnectToStream` 请求从序列零开始完整重放保留的响应。Chat 会使用新的解析器重建消息，因此重放必须包含所有先前的 chunk 以及原始 `start` chunk 的 `messageId`。这个稳定的消息 ID 让 Chat 能够替换部分助手消息。在每个响应流中，重复的序列号会被忽略。
+
+有关完整选项、协议细节、取消行为以及服务器示例，请参阅 [`WebSocketChatTransport` 参考](/docs/reference/ai-sdk-ui/websocket-chat-transport)。
+
+## 直接 Agent Transport
+
+对于希望直接与 [Agent](/docs/reference/ai-sdk-core/agent) 通信而不经过 HTTP 的场景，你可以使用 `DirectChatTransport`。该 transport 在进程内直接调用 agent 的 `stream()` 方法。
 
 这适用于：
 
-- **服务端渲染**：在服务端运行智能体，无需 API 端点
-- **测试**：无需网络请求即可测试聊天功能
-- **单进程应用**：客户端与智能体运行在同一进程中的桌面或 CLI 应用
+- **服务端渲染**：在服务器上运行 agent，无需 API 端点
+- **测试**：在没有网络请求的情况下测试聊天功能
+- **单进程应用**：客户端和 agent 一起运行的桌面或 CLI 应用
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -130,12 +171,12 @@ const { messages, sendMessage } = useChat({
 
 1. `DirectChatTransport` 验证传入的 UI 消息
 2. 使用 `convertToModelMessages` 将它们转换为模型消息
-3. 直接调用智能体的 `stream()` 方法
+3. 直接调用 agent 的 `stream()` 方法
 4. 通过 `toUIMessageStream()` 将结果作为 UI 消息流返回
 
 ### 配置选项
 
-你可以传入额外选项来自定义流输出：
+你可以传递额外选项来自定义流输出：
 
 ```tsx
 const transport = new DirectChatTransport({
@@ -149,15 +190,14 @@ const transport = new DirectChatTransport({
 ```
 
 <Note>
-  `DirectChatTransport` 不支持流重连，因为不存在持久的服务端流。`reconnectToStream()` 方法始终返回
-  `null`。
+  `DirectChatTransport` 不支持流重连，因为不存在持久化的服务端流。`reconnectToStream()` 方法始终返回 `null`。
 </Note>
 
-完整的 API 详情，请参阅 [DirectChatTransport 参考](/docs/reference/ai-sdk-ui/direct-chat-transport)。
+有关完整的 API 细节，请参阅 [DirectChatTransport 参考](/docs/reference/ai-sdk-ui/direct-chat-transport)。
 
-## 工作流 Transport
+## Workflow Transport
 
-对于基于 [Workflow SDK](/docs/agents/workflow-agent) 构建的聊天应用，来自 `@ai-sdk/workflow` 的 `WorkflowChatTransport` 提供了自动流重连功能。它处理工作流函数在流中途超时这一常见场景——该 transport 会检测到缺失的 `finish` 事件，并重新连接以从中断处继续。
+对于基于 [Workflow SDK](/docs/agents/workflow-agent) 构建的聊天应用，来自 `@ai-sdk/workflow` 的 `WorkflowChatTransport` 提供了自动流重连。它处理了 workflow 函数在流中途超时这一常见场景——该 transport 会检测缺失的 `finish` 事件，并重新连接以从中断处继续。
 
 ```tsx
 import { useChat } from '@ai-sdk/react';
@@ -185,21 +225,21 @@ export default function Chat() {
 
 主要特性：
 
-- **自动重连**：检测中断的流（没有 `finish` 事件），并通过 GET 请求 `{api}/{runId}/stream` 重新连接
+- **自动重连**：检测中断的流（没有 `finish` 事件），并通过 GET 重新连接到 `{api}/{runId}/stream`
 - **页面刷新恢复**：`initialStartIndex` 控制初始重连从何处开始
-- **可配置重试**：`maxConsecutiveErrors` 控制可容忍的连续重连失败次数
+- **可配置重试**：`maxConsecutiveErrors` 控制可容忍多少次连续重连失败
 - **生命周期回调**：`onChatSendMessage` 和 `onChatEnd` 用于跟踪聊天状态
 
-当持久化的服务端流已经存储了 `UIMessageChunk` 对象时，负的 `initialStartIndex` 值可以只获取尾部数据。对于原始的 `WorkflowAgent` 流，请使用非负游标，并遵循 WorkflowAgent 指南中的服务端转换方式。
+当持久化的服务端流已经存储了 `UIMessageChunk` 对象时，负的 `initialStartIndex` 值可以只获取尾部。对于原始的 `WorkflowAgent` 流，请使用非负游标，并遵循 WorkflowAgent 指南中的服务端转换。
 
-完整的 API 参考，请参阅 [`WorkflowChatTransport`](/docs/reference/ai-sdk-workflow/workflow-chat-transport)。服务端端点设置，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent#resumable-streaming-with-workflowchattransport)。
+有关完整的 API 参考，请参阅 [`WorkflowChatTransport`](/docs/reference/ai-sdk-workflow/workflow-chat-transport)。有关服务端端点设置，请参阅 [WorkflowAgent 指南](/docs/agents/workflow-agent#resumable-streaming-with-workflowchattransport)。
 
 ## 构建自定义 Transport
 
 要了解如何构建你自己的 transport，请参考默认实现的源代码：
 
 - **[DefaultChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/default-chat-transport.ts)** - 完整的默认 HTTP transport 实现
-- **[HttpChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/http-chat-transport.ts)** - 带有请求处理的基础 HTTP transport
+- **[HttpChatTransport](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/http-chat-transport.ts)** - 带请求处理的基础 HTTP transport
 - **[ChatTransport Interface](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat-transport.ts)** - 你需要实现的 transport 接口
 
 这些实现向你展示了如何：

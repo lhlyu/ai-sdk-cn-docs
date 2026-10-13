@@ -66,6 +66,13 @@ description: "useChat Hook 的 API 参考。"
               description: '聊天请求的 API 端点。',
             },
             {
+              name: 'resumeStreamIsReplay',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                '默认为 true。在第一个恢复的起始块上重置被中断的响应，并根据重放重建它。对于仅发送同一响应剩余块的端点，设置为 false。',
+            },
+            {
               name: 'credentials',
               type: 'RequestCredentials',
               isOptional: true,
@@ -88,7 +95,7 @@ description: "useChat Hook 的 API 参考。"
               type: 'FetchFunction',
               isOptional: true,
               description:
-                '自定义 fetch 实现。你可以将其用作中间件来拦截请求，或为测试等场景提供自定义 fetch 实现。',
+                '自定义 fetch 实现。你可以将其用作中间件来拦截请求，或为例如测试提供自定义 fetch 实现。',
             },
             {
               name: 'prepareSendMessagesRequest',
@@ -146,7 +153,7 @@ description: "useChat Hook 的 API 参考。"
                             {
                               name: 'trigger',
                               type: "'submit-message' | 'regenerate-message'",
-                              description: '请求的触发方式',
+                              description: '请求的触发器',
                             },
                             {
                               name: 'messageId',
@@ -166,7 +173,7 @@ description: "useChat Hook 的 API 参考。"
               type: 'PrepareReconnectToStreamRequest',
               isOptional: true,
               description:
-                '在重连 API 调用之前自定义请求的函数。',
+                '在重新连接 API 调用之前自定义请求的函数。',
               properties: [
                 {
                   type: 'PrepareReconnectToStreamRequest',
@@ -175,7 +182,7 @@ description: "useChat Hook 的 API 参考。"
                       name: 'options',
                       type: 'PrepareReconnectToStreamRequestOptions',
                       description:
-                        '用于准备重连请求的选项',
+                        '用于准备重新连接请求的选项',
                       properties: [
                         {
                           type: 'PrepareReconnectToStreamRequestOptions',
@@ -259,7 +266,7 @@ description: "useChat Hook 的 API 参考。"
       type: '({toolCall: ToolCall}) => void | Promise<void>',
       isOptional: true,
       description:
-        '可选的回调函数，在收到工具调用时被调用。你必须调用 addToolOutput 来提供工具结果。',
+        '可选回调函数，在收到工具调用时被调用。你必须调用 addToolOutput 来提供工具结果。',
     },
     {
       name: 'sendAutomaticallyWhen',
@@ -272,7 +279,7 @@ description: "useChat Hook 的 API 参考。"
       name: 'onFinish',
       type: '(options: OnFinishOptions) => void',
       isOptional: true,
-      description: '在助手响应完成流式传输时调用。',
+      description: '当助手响应完成流式传输时调用。',
       properties: [
         {
           type: 'OnFinishOptions',
@@ -320,28 +327,28 @@ description: "useChat Hook 的 API 参考。"
       type: '(error: Error) => void',
       isOptional: true,
       description:
-        '遇到错误时调用的回调函数。',
+        '遇到错误时要调用的回调函数。',
     },
     {
       name: 'onData',
       type: '(dataPart: DataUIPart) => void',
       isOptional: true,
       description:
-        '可选的回调函数，在收到数据部分时被调用。',
+        '可选回调函数，在收到数据部分时被调用。',
     },
     {
       name: 'throttle',
       type: 'number',
       isOptional: true,
       description:
-        '仅适用于 React 和 Vue。用于响应式聊天消息更新的自定义节流等待时间（毫秒）。正值可降低 UI 更新频率，而不会延迟流处理或回调，最新消息会在 ready 或 error 状态之前发布。默认值为 undefined，即禁用节流。',
+        '仅限 React 和 Vue。用于响应式聊天消息更新的自定义节流等待时间（毫秒）。正值可降低 UI 更新频率，而不会延迟流处理或回调，并且最新消息会在 ready 或 error 状态之前发布。默认为 undefined，即禁用节流。',
     },
     {
       name: 'resume',
       type: 'boolean',
       isOptional: true,
       description:
-        '是否恢复正在进行的聊天生成流。默认为 false。',
+        '是否在挂载时以及网络断开后页面再次可见时自动恢复正在进行的聊天生成流。默认为 false。',
     },
   ]}
 />
@@ -427,7 +434,7 @@ description: "useChat Hook 的 API 参考。"
               name: 'metadata',
               type: 'unknown',
               isOptional: true,
-              description: '应发送到 API 端点的额外数据。',
+              description: '要发送到 API 端点的额外数据。',
             },
           ],
         },
@@ -485,14 +492,14 @@ description: "useChat Hook 的 API 参考。"
 ## React 渲染与共享 Chat 实例
 
 在 React 中，`messages`、`status` 和 `error` 描述当前渲染的快照。
-底层的 `Chat` 会随着流式块的处理而更新。React 可能会批量处理更新，
+底层的 `Chat` 会随着流块的处理而更新。React 可能会批量处理更新，
 而 `throttle` 可以延迟消息渲染，但不会延迟流处理或回调。
 状态和错误更新包含最新消息，因此已完成或失败的响应
 会使用其最终消息快照进行渲染。
 
 每次 `useChat({ chat })` 调用都会独立订阅。共享同一个 `Chat` 的消费者
 在使用不同的节流间隔时，可能会显示不同的消息快照。
-函数式 `setMessages` 更新器接收的是 Chat 的最新消息，这些消息可能
+函数式 `setMessages` 更新器接收的是 Chat 的最新消息，这可能
 比当前渲染中的消息更新。
 
 ## 了解更多
