@@ -5,12 +5,12 @@ description: "了解 AI SDK Core 中的工具调用和多步调用（使用 stop
 
 # 工具调用
 
-正如基础部分所述，[工具](/docs/foundations/tools)是模型可以调用来执行特定任务的对象。
+正如基础部分所述，[工具](/docs/foundations/tools)是模型可以调用以执行特定任务的对象。
 函数工具和动态工具包含几个核心元素：
 
-- **`description`**：工具的可选描述，可以影响工具被选中的时机。它可以是字符串，也可以是一个函数，从工具的上下文和实验性沙箱中派生描述。
-- **`inputSchema`**：一个 [Zod schema](/docs/foundations/tools#schemas) 或 [JSON schema](/docs/reference/ai-sdk-core/json-schema)，用于定义输入参数。该 schema 由 LLM 使用，同时也用于验证 LLM 的工具调用。
-- **`execute`**：一个可选的异步函数，使用工具调用的输入来调用。它产生一个类型为 `RESULT`（泛型类型）的值。它是可选的，因为你可能希望将工具调用转发到客户端或队列，而不是在同一进程中执行它们。
+- **`description`**：工具的可选描述，可以影响工具被选中的时机。它可以是字符串，也可以是一个函数，从工具的上下文和实验性沙箱中推导出描述。
+- **`inputSchema`**：定义输入参数的 [Zod schema](/docs/foundations/tools#schemas) 或 [JSON schema](/docs/reference/ai-sdk-core/json-schema)。该 schema 由 LLM 使用，同时也用于验证 LLM 的工具调用。
+- **`execute`**：一个可选的异步函数，使用工具调用的输入进行调用。它产生一个类型为 `RESULT`（泛型类型）的值。它是可选的，因为你可能希望将工具调用转发到客户端或队列，而不是在同一进程中执行它们。
 - **`strict`**：_（可选，布尔值）_ 在提供商支持时启用严格工具调用
 
 <Note className="mb-2">
@@ -18,7 +18,7 @@ description: "了解 AI SDK Core 中的工具调用和多步调用（使用 stop
   推断 `execute` 参数的类型。
 </Note>
 
-`generateText` 和 `streamText` 的 `tools` 参数是一个对象，以工具名称为键，以工具为值：
+`generateText` 和 `streamText` 的 `tools` 参数是一个对象，以工具名称为键，工具为值：
 
 ```ts highlight="7-18"
 import { z } from 'zod';
@@ -45,7 +45,8 @@ const result = await generateText({
 ```
 
 <Note>
-  当模型使用工具时，这被称为"工具调用"，工具的输出被称为"工具结果"。
+  当模型使用工具时，这被称为"工具调用"，而工具的输出
+  被称为"工具结果"。
 </Note>
 
 工具调用不仅限于文本生成。
@@ -53,9 +54,13 @@ const result = await generateText({
 
 ## 动态描述
 
-工具描述可以是固定字符串或函数。当发送给模型的描述应该取决于当前工具上下文或实验性沙箱（例如租户、项目、环境或工作区）时，请使用函数。
+工具描述可以是固定字符串或函数。当发送给模型的描述
+应取决于当前工具上下文或实验性沙箱（例如租户、项目、环境或工作区）时，
+请使用函数。
 
-描述函数会在每个生成步骤中将工具定义发送给模型之前被解析。它接收来自 `toolsContext` 的匹配工具 `context` 以及当前的 `experimental_sandbox`（如果提供了的话）。如果 `prepareStep` 更新了 `toolsContext` 或 `experimental_sandbox`，下一步将使用这些更新后的值。
+描述函数会在每个生成步骤中将工具定义发送给模型之前被解析。
+它接收来自 `toolsContext` 的匹配工具 `context` 以及当前的 `experimental_sandbox`（如果提供了的话）。
+如果 `prepareStep` 更新了 `toolsContext` 或 `experimental_sandbox`，下一步将使用这些更新后的值。
 
 ```ts highlight="5-16,32-35"
 import { generateText, tool } from 'ai';
@@ -99,7 +104,7 @@ const result = await generateText({
 
 ## 严格模式
 
-启用后，支持严格工具调用的语言模型提供商将只生成根据你定义的 `inputSchema` 有效的工具调用。
+启用后，支持严格工具调用的语言模型提供商将只生成符合你定义的 `inputSchema` 的有效工具调用。
 这提高了工具调用的可靠性。
 然而，并非所有 schema 在严格模式下都受支持，具体支持的内容取决于特定的提供商。
 
@@ -119,13 +124,15 @@ tool({
 ```
 
 <Note>
-  并非所有提供商或模型都支持严格模式。对于不支持的提供商，此选项将被忽略。
+  并非所有提供商或模型都支持严格模式。对于不支持的提供商或模型，此
+  选项将被忽略。
 </Note>
 
 ## 输入示例
 
 你可以为工具指定示例输入，以帮助指导模型了解输入数据应如何结构化。
-在提供商支持的情况下，当 JSON schema 本身无法完全指定预期用途或存在可选值时，输入示例可以提供帮助。
+当提供商支持时，输入示例在 JSON schema 本身未完全指定预期
+用法或存在可选值时可以提供帮助。
 
 ```ts
 tool({
@@ -144,7 +151,8 @@ tool({
 ```
 
 <Note>
-  只有 Anthropic 提供商原生支持工具输入示例。其他提供商将忽略此设置。
+  只有 Anthropic 提供商原生支持工具输入示例。其他
+  提供商将忽略此设置。
 </Note>
 
 ## 工具执行审批
@@ -153,8 +161,8 @@ tool({
 
 `toolApproval` 可以是：
 
-- 适用于所有工具调用的 `GenericToolApprovalFunction`
-- 按工具映射的状态和/或 `SingleToolApprovalFunction` 回调（任一函数都可以返回 `undefined`，效果与 `'not-applicable'` 相同）
+- 一个 `GenericToolApprovalFunction`，适用于所有工具调用
+- 一个按工具的状态映射和/或 `SingleToolApprovalFunction` 回调（任一函数都可以返回 `undefined`，效果与 `'not-applicable'` 相同）
 
 `tool()` 定义上较旧的 `needsApproval` 属性已弃用。现有代码仍然有效，但新代码应将审批逻辑移至 `toolApproval`。
 
@@ -171,14 +179,17 @@ const result = await generateText({
 });
 ```
 
-在按工具的对象形式中，每个键可以是四种状态之一，可以是字符串或带有 `type` 字段的对象：
+在按工具的对象形式中，每个键可以是四种状态之一，可以是
+字符串或带有 `type` 字段的对象：
 
 - `'not-applicable'`：工具在没有审批流程的情况下执行。这是默认行为。
 - `'approved'`：通过在输出中发出审批请求/响应部分来记录自动批准，然后执行工具
 - `'denied'`：通过在输出中发出审批请求/响应部分来记录自动拒绝，然后呈现被拒绝的工具输出
 - `'user-approval'`：发出审批请求并等待明确响应
 
-对象状态还可以包含原因。对于自动批准和拒绝，原因会在审批响应中发出。对于手动审批，原因会在审批请求中发出，以便向审批者显示：
+对象状态还可以包含原因。对于自动批准和拒绝，
+原因会在审批响应中发出。对于手动审批，原因
+会在审批请求中发出，以便向审批者显示：
 
 ```ts
 toolApproval: {
@@ -191,7 +202,11 @@ toolApproval: {
 
 #### 通用 `toolApproval` 函数
 
-将 `GenericToolApprovalFunction` 作为 `toolApproval` 传入，以在一个地方处理每个工具调用。回调接收 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`（与你传递给 `generateText` 或 `streamText` 的 `runtimeContext` 相同，类型为第二个 `ToolApprovalConfiguration` 类型参数；默认为 `Context`）。它可以返回 `undefined`，效果与 `'not-applicable'` 相同。
+将 `GenericToolApprovalFunction` 作为 `toolApproval` 传入，以在一个地方处理每个工具
+调用。回调接收 `toolCall`、`tools`、`toolsContext`、
+`messages` 和 `runtimeContext`（与你传递给
+`generateText` 或 `streamText` 的 `runtimeContext` 相同，类型为第二个 `ToolApprovalConfiguration`
+类型参数；默认为 `Context`）。它可以返回 `undefined`，效果与 `'not-applicable'` 相同。
 
 ```ts highlight="4-10"
 const result = await generateText({
@@ -214,25 +229,35 @@ const result = await generateText({
 });
 ```
 
-当你需要在所有工具之间使用一个策略时，同样的模式也适用于 `streamText` 以及 [`ToolLoopAgent`](/docs/agents/building-agents#tools) 上的 `toolApproval`。
+当你需要在所有工具之间使用一个策略时，同样的模式也适用于 `streamText` 以及
+[`ToolLoopAgent`](/docs/agents/building-agents#tools) 上的 `toolApproval`。
 
-对于按工具的对象，每个键可以是一个 `SingleToolApprovalFunction`，它接收工具输入和选项 `toolCallId`、`messages`、`toolContext`（与工具执行 `context` 形状相同，但没有 `abortSignal`）以及 `runtimeContext`。返回 `undefined`，效果与 `'not-applicable'` 相同。
+对于按工具的对象，每个键可以是一个 `SingleToolApprovalFunction`，
+它接收工具输入和选项 `toolCallId`、`messages`、`toolContext`
+（与工具执行 `context` 形状相同，但没有 `abortSignal`）以及
+`runtimeContext`。返回 `undefined` 效果与 `'not-applicable'` 相同。
 
-这对于执行敏感操作的工具很有用，例如执行命令、处理付款、修改数据以及更多潜在危险的操作。
+这对于执行敏感操作的工具非常有用，例如执行命令、处理付款、修改数据以及更多潜在危险的操作。
 
 ### 工作原理
 
 当工具需要手动审批时，`generateText` 和 `streamText` 不会暂停执行。相反，它们会完成并在结果内容中返回 `tool-approval-request` 部分。这意味着手动审批流程需要对模型进行两次调用：第一次返回审批请求，第二次（在收到审批响应后）要么执行工具，要么通知模型审批被拒绝。
 
-手动审批来自 `toolApproval` 返回 `'user-approval'`。如果工具应该正常执行，请使用 `'not-applicable'`，从 `GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 返回 `undefined`，或者完全省略该设置。如果 `toolApproval` 返回 `'approved'` 或 `'denied'` 或其对象形式，SDK 会在同一次生成中通过发出审批请求/响应部分自动记录该决定。当你在自动批准或拒绝上提供 `reason` 时，该原因会包含在发出的审批响应中，并可以在 UI 中渲染。
+手动审批来自 `toolApproval` 返回 `'user-approval'`。如果
+工具应该正常执行，请使用 `'not-applicable'`，从
+`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 返回 `undefined`，或完全省略
+该设置。如果 `toolApproval` 返回 `'approved'` 或 `'denied'` 或
+它们的对象形式，SDK 会在同一次生成中通过发出审批请求/响应部分自动记录该决定。当你在自动批准或拒绝中提供
+`reason` 时，该原因会包含在
+发出的审批响应中，并可以在 UI 中渲染。
 
 以下是手动审批流程：
 
 1. 使用 `toolApproval` 调用 `generateText` 或 `streamText`
-2. 模型生成工具调用
-3. 调用在 `result.content` 中返回 `tool-approval-request` 部分
+2. 模型生成一个工具调用
+3. 该调用在 `result.content` 中返回 `tool-approval-request` 部分
 4. 你的应用请求审批并收集用户的决定
-5. 向 messages 数组添加 `tool-approval-response`
+5. 向 messages 数组添加一个 `tool-approval-response`
 6. 使用更新后的 messages 再次调用 `generateText` 或 `streamText`
 7. 如果批准，工具运行并返回结果。如果拒绝，模型会看到拒绝并相应地响应。
 
@@ -289,34 +314,43 @@ for (const part of result.content) {
 messages.push({ role: 'tool', content: approvals });
 ```
 
-然后使用更新后的 messages 再次调用 `generateText` 或 `streamText`。如果批准，工具执行。如果拒绝，模型收到拒绝并可以相应地响应。
+然后使用更新后的 messages 再次调用 `generateText` 或 `streamText`。如果批准，工具执行。如果拒绝，模型会收到拒绝并可以相应地响应。
 
-可选的 `reason` 根据决定的不同处理方式也不同：
+可选的 `reason` 根据决定的不同而有不同的处理方式：
 
 - **拒绝**：原因包含在 `execution-denied` 工具结果中，因此模型可以看到工具调用未执行的原因。
-- **批准**（由 AI SDK 执行的工具）：原因保留在你 messages 中的审批响应里（例如用于在 UI 中渲染或用于审计日志）。SDK 不会将其包含在模型提示词中、修改工具的输入或通过专用的执行选项暴露它。模型只能看到工具结果。在手动 `generateText` 和 `streamText` 延续中，审批响应可通过 `options.messages` 供工具的 `execute` 函数使用。
+- **批准**（由 AI SDK 执行的工具）：原因保留在你 messages 中的审批响应里（例如用于在 UI 中渲染或用于审计日志）。SDK 不会将其包含在模型提示词中、修改工具的输入，或通过专用的执行选项暴露它。模型只能看到工具结果。在手动 `generateText` 和 `streamText` 延续中，审批响应可通过 `options.messages` 供工具的 `execute` 函数使用。
 
 <Note>
   审批 `reason` 不是向已批准工具传递数据的通道。
-  如果你需要来自用户的输入（例如问题的答案或更正的值），请使用没有 `execute` 函数的工具，并从客户端提供其结果。参见 [Chatbot 工具
+  如果你需要来自用户的输入（例如，问题的答案或
+  更正的值），请使用没有 `execute` 函数的工具，并从客户端提供其结果。参见[聊天机器人工具
   用法](/docs/ai-sdk-ui/chatbot-tool-usage)。
 </Note>
 
-当工具应该在没有输出中任何审批元数据的情况下执行时，请使用 `'not-applicable'`，从审批函数返回 `undefined`，或省略 `toolApproval`。仅当你希望结果包含带有 `isAutomatic: true` 的自动 `tool-approval-request` 后跟 `tool-approval-response` 时，才使用 `'approved'`、`'denied'` 或其对象形式，这样你就可以检查或渲染该决定而无需再次提示用户。
+当工具应在输出中不包含任何审批元数据的情况下执行时，请使用
+`'not-applicable'`，从审批函数返回 `undefined`，或省略 `toolApproval`。仅当你希望结果包含一个自动的
+`tool-approval-request`（带有 `isAutomatic: true`）后跟一个
+`tool-approval-response` 时，才使用 `'approved'`、`'denied'` 或
+它们的对象形式，这样你就可以检查或渲染该决定，而无需
+再次提示用户。
 
 <Note>
-  当工具执行被拒绝时，考虑添加系统指令，例如
-  "When a tool execution is not approved, do not retry it"，以防止模型
+  当工具执行被拒绝时，考虑添加一条系统指令，例如
+  "当工具执行未获批准时，不要重试"，以防止模型
   再次尝试相同的调用。
 </Note>
 
 <Note>
-  提供商执行的工具在提供商端执行，不考虑工具审批设置。`toolApproval`（以及已弃用的 `needsApproval`）仅控制 AI SDK 在本地执行的工具。
+  提供商执行的工具在提供商端执行，不考虑
+  工具审批设置。`toolApproval`（以及已弃用的 `needsApproval`）
+  仅控制 AI SDK 在本地执行的工具。
 </Note>
 
 ### 动态审批
 
-你可以通过在按工具的 `toolApproval` 对象中提供异步函数，根据工具输入做出审批决定：
+你可以通过在按工具的 `toolApproval` 对象中提供异步
+函数，根据工具输入做出审批决定：
 
 ```ts
 const paymentTool = tool({
@@ -343,35 +377,42 @@ const result = await generateText({
 });
 ```
 
-在此示例中，只有超过 $1000 的交易需要审批。较小的交易自动执行。
+在此示例中，只有超过 $1000 的交易需要审批。较小的
+交易会自动执行。
 
-当你希望在调用时返回 `'not-applicable'`、`undefined`（等同于 `'not-applicable'`）、`'approved'`、`'denied'` 或 `'user-approval'`，而不是在工具本身上定义默认值时，可以在按工具的 `toolApproval` 对象中使用 `SingleToolApprovalFunction`。对于自动批准和拒绝，回调还可以返回 `{ type, reason }`，例如 `{ type: 'denied', reason: 'blocked by policy' }`。对于需要完整 `toolCall` 或同时处理多个工具的决定，请将 `GenericToolApprovalFunction` 作为 `toolApproval` 传入，而不是按工具映射。通用函数同样可以返回 `undefined`。
+当你希望在调用时返回
+`'not-applicable'`、`undefined`（等同于 `'not-applicable'`）、`'approved'`、`'denied'` 或 `'user-approval'`，而不是在工具本身上定义默认值时，可以在按工具的 `toolApproval` 对象中使用 `SingleToolApprovalFunction`。对于自动批准和
+拒绝，回调还可以返回 `{ type, reason }`，例如
+`{ type: 'denied', reason: 'blocked by policy' }`。对于需要完整 `toolCall` 或
+一次涉及多个工具的决定，请改为将 `GenericToolApprovalFunction` 作为 `toolApproval` 传入，
+而不是按工具的映射。通用函数也可以以相同方式返回 `undefined`。
 
 ### 使用 useChat 的工具执行审批
 
-使用 `useChat` 时，审批流程通过 UI 状态处理。有关使用 `addToolApprovalResponse` 在 UI 中处理审批的详细信息，请参见 [Chatbot 工具用法](/docs/ai-sdk-ui/chatbot-tool-usage#tool-execution-approval)。
+使用 `useChat` 时，审批流程通过 UI 状态处理。有关使用 `addToolApprovalResponse` 在 UI 中处理审批的详细信息，请参见[聊天机器人工具用法](/docs/ai-sdk-ui/chatbot-tool-usage#tool-execution-approval)。
 
 ## 多步调用（使用 stopWhen）
 
-通过 `stopWhen` 设置，你可以在 `generateText` 和 `streamText` 中启用多步调用。当设置了 `stopWhen` 且模型生成工具调用时，AI SDK 将触发新的生成并传入工具结果，直到没有更多工具调用或满足停止条件。
+通过 `stopWhen` 设置，你可以在 `generateText` 和 `streamText` 中启用多步调用。当设置了 `stopWhen` 且模型生成工具调用时，AI SDK 将触发一次新的生成，传入工具结果，直到没有更多工具调用或满足停止条件。
 
 AI SDK 提供了几个内置的停止条件：
 
 - `isStepCount(count)` — 在指定步数后停止（默认：`generateText` 和 `streamText` 为 `isStepCount(1)`）
 - `hasToolCall(...toolNames)` — 当调用任何指定工具时停止
-- `isLoopFinished()` — 永不触发，让循环运行直到自然结束
+- `isLoopFinished()` — 从不触发，让循环运行直到自然结束
 
 你还可以在数组中组合多个条件或创建自定义条件。有关更多详细信息，请参见[循环控制](/docs/agents/loop-control)。
 
 <Note>
-  `stopWhen` 条件仅在最后一步包含工具结果时才会被评估。
+  `stopWhen` 条件仅在最后一步包含工具
+  结果时才会被评估。
 </Note>
 
-默认情况下，当你使用 `generateText` 或 `streamText` 时，它会触发单次生成。这对于许多可以依赖模型训练数据生成响应的用例来说效果很好。然而，当你提供工具时，模型现在可以选择生成普通文本响应或生成工具调用。一个步骤包括一次模型生成以及该生成所请求的任何本地工具的执行。如果模型生成工具调用，模型生成首先完成；该步骤在其本地工具执行完成后结束。
+默认情况下，当你使用 `generateText` 或 `streamText` 时，它会触发单次生成。这对于许多可以依赖模型训练数据生成响应的用例来说效果很好。然而，当你提供工具时，模型现在可以选择生成普通文本响应，或生成工具调用。一个步骤包括一次模型生成以及该生成所请求的任何本地工具的执行。如果模型生成工具调用，模型生成会先完成；该步骤在其本地工具执行完成后结束。
 
 你可能希望模型在工具执行后生成文本，以便在用户查询的上下文中总结工具结果。在许多情况下，你可能还希望模型在单个响应中使用多个工具。这就是多步调用的用武之地。
 
-你可以将多步调用类比为与人类的对话。当你提问时，如果对方在其常识（模型的训练数据）中没有必要的知识，对方可能需要查找信息（使用工具）才能为你提供答案。同样，模型可能需要调用工具来获取回答你问题所需的信息，其中每次生成（工具调用或文本生成）都是一个步骤。
+你可以将多步调用类比为与人类的对话。当你提问时，如果对方在其常识（模型的训练数据）中没有必要的知识，对方可能需要查找信息（使用工具）才能为你提供答案。同样，模型可能需要调用工具来获取回答问题所需的信息，其中每次生成（工具调用或文本生成）都是一个步骤。
 
 ### 示例
 
@@ -379,11 +420,11 @@ AI SDK 提供了几个内置的停止条件：
 
 1. **步骤 1**
    1. 提示词 `'What is the weather in San Francisco?'` 被发送到模型。
-   1. 模型生成工具调用。
+   1. 模型生成一个工具调用。
    1. 工具调用被执行。
 1. **步骤 2**
    1. 工具结果被发送到模型。
-   1. 模型考虑工具结果生成响应。
+   1. 模型考虑工具结果后生成响应。
 
 ```ts highlight="19-20"
 import { z } from 'zod';
@@ -415,7 +456,7 @@ const { text, steps } = await generateText({
 
 要访问中间工具调用和结果，你可以使用结果对象中的 `steps` 属性
 或 `streamText` 的 `onEnd` 回调。
-它包含每个步骤的所有文本、工具调用、工具结果、每步 `performance` 等。
+它包含每个步骤中的所有文本、工具调用、工具结果、每步 `performance` 等。
 
 #### 示例：从所有步骤中提取工具结果
 
@@ -435,11 +476,12 @@ const allToolCalls = steps.flatMap(step => step.toolCalls);
 
 ### `onStepEnd` 回调
 
-使用 `generateText` 或 `streamText` 时，你可以提供一个 `onStepEnd` 回调，它在步骤完成时触发，
+使用 `generateText` 或 `streamText` 时，你可以提供一个 `onStepEnd` 回调，
+它会在步骤完成时触发，
 即该步骤的所有文本增量、工具调用和工具结果都可用时。
 当你有多个步骤时，回调会为每个步骤触发。
 
-回调接收一个 `stepNumber`（从零开始）来标识刚刚完成的步骤：
+回调接收一个 `stepNumber`（从零开始）来标识刚刚完成的是哪个步骤：
 
 ```tsx highlight="5-8"
 import { generateText } from 'ai';
@@ -464,10 +506,38 @@ const result = await generateText({
 });
 ```
 
+### 工具调用执行并发
+
+默认情况下，当模型在一个步骤中生成多个工具调用时，
+`generateText`、`streamText` 和 `ToolLoopAgent` 会并发执行这些调用。
+将 `toolCallConcurrency` 设置为正整数，以限制同时运行的
+SDK 执行的工具调用数量。
+
+当后续调用需要观察先前调用的副作用时，请使用 `toolCallConcurrency: 1`。
+SDK 会按照模型生成它们的顺序依次启动调用：
+
+```ts highlight="5"
+const result = await generateText({
+  model: __MODEL__,
+  tools,
+  prompt: 'Update the file, then read it.',
+  toolCallConcurrency: 1,
+});
+```
+
+此选项控制 SDK 在本地运行的工具调用的执行。它
+不会改变模型可能生成的工具调用数量，也不会调度
+提供商执行的工具或客户端工具。诸如
+`parallelToolCalls` 之类的提供商选项控制的是模型生成。
+
+当操作被中止时，活动工具会收到中止信号，排队的
+工具调用不会启动。流式工具会持有其并发槽位，直到
+其最终输出或错误。
+
 ### 工具执行生命周期回调
 
 你可以使用 `onToolExecutionStart` 和 `onToolExecutionEnd` 来观察工具执行。
-这些回调在每个工具的 `execute` 函数之前和之后立即调用，让你可以
+这些回调会在每个工具的 `execute` 函数之前和之后立即调用，让你
 了解工具执行的时机、输入、输出和错误：
 
 ```tsx highlight="5-14"
@@ -503,7 +573,7 @@ const result = await generateText({
 
 ### `prepareStep` 回调
 
-`prepareStep` 回调在步骤开始之前被调用。
+`prepareStep` 回调会在步骤开始之前被调用。
 
 它使用以下参数调用：
 
@@ -511,16 +581,16 @@ const result = await generateText({
 - `stopWhen`：传递给 `generateText` 的停止条件。
 - `stepNumber`：正在执行的步骤编号。
 - `steps`：到目前为止已执行的步骤。
-- `instructions`：将发送给当前步骤模型的指令。如果 `prepareStep` 返回 `instructions` 覆盖，这些指令将作为后续步骤的默认值继续传递。
+- `instructions`：将为当前步骤发送给模型的指令。如果 `prepareStep` 返回一个 `instructions` 覆盖，这些指令将作为后续步骤的默认值继续沿用。
 - `initialInstructions`：传递给 `generateText` 或 `streamText` 的指令。
-- `messages`：将发送给当前步骤模型的消息。将其视为循环的当前消息状态。如果 `prepareStep` 返回 `messages` 覆盖，这些消息将作为后续步骤的基础继续传递。
+- `messages`：将为当前步骤发送给模型的消息。将其视为循环的当前消息状态。如果 `prepareStep` 返回一个 `messages` 覆盖，这些消息将作为后续步骤的基础继续沿用。
 - `initialMessages`：传递给 `generateText` 或 `streamText` 的消息。
-- `responseMessages`：到目前为止累积的 assistant/tool 响应消息，包括在第一个模型步骤之前从输入消息中已批准工具调用生成的任何工具结果。
+- `responseMessages`：到目前为止累积的助手/工具响应消息，包括在第一个模型步骤之前从输入消息中已批准工具调用生成的任何工具结果。
 - `runtimeContext`：通过 `runtimeContext` 设置传递的运行时上下文。
 - `toolsContext`：通过 `toolsContext` 设置传递的按工具上下文映射。
 - `experimental_sandbox`：通过 `experimental_sandbox` 设置传递的实验性沙箱。
 
-你可以使用它为步骤提供不同的设置，包括修改输入消息。
+你可以使用它为某个步骤提供不同的设置，包括修改输入消息。
 
 ```tsx highlight="5-7"
 import { generateText } from 'ai';
@@ -544,17 +614,17 @@ const result = await generateText({
 });
 ```
 
-如果你返回 `instructions`，这些指令将传递到后续步骤，直到 `prepareStep` 返回另一个 `instructions` 或 `system` 覆盖。当你需要恢复或比较原始调用的顶层指令时，请使用 `initialInstructions`。
+如果你返回 `instructions`，这些指令会继续沿用到后续步骤，直到 `prepareStep` 返回另一个 `instructions` 或 `system` 覆盖。当你需要恢复或与原始调用的顶层指令进行比较时，请使用 `initialInstructions`。
 
-#### 为更长的智能体循环修改消息
+#### 针对较长智能体循环的消息修改
 
-在更长的智能体循环中，你可以使用 `messages` 参数来改变后续步骤将使用的消息状态。这对于上下文压缩特别有用，你可以决定何时进行压缩。
+在较长的智能体循环中，你可以使用 `messages` 参数来改变后续步骤将使用的消息状态。这对于上下文压缩特别有用，你可以决定何时进行压缩。
 
-`messages` 参数包含当前步骤的消息。默认情况下，这是 `initialMessages` 后跟累积的 `responseMessages`。如果之前的 `prepareStep` 返回了 `messages`，后续步骤将使用这些持久化的消息加上上一步的响应消息。
+`messages` 参数包含当前步骤的消息。默认情况下，这是 `initialMessages` 后跟累积的 `responseMessages`。如果先前的 `prepareStep` 返回了 `messages`，后续步骤将使用这些持久化的消息加上前一步的响应消息。
 
-当你需要原始输入消息时使用 `initialMessages`，当你需要到目前为止来自模型的离散 assistant/tool 响应消息时使用 `responseMessages`。
+当你需要原始输入消息时使用 `initialMessages`，当你需要到目前为止来自模型的离散助手/工具响应消息时使用 `responseMessages`。
 
-`pruneMessages` 辅助函数提供了一种内置方式来删除选定的消息或消息部分。当你想要简单的压缩策略时，可以在 `prepareStep` 中使用它。
+`pruneMessages` 辅助函数提供了一种内置的方式来移除选定的消息或消息部分。当你想要一个简单的压缩策略时，可以在 `prepareStep` 中使用它。
 
 ```tsx
 import { generateText, pruneMessages, type ModelMessage } from 'ai';
@@ -584,7 +654,7 @@ const result = await generateText({
 
 此示例使用估计的 token 阈值，但你可以使用任何触发器。关键行为是返回 `messages` 会改变后续步骤的消息状态。
 
-返回的消息更改会跨步骤持久化。如果你想从原始输入加上离散响应消息（而不是持久化的消息状态）派生每个步骤的消息，请每次从 `initialMessages` 和 `responseMessages` 重建它们：
+返回的消息更改会在步骤之间持久化。如果你想从原始输入加上离散响应消息（而不是持久化的消息状态）推导每个步骤的消息，请每次从 `initialMessages` 和 `responseMessages` 重建它们：
 
 ```tsx
 prepareStep: ({ initialMessages, responseMessages, stepNumber }) => {
@@ -598,7 +668,7 @@ prepareStep: ({ initialMessages, responseMessages, stepNumber }) => {
 
 #### 用于步骤配置的提供商选项
 
-你可以在 `prepareStep` 中使用 `providerOptions` 为每个步骤传递提供商特定的配置。这对于 Anthropic 的代码执行容器持久化等功能很有用：
+你可以在 `prepareStep` 中使用 `providerOptions` 为每个步骤传递提供商特定的配置。这对于诸如 Anthropic 的代码执行容器持久化等功能非常有用：
 
 ```tsx
 import { forwardAnthropicContainerIdFromLastStep } from '@ai-sdk/anthropic';
@@ -609,14 +679,14 @@ prepareStep: forwardAnthropicContainerIdFromLastStep,
 
 ## 响应消息
 
-将生成的 assistant 和 tool 消息添加到你的对话历史记录是一项常见任务，
-特别是当你使用多步工具调用时。
+将生成的助手和工具消息添加到你的对话历史中是一项常见任务，
+尤其是在使用多步工具调用时。
 
-`generateText` 和 `streamText` 都有一个 `responseMessages` 属性，你可以使用它将
-assistant 和 tool 消息添加到你的对话历史记录中。
+`generateText` 和 `streamText` 都有一个 `responseMessages` 属性，你可以使用它
+将助手和工具消息添加到你的对话历史中。
 它也可在 `streamText` 的 `onEnd` 回调中使用。
 
-`responseMessages` 属性包含来自调用的累积响应消息，作为 `ModelMessage` 对象数组，你可以将其添加到对话历史记录中：
+`responseMessages` 属性包含来自该调用的累积响应消息，作为 `ModelMessage` 对象数组，你可以将其添加到你的对话历史中：
 
 ```ts
 import { generateText, ModelMessage } from 'ai';
@@ -638,7 +708,7 @@ messages.push(...responseMessages); // streamText: ...(await result.responseMess
 
 AI SDK Core 支持动态工具，适用于工具 schema 在编译时未知的场景。这对于以下情况很有用：
 
-- 没有 schema 的 MCP（Model Context Protocol）工具
+- 没有 schema 的 MCP（模型上下文协议）工具
 - 运行时的用户定义函数
 - 从外部源加载的工具
 
@@ -704,7 +774,8 @@ const result = await generateText({
 你可以返回一个跨越多个结果的 `AsyncIterable`。
 在这种情况下，可迭代对象的最后一个值是最终工具结果。
 
-这可以与生成器函数结合使用，例如在工具执行期间流式传输状态信息：
+这可以与生成器函数结合使用，例如在工具执行期间
+流式传输状态信息：
 
 ```ts
 tool({
@@ -737,8 +808,8 @@ tool({
 你可以使用 `toolChoice` 设置来影响工具被选择的时机。
 它支持以下设置：
 
-- `auto`（默认）：模型可以选择是否调用工具以及调用哪些工具。
-- `required`：模型必须调用工具。它可以选择调用哪个工具。
+- `auto`（默认）：模型可以选择是否以及调用哪些工具。
+- `required`：模型必须调用一个工具。它可以选择调用哪个工具。
 - `none`：模型不得调用工具
 - `{ type: 'tool', toolName: string (typed) }`：模型必须调用指定的工具
 
@@ -845,7 +916,7 @@ const result = await generateText({
 ### 中止信号
 
 来自 `generateText` 和 `streamText` 的中止信号会被转发到工具执行。
-你可以在 `execute` 函数的第二个参数中访问它们，例如中止长时间运行的计算或将它们转发到工具内的 fetch 调用。
+你可以在 `execute` 函数的第二个参数中访问它们，例如中止长时间运行的计算或将它们转发到工具内部的 fetch 调用。
 
 ```ts highlight="7,12,15"
 import { z } from 'zod';
@@ -873,13 +944,17 @@ const result = await generateText({
 
 ### 实验性沙箱
 
-当工具需要在执行环境中运行命令或代码时，将 `experimental_sandbox` 传递给 `generateText`、`streamText` 或 `ToolLoopAgent` 调用。实验性沙箱可用于工具描述函数以及工具 `execute` 函数的第二个参数。
+当工具需要在执行环境中运行命令或代码时，将 `experimental_sandbox` 传递给 `generateText`、`streamText` 或 `ToolLoopAgent`
+调用。实验性沙箱可供工具描述函数使用，也可在工具 `execute` 函数的第二个参数上使用。
 
 <Note type="warning">
-  此 API 是实验性的，可能会在补丁版本中更改。传递实验性沙箱并不会对工具本身进行沙箱化。
+  此 API 是实验性的，可能会在补丁版本中更改。传递
+  实验性沙箱并不会对工具本身进行沙箱隔离。
 </Note>
 
-工具代码仍然在你的应用程序运行的任何地方运行。只有你的工具明确委托给实验性沙箱的操作（例如 `experimental_sandbox.run(...)`）才会在实验性沙箱环境中运行。
+工具代码仍然在你的应用程序运行的任何地方运行。只有你的工具显式委托给
+实验性沙箱的操作，例如 `experimental_sandbox.run(...)`，
+才会在实验性沙箱环境中运行。
 
 ```ts highlight="7-15,21"
 import { generateText, tool } from 'ai';
@@ -914,27 +989,35 @@ const result = await generateText({
 });
 ```
 
-实验性沙箱描述不会自动添加到模型提示词中。如果模型应该了解诸如根目录、暴露的端口或公共主机名等详细信息，请在你的系统提示词、指令、用户可见上下文或工具描述函数中包含 `experimental_sandbox.description`。
+实验性沙箱描述不会自动添加到模型提示词中。如果模型应该了解诸如根目录、暴露的端口或公共主机名等详细信息，请在你的系统提示词、
+指令、用户可见上下文或工具描述函数中包含 `experimental_sandbox.description`。
 
 `run` 还接受可选的 `workingDirectory`、`env` 和 `abortSignal`。
-当工具需要从实验性沙箱实现默认工作目录以外的目录运行命令时，请使用 `workingDirectory`。使用 `env` 为命令设置环境变量。转发来自工具执行选项的 `abortSignal`，以便实验性沙箱可以在整个操作被中止或超时时取消命令。
+当工具需要从实验性沙箱实现默认工作目录以外的目录运行命令时，请使用 `workingDirectory`。使用 `env`
+为命令设置环境变量。转发
+来自工具执行选项的 `abortSignal`，以便实验性沙箱可以在整个操作被中止或超时时取消命令。
 
 AI SDK 会转发你的实验性沙箱对象，但不会为你创建或隔离一个。
 
-`Experimental_SandboxSession` 接口只是一个契约。其隔离保证取决于你的实现或实验性沙箱提供商。使用 `child_process.exec` 和工作目录的本地实现不是安全边界，因为命令仍然可以访问该目录之外的路径。对于不受信任的命令或用户指导的编码智能体，请使用真正的隔离提供商，限制可用命令，设置命令超时，并将实验性沙箱使用与针对敏感操作的[工具审批](#tool-execution-approval)结合使用。
+`Experimental_SandboxSession` 接口只是一个契约。其隔离保证取决于你的实现或实验性沙箱提供商。使用
+`child_process.exec` 和工作目录的本地实现不是安全边界，因为
+命令仍然可以访问该目录之外的路径。对于不受信任的命令
+或用户导向的编码智能体，请使用真正的隔离提供商，限制
+可用命令，设置命令超时，并将实验性沙箱的使用与针对敏感操作的[工具审批](#tool-execution-approval)结合使用。
 
 ### 运行时上下文
 
 你可以通过 `runtimeContext` 设置从 `generateText` 或 `streamText` 传入任意运行时上下文。
-此运行时上下文在 `prepareStep` 中可用。
+此运行时上下文可在 `prepareStep` 中使用。
 
-为了避免与提示词上下文或检索上下文混淆，文档将此功能称为运行时上下文。
+为避免与提示词上下文或检索上下文混淆，文档将此功能称为运行时上下文。
 
-这对于租户信息、功能标志、会话数据或其他应影响步骤准备而不嵌入提示词的服务器端状态等值很有用。
+这对于诸如租户信息、功能标志、会话数据或其他服务器端状态等值很有用，这些值应影响步骤准备而无需嵌入到提示词中。
 
-工具执行上下文现在是分开的。如果工具需要服务器端值（例如 API 密钥），请通过 `toolsContext` 传递它们，以工具名称为键。然后每个工具仅根据其 `contextSchema` 接收自己的类型化 `context` 值。
+工具执行上下文现在是独立的。如果工具需要服务器端值（例如 API 密钥），请通过 `toolsContext` 传递它们，以工具名称为键。然后每个工具仅根据其 `contextSchema` 接收自己的类型化 `context` 值。
 
-有关完整的心智模型、示例、生命周期细节以及如何在提示词上下文、运行时上下文和工具上下文之间进行选择的指导，请参见[运行时和工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
+有关完整的心智模型、示例、生命周期细节以及在提示词上下文、运行时上下文和工具上下文之间进行选择的指导，请参见
+[运行时和工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
 
 ### 工具上下文遥测
 
@@ -980,13 +1063,14 @@ const result = await generateText({
 });
 ```
 
-遥测集成接收 `weather` 工具上下文为 `{ defaultUnit: 'fahrenheit' }`。
-设置为 `false` 或省略的属性将被排除。如果省略 `telemetry.includeToolsContext`，则不包含任何工具上下文属性。
+遥测集成将收到 `weather` 工具上下文为 `{ defaultUnit: 'fahrenheit' }`。
+设置为 `false` 或省略的属性会被排除。如果省略 `telemetry.includeToolsContext`，则不会包含任何工具上下文属性。
 
 <Note>
   `telemetry.includeToolsContext` 仅过滤遥测集成。工具
-  执行、生命周期回调和返回的结果仍然接收完整的
-  类型化工具上下文。有关工具上下文如何流经执行和遥测的信息，请参见[运行时和工具
+  执行、生命周期回调和返回结果仍然接收完整的
+  类型化工具上下文。有关工具上下文如何
+  流经执行和遥测的信息，请参见[运行时和工具
   上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
 </Note>
 
@@ -998,7 +1082,7 @@ const result = await generateText({
 - **`onInputDelta`**：当输入流式传输时，为每个文本块调用
 - **`onInputAvailable`**：当完整输入可用并已验证时调用
 
-`onInputStart` 总是在 `onInputAvailable` 之前调用，包括使用 `generateText` 时。`onInputDelta` 仅在流式传输上下文中调用（使用 `streamText` 时）。
+`onInputStart` 总是在 `onInputAvailable` 之前调用，包括在使用 `generateText` 时。`onInputDelta` 仅在流式传输上下文中调用（使用 `streamText` 时）。
 
 ### 示例
 
@@ -1036,15 +1120,15 @@ const result = streamText({
 ## 类型
 
 模块化你的代码通常需要定义类型以确保类型安全和可重用性。
-为此，AI SDK 为工具、工具调用和工具结果提供了几个辅助类型。
+为实现这一点，AI SDK 为工具、工具调用和工具结果提供了几个辅助类型。
 
 你可以使用它们来强类型化你的变量、函数参数和返回类型，
 在与 `streamText` 或 `generateText` 不直接相关的代码部分中。
 
 每个工具调用都根据被调用的工具类型化为 `ToolCall<NAME extends string, ARGS>`。
-类似地，工具结果类型化为 `ToolResult<NAME extends string, ARGS, RESULT>`。
+同样，工具结果类型化为 `ToolResult<NAME extends string, ARGS, RESULT>`。
 
-`streamText` 和 `generateText` 中的工具被定义为 `ToolSet`。
+`streamText` 和 `generateText` 中的工具定义为 `ToolSet`。
 类型推断辅助函数 `TypedToolCall<TOOLS extends ToolSet>`
 和 `TypedToolResult<TOOLS extends ToolSet>` 可用于
 从工具中提取工具调用和工具结果类型。
@@ -1114,7 +1198,7 @@ try {
 }
 ```
 
-工具执行错误在结果步骤中可用：
+工具执行错误可在结果步骤中找到：
 
 ```ts
 const { steps } = await generateText({
@@ -1163,12 +1247,12 @@ return createUIMessageStreamResponse({
 ## 工具调用修复
 
 语言模型有时无法生成有效的工具调用，
-特别是当输入 schema 复杂或模型较小时。
+尤其是当输入 schema 复杂或模型较小时。
 
 如果你使用多个步骤，那些失败的工具调用将在下一步发送回 LLM，
 给它一个修复的机会。
-然而，你可能希望控制无效工具调用的修复方式，而不需要
-污染消息历史记录的额外步骤。
+然而，你可能希望控制如何修复无效的工具调用，而不需要
+污染消息历史的额外步骤。
 
 你可以使用 `repairToolCall` 函数尝试使用自定义函数修复工具调用。
 
@@ -1286,7 +1370,7 @@ const result = await generateText({
 AI SDK 提供了 `activeTools` 属性。
 
 它是一个当前活动的工具名称数组。
-默认情况下，该值为 `undefined`，所有工具都是活动的。
+默认情况下，值为 `undefined`，所有工具都是活动的。
 
 ```ts highlight="8"
 import { openai } from '@ai-sdk/openai';
@@ -1322,7 +1406,8 @@ const { text } = await generateText({
 
 `toolOrder` 仅控制发送给提供商的工具定义的顺序。
 它不会强制模型调用工具。使用 [`toolChoice`](#tool-choice) 来
-控制工具选择，当你想要限制可用工具时使用 [`activeTools`](#active-tools)。当同时提供 `activeTools` 和 `toolOrder` 时，`activeTools` 首先过滤可用工具，`toolOrder` 对剩余工具进行排序。
+控制工具选择，当你想要限制哪些工具可用时使用 [`activeTools`](#active-tools)。当同时提供 `activeTools` 和 `toolOrder` 时，`activeTools` 首先过滤可用工具，`toolOrder`
+对剩余工具进行排序。
 
 ## 多模态工具结果
 
@@ -1338,7 +1423,8 @@ const { text } = await generateText({
 不支持工具结果 URL 部分中的远程 HTTP(S) URL。
 
 [Google Vertex 提供商](/providers/ai-sdk-providers/google-vertex#tool-result-files)
-还支持针对 Gemini 3 及更高版本模型的直接 `gs://` 工具结果文件引用，支持图像和文档 MIME 类型。它会下载 HTTP(S) 工具结果 URL 并将其内容作为内联数据发送。
+还支持对 Gemini 3 及更高版本模型使用直接的 `gs://` 工具结果文件引用，支持图像和文档 MIME 类型。它会下载 HTTP(S)
+工具结果 URL 并将其内容作为内联数据发送。
 
 为了将多模态工具结果（例如截图）发送回模型，
 它们需要转换为特定格式。
@@ -1419,8 +1505,8 @@ export const weatherTool = tool({
 
 ## MCP 工具
 
-AI SDK 支持连接到 Model Context Protocol (MCP) 服务器以访问其工具。
-MCP 使你的 AI 应用程序能够通过标准化接口跨各种服务发现和使用工具。
+AI SDK 支持连接到模型上下文协议（MCP）服务器以访问其工具。
+MCP 使你的 AI 应用程序能够通过标准化接口在各种服务中发现和使用工具。
 
 有关 MCP 工具的详细信息，包括初始化、传输选项和使用模式，请参见 [MCP 工具文档](/docs/ai-sdk-core/mcp-tools)。
 
@@ -1428,15 +1514,15 @@ MCP 使你的 AI 应用程序能够通过标准化接口跨各种服务发现和
 
 在大多数情况下，你应该为生产应用程序定义自己的 AI SDK 工具。它们提供完全控制、类型安全和最佳性能。MCP 工具最适合快速开发迭代和用户自带工具的场景。
 
-| 方面                   | AI SDK 工具                                               | MCP 工具                                              |
+| 方面                   | AI SDK 工具                                              | MCP 工具                                             |
 | ---------------------- | --------------------------------------------------------- | ----------------------------------------------------- |
-| **类型安全**           | 端到端完全静态类型                                        | 运行时动态发现                                        |
-| **执行**               | 与你的请求同一进程（低延迟）                              | 单独的服务器（网络开销）                              |
-| **提示词控制**         | 完全控制描述和 schema                                     | 由 MCP 服务器所有者控制                               |
-| **Schema 控制**        | 你为你的模型定义和优化                                    | 由 MCP 服务器所有者控制                               |
-| **版本管理**           | 完全可见更新                                              | 可以独立更新（版本偏差风险）                          |
-| **身份验证**           | 同一进程，无需额外认证                                    | 单独的服务器引入额外的认证复杂性                      |
-| **最适合**             | 需要控制和性能的生产应用程序                              | 开发迭代、用户提供的工具                              |
+| **类型安全**        | 端到端完全静态类型                             | 运行时动态发现                          |
+| **执行**          | 与你的请求在同一进程（低延迟）                | 单独的服务器（网络开销）                    |
+| **提示词控制**     | 完全控制描述和 schema                | 由 MCP 服务器所有者控制                        |
+| **Schema 控制**     | 你为你的模型定义和优化                    | 由 MCP 服务器所有者控制                        |
+| **版本管理** | 完全可见的更新                              | 可以独立更新（版本偏差风险）          |
+| **身份验证**     | 同一进程，无需额外认证                 | 单独的服务器引入额外的认证复杂性 |
+| **最适合**           | 需要控制和性能的生产应用程序 | 开发迭代、用户提供的工具            |
 
 ## 示例
 

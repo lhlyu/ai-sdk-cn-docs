@@ -1,11 +1,12 @@
 ---
 title: "MCP 事件"
-description: "实验性 MCP 事件方法、Webhook 处理器以及订阅和存储类型的参考文档。"
+description: "实验性 MCP 事件方法、webhook 处理器以及订阅和存储类型的参考。"
 ---
 
 # MCP 事件
 
-本页介绍 `client.experimental_events` 上的实验性方法、Webhook 处理器及其公开类型。使用
+本页介绍 `client.experimental_events` 上的实验性方法、webhook
+处理器及其公开类型。使用
 [`createMCPClient`](/docs/reference/ai-sdk-core/create-mcp-client) 创建客户端。应用流程请参阅
 [MCP 事件指南](/docs/ai-sdk-core/mcp-events)。
 
@@ -23,8 +24,9 @@ const client = await createMCPClient({
 
 `experimental_events` 接受 [`Experimental_MCPEventsConfig`](/docs/reference/ai-sdk-core/mcp-events#client-configuration)。
 在直接模式下，subscribe、refresh 和 unsubscribe 需要提供 store。
-或者，按下文所述配置托管适配器。发现功能无需配置任一模式即可使用。在订阅之前，
-请先挂载 [Webhook 处理器](/docs/reference/ai-sdk-core/mcp-events#webhook-handler)。
+或者，按下文所述配置托管适配器。发现功能无需配置任一模式即可工作。在订阅之前，
+请先挂载
+[webhook 处理器](/docs/reference/ai-sdk-core/mcp-events#webhook-handler)。
 
 以下方法属于 `client.experimental_events`；它们不是独立的导入项。
 
@@ -79,7 +81,7 @@ if (nextCursor != null) {
       name: 'events',
       type: 'Experimental_MCPEventDefinition[]',
       description:
-        '事件定义，包含 name、可选的 description、投递模式、inputSchema 和 payloadSchema。请参阅事件定义类型参考。',
+        '事件定义，包含 name、可选的 description、delivery modes、inputSchema 和 payloadSchema。请参阅事件定义类型参考。',
     },
     {
       name: 'nextCursor',
@@ -91,16 +93,15 @@ if (nextCursor != null) {
   ]}
 />
 
-定义字段请参阅 [`Experimental_MCPEventDefinition`](/docs/reference/ai-sdk-core/mcp-events#event-definition)。
-分页是显式的；此方法不会获取所有页面。
+定义字段请参阅 [`Experimental_MCPEventDefinition`](/docs/reference/ai-sdk-core/mcp-events#event-definition)。分页是显式的；此方法不会获取所有页面。
 
 ## 托管订阅
 
-配置 `experimental_events: { adapter }` 可将订阅生命周期操作委托给后端。
-`adapter` 配置需要来自 `@ai-sdk/mcp` 的
+配置 `experimental_events: { adapter }` 可将订阅生命周期
+操作委托给后端。`adapter` 配置需要一个来自 `@ai-sdk/mcp` 的
 `Experimental_MCPEventAdapter`。其
-`createAdapter({ transport })` 方法返回 `Experimental_MCPEventOperations`，由你的应用程序或
-集成包绑定到已授权的账户、端点和目标。
+`createAdapter({ transport })` 方法返回 `Experimental_MCPEventOperations`，该对象
+由你的应用程序或集成包绑定到已授权的账户、端点和目标。
 
 ```ts
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -119,7 +120,7 @@ try {
     name: 'comment.created',
     arguments: { document_id: 'doc_123' },
     context: { bindingId: 'saved_intent_123' },
-    expiresAt: null,
+    ttlMs: null,
     idempotencyKey: 'saved_intent_123',
   });
 
@@ -139,7 +140,7 @@ try {
 ```
 
 `authenticatedTransport` 和 `eventsAdapter` 由你的应用程序提供。
-发现和订阅管理应使用同一个已授权的账户。
+发现和订阅管理应使用同一个已授权账户。
 切勿从模型参数中推导账户身份、目标或授权。
 
 ### 使用适配器辅助函数
@@ -163,10 +164,10 @@ const client = await createMCPClient({
 });
 ```
 
-辅助函数持有已授权的账户和投递配置。AI SDK 会在内部向其 `createAdapter` 方法提供
-传输类型和 URL，因此应用程序只需配置一次该 URL。当后端 SDK 导出此辅助函数时，
-请从该 SDK 导入，而不是从应用程序模块导入。MCP 传输和后端的订阅操作应使用
-同一个已授权的账户。
+该辅助函数持有已授权的账户和投递配置。AI SDK 会在内部向其 `createAdapter` 方法提供
+传输类型和 URL，因此应用程序
+只需配置一次该 URL。当后端 SDK 导出此辅助函数时，请从该 SDK 导入，
+而不是从应用程序模块导入。MCP 传输和后端的订阅操作应使用同一个已授权账户。
 
 ### 实现适配器辅助函数
 
@@ -200,9 +201,9 @@ export function createBackendEventsAdapter(
 
 这些辅助函数和 `BackendEventsConfig` 是示例性的应用程序或后端
 SDK 代码，并非 AI SDK 的导出。`createBackendEventOperations` 返回
-`Experimental_MCPEventOperations`，绑定到已授权的账户、端点和目标。
-上述辅助函数允许显式的 `mcpUrl` 覆盖后端操作的传输
-URL；它不会改变 MCP 客户端的传输或目录发现。后端仍会对所选端点进行授权。
+`Experimental_MCPEventOperations`，绑定到已授权的账户、端点和目标。上面的辅助函数允许显式的 `mcpUrl` 覆盖后端操作的传输
+URL；它不会改变 MCP 客户端的传输或
+目录发现。后端仍会对所选端点进行授权。
 
 AI SDK 适配器契约如下：
 
@@ -214,13 +215,12 @@ interface MCPEventAdapter {
 }
 ```
 
-该接口导出为 `Experimental_MCPEventAdapter`。客户端会在启动传输之前
-调用一次 `createAdapter`，并将返回的操作用于托管订阅。返回值必须是具有
-可调用的 `subscribe`、`getSubscription`、`listSubscriptions` 和 `unsubscribe`
-方法的对象。空值、缺失或不可调用的方法，以及 Promise/thenable
+该接口导出为 `Experimental_MCPEventAdapter`。客户端
+在启动传输之前调用一次 `createAdapter`，并将返回的
+操作用于托管订阅。返回值必须是一个对象，具有可调用的 `subscribe`、`getSubscription`、`listSubscriptions` 和 `unsubscribe`
+方法。空值、缺失或不可调用的方法，以及 Promise/thenable
 结果会在传输启动之前以 `MCPClientError` 拒绝 `createMCPClient`。
-`createAdapter` 抛出的错误也会在未启动传输的情况下拒绝初始化。
-绑定的操作不再被直接接受于
+`createAdapter` 抛出的错误也会在不启动传输的情况下拒绝初始化。已绑定的操作不再被直接接受于
 `experimental_events.adapter`。要迁移现有的订阅操作，请显式包装它们：
 
 ```ts
@@ -231,9 +231,8 @@ experimental_events: {
 }
 ```
 
-仅当绑定的操作的账户、端点和目标对于使用它们的每个客户端都正确时，才可复用它们。
-原订阅操作接口现在导出为 `Experimental_MCPEventOperations`；`Experimental_MCPEventAdapter`
-命名了使用 `createAdapter` 配置的集成。
+仅当已绑定的操作的账户、端点和目标对于使用它们的每个客户端都正确时，才可复用它们。原先的订阅操作接口现在导出为 `Experimental_MCPEventOperations`；`Experimental_MCPEventAdapter`
+命名的是使用 `createAdapter` 配置的集成。
 
 对于 HTTP 和 SSE 传输配置，上下文包含一个新的
 `transport: { type, url }` 对象。`url` 是配置的字符串，包括其
@@ -245,11 +244,11 @@ experimental_events: {
 实例。Headers、auth providers、fetch 函数、会话回调和
 `start`/`send`/`close` 方法不会传递给适配器。`transport`
 分组为其他客户端上下文留出了空间，而不会将其与传输
-元数据混合。初始化之前不会提供协商的协议版本。
+元数据混在一起。初始化之前不会提供协商的协议版本。
 
 为每个客户端返回单独绑定的操作，而不是修改共享的
-端点状态。当 `transport.type` 为 `'custom'` 时，适配器可能更倾向于使用自己的显式端点覆盖
-或解析配置的端点。该策略属于
+端点状态。当 `transport.type` 为 `'custom'` 时，适配器可能更倾向于使用自己的显式端点覆盖或
+解析配置的端点。该策略属于
 适配器；它不会改变客户端的传输或目录发现。
 托管后端在向某个端点发送凭据之前仍必须对其进行授权。接收传输 URL 并不授予该授权。
 
@@ -278,21 +277,21 @@ type ManagedSubscribeInput = {
   arguments: JSONObject;
   context?: JSONObject;
   idempotencyKey: string;
+  ttlMs: number | null;
   options?: {
     signal?: AbortSignal;
     timeout?: number;
     maxTotalTimeout?: number;
   };
-} & (
-  | { ttlMs: number; expiresAt?: never }
-  | { expiresAt: string | null; ttlMs?: never }
-);
+};
 ```
 
 这些类型导出为 `Experimental_ManagedSubscription` 和
-`Experimental_ManagedSubscribeInput`。请恰好提供一种监控生命周期：
-正的 `ttlMs`、`expiresAt` 中的 ISO 截止时间，或 `expiresAt: null` 表示
-监控直到停止。后端会验证这些值并强制执行其限制。
+`Experimental_ManagedSubscribeInput`。创建时需要 `ttlMs`：一个正
+整数毫秒时长，或 `null` 表示持续监控直到停止。后端
+会验证这些值并强制执行其限制。`expiresAt` 仅出现在响应中。
+
+在重试结果不确定的创建操作时，请复用相同的时长和幂等键。后端只计算一次截止时间；重试不得延长它。
 
 `Experimental_MCPEventOperations` 有四个操作：
 
@@ -309,32 +308,30 @@ type ManagedSubscribeInput = {
 例如需要同意、超出配额或暂时不可用。
 
 托管 ID 标识后端记录。`expiresAt` 是应用程序的监控
-截止时间，而不是上游 MCP 的 `refreshBefore` 授权。pending 结果表示
-后端已持久接受；上游设置可能仍在运行。
-停止时可能返回 `cleanupStatus: 'pending'`，同时远程清理仍在继续。
+截止时间，而不是上游 MCP 的 `refreshBefore` 授权。pending 结果表示后端已持久接受；上游设置可能仍在运行。
+停止操作可能返回 `cleanupStatus: 'pending'`，同时远程清理仍在继续。
 
-后端拥有回调 URL、密钥、上游订阅调用、验证、
-续期和清理。托管 `subscribe` 不会隐式发现目录、
+后端负责回调 URL、密钥、上游订阅调用、验证、
+续订和清理。托管 `subscribe` 不会隐式发现目录、
 生成密钥、写入本地存储或调用上游 `events/subscribe`。
-`getSubscription` 和 `listSubscriptions` 是适配器方法，不是 MCP 线路方法。
-托管外观没有 `refresh()`；即使应用程序的 watch 没有截止时间，
-后端也会续期有限的上游租约。
+`getSubscription` 和 `listSubscriptions` 是适配器方法，不是 MCP 线上方法。
+托管门面没有 `refresh()`；即使应用程序的 watch 没有截止时间，后端也会续订有限的上游租约。
 
-在创建结果不确定后，请在后端文档所述的恢复窗口内
+在结果不确定的创建操作之后，请在后端文档所述的恢复窗口内
 持久化应用程序意图并复用其幂等键。超时或
 中止的请求并不能证明远程订阅已被取消。
-关闭 MCP 客户端不会取消托管 watch 的订阅。
+关闭 MCP 客户端不会取消托管 watch。
 
-托管投递与此客户端分离。请使用后端的投递验证器和
-接收器契约；`experimental_createMCPEventWebhook` 提供直接 MCP
-Webhook。应用程序仍然负责已授权的路由、持久接收确认
+托管投递与此客户端是分开的。请使用后端的投递验证器
+和接收器契约；`experimental_createMCPEventWebhook` 提供直接的 MCP
+webhook。应用程序仍然负责已授权的路由、持久接收
 和幂等工作分发。适配器不会调用事件回调。
 
 ### 配置和类型
 
 请选择 `experimental_events: { adapter }` 或 `experimental_events: { store }`。
-混合使用会在 TypeScript 和运行时被拒绝。`validateArguments` 是
-直接模式选项；托管验证属于后端。未发布的
+混用它们会在 TypeScript 和运行时被拒绝。`validateArguments` 是
+直接模式的选项；托管验证属于后端。未发布的
 `events` 配置拼写已被 `experimental_events` 取代。
 
 当配置了适配器时，`createMCPClient` 会推断出带有
@@ -343,18 +340,17 @@ Webhook。应用程序仍然负责已授权的路由、持久接收确认
 `Experimental_MCPEventsConfig` 联合类型。直接客户端保留 `MCPClient` 和
 `Experimental_MCPEvents`。每种模式的输入和结果类型保持不同。
 
-保存配置时使用 `satisfies MCPClientConfig` 以保留对
-所选模式的推断。模式仅在运行时才已知的配置会返回两种客户端类型的
-联合；它不会承诺诸如 `refresh()` 之类的仅直接模式方法。若要在没有
-store 或 adapter 的情况下进行目录发现，请完全省略 `experimental_events`。
+在保存配置时使用 `satisfies MCPClientConfig` 以保留对所选模式的推断。模式仅在运行时才知道的配置会返回两种客户端类型的联合；它不会承诺诸如
+`refresh()` 之类的仅直接模式方法。完全省略 `experimental_events` 可在没有
+store 或适配器的情况下进行目录发现。
 
-剩余的 subscribe、refresh 和 unsubscribe 章节描述直接模式。
+其余 subscribe、refresh 和 unsubscribe 章节描述的是直接模式。
 
 ## 订阅事件
 
 ### `client.experimental_events.subscribe(options)`
 
-发现指定名称的事件、检查 Webhook 支持、保存待处理的订阅，
+发现指定名称的事件、检查 webhook 支持、保存待处理的订阅，
 并发送 `events/subscribe`。
 
 ```ts
@@ -386,7 +382,7 @@ console.log(subscription.id, subscription.refreshBefore);
       name: 'arguments',
       type: 'JSONObject',
       description:
-        '事件过滤器。默认为 {}。SDK 不会自动根据 inputSchema 验证它们；experimental_events.validateArguments 可以提供应用程序验证。',
+        '事件过滤器。默认为 {}。SDK 不会自动根据 inputSchema 验证它们；experimental_events.validateArguments 可提供应用程序验证。',
       isOptional: true,
     },
     {
@@ -406,7 +402,7 @@ console.log(subscription.id, subscription.refreshBefore);
               name: 'url',
               type: 'string',
               description:
-                '可访问的 HTTPS 回调 URL，不含凭据或片段。SDK 会添加 mcp_event_subscription 查询参数；转发请求时请保留它。',
+                '可访问的 HTTPS 回调 URL，不含凭据或片段。SDK 会添加一个 mcp_event_subscription 查询参数；转发请求时请保留它。',
             },
             {
               name: 'secret',
@@ -436,7 +432,7 @@ console.log(subscription.id, subscription.refreshBefore);
       name: 'ttlMs',
       type: 'number | null',
       description:
-        '请求的生命周期（毫秒），为正的安全整数。省略则使用服务器默认值；null 表示请求无过期时间。服务器决定授予的截止时间。',
+        '请求的生存期（毫秒），为正的安全整数。省略则使用服务器默认值；null 表示请求永不过期。服务器会选择授予的截止时间。',
       isOptional: true,
     },
     {
@@ -457,18 +453,17 @@ console.log(subscription.id, subscription.refreshBefore);
 />
 
 当订阅创建失败时，待处理记录会被保留，因为超时的
-请求可能已在远程注册。从应用程序的存储中获取待处理记录的 `key`，
-并使用 `refresh({ key })` 恢复，或
-使用 `unsubscribe({ key })` 取消。即使没有保存服务器 ID，
-两者都会复用已保存的回调身份。再次调用 `subscribe`
+请求可能已在远程注册。从应用程序的 store 中获取待处理记录的 `key`，并使用 `refresh({ key })` 恢复，或
+使用 `unsubscribe({ key })` 取消。即使没有保存服务器 ID，两者也会复用已保存的回调
+身份。再次调用 `subscribe`
 会创建新的回调身份。
 
 ```ts
-// pending 是订阅失败后由应用程序存储保留的记录。
+// pending 是订阅失败后由你的应用程序 store 保留的记录。
 const recovered = await client.experimental_events.refresh({
   key: pending.key,
 });
-// 或者，取消不确定的远程订阅：
+// 或者，取消结果不确定的远程订阅：
 await client.experimental_events.unsubscribe({ key: pending.key });
 ```
 
@@ -482,19 +477,19 @@ await client.experimental_events.unsubscribe({ key: pending.key });
       name: 'id',
       type: 'string',
       description:
-        '服务器派生的订阅 ID。与 refresh 和 unsubscribe 一起使用。',
+        '服务器生成的订阅 ID。与 refresh 和 unsubscribe 一起使用。',
     },
     {
       name: 'refreshBefore',
       type: 'string | null',
       description:
-        '服务器授予的续期截止时间，为 ISO 时间戳。null 表示未授予续期截止时间。',
+        '服务器授予的续订截止时间，为 ISO 时间戳。Null 表示未授予续订截止时间。',
     },
     {
       name: 'cursor',
       type: 'string | null',
       description:
-        '服务器提供的重放游标。如果服务器省略它，SDK 返回 null。null 表示没有可用的重放游标。',
+        '服务器提供的重放游标。如果服务器省略它，SDK 返回 null。Null 表示没有可用的重放游标。',
     },
     {
       name: 'truncated',
@@ -505,24 +500,22 @@ await client.experimental_events.unsubscribe({ key: pending.key });
   ]}
 />
 
-结果不包含签名密钥。在此方法 resolve 之前，存储会更新为服务器 ID、
+结果不包含签名密钥。在该方法 resolve 之前，store 会更新为服务器 ID、
 截止时间、游标和 active 状态。
 
 ## 刷新订阅
 
 ### `client.experimental_events.refresh(options)`
 
-按 ID 或存储键加载已保存的订阅，并使用其原始名称、参数、回调 URL、密钥、请求的生命周期和最新的
-已保存游标发送 `events/subscribe`。
+通过 ID 或存储键加载已保存的订阅，并使用其原始名称、参数、回调 URL、密钥、请求的生存期和最新
+保存的游标发送 `events/subscribe`。
 
-订阅在续期之前会被标记为 pending。事件投递会返回 `503`，
-直到响应保存新的过期时间并恢复 active 状态。如果续期
-失败，记录会保持 pending，因为服务器可能已经续期；
+订阅在续订之前会被标记为 pending。事件投递会返回 `503`，
+直到响应保存新的过期时间并恢复 active 状态。如果续订
+失败，记录会保持 pending，因为服务器可能已经续订了它；
 你可以使用已保存的 ID 或 key 重试 refresh 或 unsubscribe。
 
-对于具有已保存 ID 的订阅，已验证的终止消息即使在续期
-待处理期间也会被处理。例如，如果访问被撤销，`onTerminated` 仍可
-运行，并且成功处理后已保存的订阅会被移除。
+对于具有已保存 ID 的订阅，已验证的终止消息即使在续订待处理期间也会被处理。例如，如果访问被撤销，`onTerminated` 仍可运行，并且成功处理后已保存的订阅会被移除。
 
 ```ts
 const renewed = await client.experimental_events.refresh({
@@ -533,14 +526,14 @@ console.log(renewed.refreshBefore);
 
 ### 参数
 
-请恰好提供 `id` 或 `key` 之一。
+必须提供 `id` 或 `key` 之一。
 
 <PropertiesTable
   content={[
     {
       name: 'id',
       type: 'string',
-      description: '配置的存储中已保存订阅的 ID。',
+      description: '配置的 store 中已保存订阅的 ID。',
       isOptional: true,
     },
     {
@@ -564,8 +557,8 @@ console.log(renewed.refreshBefore);
 `Promise<Experimental_SubscribeEventResult>`，字段与
 [subscribe](#subscribing-to-events) 相同。新的截止时间和游标会保存在本地。
 
-你的应用程序在 `refreshBefore` 之前安排续期。SDK 不会运行
-后台续期计时器。Refresh 会复用已保存的过滤器，而不会再次调用
+你的应用程序应在 `refreshBefore` 之前安排续订。SDK 不会运行
+后台续订计时器。Refresh 会复用已保存的过滤器，而不会再次调用
 `validateArguments`。
 
 ## 取消订阅事件
@@ -573,7 +566,8 @@ console.log(renewed.refreshBefore);
 ### `client.experimental_events.unsubscribe(options)`
 
 将 ID 或存储键解析为已保存的名称、参数和回调 URL，并
-发送 `events/unsubscribe`。只有在服务器成功之后，它才会删除本地记录。
+发送 `events/unsubscribe`。只有在服务器
+成功之后，它才会删除本地记录。
 
 ```ts
 await client.experimental_events.unsubscribe({ id: subscription.id });
@@ -581,14 +575,14 @@ await client.experimental_events.unsubscribe({ id: subscription.id });
 
 ### 参数
 
-请恰好提供 `id` 或 `key` 之一。
+必须提供 `id` 或 `key` 之一。
 
 <PropertiesTable
   content={[
     {
       name: 'id',
       type: 'string',
-      description: '配置的存储中已保存订阅的 ID。',
+      description: '配置的 store 中已保存订阅的 ID。',
       isOptional: true,
     },
     {
@@ -614,9 +608,9 @@ await client.experimental_events.unsubscribe({ id: subscription.id });
 
 ## 请求选项
 
-所有四个方法都接受带有以下字段的 `options` 属性。
-列出方法接受 `{ params, options }`；其他方法在其自身参数之外
-包含 `options`。
+所有四个方法都接受一个 `options` 属性，包含以下字段。
+列出方法接受 `{ params, options }`；其他方法在自身参数之外
+还包含 `options`。
 
 <PropertiesTable
   content={[
@@ -636,7 +630,7 @@ await client.experimental_events.unsubscribe({ id: subscription.id });
       name: 'maxTotalTimeout',
       type: 'number',
       description:
-        '最大请求持续时间（毫秒）。如果同时提供了 timeout，则应用较小的限制。',
+        '最大请求时长（毫秒）。如果同时提供了 timeout，则应用较小的限制。',
       isOptional: true,
     },
   ]}
@@ -644,14 +638,14 @@ await client.experimental_events.unsubscribe({ id: subscription.id });
 
 ## 错误
 
-客户端会拒绝向不具备 `events` 能力的服务器发出的请求。
+客户端会拒绝向没有 `events` 能力的服务器发出的请求。
 订阅生命周期方法需要 `experimental_events.store`；refresh 和 unsubscribe
 还需要已知的订阅 ID 或存储键。Subscribe 会拒绝未知的
 事件名称、不支持的投递模式、无效的回调 URL、签名密钥
-或生命周期设置。这些检查使用 `MCPClientError`，但 URL 解析可能
+或生存期设置。这些检查使用 `MCPClientError`，但 URL 解析可能
 抛出 `TypeError`。
 
-MCP 请求错误、存储失败和应用程序验证错误会传播
+MCP 请求错误、store 失败和应用程序验证错误会传播
 给调用方。事件请求不会由客户端的工具调用重试
 设置进行重试。请参阅 [MCP 客户端错误处理](/docs/reference/ai-sdk-core/create-mcp-client#error-handling)。
 
@@ -659,7 +653,7 @@ MCP 请求错误、存储失败和应用程序验证错误会传播
 
 ### `experimental_createMCPEventWebhook()`
 
-为实验性 MCP Webhook 事件创建 Web Request/Response 处理器。
+为实验性 MCP webhook 事件创建 Web Request/Response 处理器。
 它使用由
 [`client.experimental_events.subscribe`](/docs/reference/ai-sdk-core/mcp-events#subscribing-to-events) 保存的订阅来验证回调挑战和事件签名。
 
@@ -695,12 +689,12 @@ export const POST = experimental_createMCPEventWebhook({
 });
 ```
 
-在订阅之前挂载此路由。处理器和订阅客户端必须
-访问同一个私有订阅存储。
+请在订阅之前挂载此路由。处理器和订阅客户端必须
+访问同一个私有订阅 store。
 
 ### 参数
 
-该参数的类型为
+参数的类型为
 [`Experimental_MCPEventWebhookOptions`](/docs/reference/ai-sdk-core/mcp-events#webhook-options)。
 
 <PropertiesTable
@@ -715,34 +709,34 @@ export const POST = experimental_createMCPEventWebhook({
       name: 'onEvent',
       type: '({ subscription, event }) => Promise<void>',
       description:
-        '已验证事件的必需应用程序处理器。在成功处理或持久接受后 resolve。抛出错误以返回 503 并允许重试。',
+        '已验证事件的必需应用程序处理器。在成功处理或持久接受后 resolve。抛出则返回 503 并允许重试。',
     },
     {
       name: 'onGap',
       type: '({ subscription, messageId, gap }) => Promise<void>',
       description:
-        '当某些事件无法重放时的可选处理器。协调状态或通知智能体，然后在处理或持久接受后 resolve。辅助函数会保存新的游标和 truncated: true；订阅保持 active。抛出错误以返回 503 且不更改已保存状态。',
+        '当某些事件无法重放时的可选处理器。协调状态或通知智能体，然后在处理或持久接受后 resolve。辅助函数会保存新的游标和 truncated: true；订阅保持 active。抛出则返回 503 且不更改已保存状态。',
       isOptional: true,
     },
     {
       name: 'onTerminated',
       type: '({ subscription, messageId, termination }) => Promise<void>',
       description:
-        '当服务器结束订阅时的可选处理器。检查 termination.error 以了解原因并通知智能体，然后在处理或持久接受后 resolve。辅助函数会移除已保存的订阅。抛出错误以返回 503 且不更改已保存状态。',
+        '当服务器结束订阅时的可选处理器。检查 termination.error 以了解原因并通知智能体，然后在处理或持久接受后 resolve。辅助函数会移除已保存的订阅。抛出则返回 503 且不更改已保存状态。',
       isOptional: true,
     },
     {
       name: 'validatePayload',
       type: '({ definition, data }) => void | PromiseLike<void>',
       description:
-        '在签名和信封检查之后、onEvent 之前的可选应用程序验证。接收已保存的事件定义和 event.data。抛出错误以返回 400，而不调用 onEvent 或推进游标。',
+        '在签名和信封检查之后、onEvent 之前的可选应用程序验证。接收已保存的事件定义和 event.data。抛出则返回 400，且不调用 onEvent 或推进游标。',
       isOptional: true,
     },
     {
       name: 'onError',
       type: '(error: unknown) => void',
       description:
-        '报告处理、存储和负载验证回调错误。不应抛出。无效签名和格式错误的请求会返回其 HTTP 状态，而不调用此回调。',
+        '报告处理、存储和负载验证回调错误。不应抛出。无效签名和格式错误的请求会返回其 HTTP 状态，而不会调用此回调。',
       isOptional: true,
     },
   ]}
@@ -769,16 +763,16 @@ export const POST = experimental_createMCPEventWebhook({
   ]}
 />
 
-完整类型请参阅 [订阅元数据](/docs/reference/ai-sdk-core/mcp-events#subscription-metadata)
-和 [事件字段](/docs/reference/ai-sdk-core/mcp-events#event)。
+完整类型请参阅[订阅元数据](/docs/reference/ai-sdk-core/mcp-events#subscription-metadata)
+和[事件字段](/docs/reference/ai-sdk-core/mcp-events#event)。
 
-`onGap` 和 `onTerminated` 接收相同的安全 `subscription` 元数据，以及来自已签名的 `webhook-id` 头部的
+`onGap` 和 `onTerminated` 接收相同的安全 `subscription` 元数据，以及来自已签名 `webhook-id` 头的
 `messageId`。每个回调只接收其
 匹配的控制负载，因此无需进行 `type` 检查。按
 订阅 ID 和 `messageId` 对重试进行去重。
 
 - `onGap` 接收 `gap: { type: 'gap', cursor, truncated: true }`。它表示某些
-  事件不再可用于重放。请协调应用程序状态或
+  事件已无法重放。请协调应用程序状态或
   通知智能体。辅助函数会添加 `truncated: true`，并在回调 resolve 后将其与新的
   游标一起保存。订阅保持 active，事件
   投递继续。
@@ -789,11 +783,10 @@ export const POST = experimental_createMCPEventWebhook({
   订阅记录。
 
 两者在成功处理后都返回 `204`。当
-相应的回调被省略时，状态更新也会发生。回调或存储失败会返回 `503`
-以进行重试。在激活或续期被持久化之前，事件和 gap 会返回 `503`。
-当订阅 ID 已保存时，终止在续期待处理期间也会被接受；
-没有已保存 ID 的订阅仍返回 `503`。
-即使已保存的过期时间已过，控制消息也会被处理。它们永远不会
+相应回调被省略时，状态更新也会发生。回调或存储失败会返回 `503`
+以进行重试。在激活或续订被持久化之前，事件和 gap 会返回 `503`。
+当订阅 ID 已保存时，终止在续订待处理期间也会被接受；没有已保存 ID 的订阅仍返回 `503`。
+即使已保存的过期时间已过，控制消息也会被处理。它们绝不会
 发送到 `onEvent` 或 `validatePayload`。辅助函数不会自动运行或通知智能体。
 
 ### 返回值
@@ -803,13 +796,13 @@ export const POST = experimental_createMCPEventWebhook({
 ```
 
 处理器接受带有 `Content-Type: application/json` 的 `POST` 请求。
-传递原始请求体字节，并保留订阅客户端添加的 `mcp_event_subscription`
+请传入原始请求体字节，并保留订阅客户端添加的 `mcp_event_subscription`
 查询参数。在将其传递给此处理器之前，不要解析并重新序列化
 请求体。
 
 服务器必须包含 `webhook-id`、`webhook-timestamp`、`webhook-signature`
 和 `X-MCP-Subscription-Id`。辅助函数会验证 Standard Webhooks v1 HMAC-SHA256
-签名，并接受在当前时间五分钟以内的签名时间戳。
+签名，并接受在当前时间五分钟内的签名时间戳。
 事件的 `eventId` 必须与 `webhook-id` 匹配，其名称必须与订阅匹配。
 
 ## 事件类型
@@ -853,7 +846,7 @@ type Experimental_MCPEventControl =
 ```
 
 未知的扩展字段会被保留。验证挑战会自动回显，
-并且不会调用 `onEvent`、`onGap` 或 `onTerminated`。
+且不会调用 `onEvent`、`onGap` 或 `onTerminated`。
 
 ### 客户端方法
 

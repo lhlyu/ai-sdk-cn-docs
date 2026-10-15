@@ -15,7 +15,7 @@ fx harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` 连接
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-fx @ai-sdk/sandbox-vercel" />
 
-ACP harness 会在首次会话启动时，在沙箱内运行[官方 fx 安装程序](https://fx.sh/docs/getting-started/installation)。该安装程序会跟踪最新的 fx 版本，并将可执行文件安装到 ACP 实现的私有主目录中。
+当第一个会话启动时，[官方 fx 安装程序](https://fx.sh/docs/getting-started/installation)会下载一个固定版本的 fx 发行版，并将可执行文件放入 ACP 实现的私有主目录中。
 
 ## 导入
 
@@ -86,7 +86,7 @@ const harness = createFx({
 - `port`：ACP 桥接端口覆盖。
 - `portEndpoint`：当沙箱会话无法直接暴露端口时，ACP 桥接的宿主端点。
 - `startupTimeoutMs`：等待 ACP 桥接启动的最长时间。
-- `reconnect`：已建立的桥接 WebSocket 连接断开后的重连时机。`maxElapsedMs` 控制总重试窗口，包括连接建立和退避延迟，默认为 30 秒。`initialDelayMs` 默认为 50 毫秒，`maxDelayMs` 默认为 2 秒。这些重试使用指数退避，并且与 `startupTimeoutMs` 相互独立。当沙箱、桥接进程或桥接端点永久不可用时，它们无法恢复。
+- `reconnect`：已建立的桥接 WebSocket 连接断开后的重连时机。`maxElapsedMs` 控制总重试窗口，包括连接建立和退避延迟，默认为 30 秒。`initialDelayMs` 默认为 50 毫秒，`maxDelayMs` 默认为 2 秒。这些重试使用指数退避，与 `startupTimeoutMs` 相互独立。当沙箱、桥接进程或桥接端点永久不可用时，它们无法恢复。
 - `mintBridgeToken`：同步函数，接收沙箱 id 并返回 ACP 桥接身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。
 
 适配器固定了安装源、可执行文件、启动命令和 ACP 版本。这些实现细节无法通过 `createFx()` 覆盖。
@@ -100,9 +100,9 @@ fx 使用 [Vercel AI Gateway 身份验证](https://fx.sh/docs/getting-started/au
 
 如果未设置适用的凭据环境变量，除非选择了 AI Gateway 身份验证，否则适配器会尝试从宿主系统解析原生订阅。
 
-当两者都可用时，fx 优先使用 `VERCEL_OIDC_TOKEN`。当沙箱支持请求转换时，适配器仅将所选凭据代理到配置的 Gateway 源。其他沙箱则保留直接凭据转发。
+当两者都可用时，fx 优先使用 `VERCEL_OIDC_TOKEN`。当沙箱支持请求转换时，适配器仅将选定的凭据代理到配置的 Gateway 源。其他沙箱则保留直接凭据转发。
 
-当宿主在运行时解析凭据，而不是通过 `process.env` 暴露它们时，请传入身份验证环境：
+当宿主在运行时解析凭据而不是通过 `process.env` 暴露它们时，传入一个身份验证环境：
 
 ```ts
 const gatewayHarness = createFx({
@@ -115,7 +115,7 @@ const gatewayHarness = createFx({
 
 提供的记录会替换用于身份验证发现的宿主环境。适配器不会将其凭据添加到 `process.env`，也不会将其值包含在持久化的 ACP 生命周期标识中。
 
-两种身份验证配置都会连接到 AI Gateway：
+两种身份验证配置都会到达 AI Gateway：
 
 ```ts
 const directHarness = createFx({ auth: 'direct' });
@@ -134,7 +134,7 @@ const sandboxSession = await createVercelNetworkSandboxSession({
 });
 ```
 
-首次会话需要网络出口以下载 fx。后续的模型和 Web 请求也需要网络访问。
+第一个会话需要网络出口以下载 fx。后续的模型和网络请求也需要网络访问。
 
 ## 内置工具
 
@@ -142,18 +142,19 @@ const sandboxSession = await createVercelNetworkSandboxSession({
 
 其他工具仍以其原生 fx 名称可用，包括 `list_files`、`read_file`、`write_file`、`edit_file`、文件变更和元数据工具、`terminal`、`semantic_search`、`web_fetch`、技能工具、子智能体、MCP 发现工具、`ask_user_question`、`vision` 和 `read_tool_result`。
 
-适配器将 `allow-reads` 和 `allow-edits` 映射到 fx 的 `ask` ACP 模式。`allow-all` 映射到 fx 的 `code` ACP 模式。`allow-edits` 的映射较为保守，因为 fx 未提供一种允许文件编辑但仍要求终端命令审批的模式。fx 可能会在不发送 ACP 权限请求的情况下解析安全操作或应用其自身的权限策略。
+适配器将 `allow-reads` 和 `allow-edits` 映射到 fx 的 `ask` ACP 模式。`allow-all` 映射到 fx 的 `code` ACP 模式。`allow-edits` 的映射较为保守，因为 fx 未提供一种允许文件编辑但仍要求终端命令审批的模式。fx 可能会在未发送 ACP 权限请求的情况下解析安全操作或应用其自身的权限策略。
 
 ## 已知限制
 
-- 除非请求权限，否则 fx 的 ACP v1 工具更新会省略程序化工具名称和原始输入。原生工具仍会执行，但普通的原生工具事件并不总能与类型化的内置工具名称关联。
-- ACP v1 不暴露模型步骤边界或每步用量。当 fx 未提供总计数据时，适配器会推断边界并报告未知的每步用量。
+- 除请求权限时外，fx 的 ACP v1 工具更新会省略程序化工具名称和原始输入。原生工具仍会执行，但普通的原生工具事件并不总能与类型化的内置工具名称关联。
+- ACP v1 不暴露模型步骤边界或每步用量。当 fx 未提供总计值时，适配器会推断边界并报告未知的每步用量。
 - ACP v1 没有可移植的手动压缩或回合中途引导 API。
-- ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 fx 内置工具会抛出不支持能力的错误。
+- ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 fx 内置工具会抛出不支持的能力错误。
 - fx ACP 不暴露结构化输出元数据映射，因此不支持基于 schema 的结构化输出。
-- 自定义 `headers` 不受原生支持，仅通过沙箱外部请求转换应用。因此，当提供的沙箱不具备该能力时，自定义 `headers` 无法传递，会被忽略。
+- 自定义 `headers` 不受原生支持，仅通过沙箱外部请求转换应用。因此，当提供的沙箱不具备该能力时，自定义 `headers` 无法传递并被忽略。
+- 不支持工具 `toModelOutput()` 回调返回的图像。适配器会省略图像内容并向桥接 stderr 写入警告。文本输出仍会传递给模型。
 
-## 相关内容
+## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [Harness 工具](/docs/ai-sdk-harnesses/tools)
