@@ -9,25 +9,45 @@ description: "使用决策模型针对共享状态决定类型化问题的答案
 import { experimental_decide } from 'ai';
 ```
 
-针对一个状态，决定非空的 `choice`、`score` 和 `boolean` 问题映射的答案。有关示例和语义，请参阅[决策](/docs/ai-sdk-core/decisions)。
+针对一个状态，决定由 `choice`、`score`、`boolean` 和 `box` 问题组成的非空映射的答案。有关示例和语义，请参阅[决策](/docs/ai-sdk-core/decisions)。
 
 ## 参数
 
-| 参数              | 类型                                             | 描述                                                                                                                                      |
-| ----------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`           | `Experimental_DecisionModel`                     | 必需。实验性 v4 模型实例，或由 Gateway 解析的字符串 ID，或显式配置的具备决策能力的默认提供商。                                            |
-| `state`           | `Experimental_DecisionState`                     | 必需。字符串、JSON 对象，或由文本、文件和 JSON 部分组成的有序数组。                                                                        |
-| `questions`       | `Record<string, Experimental_DecisionQuestion>`  | 必需。非空的问题映射。                                                                                                                    |
-| `maxRetries`      | `number`                                         | 非负整数；默认为 2。                                                                                                                      |
-| `abortSignal`     | `AbortSignal`                                    | 取消决策请求。                                                                                                                            |
-| `headers`         | `Record<string, string>`                         | 额外的 HTTP 头。                                                                                                                          |
-| `providerOptions` | `ProviderOptions`                                | 提供商特定的选项。                                                                                                                        |
-| `telemetry`       | `TelemetryOptions`                               | 遥测配置，包括每次调用的集成、输入/输出记录以及函数 ID。                                                                                  |
-| `runtimeContext`  | `Record<string, unknown>`                        | 可供生命周期回调使用的上下文，并通过 `telemetry.includeRuntimeContext` 选择性地包含在遥测中。                                             |
-| `onStart`         | `(event: Experimental_DecideStartEvent) => void` | 决策操作开始时调用。                                                                                                                      |
-| `onEnd`           | `(event: Experimental_DecideEndEvent) => void`   | 决策操作成功完成时调用。                                                                                                                  |
+| 参数              | 类型                                                                                           | 描述                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`           | `Experimental_DecisionModel`                                                                   | 必需。实验性 v4 模型实例，或由 Gateway 或显式配置的、支持决策的默认提供商解析的字符串 ID。                                               |
+| `state`           | `Experimental_DecisionState`                                                                   | 必需。字符串、JSON 对象，或由文本、文件和 JSON 部分组成的有序数组。                                                                       |
+| `questions`       | `Record<string, Experimental_DecisionQuestion>`                                                | 必需。非空问题映射。                                                                                                                      |
+| `maxOutputTokens` | `number`                                                                                       | 可选。最大输出 token 数，为大于等于 1 的整数。                                                                                            |
+| `reasoning`       | `'provider-default' \| 'none' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | 可选。推理强度。语言模型适配器默认为 `'none'`。原生决策提供商会返回不支持该设置的警告。                                                  |
+| `maxRetries`      | `number`                                                                                       | 非负整数；默认为 2。                                                                                                                      |
+| `abortSignal`     | `AbortSignal`                                                                                  | 取消决策请求。                                                                                                                            |
+| `headers`         | `Record<string, string>`                                                                       | 额外的 HTTP 头。                                                                                                                          |
+| `providerOptions` | `ProviderOptions`                                                                              | 提供商特定的选项。                                                                                                                        |
+| `telemetry`       | `TelemetryOptions`                                                                             | 遥测配置，包括每次调用的集成、输入/输出记录以及函数 ID。                                                                                  |
+| `runtimeContext`  | `Record<string, unknown>`                                                                      | 可供生命周期回调使用的上下文，并通过 `telemetry.includeRuntimeContext` 选择性地包含在遥测中。                                             |
+| `onStart`         | `(event: Experimental_DecideStartEvent) => void`                                               | 在决策操作开始时调用。                                                                                                                    |
+| `onEnd`           | `(event: Experimental_DecideEndEvent) => void`                                                 | 在决策操作成功完成时调用。                                                                                                                |
+
+设置 `reasoning: 'provider-default'` 以使用底层语言模型的默认推理强度，而不是适配器的 `'none'` 默认值。
 
 有关完整的 `onStart` 和 `onEnd` 事件字段，请参阅[生命周期回调](/docs/ai-sdk-core/lifecycle-callbacks#experimental_decide)。
+
+## 问题
+
+每个问题都有一个 `type`，并且可以包含如下所述的 `instructions` 和 `criteria`。
+指令和条件描述接受字符串、JSON 对象或 JSON 数组。
+
+| 类型      | 指令                    | 条件                                                                                                                |
+| --------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `choice`  | 可选；可以为 `null`     | 必需。选项名称到描述的非空映射                                                                                      |
+| `score`   | 可选；可以为 `null`     | 必需。从零开始索引的非空级别数组                                                                                    |
+| `boolean` | 可选；可以为 `null`     | 可选。包含 `true` 和/或 `false` 描述的对象；当指令缺失时，至少有一个必须非空                                        |
+| `box`     | 必需且非空              | 无                                                                                                                  |
+
+在共享类型中，条件描述可以为 `null`，但提供商可能施加更严格的限制。Perplexity 要求 Score 级别非空，并接受 1–10 个级别；单个级别会产生分数 `0` 和概率 `1`。其他提供商可能要求至少两个级别。可选指令也仍然受提供商 API 约定的约束。
+
+请参阅[问题语义](/docs/ai-sdk-core/decisions#question-types)和 [Perplexity 决策示例](/providers/ai-sdk-providers/perplexity#decision-models)。
 
 ## 结果
 
@@ -35,18 +55,18 @@ import { experimental_decide } from 'ai';
 
 - `answers`：每个问题 ID 对应一个类型化答案，并带有字面量 Choice 选项推断。
 - `usage`：`inputTokens`、`outputTokens` 和 `totalTokens`，每个都可能为 undefined。
-- `warnings`：提供商警告，同时传递给 SDK 警告日志记录器。
-- `rounding`：提供商声明的可选小数精度，用于概率和分数。
+- `warnings`：提供商警告，也会传递给 SDK 警告日志记录器。
+- `rounding`：可选的、由提供商声明的概率和分数的小数精度。
 - `providerMetadata`：可选的提供商特定元数据。
 - `response`：时间戳、模型 ID，以及可选的响应 ID、头和正文。
 
 ## 提供商规范
 
-`Experimental_DecisionModelV4` 从 `@ai-sdk/provider` 导出，并声明了
+`Experimental_DecisionModelV4` 从 `@ai-sdk/provider` 导出，并声明
 `specificationVersion: 'v4'`、`provider`、`modelId`、`supportedQuestionTypes` 和
 `doDecide(options)`。决策模型与稳定的 `ProviderV4` 隔离。
 
-公共核心类型包括 `Experimental_DecisionModel`、
+公开的核心类型包括 `Experimental_DecisionModel`、
 `Experimental_DecisionState`、`Experimental_DecisionStatePart`、
 `Experimental_DecisionQuestion`、
 `Experimental_DecisionAnswer` 和
@@ -55,19 +75,14 @@ import { experimental_decide } from 'ai';
 
 ## 错误
 
-不支持的类型会在提供商 I/O 之前抛出 `Experimental_DecisionUnsupportedQuestionTypeError`。
-无效输入会抛出 `InvalidArgumentError`；格式错误的
-答案会抛出 `InvalidResponseDataError`。模型拒绝的问题会抛出
-`Experimental_DecisionRefusalError`。无效答案和拒绝不会重试。
-不支持部分结果，也不支持缺失概率的合成。
+不支持的类型会在提供商 I/O 之前抛出 `Experimental_DecisionUnsupportedQuestionTypeError`。无效输入会抛出 `InvalidArgumentError`；格式错误的答案会抛出 `InvalidResponseDataError`。模型拒绝的问题会抛出 `Experimental_DecisionRefusalError`。无效答案和拒绝不会重试。不支持部分结果，也不支持缺失概率的合成。
 
 ## 模型解析
 
 使用 `registry.decisionModel('provider:model')` 或
 `customProvider({ decisionModels: { alias: model } }).decisionModel('alias')`
-来解析模型。直接传递给 `experimental_decide` 的字符串会在配置了默认提供商时
-使用 `globalThis.AI_SDK_DEFAULT_PROVIDER.decisionModel(id)`，
-或在未配置默认提供商时使用 Gateway。
+来解析模型。直接传递给 `experimental_decide` 的字符串在配置了默认提供商时使用
+`globalThis.AI_SDK_DEFAULT_PROVIDER.decisionModel(id)`，在未配置默认提供商时使用 Gateway。
 
 解析错误使用现有的 `NoSuchModelError` 和 `NoSuchProviderError`
 类，并带有 `modelType: 'decisionModel'`。模型实例和已解析的模型

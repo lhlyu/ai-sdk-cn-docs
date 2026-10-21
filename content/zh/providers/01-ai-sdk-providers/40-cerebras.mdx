@@ -1,19 +1,64 @@
 ---
 title: "Cerebras"
-description: "了解如何在 AI SDK 中使用 Cerebras 的模型。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 Cerebras。"
 ---
 
 # Cerebras 提供商
 
 [Cerebras](https://cerebras.ai) 提供商通过 Cerebras API 提供对强大语言模型的访问，包括由 Wafer-Scale Engines 和 CS-3 系统驱动的高速推理能力。
+可以从 [AI Gateway](/providers/ai-sdk-providers/ai-gateway) 开始使用其目录中的模型（推荐），或使用 `@ai-sdk/cerebras` 直接连接到 Cerebras。
+
+```ts provider="cerebras" model="openai/gpt-oss-120b"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  __GATEWAY_OPTIONS__,
+});
+
+console.log(text);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+该示例将 `providerOptions.gateway.order` 设置为 `['cerebras']`。这会将请求首先发送到 Cerebras，如果 Cerebras 不可用或请求失败，则回退到同一模型的其他可用提供商。`order` 设置的是偏好；它不会将回退限制为仅 Cerebras。请参阅[提供商排序](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+下拉列表列出了通过 Gateway 由 Cerebras 提供服务的模型，并附有相应的直接提供商示例。提供商可用性取决于模型以及你团队的[提供商允许列表](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+## 使用 `@ai-sdk/cerebras`
+
+如需直接访问 Cerebras，请安装 `ai` 和 `@ai-sdk/cerebras`：
+
+<InstallPackages packages="ai @ai-sdk/cerebras" />
+
+在 `CEREBRAS_API_KEY` 环境变量中设置你的 Cerebras API 凭据：
+
+```bash
+export CEREBRAS_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未公开 `@ai-sdk/cerebras` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节记录了直接 `@ai-sdk/cerebras` 提供商，包括其模型工厂和设置。Gateway 的模型和功能可用性可能有所不同。
+</Note>
 
 API 密钥可从 [Cerebras Platform](https://cloud.cerebras.ai) 获取。
-
-## 设置
-
-Cerebras 提供商可通过 `@ai-sdk/cerebras` 模块使用。你可以使用以下命令安装：
-
-<InstallPackages packages="@ai-sdk/cerebras" />
 
 ## 提供商实例
 
@@ -42,12 +87,12 @@ const cerebras = createCerebras({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  通过 `Authorization` 标头发送的 API 密钥。默认使用
   `CEREBRAS_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  要包含在请求中的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -68,7 +113,7 @@ const { text } = await generateText({
 ```
 
 Cerebras 语言模型可用于 `streamText` 函数
-（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
 
 你可以使用提供商实例创建 Cerebras 语言模型。第一个参数是模型 ID，例如 `gpt-oss-120b`：
 
@@ -112,11 +157,11 @@ for await (const part of result.stream) {
 }
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 提供商选项
 
-以下可选提供商选项适用于 Cerebras 语言模型：
+Cerebras 语言模型提供以下可选提供商选项：
 
 - **parallelToolCalls** _boolean_
 
@@ -124,15 +169,15 @@ for await (const part of result.stream) {
 
 - **logprobs** _boolean_
 
-  是否为生成的 token 返回对数概率。默认为 `false`。
+  是否返回生成 token 的对数概率。默认为 `false`。
 
 - **topLogprobs** _number_
 
-  在每个 token 位置返回的最可能 token 数量。接受从 `0` 到 `20` 的值。需要将 `logprobs` 设置为 `true`。
+  在每个 token 位置返回的最可能 token 数量。接受 `0` 到 `20` 的值。需要将 `logprobs` 设置为 `true`。
 
 - **logitBias** _Record&lt;string, number&gt;_
 
-  将 token ID 映射到从 `-100` 到 `100` 的偏置值。
+  将 token ID 映射到 `-100` 到 `100` 之间的偏置值。
 
 - **serviceTier** _'auto' | 'default' | 'flex' | 'priority'_
 
@@ -140,7 +185,7 @@ for await (const part of result.stream) {
 
 - **reasoningEffort** _'none' | 'low' | 'medium' | 'high'_
 
-  控制支持的模型执行的推理量。支持的值和默认值取决于模型。
+  控制受支持模型执行的推理量。支持的值和默认值取决于模型。
 
 - **reasoningFormat** _'none' | 'parsed' | 'text_parsed' | 'raw' | 'hidden'_
 
@@ -152,15 +197,15 @@ for await (const part of result.stream) {
 
 - **promptCacheKey** _string_
 
-  将相关请求路由到同一提示词缓存。该值最多可包含 1024 个字符，并且需要在账户级别启用。
+  将相关请求路由到同一提示词缓存。该值最多可包含 1024 个字符，并且需要账户级启用。
 
 - **user** _string_
 
-  表示你的最终用户的唯一标识符，有助于监控和滥用检测。
+  表示最终用户的唯一标识符，有助于监控和滥用检测。
 
 - **strictJsonSchema** _boolean_
 
-  是否使用严格的 JSON schema 验证。当为 `true` 时，模型使用约束解码来保证 schema 合规性。默认为 `true`。
+  是否使用严格 JSON schema 验证。当为 `true` 时，模型使用约束解码来保证符合 schema。默认为 `true`。
 
 例如：
 
@@ -186,7 +231,7 @@ const result = await generateText({
 
 ## 模型能力
 
-| 模型           | 图像输入    | 对象生成    | 工具使用    | 工具流式传输 | 推理        |
-| -------------- | ----------- | ----------- | ----------- | ------------ | ----------- |
-| `gpt-oss-120b` | <Cross />   | <Check />   | <Check />   | <Check />    | <Check />   |
-| `gemma-4-31b`  | <Check />   | <Check />   | <Check />   | <Check />    | <Check />   |
+| 模型           | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 | 推理 |
+| -------------- | ----------- | ----------------- | ---------- | -------------- | --------- |
+| `gpt-oss-120b` | <Cross />   | <Check />         | <Check />  | <Check />      | <Check /> |
+| `gemma-4-31b`  | <Check />   | <Check />         | <Check />  | <Check />      | <Check /> |

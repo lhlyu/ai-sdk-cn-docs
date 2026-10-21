@@ -1,18 +1,62 @@
 ---
 title: "Replicate"
-description: "了解如何在 AI SDK 中使用 Replicate 模型。"
+description: "了解如何将 Replicate 与 AI Gateway 以及直接提供商配合使用。"
 ---
 
 # Replicate 提供商
 
 [Replicate](https://replicate.com/) 是一个用于运行开源 AI 模型的平台。
 它是运行图像生成模型的热门选择。
+对于下方展示的共享模型，可使用 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)，由 Gateway 支持的提供商提供服务；或使用 `@ai-sdk/replicate` 将请求直接发送到 Replicate。Gateway 目前不会将请求路由到 Replicate。
 
-## 设置
+```ts provider="replicate" model="bfl/flux-2-pro"
+import { generateImage } from 'ai';
+__PROVIDER_IMPORT__;
 
-Replicate 提供商可通过 `@ai-sdk/replicate` 模块使用。你可以使用以下命令安装：
+const { image } = await generateImage({
+  model: __IMAGE_MODEL__,
+  prompt: 'A sunlit mountain village in watercolor.',
+});
 
-<InstallPackages packages="@ai-sdk/replicate" />
+console.log(image.base64);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署也可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+当前的 [Gateway 提供商列表](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options#available-providers)不包含 Replicate 作为推理提供商。Gateway 标签页调用的模型也可从 Replicate 获取，但 Gateway 会通过其支持的推理提供商路由这些请求。它不会将请求发送到 Replicate。请使用直接标签页调用 Replicate；不要将 `providerOptions.gateway.order` 设置为不受支持的提供商 slug。
+
+## 使用 `@ai-sdk/replicate`
+
+要直接访问 Replicate，请安装 `ai` 和 `@ai-sdk/replicate`：
+
+<InstallPackages packages="ai @ai-sdk/replicate" />
+
+在 `REPLICATE_API_TOKEN` 环境变量中设置你的 Replicate API 凭据：
+
+```bash
+export REPLICATE_API_TOKEN=your_api_key_here
+```
+
+使用 `@ai-sdk/replicate` 通过你的 Replicate 账户进行身份验证，并直接调用其平台 API。上面的 Gateway 替代方案则使用受支持的推理提供商。
+
+<Note>
+  以下各节记录直接使用 `@ai-sdk/replicate` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
@@ -22,7 +66,7 @@ Replicate 提供商可通过 `@ai-sdk/replicate` 模块使用。你可以使用�
 import { replicate } from '@ai-sdk/replicate';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/replicate` 导入 `createReplicate`，
+如果需要自定义设置，可以从 `@ai-sdk/replicate` 导入 `createReplicate`，
 并使用你的设置创建提供商实例：
 
 ```ts
@@ -42,12 +86,12 @@ const replicate = createReplicate({
 
 - **apiToken** _string_
 
-  通过 `Authorization` 请求头发送的 API 令牌。默认使用
+  通过 `Authorization` 标头发送的 API 令牌。默认使用
   `REPLICATE_API_TOKEN` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  要包含在请求中的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -59,8 +103,8 @@ const replicate = createReplicate({
 有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 <Note>
-  模型对 `size` 和其他参数的支持因模型而异。请查看
-  [Replicate](https://replicate.com/explore) 上模型的文档，了解
+  模型对 `size` 和其他参数的支持因模型而异。请查看模型在
+  [Replicate](https://replicate.com/explore) 上的文档，了解
   支持的选项以及可通过 `providerOptions.replicate` 传递的
   其他参数。
 </Note>
@@ -99,7 +143,7 @@ Replicate 提供商目前支持以下图像模型：
 - [stability-ai/stable-diffusion-3.5-medium](https://replicate.com/stability-ai/stable-diffusion-3.5-medium)
 - [tstramer/material-diffusion](https://replicate.com/tstramer/material-diffusion)
 
-**图像修复和图像编辑模型：**
+**修复和图像编辑模型：**
 
 - [black-forest-labs/flux-fill-pro](https://replicate.com/black-forest-labs/flux-fill-pro)
 - [black-forest-labs/flux-fill-dev](https://replicate.com/black-forest-labs/flux-fill-dev)
@@ -112,11 +156,11 @@ Replicate 提供商目前支持以下图像模型：
 - [black-forest-labs/flux-2-dev](https://replicate.com/black-forest-labs/flux-2-dev)
 
 你也可以使用[带版本的模型](https://replicate.com/docs/topics/models/versions)。
-带版本模型的 id 是 Replicate 模型 id 后跟一个冒号和版本 ID（`$modelId:$versionId`），例如
+带版本模型的 id 是 Replicate 模型 id 后跟冒号和版本 ID（`$modelId:$versionId`），例如
 `bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637`。
 
 <Note>
-  如有需要，你也可以将任何可用的 Replicate 模型 ID 作为字符串传递。
+  如有需要，你也可以将任何可用的 Replicate 模型 ID 作为字符串传入。
 </Note>
 
 ### 基本用法
@@ -171,7 +215,7 @@ const { image } = await generateImage({
 
 ### 图像编辑
 
-Replicate 通过各种模型支持图像编辑。通过 `prompt.images` 传递输入图像，以转换或编辑现有图像。
+Replicate 通过多种模型支持图像编辑。通过 `prompt.images` 传入输入图像，以转换或编辑现有图像。
 
 #### 基本图像编辑
 
@@ -195,7 +239,7 @@ const { images } = await generateImage({
 });
 ```
 
-#### 使用蒙版进行图像修复
+#### 使用蒙版进行修复
 
 使用蒙版编辑图像的特定部分。对于 FLUX Fill 模型，蒙版中的白色区域表示应编辑图像的位置：
 
@@ -242,28 +286,28 @@ const { images } = await generateImage({
 <Note>
   Flux-2 模型在内部使用不同的输入格式（`input_image`、
   `input_image_2` 等），这些格式会被自动处理。请注意，Flux-2 模型
-  不支持基于蒙版的图像修复。
+  不支持基于蒙版的修复。
 </Note>
 
 <Note>
   输入图像可以提供为 `Buffer`、`ArrayBuffer`、`Uint8Array` 或
   base64 编码的字符串。不同的 Replicate 模型具有不同的参数
-  名称和功能——请查看 [Replicate](https://replicate.com/explore)
-  上模型的文档以了解详情。
+  名称和能力——请查看模型在
+  [Replicate](https://replicate.com/explore) 上的文档以了解详情。
 </Note>
 
 ### 提供商选项
 
-图像生成的常用提供商选项：
+图像生成的常见提供商选项：
 
-- **maxWaitTimeInSeconds** _number_ - 在同步模式下等待预测完成的最长时间（秒）。默认情况下，Replicate 使用[同步模式](https://replicate.com/docs/topics/predictions/create-a-prediction#timeout-duration)，超时时间为 60 秒。设置为正数可使用自定义时长（例如，`120` 表示 2 分钟）。未指定时，使用默认的 60 秒等待时间。
+- **maxWaitTimeInSeconds** _number_ - 在同步模式下等待预测完成的最长时间（秒）。默认情况下，Replicate 使用[同步模式](https://replicate.com/docs/topics/predictions/create-a-prediction#timeout-duration)，超时时间为 60 秒。设置为正数可使用自定义时长（例如 `120` 表示 2 分钟）。未指定时，使用默认的 60 秒等待时间。
 - **pollIntervalMillis** _number_ - 当预测未在同步等待时长内完成时，轮询尝试之间的间隔（毫秒）。默认为 500 毫秒。
 - **maxPollAttempts** _number_ - 放弃前的最大轮询尝试次数。默认为 240 次。
-- **guidance_scale** _number_ - 无分类器引导的引导比例。较高的值使输出更贴近提示词。
+- **guidance_scale** _number_ - 无分类器引导的引导比例。值越高，输出越贴近提示词。
 - **num_inference_steps** _number_ - 去噪步数。步数越多 = 质量越高但速度越慢。
-- **negative_prompt** _string_ - 负向提示词，用于引导生成中应避免的内容。
+- **negative_prompt** _string_ - 负向提示词，用于引导生成时应避免的内容。
 - **output_format** _'png' | 'jpg' | 'webp'_ - 输出图像格式。
 - **output_quality** _number (1-100)_ - 输出图像质量。仅适用于 jpg 和 webp。
-- **strength** _number (0-1)_ - img2img 的转换强度。较低的值会保留更多原始图像。
+- **strength** _number (0-1)_ - img2img 的转换强度。值越低，保留的原始图像越多。
 
 有关更多详情，请参阅 [Replicate 模型页面](https://replicate.com/explore)。

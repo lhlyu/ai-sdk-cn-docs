@@ -1,19 +1,66 @@
 ---
 title: "GMI Cloud"
-description: "了解如何将 GMI Cloud 的模型与 AI SDK 结合使用。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 GMI Cloud。"
 ---
 
 # GMI Cloud 提供商
 
-[GMI Cloud](https://www.gmicloud.ai) 提供商通过 GMI Cloud 的 GPU 推理平台，以兼容 OpenAI 的 API 提供对开放权重语言模型的访问。
+[GMI Cloud](https://www.gmicloud.ai) 提供商通过 GMI Cloud 的 GPU 推理平台，以兼容 OpenAI 的 API 提供开放权重语言模型的访问。
+对于其目录中的模型，建议先使用 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（推荐），或使用 `@ai-sdk/gmicloud` 直接连接到 GMI Cloud。
 
-API 密钥可从 [GMI Cloud 控制台](https://console.gmicloud.ai) 获取。
+```ts provider="gmicloud" model="deepseek/deepseek-v4-flash-0731"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
 
-## 设置
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  __GATEWAY_OPTIONS__,
+});
 
-GMI Cloud 提供商可通过 `@ai-sdk/gmicloud` 模块获得。你可以通过以下命令安装：
+console.log(text);
+```
 
-<InstallPackages packages="@ai-sdk/gmicloud" />
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+该示例将 `providerOptions.gateway.order` 设置为 `['gmicloud']`。这会将请求首先发送到 GMI Cloud，如果 GMI Cloud 不可用或请求失败，则回退到同一模型的其他可用提供商。`order` 设置的是偏好；它不会将回退限制为仅 GMI Cloud。请参阅[提供商排序](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+下拉列表列出了 GMI Cloud 通过 Gateway 提供的模型，并附有相应的直接提供商示例。提供商可用性取决于模型以及你团队的[提供商允许列表](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+## 使用 `@ai-sdk/gmicloud`
+
+如需直接访问 GMI Cloud，请安装 `ai` 和 `@ai-sdk/gmicloud`：
+
+<InstallPackages packages="ai @ai-sdk/gmicloud" />
+
+在 `GMI_CLOUD_APIKEY` 环境变量中设置你的 GMI Cloud API 凭据：
+
+```bash
+export GMI_CLOUD_APIKEY=your_api_key_here
+```
+
+AI Gateway 并未公开 `@ai-sdk/gmicloud` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/gmicloud` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
+
+API 密钥可从 [GMI Cloud 控制台](https://console.gmicloud.ai)获取。
 
 ## 提供商实例
 
@@ -23,7 +70,7 @@ GMI Cloud 提供商可通过 `@ai-sdk/gmicloud` 模块获得。你可以通过�
 import { gmicloud } from '@ai-sdk/gmicloud';
 ```
 
-如需自定义配置，你可以导入 `createGmicloud` 并根据你的设置创建提供商实例：
+如需自定义配置，可以导入 `createGmicloud` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createGmicloud } from '@ai-sdk/gmicloud';
@@ -42,12 +89,12 @@ const gmicloud = createGmicloud({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  通过 `Authorization` 标头发送的 API 密钥。默认使用
   `GMI_CLOUD_APIKEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  要包含在请求中的自定义标头。
 
 - **fetch** _FetchFunction_
 
@@ -61,12 +108,12 @@ import { generateText } from 'ai';
 
 const { text } = await generateText({
   model: gmicloud('deepseek-ai/DeepSeek-V4-Flash-0731'),
-  prompt: '法国的首都是哪里？',
+  prompt: 'What is the capital of France?',
 });
 ```
 
-GMI Cloud 提供不断演进的开放权重模型目录，因此模型 ID 的类型为 `string`。不支持嵌入和图像模型。
+GMI Cloud 提供不断演进的开放权重模型目录，因此模型 ID 的类型为 `string`。不支持嵌入模型和图像模型。
 
 ## 错误诊断
 
-GMI Cloud 的边缘服务在拒绝请求时会在 `error.message` 中报告通用横幅信息，并将后端引擎的诊断信息嵌套在 `error.details` 中。此提供商会解包嵌套的诊断信息，因此 `AI_APICallError.message` 会携带引擎的原因（例如 `The request is invalid: Invalid max_tokens value, the valid range of max_tokens is [1, 393216].`），而不是 `Backend request failed with status 400`。
+GMI Cloud 的边缘在拒绝请求时会在 `error.message` 中报告通用横幅信息，并将后端引擎的诊断信息嵌套在 `error.details` 中。此提供商会对嵌套的诊断信息进行解包，因此 `AI_APICallError.message` 会携带引擎给出的原因（例如 `The request is invalid: Invalid max_tokens value, the valid range of max_tokens is [1, 393216].`），而不是 `Backend request failed with status 400`。

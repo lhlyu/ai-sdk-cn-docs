@@ -1,0 +1,84 @@
+---
+title: "experimental_streamTextLowMemory"
+description: "使用 streamText 执行引擎进行流式传输，无需重放缓冲区或未使用的最终结果。"
+---
+
+# `experimental_streamTextLowMemory`
+
+<Note>此 API 为实验性功能，未来版本可能发生变化。</Note>
+
+当你只需消费一次输出，且之后不需要读取完整结果时，请使用 `experimental_streamTextLowMemory`。
+
+```ts
+import { experimental_streamTextLowMemory } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = experimental_streamTextLowMemory({
+  model: __MODEL__,
+  prompt: 'Describe the history of astronomy.',
+});
+
+for await (const delta of result.textStream) {
+  process.stdout.write(delta);
+}
+
+console.log(await result.totalUsage);
+```
+
+## 支持的功能
+
+该函数接受与 `streamText` 相同的选项，包括模型设置、提示词和消息、提供商选项、工具、工具审批、`prepareStep`、`stopWhen`、结构化输出、转换、重试、超时、取消、回调以及遥测。这些功能使用共享的执行引擎；不存在单独的工具循环或提供商实现。
+
+工具执行及后续模型调用会接收完整的对话历史。生命周期回调和遥测会收到其正常内容，不会被静默跳过。现有的错误语义同样适用：使用 `onError` 或 `stream` 观察提供商错误；`textStream` 仅包含文本增量。
+
+```ts
+import { experimental_streamTextLowMemory, isStepCount, tool } from 'ai';
+import { z } from 'zod/v4';
+__PROVIDER_IMPORT__;
+
+const result = experimental_streamTextLowMemory({
+  model: __MODEL__,
+  prompt: 'How many characters are in astronomy?',
+  tools: {
+    countCharacters: tool({
+      description: 'Count the Unicode code points in a string.',
+      inputSchema: z.object({ text: z.string() }),
+      execute: async ({ text }) => Array.from(text).length,
+    }),
+  },
+  stopWhen: isStepCount(3),
+});
+
+for await (const part of result.stream) {
+  if (part.type === 'text-delta') process.stdout.write(part.text);
+  if (part.type === 'tool-result') console.log(part.output);
+}
+```
+
+## 内存使用
+
+`experimental_streamTextLowMemory` 不会保存流的副本用于重放。对于纯文本流式传输，它还会避免保留完整的生成文本以供后续访问。
+
+此 API 可减少内存使用；但它不会设置固定的内存上限。提供商、UI 消息组装以及你自己的代码也可能将输出保留在内存中。例如，在应用程序中将每个数据块追加到字符串仍会构建完整答案。
+
+## 返回值
+
+结果对象暴露以下成员：
+
+| 成员                                                                                      | 行为                                                                                                      |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `textStream`                                                                              | 文本增量，以异步可迭代对象和可读流的形式提供。                                                            |
+| `stream` / `fullStream`                                                                   | 所有执行事件，包括工具、推理、错误和完成事件。                                                            |
+| `partialOutputStream`                                                                     | 累积的部分输出。需要显式指定 `output` 选项；使用 `Output.text()` 获取累积文本。                          |
+| `elementStream`                                                                           | 当输出规范支持时，提供解析后的元素。                                                                      |
+| `totalUsage` / `usage`                                                                    | 类 Promise 的使用量元数据，在流结束时解析。                                                               |
+| `finishReason` / `rawFinishReason`                                                        | 类 Promise 的完成元数据。                                                                                 |
+| `consumeStream()`                                                                         | 在无需其他消费者时消费并丢弃流。                                                                          |
+| `toTextStreamResponse()` / `pipeTextStreamToResponse()`                                   | 文本响应辅助方法。                                                                                        |
+| `toUIMessageStream()` / `toUIMessageStreamResponse()` / `pipeUIMessageStreamToResponse()` | UI 消息转换和响应辅助方法，包括其现有的回调。                                                             |
+
+请选择**一种**流访问器、响应辅助方法或 `consumeStream()` 调用。第二次尝试占用流会抛出异常或拒绝。完成后不会重放。自行对返回的可读流调用 `.tee()` 可能会重新引入缓冲。
+
+元数据 Promise 可以在流式传输之前、期间或之后获取。它们不会消费流：在等待完成元数据之前，请先启动一个消费者。取消流会拒绝任何待处理的完成 Promise，并取消上游流。外部中止信号遵循 `streamText` 的中止行为。
+
+诸如 `text`、`content`、`steps`、`finalStep`、`responseMessages` 和 `output` 等最终内容获取器在类型和运行时对象中均不存在。当你需要其保留的结果或独立的流读取器时，请使用普通的 `streamText`。其行为保持不变。

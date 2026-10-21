@@ -1,18 +1,63 @@
 ---
 title: "Groq"
-description: "了解如何使用 Groq。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 Groq。"
 ---
 
 # Groq 提供商
 
 [Groq](https://groq.com/) 提供商包含对 Groq API 的语言模型支持。
+对于其目录中的模型，建议从 [AI Gateway](/providers/ai-sdk-providers/ai-gateway) 开始（推荐），或使用 `@ai-sdk/groq` 直接连接到 Groq。
 
-## 设置
+```ts provider="groq" model="openai/gpt-oss-120b"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
 
-Groq 提供商通过 `@ai-sdk/groq` 模块提供。
-你可以使用以下命令安装
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  __GATEWAY_OPTIONS__,
+});
 
-<InstallPackages packages="@ai-sdk/groq" />
+console.log(text);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+该示例将 `providerOptions.gateway.order` 设置为 `['groq']`。这会将请求首先发送到 Groq，如果 Groq 不可用或请求失败，则回退到同一模型的其他可用提供商。`order` 设置的是偏好顺序；它不会将回退限制为仅 Groq。请参阅[提供商排序](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+下拉列表列出了通过 Gateway 由 Groq 提供服务的模型，并附有相应的直接提供商示例。提供商可用性取决于模型以及你团队的[提供商允许列表](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+## 使用 `@ai-sdk/groq`
+
+如需直接访问 Groq，请安装 `ai` 和 `@ai-sdk/groq`：
+
+<InstallPackages packages="ai @ai-sdk/groq" />
+
+在 `GROQ_API_KEY` 环境变量中设置你的 Groq API 凭据：
+
+```bash
+export GROQ_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未公开 `@ai-sdk/groq` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/groq` 提供商，包括其模型工厂和设置。Gateway
+  的模型和功能可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
@@ -22,8 +67,7 @@ Groq 提供商通过 `@ai-sdk/groq` 模块提供。
 import { groq } from '@ai-sdk/groq';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/groq` 导入 `createGroq`
-并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/groq` 导入 `createGroq`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createGroq } from '@ai-sdk/groq';
@@ -38,23 +82,23 @@ const groq = createGroq({
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
-  默认前缀是 `https://api.groq.com/openai/v1`。
+  默认前缀为 `https://api.groq.com/openai/v1`。
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。
-  默认为 `GROQ_API_KEY` 环境变量。
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认使用 `GROQ_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  要包含在请求中的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
   你可以将其用作中间件来拦截请求，
-  或提供自定义 fetch 实现，例如用于测试。
+  或为例如测试提供自定义 fetch 实现。
 
 ## 语言模型
 
@@ -90,13 +134,13 @@ const result = await generateText({
 });
 ```
 
-以下可选提供商选项可用于 Groq 语言模型：
+以下可选提供商选项适用于 Groq 语言模型：
 
 - **reasoningFormat** _'parsed' | 'raw' | 'hidden'_
 
-  控制推理在生成文本中的呈现方式。由 `qwen/qwen3.6-27b` 等推理模型支持；可用格式取决于模型。
+  控制推理在生成文本中的呈现方式。受 `qwen/qwen3.6-27b` 等推理模型支持；可用格式取决于模型。
 
-  有关推理模型及其功能的完整列表，请参阅 [Groq 的推理模型文档](https://console.groq.com/docs/reasoning)。
+  有关推理模型及其能力的完整列表，请参阅 [Groq 的推理模型文档](https://console.groq.com/docs/reasoning)。
 
 - **reasoningEffort** _'low' | 'medium' | 'high' | 'none' | 'default'_
 
@@ -107,9 +151,9 @@ const result = await generateText({
       - `default`：启用推理。
   - `openai/gpt-oss-20b` 和 `openai/gpt-oss-120b`
     - 支持的值：
-      - `low`：使用低级别的推理努力。
-      - `medium`：使用中等级别的推理努力。
-      - `high`：使用高级别的推理努力。
+      - `low`：使用低水平的推理努力。
+      - `medium`：使用中等水平的推理努力。
+      - `high`：使用高水平的推理努力。
 
   对于 `qwen/qwen3.6-27b`，默认为 `default`。
 
@@ -135,15 +179,15 @@ const result = await generateText({
 
 - **user** _string_
 
-  表示你的最终用户的唯一标识符，有助于监控和滥用检测。
+  表示最终用户的唯一标识符，有助于监控和滥用检测。
 
 - **serviceTier** _'on_demand' | 'performance' | 'flex' | 'auto'_
 
   请求的服务层级。默认为 `'on_demand'`。
   - `'on_demand'`：默认层级，具有一致的性能和公平性
-  - `'performance'`：针对延迟敏感型工作负载的优先层级
-  - `'flex'`：更高吞吐量的层级（10 倍速率限制），针对可以处理偶尔请求失败的工作负载进行优化
-  - `'auto'`：首先使用 on_demand 速率限制，如果超出则回退到 flex 层级
+  - `'performance'`：面向延迟敏感型工作负载的优先层级
+  - `'flex'`：更高吞吐量层级（10 倍速率限制），针对可容忍偶发请求失败的工作负载进行了优化
+  - `'auto'`：先使用 on_demand 速率限制，超出后回退到 flex 层级
 
   有关服务层级及其优势的更多详细信息，请参阅 [Groq 的服务层级文档](https://console.groq.com/docs/service-tiers)。
 
@@ -206,10 +250,10 @@ console.log(JSON.stringify(result.output, null, 2));
 ```
 
 <Note type="warning">
-  结构化输出仅由较新的 Groq 模型支持，例如
+  结构化输出仅受较新的 Groq 模型支持，例如
   `moonshotai/kimi-k2-instruct-0905`。对于不支持的模型，你可以通过设置
   `structuredOutputs: false` 来禁用结构化输出。禁用后，Groq
-  使用 `json_object` 格式，这要求你的消息中包含单词 "JSON"。
+  使用 `json_object` 格式，这要求你的消息中包含“JSON”一词。
 </Note>
 
 ### 示例
@@ -281,28 +325,28 @@ const { text } = await generateText({
 
 ## 模型能力
 
-| 模型                                            | 图像输入    | 对象生成   | 工具使用   | 工具流式传输 |
-| ----------------------------------------------- | ----------- | ---------- | ---------- | ------------ |
-| `gemma2-9b-it`                                  | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `llama-3.1-8b-instant`                          | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `llama-3.3-70b-versatile`                       | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `meta-llama/llama-guard-4-12b`                  | <Check />   | <Check />  | <Cross />  | <Cross />    |
-| `deepseek-r1-distill-llama-70b`                 | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `meta-llama/llama-4-maverick-17b-128e-instruct` | <Check />   | <Check />  | <Check />  | <Check />    |
-| `meta-llama/llama-4-scout-17b-16e-instruct`     | <Check />   | <Check />  | <Check />  | <Check />    |
-| `meta-llama/llama-prompt-guard-2-22m`           | <Cross />   | <Check />  | <Cross />  | <Cross />    |
-| `meta-llama/llama-prompt-guard-2-86m`           | <Cross />   | <Check />  | <Cross />  | <Cross />    |
-| `moonshotai/kimi-k2-instruct-0905`              | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `qwen/qwen3.6-27b`                              | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `llama-guard-3-8b`                              | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `llama3-70b-8192`                               | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `llama3-8b-8192`                                | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `mixtral-8x7b-32768`                            | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `qwen-qwq-32b`                                  | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `qwen-2.5-32b`                                  | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `deepseek-r1-distill-qwen-32b`                  | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `openai/gpt-oss-20b`                            | <Cross />   | <Check />  | <Check />  | <Check />    |
-| `openai/gpt-oss-120b`                           | <Cross />   | <Check />  | <Check />  | <Check />    |
+| 模型                                            | 图像输入   | 对象生成   | 工具使用   | 工具流式传输 |
+| ----------------------------------------------- | ----------- | ----------------- | ---------- | -------------- |
+| `gemma2-9b-it`                                  | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `llama-3.1-8b-instant`                          | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `llama-3.3-70b-versatile`                       | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `meta-llama/llama-guard-4-12b`                  | <Check />   | <Check />         | <Cross />  | <Cross />      |
+| `deepseek-r1-distill-llama-70b`                 | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `meta-llama/llama-4-maverick-17b-128e-instruct` | <Check />   | <Check />         | <Check />  | <Check />      |
+| `meta-llama/llama-4-scout-17b-16e-instruct`     | <Check />   | <Check />         | <Check />  | <Check />      |
+| `meta-llama/llama-prompt-guard-2-22m`           | <Cross />   | <Check />         | <Cross />  | <Cross />      |
+| `meta-llama/llama-prompt-guard-2-86m`           | <Cross />   | <Check />         | <Cross />  | <Cross />      |
+| `moonshotai/kimi-k2-instruct-0905`              | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `qwen/qwen3.6-27b`                              | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `llama-guard-3-8b`                              | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `llama3-70b-8192`                               | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `llama3-8b-8192`                                | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `mixtral-8x7b-32768`                            | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `qwen-qwq-32b`                                  | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `qwen-2.5-32b`                                  | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `deepseek-r1-distill-qwen-32b`                  | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `openai/gpt-oss-20b`                            | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `openai/gpt-oss-120b`                           | <Cross />   | <Check />         | <Check />  | <Check />      |
 
 <Note>
   上表列出了最常用的模型。请参阅 [Groq
@@ -312,7 +356,7 @@ const { text } = await generateText({
 
 ## 浏览器搜索工具
 
-Groq 提供浏览器搜索工具，可提供交互式网页浏览能力。与传统网页搜索不同，浏览器搜索以交互方式浏览网站，提供更详细、更全面的结果。
+Groq 提供浏览器搜索工具，具备交互式网页浏览能力。与传统网页搜索不同，浏览器搜索以交互方式浏览网站，提供更详细、更全面的结果。
 
 ### 支持的模型
 
@@ -404,15 +448,14 @@ const result = await generateText({
 ```
 
 <Note>
-  有关浏览器搜索功能及限制的更多详细信息，请参阅
+  有关浏览器搜索能力和限制的更多详细信息，请参阅
   [Groq 浏览器搜索
   文档](https://console.groq.com/docs/browser-search)。
 </Note>
 
 ## 转录模型
 
-你可以使用 `.transcription()` 工厂方法创建调用 [Groq 转录 API](https://console.groq.com/docs/speech-to-text)
-的模型。
+你可以使用 `.transcription()` 工厂方法创建调用 [Groq 转录 API](https://console.groq.com/docs/speech-to-text) 的模型。
 
 第一个参数是模型 ID，例如 `whisper-large-v3`。
 
@@ -442,12 +485,12 @@ const result = await transcribe({
   转录中时间戳的粒度。
   默认为 `['segment']`。
   可能的值为 `['word']`、`['segment']` 和 `['word', 'segment']`。
-  注意：分段（segment）时间戳没有额外延迟，但生成单词（word）时间戳会产生额外延迟。
+  注意：分段（segment）时间戳不会增加额外延迟，但生成单词（word）时间戳会产生额外延迟。
   **重要：** 需要将 `responseFormat` 设置为 `'verbose_json'`。
 
 - **responseFormat** _string_
-  响应的格式。设置为 `'verbose_json'` 以接收音频分段的时间戳并启用 `timestampGranularities`。
-  设置为 `'text'` 以仅返回转录的文本。
+  响应的格式。设置为 `'verbose_json'` 可接收音频片段的时间戳并启用 `timestampGranularities`。
+  设置为 `'text'` 则仅返回转录文本。
   可选。
 
 - **language** _string_
@@ -455,7 +498,7 @@ const result = await transcribe({
   可选。
 
 - **prompt** _string_
-  用于引导模型风格或延续先前音频片段的可选文本。提示词应与音频语言匹配。
+  可选的文本，用于引导模型的风格或延续之前的音频片段。提示词应与音频语言匹配。
   可选。
 
 - **temperature** _number_
@@ -465,7 +508,7 @@ const result = await transcribe({
 
 ### 模型能力
 
-| 模型                     | 转录       | 时长       | 分段       | 语言       |
-| ------------------------ | ---------- | ---------- | ---------- | ---------- |
-| `whisper-large-v3`       | <Check />  | <Check />  | <Check />  | <Check />  |
-| `whisper-large-v3-turbo` | <Check />  | <Check />  | <Check />  | <Check />  |
+| 模型                     | 转录      | 时长      | 分段      | 语言      |
+| ------------------------ | ------------- | --------- | --------- | --------- |
+| `whisper-large-v3`       | <Check />     | <Check /> | <Check /> | <Check /> |
+| `whisper-large-v3-turbo` | <Check />     | <Check /> | <Check /> | <Check /> |

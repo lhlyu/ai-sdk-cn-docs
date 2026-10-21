@@ -1,19 +1,63 @@
 ---
 title: "DeepSeek"
-description: "了解如何在 AI SDK 中使用 DeepSeek 的模型。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 DeepSeek。"
 ---
 
 # DeepSeek 提供商
 
 [DeepSeek](https://www.deepseek.com) 提供商通过 DeepSeek API 提供对强大语言模型的访问。
+你可以通过 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（推荐）使用 DeepSeek 模型，或使用 `@ai-sdk/deepseek` 直接连接。
+
+```ts provider="deepseek" model="deepseek/deepseek-v4-flash"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+
+console.log(text);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+Gateway 的功能和提供商选项支持取决于模型以及处理请求的提供商。请参阅 [Gateway 提供商选项](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options)。
+
+## 使用 `@ai-sdk/deepseek`
+
+要直接访问 DeepSeek，请安装 `ai` 和 `@ai-sdk/deepseek`：
+
+<InstallPackages packages="ai @ai-sdk/deepseek" />
+
+在 `DEEPSEEK_API_KEY` 环境变量中设置你的 DeepSeek API 凭据：
+
+```bash
+export DEEPSEEK_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未暴露 `@ai-sdk/deepseek` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/deepseek` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
 
 API 密钥可从 [DeepSeek 平台](https://platform.deepseek.com/api_keys)获取。
-
-## 设置
-
-DeepSeek 提供商通过 `@ai-sdk/deepseek` 模块提供。你可以使用以下命令安装：
-
-<InstallPackages packages="@ai-sdk/deepseek" />
 
 ## 提供商实例
 
@@ -42,12 +86,12 @@ const deepSeek = createDeepSeek({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  通过 `Authorization` 标头发送的 API 密钥。默认使用
   `DEEPSEEK_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  要包含在请求中的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -78,10 +122,10 @@ const model = deepSeek.languageModel('deepseek-v4-flash');
 DeepSeek 语言模型可用于 `streamText` 函数
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
-DeepSeek 已于 2026 年 7 月 24 日停用 `deepseek-chat` 和 `deepseek-reasoner` 别名。请使用 `deepseek-flash`（当前 V4.x Flash 版本的别名）、`deepseek-v4-flash` 或 `deepseek-v4-pro` 来访问当前 API。为兼容自定义
-端点，自定义和旧版模型 ID 仍可作为字符串接受。
+DeepSeek 已于 2026 年 7 月 24 日停用 `deepseek-chat` 和 `deepseek-reasoner` 别名。对于当前 API，请使用 `deepseek-flash`（当前 V4.x Flash 版本的别名）、`deepseek-v4-flash` 或 `deepseek-v4-pro`。为兼容自定义端点，自定义
+和旧版模型 ID 仍可作为字符串接受。
 
-DeepSeek 模型可使用以下可选提供商选项：
+DeepSeek 模型提供以下可选提供商选项：
 
 - `logprobs` _boolean_
 
@@ -90,14 +134,14 @@ DeepSeek 模型可使用以下可选提供商选项：
 
 - `topLogprobs` _number_
 
-  可选。返回每个 token 位置上指定数量的最可能 token。接受 `0` 到 `20`
-  的值，并自动启用 `logprobs`。
+  可选。在每个 token 位置返回指定数量的最可能 token。接受 `0` 到 `20` 的值，并自动启用
+  `logprobs`。
 
 - `userId` _string_
 
   可选。一个不透明的最终用户标识符，DeepSeek 将其用于内容安全
   追踪、KV 缓存隔离和调度隔离。该值必须匹配
-  `^[a-zA-Z0-9_-]+$` 且最多包含 512 个字符。请勿包含姓名、
+  `^[a-zA-Z0-9_-]+$`，且最多包含 512 个字符。请勿包含姓名、
   电子邮件地址或其他私人用户信息。
 
 - `thinking` _object_
@@ -107,20 +151,21 @@ DeepSeek 模型可使用以下可选提供商选项：
 
 - `reasoningEffort` _'low' | 'high' | 'max'_
 
-  可选。控制 DeepSeek V4 推理模型的思考强度。使用顶层
-  `reasoning` 设置时，`minimal` 会作为 `low` 发送，
-  `medium` 会作为 `high` 发送，`xhigh` 会作为 `max` 发送，而 `max` 会
-  直接发送。每当请求的值被映射时，都会返回兼容性警告。
+  可选。控制 DeepSeek V4 推理模型的思考强度。使用
+  顶层 `reasoning` 设置时，`minimal` 会作为 `low` 发送，
+  `medium` 会作为 `high` 发送，`xhigh` 会作为 `max` 发送，`max` 会直接
+  发送。每当请求的值被映射时，都会返回兼容性警告。
 
-为向后兼容，运行时提供的旧版提供商选项也会映射到文档化的值：
-`thinking.type: 'adaptive'` 变为 `'enabled'`，`reasoningEffort: 'medium'` 变为 `'high'`，
+为向后兼容，运行时提供的旧版提供商选项
+也会映射到文档中的值：`thinking.type: 'adaptive'` 变为
+`'enabled'`，`reasoningEffort: 'medium'` 变为 `'high'`，且
 `reasoningEffort: 'xhigh'` 变为 `'max'`。每次映射都会返回兼容性
 警告，以便调用方迁移到规范值。
 
 DeepSeek 已弃用顶层 `frequencyPenalty` 和 `presencePenalty`
-设置。提供商在使用这些设置时会忽略它们并返回弃用警告。
-在启用思考时（包括 DeepSeek V4 模型的默认思考模式），`temperature` 和 `topP` 不会生效，
-因此提供商会在返回不支持警告的同时忽略它们。请显式将
+设置。提供商在未使用这些设置时会省略它们，并在使用它们时返回弃用警告。
+在启用思考时（包括 DeepSeek V4 模型的默认思考模式），`temperature` 和 `topP` 不起作用，因此
+提供商会省略它们并返回不支持警告。请显式将
 `thinking.type` 设置为 `'disabled'` 以使用 `temperature` 和 `topP`。
 
 ```ts highlight="7-15"
@@ -145,8 +190,8 @@ const { text, reasoning } = await generateText({
 
 ### 消息名称
 
-DeepSeek 支持在 system、user 和 assistant 消息上使用可选的参与者名称。
-在每条应包含名称的消息上设置 `providerOptions.deepseek.name`：
+DeepSeek 支持在 system、user 和 assistant
+消息上使用可选参与者名称。在每条应包含名称的消息上设置 `providerOptions.deepseek.name`：
 
 ```ts
 import {
@@ -198,7 +243,7 @@ const { text } = await generateText({
 });
 ```
 
-相同的消息选项也适用于 `streamText`：
+同样的消息选项也适用于 `streamText`：
 
 ```ts
 import {
@@ -228,8 +273,8 @@ for await (const textPart of result.textStream) {
 ```
 
 未设置该选项时会省略名称。`name` 值必须是
-字符串。DeepSeek 不支持在 tool 消息上使用名称，因此提供商
-会忽略该位置并返回不支持功能的警告。请避免
+字符串。DeepSeek 不支持在工具消息上使用名称，因此提供商会
+忽略该位置并返回不支持功能警告。请避免
 在消息名称中包含不必要的个人或身份识别信息。
 
 ### 推理
@@ -256,13 +301,13 @@ for await (const part of result.stream) {
 }
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参见
-[AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，
+请参阅 [AI SDK UI：聊天机器人](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 聊天前缀补全
 
-DeepSeek 的 beta 版[聊天前缀补全](https://api-docs.deepseek.com/guides/chat_prefix_completion/)
-会续写最后一条 assistant 消息的内容。使用
+DeepSeek 的 beta [聊天前缀补全](https://api-docs.deepseek.com/guides/chat_prefix_completion/)
+会延续最后一条 assistant 消息的内容。使用
 beta 基础 URL 创建提供商，并在该 assistant 消息的提供商
 选项中设置 `prefix: true`：
 
@@ -297,9 +342,10 @@ const { text } = await generateText({
 });
 ```
 
-带前缀的消息必须是 assistant 消息，并且是提示词中的最后一条消息。
-配置的 `baseURL` 必须以 `/beta` 结尾，使用代理时也是如此。
-无效的位置或非 beta 基础 URL 会导致请求在发送前失败。
+带前缀的消息必须是 assistant 消息，并且是
+提示词中的最后一条消息。配置的 `baseURL` 必须以 `/beta` 结尾，使用
+代理时也是如此。位置无效或基础 URL 不是 beta 版本会导致请求在发送前
+失败。
 
 <Note>
   聊天前缀补全是 DeepSeek 的 beta 功能，其行为可能会发生变化。
@@ -307,8 +353,8 @@ const { text } = await generateText({
 
 ### 严格工具调用
 
-DeepSeek 的严格工具调用模式是一项 beta 功能。使用
-beta 基础 URL 创建提供商，并在请求中的每个 function 工具上设置 `strict: true`：
+DeepSeek 的严格工具调用模式是 beta 功能。使用
+beta 基础 URL 创建提供商，并在请求中的每个函数工具上设置 `strict: true`：
 
 ```ts highlight="5,14"
 import { createDeepSeek } from '@ai-sdk/deepseek';
@@ -334,12 +380,12 @@ const result = await generateText({
 ```
 
 当基础 URL 不以 `/beta` 结尾时，严格工具会在本地失败。当任何
-function 工具为严格模式时，同一请求中的每个 function 工具都必须设置
+函数工具为严格模式时，同一请求中的每个函数工具都必须设置
 `strict: true`。
 
 ### 提供商元数据
 
-DeepSeek 通过 `providerMetadata` 属性暴露响应系统指纹和上下文缓存使用情况：
+DeepSeek 通过 `providerMetadata` 属性暴露响应系统指纹和上下文缓存用量：
 
 ```ts
 import { deepSeek } from '@ai-sdk/deepseek';
@@ -370,26 +416,25 @@ console.log(result.providerMetadata);
 对于流式响应，会返回响应块中最新的非空指纹。
 
 <Note>
-  有关 DeepSeek 缓存系统的更多详细信息，请参见 [DeepSeek 缓存
+  有关 DeepSeek 缓存系统的更多详细信息，请参阅 [DeepSeek 缓存
   文档](https://api-docs.deepseek.com/guides/kv_cache#checking-cache-hit-status)。
 </Note>
 
 ### 聊天响应元数据
 
-DeepSeek 在 `providerMetadata.deepseek` 中为生成和流式响应保留
-提供商特定的响应字段：
+DeepSeek 在 `providerMetadata.deepseek` 中为生成和流式响应保留提供商特定的响应字段：
 
 - `responseObject`：`chat.completion` 或 `chat.completion.chunk`
-- `choiceIndex`：所选的响应选项索引
+- `choiceIndex`：所选响应选项的索引
 - `messageRole`：响应消息角色（如果提供）
 - `toolCallTypes`：每个返回调用的工具调用类型
 
 这些字段保留在提供商元数据中，因为它们特定于
-DeepSeek 的 Chat Completions 响应，而非共享的 AI SDK 结果字段。
+DeepSeek 的 Chat Completions 响应，而不是共享的 AI SDK 结果字段。
 
 ### 文件上传
 
-对于内联图像或图像 URL，使用文件部分的提供商选项来选择
+对于内联图像或图像 URL，使用文件部分提供商选项来选择
 图像处理细节。DeepSeek 支持 `low`、`high`、`original` 和
 `auto`：
 
@@ -423,7 +468,7 @@ const { text } = await generateText({
 });
 ```
 
-在内联图像文件部分上设置 `fileData: true` 以使用 DeepSeek 的
+在内联图像文件部分设置 `fileData: true` 以使用 DeepSeek 的
 `file_data` 内容部分表示形式。这会保留文件部分的
 `filename`。`fileData` 不能与图像 URL 或 `imageDetail` 一起使用。
 
@@ -466,25 +511,21 @@ const { text } = await generateText({
 });
 ```
 
-可选的 `expiresAfter` 设置指定生命周期（以秒为单位）。DeepSeek 接受从 3,600 秒（一小时）到 2,592,000 秒（30 天）的值。未指定过期时间时，文件是永久的。
+可选的 `expiresAfter` 设置指定生命周期（以秒为单位）。DeepSeek 接受从 3,600 秒（一小时）到 2,592,000 秒（30 天）的值。未指定过期时间时，文件为永久文件。
 
 提供商要求成功上传响应中包含有效的文件 ID。它还会
 验证返回的 `object` 和 `purpose` 判别字段以及数值元数据。
 其他响应元数据保持可选，以兼容不完整的
-响应；省略的值不会包含在 `providerMetadata` 中，省略的响应文件名
-会回退到传递给 `uploadFile` 的文件名。
+响应；省略的值不会包含在 `providerMetadata` 中，省略的响应文件名会回退到提供给 `uploadFile` 的文件名。
 
 DeepSeek 文件上传支持 JPEG（`.jpg` 和 `.jpeg`）、PNG、GIF 和 WebP
 图像。每个文件最多可为 64 MiB，文件名最多可包含 512
-个字符。AI SDK 会在发送上传请求前验证这些约束。
-接受 `image/jpg` 媒体类型别名，当媒体类型为通用类型（例如
-`application/octet-stream`）时，会使用受支持的文件名
-扩展名作为回退。即使声明的媒体类型或文件名表明为受支持的图像格式，
-可识别的非图像内容也会被拒绝。
+个字符。AI SDK 会在发送上传请求前验证这些约束。接受 `image/jpg` 媒体类型别名，并且当媒体类型为通用类型（例如
+`application/octet-stream`）时，会使用支持的文件名扩展名作为回退。即使声明的媒体类型或文件名指示支持的图像格式，可识别的非图像内容也会被拒绝。
 
 ## 模型能力
 
-| 模型                           | 文本生成        | 对象生成          | 图像输入    | 工具使用   | 工具流式传输   |
+| 模型                           | 文本生成 | 对象生成 | 图像输入 | 工具使用 | 工具流式传输 |
 | ------------------------------ | --------------- | ----------------- | ----------- | ---------- | -------------- |
 | `deepseek-flash`               | <Check />       | <Check />         | <Cross />   | <Check />  | <Check />      |
 | `deepseek-v4-flash`            | <Check />       | <Check />         | <Cross />   | <Check />  | <Check />      |
@@ -492,8 +533,7 @@ DeepSeek 文件上传支持 JPEG（`.jpg` 和 `.jpeg`）、PNG、GIF 和 WebP
 | `deepseek-v4-flash-vision-exp` | <Check />       | <Check />         | <Check />   | <Check />  | <Check />      |
 
 <Note>
-  请参见 [DeepSeek
-  文档](https://api-docs.deepseek.com/quick_start/pricing)以获取
-  可用模型的完整列表。如有需要，你也可以将任何可用的提供商模型 ID 作为
-  字符串传递。
+  请参阅 [DeepSeek
+  文档](https://api-docs.deepseek.com/quick_start/pricing)以获取可用模型的完整列表。如有需要，你也可以将任何可用的提供商模型 ID 作为
+  字符串传入。
 </Note>

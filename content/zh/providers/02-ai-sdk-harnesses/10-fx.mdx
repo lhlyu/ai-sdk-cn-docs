@@ -5,17 +5,17 @@ description: "了解如何使用 fx harness 适配器。"
 
 # fx Harness
 
-fx harness 适配器通过 Agent Client Protocol (ACP) 将 `HarnessAgent` 连接到 [fx](https://fx.sh)。该适配器将安装、会话、流式传输、工具和生命周期管理委托给 `@ai-sdk/harness-acp`。
+fx harness 适配器使用 [libfx](https://www.npmjs.com/package/libfx) 将 `HarnessAgent` 连接到 [fx](https://fx.sh)。运行时在主机上运行，而内置的文件系统和 shell 工具仅在沙箱中操作。沙箱内不运行任何桥接进程。
 
 <Note>
-  Harness 包目前处于**实验阶段**。随着这一早期 API 的进一步完善，各版本之间可能会出现破坏性变更。
+  Harness 包目前处于**实验性**阶段。随着这一早期 API 的进一步完善，各版本之间可能会出现破坏性变更。
 </Note>
 
 ## 设置
 
 <InstallPackages packages="@ai-sdk/harness @ai-sdk/harness-fx @ai-sdk/sandbox-vercel" />
 
-当第一个会话启动时，[官方 fx 安装程序](https://fx.sh/docs/getting-started/installation)会下载一个固定版本的 fx 发行版，并将可执行文件放入 ACP 实现的私有主目录中。
+libfx 随适配器一起安装。会话启动时，不会在沙箱内下载或安装任何 fx 可执行文件。
 
 ## 导入
 
@@ -39,7 +39,6 @@ const agent = new HarnessAgent({
 
 const sandboxSession = await createVercelNetworkSandboxSession({
   runtime: 'node24',
-  ports: [4000],
   template: await agent.getSandboxTemplate(),
 });
 const session = await agent.createSession({ sandboxSession });
@@ -73,36 +72,39 @@ try {
 ```ts
 const harness = createFx({
   auth: 'ai-gateway',
-  port: 4001,
-  startupTimeoutMs: 180_000,
+  effort: 'low',
+  serviceTier: 'default',
 });
 ```
 
 设置项：
 
-- `auth`：选择 `auto`、`direct` 或 `ai-gateway` 身份验证，或接受一个用于以编程方式解析凭据的身份验证环境。fx 始终通过 Vercel AI Gateway 发送模型请求，因此 `direct` 和 `ai-gateway` 的区别仅在于 harness 将 Gateway 凭据传入沙箱的方式。
-- `credentialForwarding`：可选的同步或异步回调，用于在 harness 适配器将每个凭据转发到沙箱进程之前立即对其进行自定义。它接收原本会被转发的凭据值（真实凭据或掩码值）以及用于暴露该凭据的环境变量名。此回调仅控制转发到沙箱进程中的值。它不会限制 harness 适配器在宿主进程中能够发现、读取或以其他方式访问哪些凭据。
-- `mcpServers`：以服务器名称为键的 MCP 服务器定义。fx ACP 会话仅使用 ACP 客户端提供的服务器。
-- `port`：ACP 桥接端口覆盖。
-- `portEndpoint`：当沙箱会话无法直接暴露端口时，ACP 桥接的宿主端点。
-- `startupTimeoutMs`：等待 ACP 桥接启动的最长时间。
-- `reconnect`：已建立的桥接 WebSocket 连接断开后的重连时机。`maxElapsedMs` 控制总重试窗口，包括连接建立和退避延迟，默认为 30 秒。`initialDelayMs` 默认为 50 毫秒，`maxDelayMs` 默认为 2 秒。这些重试使用指数退避，与 `startupTimeoutMs` 相互独立。当沙箱、桥接进程或桥接端点永久不可用时，它们无法恢复。
-- `mintBridgeToken`：同步函数，接收沙箱 id 并返回 ACP 桥接身份验证令牌。默认情况下，适配器会生成一个随机的 32 字节令牌。
+- `auth`：选择 `auto`、`direct` 或 `ai-gateway` 认证方式，或接受一个用于以编程方式解析凭据的认证环境。`auto` 优先使用 Gateway 凭据，`direct` 优先使用订阅凭据并以 Gateway 作为回退，`ai-gateway` 仅使用 Gateway。
+- `mcpServers`：以服务器名称为键的 MCP 服务器定义。支持 HTTP 和 SSE 服务器，包含 `url`、可选的 `type`、`headers` 和 `disabled` 字段。连接在主机上运行；不支持命令/stdio 服务器。
+- `headers`：从主机随 AI Gateway 请求发送的额外请求头。
+- `effort`：适用于支持该设置的模型的推理强度。
+- `serviceTier`：选择 `default`、`fast` 或 `ultrafast`。`default` 等同于省略该设置，并保持 libfx 的默认值不变。Fast 和 Ultra 需要支持所选层级的模型。
+- `backend`：libfx 运行时后端（`auto`、`native` 或 `wasm`）。默认值为 `auto`，优先使用原生后端。WASM 后端需要 JavaScript Promise Integration (JSPI) 支持。
 
-适配器固定了安装源、可执行文件、启动命令和 ACP 版本。这些实现细节无法通过 `createFx()` 覆盖。
+## 认证
 
-## 身份验证
-
-fx 使用 [Vercel AI Gateway 身份验证](https://fx.sh/docs/getting-started/authentication)。设置以下环境变量之一：
+fx 支持 [Vercel AI Gateway 认证](https://fx.sh/docs/getting-started/authentication)以及 Codex 或 Grok 订阅。对于 Gateway 认证，请设置以下环境变量之一：
 
 - `VERCEL_OIDC_TOKEN`
 - `AI_GATEWAY_API_KEY`
 
-如果未设置适用的凭据环境变量，除非选择了 AI Gateway 身份验证，否则适配器会尝试从宿主系统解析原生订阅。
+当两者都可用时，适配器优先使用 `AI_GATEWAY_API_KEY`。`AI_GATEWAY_BASE_URL` 可选择性地覆盖 Gateway 端点。凭据在主机上使用，不会转发到沙箱中。
 
-当两者都可用时，fx 优先使用 `VERCEL_OIDC_TOKEN`。当沙箱支持请求转换时，适配器仅将选定的凭据代理到配置的 Gateway 源。其他沙箱则保留直接凭据转发。
+当 Gateway 凭据缺失时，`auto` 会按以下顺序发现订阅凭据：
 
-当宿主在运行时解析凭据而不是通过 `process.env` 暴露它们时，传入一个身份验证环境：
+1. fx Codex：`~/.fx/chatgpt-auth.json`。
+2. fx Grok：`~/.fx/grok-auth.json`。
+3. 原生 Codex：`CODEX_HOME` 或 `~/.codex` 下的凭据存储，遵循 `cli_auth_credentials_store` 和原生密钥环设置。
+4. 原生 Grok：`GROK_HOME/auth.json` 或 `~/.grok/auth.json` 中的 xAI OAuth 记录。
+
+libfx 会在订阅令牌临近过期时以及认证被拒绝后刷新令牌。适配器会将轮换后的凭据保存回所选存储。选择之后的失败不会静默切换订阅或回退到 Gateway。凭据绝不会包含在持久化的生命周期状态中。
+
+当主机在运行时解析凭据而不是通过 `process.env` 暴露凭据时，请传入认证环境：
 
 ```ts
 const gatewayHarness = createFx({
@@ -113,50 +115,42 @@ const gatewayHarness = createFx({
 });
 ```
 
-提供的记录会替换用于身份验证发现的宿主环境。适配器不会将其凭据添加到 `process.env`，也不会将其值包含在持久化的 ACP 生命周期标识中。
+提供的记录会替代主机环境用于认证发现。适配器不会将其凭据添加到 `process.env`，也不会将其值包含在持久化的生命周期状态中。
 
-两种身份验证配置都会到达 AI Gateway：
+使用 `direct` 在 Gateway 之前尝试订阅，或使用 `ai-gateway` 禁用订阅发现：
 
 ```ts
 const directHarness = createFx({ auth: 'direct' });
 const gatewayHarness = createFx({ auth: 'ai-gateway' });
 ```
 
+显式指定的认证环境不会检查环境中的订阅存储。恢复的会话会保留其原始提供商，并且需要与该提供商兼容的凭据。
+
 ## 沙箱
 
-fx 通过 `@ai-sdk/harness-acp` 在沙箱内运行。它需要一个至少暴露一个端口的网络沙箱：
+fx 在主机上运行，并接受受限沙箱会话或网络沙箱会话。不需要暴露沙箱端口：
 
 ```ts
 const sandboxSession = await createVercelNetworkSandboxSession({
   runtime: 'node24',
-  ports: [4000],
   template: await agent.getSandboxTemplate(),
 });
 ```
 
-第一个会话需要网络出口以下载 fx。后续的模型和网络请求也需要网络访问。
+主机需要网络访问权限以使用 AI Gateway 和已配置的 MCP 服务器。沙箱不需要网络访问权限来处理模型请求。内置工具使用沙箱的文件和命令执行 API；沙箱必须提供 Bash 和 GNU 命令行工具，例如 `find`、`grep`、`realpath` 和 `base64`。
 
 ## 内置工具
 
-适配器将 `glob_files`、`grep_files` 和 `web_search` 映射到通用的 `glob`、`grep` 和 `webSearch` harness 工具名称。
+适配器暴露 `read`、`write`、`edit`、`bash`、`grep`、`glob`、`ls` 和 `askUserQuestions`。文件系统和 shell 操作在会话沙箱中运行。适配器不会暴露 fx CLI 的其他内置工具。
 
-其他工具仍以其原生 fx 名称可用，包括 `list_files`、`read_file`、`write_file`、`edit_file`、文件变更和元数据工具、`terminal`、`semantic_search`、`web_fetch`、技能工具、子智能体、MCP 发现工具、`ask_user_question`、`vision` 和 `read_tool_result`。
-
-适配器将 `allow-reads` 和 `allow-edits` 映射到 fx 的 `ask` ACP 模式。`allow-all` 映射到 fx 的 `code` ACP 模式。`allow-edits` 的映射较为保守，因为 fx 未提供一种允许文件编辑但仍要求终端命令审批的模式。fx 可能会在未发送 ACP 权限请求的情况下解析安全操作或应用其自身的权限策略。
+通过 `activeTools` 和 `inactiveTools` 支持内置工具过滤。使用 `permissionMode: 'allow-reads'` 时，文件编辑和 shell 命令需要审批。使用 `allow-edits` 时，只有 shell 命令需要审批。`allow-all` 会在无需审批请求的情况下运行这些工具。
 
 ## 已知限制
 
-- 除请求权限时外，fx 的 ACP v1 工具更新会省略程序化工具名称和原始输入。原生工具仍会执行，但普通的原生工具事件并不总能与类型化的内置工具名称关联。
-- ACP v1 不暴露模型步骤边界或每步用量。当 fx 未提供总计值时，适配器会推断边界并报告未知的每步用量。
-- ACP v1 没有可移植的手动压缩或回合中途引导 API。
-- ACP v1 没有可移植的内置工具过滤 API。支持过滤宿主工具，但过滤 fx 内置工具会抛出不支持的能力错误。
-- fx ACP 不暴露结构化输出元数据映射，因此不支持基于 schema 的结构化输出。
-- 自定义 `headers` 不受原生支持，仅通过沙箱外部请求转换应用。因此，当提供的沙箱不具备该能力时，自定义 `headers` 无法传递并被忽略。
-- 不支持工具 `toModelOutput()` 回调返回的图像。适配器会省略图像内容并向桥接 stderr 写入警告。文本输出仍会传递给模型。
+- 稳定版 libfx 不支持手动压缩，并会抛出 `HarnessCapabilityUnsupportedError`。
 
 ## 相关
 
 - [HarnessAgent](/docs/ai-sdk-harnesses/harness-agent)
 - [Harness 工具](/docs/ai-sdk-harnesses/tools)
 - [Harness 适配器](/docs/ai-sdk-harnesses/harness-adapters)
-- [Agent Client Protocol](/providers/ai-sdk-harnesses/acp)

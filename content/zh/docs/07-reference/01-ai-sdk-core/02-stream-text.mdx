@@ -5,9 +5,9 @@ description: "streamText 的 API 参考。"
 
 # `streamText()`
 
-从语言模型流式传输生成的文本。
+从语言模型流式传输文本生成结果。
 
-你可以将 streamText 函数用于交互式场景，例如聊天机器人和其他实时应用。你也可以结合工具生成 UI 组件。
+你可以将 streamText 函数用于交互式用例，例如聊天机器人和其他实时应用。你也可以使用工具生成 UI 组件。
 
 ```ts
 import { streamText } from 'ai';
@@ -23,11 +23,13 @@ for await (const textPart of textStream) {
 }
 ```
 
-关于 `runtimeContext`、`toolsContext`、工具 `context` 以及敏感上下文过滤的指南，请参阅 [运行时与工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
+有关 `runtimeContext`、`toolsContext`、工具 `context` 以及敏感上下文过滤的指导，请参阅[运行时与工具上下文](/docs/ai-sdk-core/runtime-and-tool-context)。
 
 要查看 `streamText` 的实际运行效果，请查看[这些示例](#examples)。
 
-## Import
+对于只需消费一次的输出，请考虑使用 `streamText` 的[低内存流式传输](/docs/reference/ai-sdk-core/stream-text-low-memory)。它使用相同的执行引擎，但只有一个流消费者且没有重放缓冲区。普通流式传输会避免文本累积；工具、结构化输出和回调会保留其契约所要求的内容。
+
+## 导入
 
 <Snippet text={`import { streamText } from "ai"`} prompt={false} />
 
@@ -40,7 +42,7 @@ for await (const textPart of textStream) {
     {
       name: 'model',
       type: 'LanguageModel',
-      description: "要使用的语言模型。例如：openai('gpt-6-astra')",
+      description: "要使用的语言模型。示例：openai('gpt-6-astra')",
     },
     {
       name: 'instructions',
@@ -257,7 +259,7 @@ for await (const textPart of textStream) {
                       name: 'toolName',
                       type: 'string',
                       description:
-                        '工具的名称，通常为函数的名称。',
+                        '工具的名称，通常为函数名。',
                     },
                     {
                       name: 'input',
@@ -330,13 +332,13 @@ for await (const textPart of textStream) {
       type: 'boolean',
       isOptional: true,
       description:
-        '是否允许在 `prompt` 或 `messages` 字段中使用系统消息。默认为 false。`instructions` 选项中的系统消息始终允许。对用户可控的消息启用此选项可能会带来提示词注入风险。',
+        '是否允许在 `prompt` 或 `messages` 字段中出现系统消息。默认为 false。`instructions` 选项中的系统消息始终允许。对用户可控的消息启用此选项可能会带来提示词注入风险。',
     },
     {
       name: 'tools',
       type: 'ToolSet',
       description:
-        '模型可访问且可调用的工具。模型需要支持工具调用。',
+        '模型可访问并可调用的工具。模型需要支持工具调用。',
       properties: [
         {
           type: 'Tool',
@@ -346,20 +348,20 @@ for await (const textPart of textStream) {
               isOptional: true,
               type: 'string | ((options: { context: CONTEXT; experimental_sandbox?: Experimental_SandboxSession }) => string)',
               description:
-                '关于工具用途的信息，包括模型如何以及何时可以使用它的详细信息。提供一个字符串作为固定描述，或提供一个函数，在每次模型调用前根据工具特定的上下文和可选的实验性沙箱推导描述。',
+                '关于工具用途的信息，包括模型如何以及何时可以使用它的详细信息。提供字符串表示固定描述，或提供函数以在每次模型调用前根据工具特定的上下文和可选的实验性沙箱派生描述。',
             },
             {
               name: 'inputSchema',
               type: 'Zod Schema | JSON Schema',
               description:
-                '工具期望的输入 schema。语言模型将使用它来生成输入。它也被用于验证语言模型的输出。使用描述使输入对语言模型易于理解。你可以传入 Zod schema 或 JSON schema（使用 `jsonSchema` 函数）。',
+                '工具期望的输入模式。语言模型将使用它来生成输入。它也用于验证语言模型的输出。使用描述使输入对语言模型可理解。你可以传入 Zod 模式或 JSON 模式（使用 `jsonSchema` 函数）。',
             },
             {
               name: 'execute',
               isOptional: true,
               type: 'async (parameters: T, options: ToolExecutionOptions) => RESULT',
               description:
-                '一个异步函数，接收来自工具调用的参数并产生结果。如果未提供，工具将不会自动执行。',
+                '一个异步函数，使用工具调用的参数调用并产生结果。如果未提供，工具将不会自动执行。',
               properties: [
                 {
                   type: 'ToolExecutionOptions',
@@ -368,7 +370,7 @@ for await (const textPart of textStream) {
                       name: 'toolCallId',
                       type: 'string',
                       description:
-                        '工具调用的 ID。例如，在通过流数据发送工具调用相关信息时可以使用它。',
+                        '工具调用的 ID。例如，你可以在通过流数据发送工具调用相关信息时使用它。',
                     },
                     {
                       name: 'messages',
@@ -380,7 +382,7 @@ for await (const textPart of textStream) {
                       name: 'abortSignal',
                       type: 'AbortSignal',
                       description:
-                        '一个可选的中止信号，表示应中止整个操作。',
+                        '一个可选的中止信号，指示应中止整个操作。',
                     },
                   ],
                 },
@@ -422,7 +424,7 @@ for await (const textPart of textStream) {
       type: 'number',
       isOptional: true,
       description:
-        '仅从每个后续 token 的前 K 个选项中进行采样。用于移除“长尾”低概率响应。仅推荐用于高级用例。通常你只需要使用 temperature。',
+        '仅从每个后续 token 的前 K 个选项中进行采样。用于移除“长尾”低概率响应。仅建议用于高级用例。通常你只需要使用 temperature。',
     },
     {
       name: 'presencePenalty',
@@ -436,28 +438,28 @@ for await (const textPart of textStream) {
       type: 'number',
       isOptional: true,
       description:
-        '频率惩罚设置。它影响模型重复使用相同词语或短语的可能性。该值会传递给提供商。范围取决于提供商和模型。',
+        '频率惩罚设置。它影响模型重复使用相同单词或短语的可能性。该值会传递给提供商。范围取决于提供商和模型。',
     },
     {
       name: 'stopSequences',
       type: 'string[]',
       isOptional: true,
       description:
-        '将停止文本生成的序列。如果模型生成其中任何一个序列，它将停止生成后续文本。',
+        '将停止文本生成的序列。如果模型生成其中任何序列，它将停止生成后续文本。',
     },
     {
       name: 'seed',
       type: 'number',
       isOptional: true,
       description:
-        '用于随机采样的种子（整数）。如果设置且模型支持，调用将生成确定性的结果。',
+        '用于随机采样的种子（整数）。如果设置且模型支持，调用将生成确定性结果。',
     },
     {
       name: 'reasoning',
       type: "'provider-default' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'",
       isOptional: true,
       description:
-        "控制模型在生成响应之前执行多少推理。省略时，使用提供商的默认行为。`'provider-default'` 显式请求提供商的默认值。不支持推理的提供商会发出警告。提供商特定的设置优先于对应的映射字段。部分配置仍可使用可移植推理来填充缺失字段；摘要和显示设置可以与之组合使用。有关提供商特定的映射细节，请参阅[推理指南](/docs/ai-sdk-core/reasoning)。",
+        "控制模型在生成响应前执行多少推理。省略时，使用提供商的默认行为。`'provider-default'` 显式请求提供商的默认值。不支持推理的提供商将发出警告。提供商特定的设置优先于相应的映射字段。部分配置仍可使用可移植推理来填充缺失字段；摘要和显示设置可以与之组合使用。有关提供商特定的映射详情，请参阅[推理指南](/docs/ai-sdk-core/reasoning)。",
     },
     {
       name: 'maxRetries',
@@ -471,21 +473,21 @@ for await (const textPart of textStream) {
       type: 'number',
       isOptional: true,
       description:
-        '响应流式传输开始后收到的提供商错误事件的最大自动重试次数。重试仅重新运行当前模型步骤，并保留已完成的先前步骤及其工具结果。失败尝试中与工具相关的输出和客户端工具工作将被丢弃；已发出的其他输出无法撤回，但会从恢复的步骤结果、结构化输出解析、响应消息和后续模型步骤中排除。最终的请求和响应元数据来自恢复的尝试。在恢复的输出开始之前，开放的文本和推理部分会被结束。onStepStart 对逻辑步骤运行一次，onLanguageModelCallStart 对每次尝试运行，onLanguageModelCallEnd 对达到模型调用完成的尝试运行。提供商执行的工具工作无法撤销，可能会重复。设置为 0 以禁用自动重试，同时允许 onError 请求一次由回调指示的重试。配置了自动重试后，onError 在自动重试耗尽后最多可以请求一次额外重试，将总恢复调用次数限制为 streamRetries + 1。省略此项将禁用所有流重试行为，并为现有的 onError 观察者保留增量工具流式传输。默认值：0。',
+        '响应流式传输开始后收到的提供商错误事件的最大自动重试次数。重试仅重新运行当前模型步骤，并保留已完成的先前步骤及其工具结果。失败尝试中与工具相关的输出和客户端工具工作将被丢弃；已发出的其他输出无法撤回，但会从恢复的步骤结果、结构化输出解析、响应消息和后续模型步骤中排除。最终的请求和响应元数据来自恢复的尝试。在恢复的输出开始之前，未完成的文本和推理部分会结束。onStepStart 对逻辑步骤运行一次，onLanguageModelCallStart 对每次尝试运行，onLanguageModelCallEnd 对达到模型调用完成的尝试运行。提供商执行的工具工作无法撤销，可能会重复。设置为 0 以禁用自动重试，同时允许 onError 请求一次由回调指示的重试。配置自动重试后，onError 在自动重试耗尽后最多可请求一次额外重试，将总恢复调用次数限制为 streamRetries + 1。省略以禁用所有流重试行为，并为现有 onError 观察者保留增量工具流式传输。默认值：0。',
     },
     {
       name: 'abortSignal',
       type: 'AbortSignal',
       isOptional: true,
       description:
-        '一个可选的中止信号，可用于取消调用。当它在流式传输期间触发时，诸如 text 和 steps 之类的待处理结果 promise 会以中止原因拒绝，而无需等待 onAbort 或提供商取消。已完成的步骤可通过 onAbort 获取。',
+        '一个可选的中止信号，可用于取消调用。当它在流式传输期间触发时，诸如 text 和 steps 等待处理的结果 Promise 会以中止原因拒绝，而无需等待 onAbort 或提供商取消。已完成的步骤可通过 onAbort 获取。',
     },
     {
       name: 'timeout',
       type: 'number | { totalMs?: number; stepMs?: number; firstChunkMs?: number; chunkMs?: number; toolMs?: number; tools?: Partial<Record<`${toolName}Ms`, number>> }',
       isOptional: true,
       description:
-        '超时时间（毫秒）。可以指定为数字，或指定为包含 totalMs、stepMs、firstChunkMs、chunkMs、toolMs 和/或 tools 属性的对象。totalMs 设置整个调用的总超时。stepMs 设置每个完整步骤的超时，包括模型生成、重试和本地工具执行。firstChunkMs 设置每个步骤中直到第一个携带内容的输出的超时；元数据、流开始、空增量、原始块和传输活动不满足它。chunkMs 从第一个有意义的模型输出开始，并限制后续有意义的模型输出块之间的间隔。两个输出计时器在模型响应完成时停止，并在每次重试或后续模型调用时重新开始。本地工具结果（包括初步结果）不会重置它们；本地工具执行不在其范围内。提供商执行的工具仍处于模型响应范围内。toolMs 设置所有工具执行的默认超时。tools 使用 {toolName}Ms 模式（例如 weatherMs、slowApiMs）设置每个工具的超时覆盖，其优先于 toolMs——工具名称会进行类型检查以支持自动补全。如果工具耗时超过其超时时间，它会中止并返回 tool-error，以便模型可以响应或重试。可与 abortSignal 一起使用。',
+        '超时时间（毫秒）。可以指定为数字，或指定为包含 totalMs、stepMs、firstChunkMs、chunkMs、toolMs 和/或 tools 属性的对象。totalMs 设置整个调用的总超时。stepMs 设置每个完整步骤的超时，包括模型生成、重试和本地工具执行。firstChunkMs 设置每个步骤中直到第一个携带内容的输出的超时；元数据、流开始、空增量、原始块和传输活动不满足该条件。chunkMs 从第一个有意义的模型输出开始，并限制后续有意义模型输出块之间的间隔。两个输出计时器在模型响应完成时停止，并在每次重试或后续模型调用时重新开始。本地工具结果（包括初步结果）不会重置它们；本地工具执行不在其范围内。提供商执行的工具仍处于模型响应范围内。toolMs 设置所有工具执行的默认超时。tools 使用 {toolName}Ms 模式（例如 weatherMs、slowApiMs）设置每个工具的超时覆盖，其优先级高于 toolMs——工具名称会进行类型检查以支持自动补全。如果工具耗时超过其超时时间，它会中止并返回 tool-error，以便模型可以响应或重试。可与 abortSignal 一起使用。',
     },
     {
       name: 'headers',
@@ -508,7 +510,7 @@ for await (const textPart of textStream) {
               type: 'boolean',
               isOptional: true,
               description:
-                '启用或禁用遥测。默认启用。设置为 `false` 以选择退出。',
+                '启用或禁用遥测。默认启用。设置为 `false` 以退出。',
             },
             {
               name: 'recordInputs',
@@ -536,14 +538,14 @@ for await (const textPart of textStream) {
               type: '{ [KEY in keyof CONTEXT]?: boolean }',
               isOptional: true,
               description:
-                '应包含在遥测中的顶层运行时上下文属性。除非显式设置为 `true`，否则运行时上下文属性会被排除。生命周期回调和返回结果仍会收到完整的 `runtimeContext`。',
+                '应包含在遥测中的顶层运行时上下文属性。除非显式设置为 `true`，否则运行时上下文属性会被排除。生命周期回调和返回的结果仍会收到完整的 `runtimeContext`。',
             },
             {
               name: 'includeToolsContext',
               type: '{ [TOOL_NAME in keyof InferToolSetContext<TOOLS>]?: { [KEY in keyof InferToolSetContext<TOOLS>[TOOL_NAME]]?: boolean } }',
               isOptional: true,
               description:
-                '应包含在遥测中的顶层工具上下文属性，按工具配置。除非显式设置为 `true`，否则工具上下文属性会被排除。生命周期回调和返回结果仍会收到完整的 `toolsContext`。',
+                '应包含在遥测中的顶层工具上下文属性，按工具配置。除非显式设置为 `true`，否则工具上下文属性会被排除。生命周期回调和返回的结果仍会收到完整的 `toolsContext`。',
             },
             {
               name: 'integrations',
@@ -561,7 +563,7 @@ for await (const textPart of textStream) {
       type: 'StreamTextTransform | Array<StreamTextTransform>',
       isOptional: true,
       description:
-        '可选的流转换。它们按提供的顺序应用。流转换必须保持流结构，streamText 才能正常工作。',
+        '可选的流转换。它们按提供的顺序应用。流转换必须保持流结构，以便 streamText 正常工作。',
       properties: [
         {
           type: 'StreamTextTransform',
@@ -604,21 +606,21 @@ for await (const textPart of textStream) {
       type: 'Record<string,JSONObject> | undefined',
       isOptional: true,
       description:
-        '提供商特定的选项。外层键是提供商名称。内层值是元数据。细节取决于提供商。',
+        '提供商特定的选项。外层键是提供商名称。内层值是元数据。详情取决于提供商。',
     },
     {
       name: 'activeTools',
       type: 'ActiveTools<TOOLS>',
       isOptional: true,
       description:
-        '限制模型可调用的工具，而不改变结果中的工具调用和结果类型。默认所有工具都处于活动状态。工具名称限制为工具集的字符串键。',
+        '限制模型可调用的工具，而不改变结果中的工具调用和结果类型。默认情况下所有工具都处于活动状态。工具名称限制为工具集的字符串键。',
     },
     {
       name: 'toolOrder',
       type: 'ToolOrder<TOOLS>',
       isOptional: true,
       description:
-        '控制工具发送给提供商的顺序。该列表可以是部分的。未在 `toolOrder` 中列出的工具会在列出的工具之后发送，并按字母顺序排序。工具名称限制为工具集的字符串键。',
+        '控制工具发送给提供商的顺序。列表可以是部分的。未在 `toolOrder` 中列出的工具会在列出的工具之后按字母顺序发送。工具名称限制为工具集的字符串键。',
     },
     {
       name: 'toolCallConcurrency',
@@ -632,28 +634,28 @@ for await (const textPart of textStream) {
       type: 'ToolApprovalConfiguration<TOOLS, RUNTIME_CONTEXT>',
       isOptional: true,
       description:
-        "此调用的审批配置。传入 `GenericToolApprovalFunction` 以在单个回调中处理所有工具调用，回调接收 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext`；或传入按工具配置的对象，其中每个键可以是状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、对象形式（如 `{ type: 'denied', reason: 'blocked by policy' }`），或一个 `SingleToolApprovalFunction`，它接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext`（与工具执行选项形状相同，但没有 `abortSignal`，且 `context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与调用的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined`，其效果与 `'not-applicable'` 相同。`'not-applicable'` 是默认执行路径，会在没有审批元数据的情况下运行工具。当你希望在输出中显式包含自动审批请求/响应部分时，请使用 `'approved'`、`'denied'` 或它们的对象形式。对象状态可以包含 `reason`：自动批准和拒绝会将其转发到审批响应，而手动用户批准会将其转发到审批请求以供人工审批者查看。此设置优先于工具的 `needsApproval` 默认值。",
+        "此调用的审批配置。传入 `GenericToolApprovalFunction` 以通过 `toolCall`、`tools`、`toolsContext`、`messages` 和 `runtimeContext` 在一个回调中处理所有工具调用，或传入按工具配置的对象，其中每个键可以是状态（`'not-applicable'`、`'approved'`、`'denied'` 或 `'user-approval'`）、对象形式（如 `{ type: 'denied', reason: 'blocked by policy' }`），或接收工具输入和选项 `toolCallId`、`messages`、`toolContext` 和 `runtimeContext` 的 `SingleToolApprovalFunction`（与工具执行选项形状相同，但没有 `abortSignal`，且 `context` 重命名为 `toolContext`）。`RUNTIME_CONTEXT` 类型参数与调用的 `runtimeContext` 匹配。`GenericToolApprovalFunction` 或 `SingleToolApprovalFunction` 可以返回 `undefined`，效果与 `'not-applicable'` 相同。`'not-applicable'` 是默认执行路径，运行工具时不带审批元数据。当你希望在输出中显式包含自动审批请求/响应部分时，使用 `'approved'`、`'denied'` 或它们的对象形式。对象状态可以包含 `reason`：自动批准和拒绝会将其转发到审批响应，而手动用户批准会将其转发到审批请求，供人工审批者查看。此设置优先于工具的 `needsApproval` 默认值。",
     },
     {
       name: 'experimental_toolCallers',
       type: 'Experimental_ToolCallers<TOOLS>',
       isOptional: true,
       description:
-        '配置哪些调用方工具可以调用每个工具。传入一个以被调用工具名称为键的对象，其值列出具备调用方能力的工具名称。包含来自 `@ai-sdk/code-mode` 的 `DIRECT_TOOL_CALL`，以保持已配置的工具可被模型直接调用。仅本地的被调用工具会从直接模型调用中隐藏，并在每个生成步骤中绑定到其本地调用方。提供商调用方名称会被转换为提供商原生的允许调用方选项。没有条目的工具保持其现有的直接工具调用行为。',
+        '配置哪些调用方工具可以调用每个工具。传入一个以被调用工具名称为键的对象，其值列出具备调用方能力的工具名称。包含来自 `@ai-sdk/code-mode` 的 `DIRECT_TOOL_CALL`，以保持已配置的工具可由模型直接调用。仅本地的被调用工具会从直接模型调用中隐藏，并在每个生成步骤中绑定到其本地调用方。提供商调用方名称会转换为提供商原生的允许调用方选项。没有条目的工具保持其现有的直接工具调用行为。',
     },
     {
       name: 'experimental_refineToolInput',
       type: 'ToolInputRefinement<TOOLS>',
       isOptional: true,
       description:
-        '可选的工具名称到函数的映射，用于细化解析后的工具输入。每个函数接收其工具的带类型输入，并且必须返回相同输入类型形状。细化后的输入用于工具执行、流部分、生命周期回调和遥测。',
+        '可选的工具名称到用于细化已解析工具输入的函数的映射。每个函数接收其工具的类型化输入，并且必须返回相同输入类型形状。细化后的输入用于工具执行、流部分、生命周期回调和遥测。',
     },
     {
       name: 'stopWhen',
       type: 'StopCondition<TOOLS> | Array<StopCondition<TOOLS>>',
       isOptional: true,
       description:
-        '当最后一步中有工具结果时停止生成的条件。当条件为数组时，满足任一条件即可停止生成。默认值：isStepCount(1)。',
+        '当最后一步有工具结果时停止生成的条件。当条件为数组时，满足任一条件即可停止生成。默认值：isStepCount(1)。',
     },
     {
       name: 'prepareStep',
@@ -668,7 +670,7 @@ for await (const textPart of textStream) {
             {
               name: 'options',
               type: 'object',
-              description: '步骤的选项。',
+              description: '该步骤的选项。',
               properties: [
                 {
                   type: 'PrepareStepOptions',
@@ -693,7 +695,7 @@ for await (const textPart of textStream) {
                       name: 'instructions',
                       type: 'Instructions | undefined',
                       description:
-                        '将发送给当前步骤模型的指令。如果 prepareStep 返回 instructions 覆盖，这些指令会延续到后续步骤。',
+                        '将为当前步骤发送给模型的指令。如果 prepareStep 返回指令覆盖，这些指令会延续到后续步骤。',
                     },
                     {
                       name: 'initialInstructions',
@@ -705,27 +707,27 @@ for await (const textPart of textStream) {
                       name: 'messages',
                       type: 'Array<ModelMessage>',
                       description:
-                        '将发送给当前步骤模型的消息。如果 prepareStep 返回 messages 覆盖，这些消息会延续到后续步骤。',
+                        '将为当前步骤发送给模型的消息。如果 prepareStep 返回消息覆盖，这些消息会延续到后续步骤。',
                     },
                     {
                       name: 'runtimeContext',
                       type: 'CONTEXT',
                       isOptional: true,
                       description:
-                        '通过 `runtimeContext` 设置传入的共享运行时上下文。',
+                        '通过 `runtimeContext` 设置传递的共享运行时上下文。',
                     },
                     {
                       name: 'toolsContext',
                       type: 'InferToolSetContext<TOOLS>',
                       description:
-                        '通过 `toolsContext` 设置传入的按工具上下文映射。',
+                        '通过 `toolsContext` 设置传递的按工具上下文映射。',
                     },
                     {
                       name: 'experimental_sandbox',
                       type: 'Experimental_SandboxSession | undefined',
                       isOptional: true,
                       description:
-                        '通过 `experimental_sandbox` 设置传入的实验性沙箱环境。',
+                        '通过 `experimental_sandbox` 设置传递的实验性沙箱环境。',
                     },
                   ],
                 },
@@ -736,7 +738,7 @@ for await (const textPart of textStream) {
         {
           type: 'PrepareStepResult<TOOLS>',
           description:
-            '返回值，可以修改当前步骤的设置。',
+            '可修改当前步骤设置的返回值。',
           parameters: [
             {
               name: 'model',
@@ -806,14 +808,14 @@ for await (const textPart of textStream) {
               type: 'LanguageModelV4CallOptions["reasoning"]',
               isOptional: true,
               description:
-                '此步骤的推理强度。省略或为 undefined 时使用顶层值。',
+                '此步骤的推理力度。省略或为 undefined 时使用顶层值。',
             },
             {
               name: 'toolChoice',
               type: 'ToolChoice<TOOLS>',
               isOptional: true,
               description:
-                '可选地设置模型必须调用哪个工具，或为此步骤提供工具调用配置。',
+                '可选地设置模型必须调用的工具，或为此步骤提供工具调用配置。',
             },
             {
               name: 'activeTools',
@@ -827,21 +829,21 @@ for await (const textPart of textStream) {
               type: 'ToolOrder<TOOLS>',
               isOptional: true,
               description:
-                '如果提供，则覆盖此步骤中工具发送给提供商的顺序。未列出的工具会按字母顺序追加。',
+                '如果提供，则覆盖此步骤中工具发送给提供商的顺序。未列出的工具按字母顺序追加。',
             },
             {
               name: 'instructions',
               type: 'Instructions',
               isOptional: true,
               description:
-                '可选地覆盖发送给此步骤模型的指令。该覆盖会延续到后续步骤，直到 prepareStep 返回另一个 instructions 或 system 覆盖。',
+                '可选地覆盖此步骤发送给模型的指令。该覆盖会延续到后续步骤，直到 prepareStep 返回另一个指令或系统覆盖。',
             },
             {
               name: 'messages',
               type: 'Array<ModelMessage>',
               isOptional: true,
               description:
-                '可选地覆盖发送给此步骤模型的完整消息集。',
+                '可选地覆盖此步骤发送给模型的完整消息集。',
             },
             {
               name: 'runtimeContext',
@@ -861,14 +863,14 @@ for await (const textPart of textStream) {
               type: 'Experimental_SandboxSession',
               isOptional: true,
               description:
-                '此步骤的实验性沙箱环境。更改它仅会影响此步骤中的工具执行。',
+                '此步骤的实验性沙箱环境。更改它仅影响此步骤中的工具执行。',
             },
             {
               name: 'providerOptions',
               type: 'ProviderOptions',
               isOptional: true,
               description:
-                '此步骤的额外提供商特定选项。可用于传递提供商特定的配置，例如 Anthropic 代码执行的容器 ID。',
+                '此步骤的额外提供商特定选项。可用于传递提供商特定配置，例如 Anthropic 代码执行的容器 ID。',
             },
           ],
         },
@@ -879,20 +881,20 @@ for await (const textPart of textStream) {
       type: 'CONTEXT',
       isOptional: true,
       description:
-        '用户定义的共享运行时上下文对象，传递给 `prepareStep` 和生命周期回调。',
+        '传递给 `prepareStep` 和生命周期回调的用户定义共享运行时上下文对象。',
     },
     {
       name: 'toolsContext',
       type: 'InferToolSetContext<TOOLS>',
       description:
-        '按工具名称键控的按工具上下文映射。当至少一个工具定义了 `contextSchema` 时为必需；当没有工具需要上下文时不接受。',
+        '以工具名称为键的按工具上下文映射。当至少一个工具定义了 `contextSchema` 时为必需；当没有工具需要上下文时不接受。',
     },
     {
       name: 'experimental_sandbox',
       type: 'Experimental_SandboxSession',
       isOptional: true,
       description:
-        '实验性沙箱环境，会传递给 `prepareStep`、工具描述函数和工具执行。工具可以从其描述函数选项和执行选项中访问它。',
+        '传递给 `prepareStep`、工具描述函数和工具执行的实验性沙箱环境。工具可以从其描述函数选项和执行选项中访问它。',
     },
     {
       name: 'experimental_download',
@@ -906,7 +908,7 @@ for await (const textPart of textStream) {
       type: '{ requestBody?: boolean; requestMessages?: boolean; rawChunks?: boolean }',
       isOptional: true,
       description:
-        '控制步骤结果中是否包含请求体和请求消息，以及流中是否包含原始提供商块。默认情况下，请求体、请求消息和原始块会被排除以减少内存使用。当你需要访问这些数据时，将 requestBody 或 requestMessages 设置为 true。当你需要访问原始提供商块时，将 rawChunks 设置为 true。',
+        '控制步骤结果中是否包含请求体和请求消息，以及流中是否包含原始提供商块。默认情况下，请求体、请求消息和原始块会被排除以减少内存使用。当你需要访问数据时，将 requestBody 或 requestMessages 设置为 true。当你需要访问原始提供商块时，将 rawChunks 设置为 true。',
       properties: [
         {
           type: 'Object',
@@ -941,7 +943,7 @@ for await (const textPart of textStream) {
       type: '(options: ToolCallRepairOptions) => Promise<LanguageModelV4ToolCall | null>',
       isOptional: true,
       description:
-        '一个尝试修复解析失败的工具调用的函数。返回修复后的工具调用，如果工具调用无法修复则返回 null。',
+        '尝试修复解析失败的工具调用的函数。返回修复后的工具调用，如果无法修复则返回 null。',
       properties: [
         {
           type: 'ToolCallRepairOptions',
@@ -1001,7 +1003,7 @@ for await (const textPart of textStream) {
       type: '(event: OnChunkResult) => Promise<void> |void',
       isOptional: true,
       description:
-        '对每个流部分调用的回调。流处理将暂停，直到回调 promise 解析完成。',
+        '为每个流部分调用的回调。流处理将暂停，直到回调 Promise 解决。',
       properties: [
         {
           type: 'OnChunkResult',
@@ -1010,7 +1012,7 @@ for await (const textPart of textStream) {
               name: 'chunk',
               type: 'TextStreamPart<TOOLS>',
               description:
-                '流部分。这与 `stream` 是同一个联合类型，包括 `start`、`start-step`、`text-start`、`text-delta`、`text-end`、`reasoning-start`、`reasoning-delta`、`reasoning-end`、`custom`、`source`、`file`、`reasoning-file`、`tool-call`、`tool-input-start`、`tool-input-delta`、`tool-input-end`、`tool-result`、`tool-error`、`tool-output-denied`、`tool-approval-request`、`tool-approval-response`、`finish-step`、`finish`、`abort`、`error` 和 `raw`。',
+                '流部分。这与 `stream` 是相同的联合类型，包括 `start`、`start-step`、`text-start`、`text-delta`、`text-end`、`reasoning-start`、`reasoning-delta`、`reasoning-end`、`custom`、`source`、`file`、`reasoning-file`、`tool-call`、`tool-input-start`、`tool-input-delta`、`tool-input-end`、`tool-result`、`tool-error`、`tool-output-denied`、`tool-approval-request`、`tool-approval-response`、`finish-step`、`finish`、`abort`、`error` 和 `raw`。',
               properties: [
                 {
                   type: 'TextStreamPart',
@@ -1101,7 +1103,7 @@ for await (const textPart of textStream) {
                       name: 'toolName',
                       type: 'string',
                       description:
-                        '工具的名称，通常为函数的名称。',
+                        '工具的名称，通常为函数名。',
                     },
                     {
                       name: 'input',
@@ -1118,7 +1120,14 @@ for await (const textPart of textStream) {
                       name: 'type',
                       type: "'tool-input-start'",
                       description:
-                        '表示流式工具输入的开始。',
+                        '指示流式工具输入的开始。',
+                    },
+                    {
+                      name: 'inputEncoding',
+                      type: "'json' | 'text'",
+                      isOptional: true,
+                      description:
+                        '后续 tool-input-delta 事件的编码。省略时默认为 json。文本增量包含原始字符串输入，例如 OpenAI 自定义工具代码或 HTML。',
                     },
                     {
                       name: 'id',
@@ -1129,7 +1138,7 @@ for await (const textPart of textStream) {
                       name: 'toolName',
                       type: 'string',
                       description:
-                        '工具的名称，通常为函数的名称。',
+                        '工具的名称，通常为函数名。',
                     },
                   ],
                 },
@@ -1151,7 +1160,7 @@ for await (const textPart of textStream) {
                       name: 'toolName',
                       type: 'string',
                       description:
-                        '工具的名称，通常为函数的名称。',
+                        '工具的名称，通常为函数名。',
                     },
                     {
                       name: 'delta',
@@ -1179,7 +1188,7 @@ for await (const textPart of textStream) {
                       name: 'toolName',
                       type: 'string',
                       description:
-                        '工具的名称，通常为函数的名称。',
+                        '工具的名称，通常为函数名。',
                     },
                     {
                       name: 'input',
@@ -1206,7 +1215,7 @@ for await (const textPart of textStream) {
       type: 'StreamTextOnErrorCallback | StreamTextOnErrorRetryCallback',
       isOptional: true,
       description:
-        '流式传输期间发生错误时调用的回调。StreamTextOnErrorCallback 保留现有的 PromiseLike<void> | void 观察者契约。StreamTextOnErrorRetryCallback 额外为支持重试的处理程序类型化 `{ retry: true }` 结果。格式良好的流中途提供商错误事件会作为 StreamProviderError 实例暴露。当显式配置了 streamRetries 时，返回 `{ retry: true }` 以在自动重试耗尽后为当前模型步骤请求一次由回调指示的重试。其他返回值不会请求重试。',
+        '流式传输期间发生错误时调用的回调。StreamTextOnErrorCallback 保留现有的 PromiseLike<void> | void 观察者契约。StreamTextOnErrorRetryCallback 额外为支持重试的处理程序类型化 `{ retry: true }` 结果。格式正确的流中途提供商错误事件会以 StreamProviderError 实例的形式暴露。当显式配置 streamRetries 时，返回 `{ retry: true }` 以在自动重试耗尽后为当前模型步骤请求一次由回调指示的重试。其他返回值不会请求重试。',
       properties: [
         {
           type: 'OnErrorResult',
@@ -1215,7 +1224,7 @@ for await (const textPart of textStream) {
               name: 'error',
               type: 'unknown',
               description:
-                '发生的错误。使用 StreamProviderError.isInstance 来识别规范化后的提供商错误事件并检查其重试元数据。',
+                '发生的错误。使用 StreamProviderError.isInstance 识别规范化的提供商错误事件并检查其重试元数据。',
             },
           ],
         },
@@ -1241,7 +1250,7 @@ for await (const textPart of textStream) {
               name: 'Output.object()',
               type: 'Output',
               description:
-                '使用 schema 进行类型化对象生成的输出规范。当模型生成文本响应时，它将返回一个与 schema 匹配的对象。',
+                '使用模式进行类型化对象生成的输出规范。当模型生成文本响应时，它将返回一个与模式匹配的对象。',
               properties: [
                 {
                   type: 'Options',
@@ -1249,21 +1258,21 @@ for await (const textPart of textStream) {
                     {
                       name: 'schema',
                       type: 'Schema<OBJECT>',
-                      description: '要生成的对象的 schema。',
+                      description: '要生成的对象的模式。',
                     },
                     {
                       name: 'name',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选名称。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选名称。某些提供商用于额外的 LLM 指导。',
                     },
                     {
                       name: 'description',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选描述。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选描述。某些提供商用于额外的 LLM 指导。',
                     },
                   ],
                 },
@@ -1282,7 +1291,7 @@ for await (const textPart of textStream) {
                       name: 'element',
                       type: 'Schema<ELEMENT>',
                       description:
-                        '要生成的数组元素的 schema。',
+                        '要生成的数组元素的模式。',
                     },
                     {
                       name: 'minItems',
@@ -1303,14 +1312,14 @@ for await (const textPart of textStream) {
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选名称。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选名称。某些提供商用于额外的 LLM 指导。',
                     },
                     {
                       name: 'description',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选描述。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选描述。某些提供商用于额外的 LLM 指导。',
                     },
                   ],
                 },
@@ -1320,7 +1329,7 @@ for await (const textPart of textStream) {
               name: 'Output.choice()',
               type: 'Output',
               description:
-                '选择生成的输出规范。当模型生成文本响应时，它将返回其中一个选项。',
+                '选项生成的输出规范。当模型生成文本响应时，它将返回其中一个选项。',
               properties: [
                 {
                   type: 'Options',
@@ -1335,14 +1344,14 @@ for await (const textPart of textStream) {
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选名称。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选名称。某些提供商用于额外的 LLM 指导。',
                     },
                     {
                       name: 'description',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选描述。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选描述。某些提供商用于额外的 LLM 指导。',
                     },
                   ],
                 },
@@ -1362,14 +1371,14 @@ for await (const textPart of textStream) {
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选名称。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选名称。某些提供商用于额外的 LLM 指导。',
                     },
                     {
                       name: 'description',
                       type: 'string',
                       isOptional: true,
                       description:
-                        '输出的可选描述。某些提供商将其用于额外的 LLM 指导。',
+                        '输出的可选描述。某些提供商用于额外的 LLM 指导。',
                     },
                   ],
                 },
@@ -1409,7 +1418,7 @@ for await (const textPart of textStream) {
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '该步骤的 token 用量。',
+              description: '该步骤的 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -1424,7 +1433,7 @@ for await (const textPart of textStream) {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
+                        '有关输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -1433,19 +1442,19 @@ for await (const textPart of textStream) {
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）token 数量。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）token 数量。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）token 数量。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -1461,7 +1470,7 @@ for await (const textPart of textStream) {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（补全）token 的详细信息。',
+                        '有关输出（补全）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -1469,13 +1478,13 @@ for await (const textPart of textStream) {
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本 token 数量。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的推理 token 数量。',
+                                '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -1491,7 +1500,7 @@ for await (const textPart of textStream) {
                       type: 'object | undefined',
                       isOptional: true,
                       description:
-                        "来自提供商的原始用量信息。这是提供商的原始用量信息，可能包含额外字段。",
+                        "来自提供商的原始使用量信息。这是提供商的原始使用量信息，可能包含额外字段。",
                     },
                   ],
                 },
@@ -1509,13 +1518,13 @@ for await (const textPart of textStream) {
                       name: 'effectiveOutputTokensPerSecond',
                       type: 'number',
                       description:
-                        '在整个语言模型响应期间每秒的有效输出 token 数。',
+                        '整个语言模型响应期间每秒有效输出 token 数。',
                     },
                     {
                       name: 'outputTokensPerSecond',
                       type: 'number | undefined',
                       description:
-                        '收到第一个生成的输出块后每秒的输出 token 数。仅适用于流式步骤。',
+                        '收到第一个生成的输出块后每秒输出 token 数。仅适用于流式步骤。',
                     },
                     {
                       name: 'inputTokensPerSecond',
@@ -1527,37 +1536,37 @@ for await (const textPart of textStream) {
                       name: 'effectiveTotalTokensPerSecond',
                       type: 'number',
                       description:
-                        '在整个语言模型响应期间每秒的有效输入和输出 token 数。',
+                        '整个语言模型响应期间每秒有效输入和输出 token 数。',
                     },
                     {
                       name: 'stepTimeMs',
                       type: 'number',
                       description:
-                        '该步骤花费的总时间，包括语言模型响应时间和工具执行时间，以毫秒为单位。',
+                        '该步骤花费的总时间（毫秒），包括语言模型响应时间和工具执行时间。',
                     },
                     {
                       name: 'responseTimeMs',
                       type: 'number',
                       description:
-                        '等待语言模型响应所花费的时间，以毫秒为单位。',
+                        '等待语言模型响应所花费的时间（毫秒）。',
                     },
                     {
                       name: 'toolExecutionMs',
                       type: 'Readonly<Record<string, number>>',
                       description:
-                        '该步骤中执行每个客户端工具调用所花费的时间，以毫秒为单位，按工具调用 ID 键控。',
+                        '该步骤中执行每个客户端工具调用所花费的时间（毫秒），以工具调用 ID 为键。',
                     },
                     {
                       name: 'timeToFirstOutputMs',
                       type: 'number | undefined',
                       description:
-                        '直到收到第一个生成的输出块的时间，以毫秒为单位。仅适用于流式步骤。',
+                        '收到第一个生成的输出块之前的时间（毫秒）。仅适用于流式步骤。',
                     },
                     {
                       name: 'timeBetweenOutputChunksMs',
                       type: 'OutputChunkTimingStats | undefined',
                       description:
-                        '生成的输出块之间间隔的计时统计信息，以毫秒为单位。仅适用于至少有两个输出块的流式步骤。',
+                        '生成的输出块之间间隔的计时统计信息（毫秒）。仅适用于至少有两个输出块的流式步骤。',
                     },
                   ],
                 },
@@ -1572,7 +1581,7 @@ for await (const textPart of textStream) {
               name: 'reasoningText',
               type: 'string | undefined',
               description:
-                '模型的推理文本（仅某些模型可用）。',
+                '模型的推理文本（仅适用于某些模型）。',
             },
             {
               name: 'sources',
@@ -1586,7 +1595,7 @@ for await (const textPart of textStream) {
                       name: 'sourceType',
                       type: "'url'",
                       description:
-                        'URL 来源。由网络搜索 RAG 模型返回。',
+                        'URL 来源。这是由网络搜索 RAG 模型返回的。',
                     },
                     {
                       name: 'id',
@@ -1671,19 +1680,19 @@ for await (const textPart of textStream) {
                       name: 'id',
                       type: 'string',
                       description:
-                        '响应标识符。AI SDK 在可用时使用来自提供商响应的 ID，否则生成一个 ID。',
+                        '响应标识符。AI SDK 在可用时使用提供商响应中的 ID，否则生成一个 ID。',
                     },
                     {
                       name: 'modelId',
                       type: 'string',
                       description:
-                        '用于生成响应的模型。AI SDK 在可用时使用来自提供商响应的响应模型，否则使用函数调用中的模型。',
+                        '用于生成响应的模型。AI SDK 在可用时使用提供商响应中的响应模型，否则使用函数调用中的模型。',
                     },
                     {
                       name: 'timestamp',
                       type: 'Date',
                       description:
-                        '响应的时间戳。AI SDK 在可用时使用来自提供商响应的响应时间戳，否则创建一个时间戳。',
+                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
                     },
                     {
                       name: 'headers',
@@ -1699,14 +1708,14 @@ for await (const textPart of textStream) {
               name: 'isContinued',
               type: 'boolean',
               description:
-                '当将有一个带有延续文本的延续步骤时为 true。',
+                '当将有带延续文本的延续步骤时为 true。',
             },
             {
               name: 'providerMetadata',
               type: 'Record<string,JSONObject> | undefined',
               isOptional: true,
               description:
-                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。细节取决于提供商。',
+                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详情取决于提供商。',
             },
           ],
         },
@@ -1724,7 +1733,7 @@ for await (const textPart of textStream) {
       type: '(result: OnEndResult) => Promise<void> | void',
       isOptional: true,
       description:
-        '当 LLM 响应和所有请求工具执行（针对具有 `execute` 函数的工具）完成时调用的回调。',
+        '当 LLM 响应和所有请求工具执行（对于具有 `execute` 函数的工具）完成时调用的回调。',
       properties: [
         {
           type: 'OnEndResult',
@@ -1746,12 +1755,12 @@ for await (const textPart of textStream) {
               type: 'COMPLETE_OUTPUT | undefined',
               isOptional: true,
               description:
-                '当提供了 output 设置且解析成功时的解析输出。',
+                '当提供了输出设置且解析成功时的已解析输出。',
             },
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '最后一步的 token 用量。',
+              description: '最后一步的 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -1766,7 +1775,7 @@ for await (const textPart of textStream) {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
+                        '有关输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -1775,19 +1784,19 @@ for await (const textPart of textStream) {
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）token 数量。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）token 数量。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）token 数量。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -1803,7 +1812,7 @@ for await (const textPart of textStream) {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（补全）token 的详细信息。',
+                        '有关输出（补全）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -1811,13 +1820,13 @@ for await (const textPart of textStream) {
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本 token 数量。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的推理 token 数量。',
+                                '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -1833,7 +1842,7 @@ for await (const textPart of textStream) {
                       type: 'object | undefined',
                       isOptional: true,
                       description:
-                        "来自提供商的原始用量信息。这是提供商的原始用量信息，可能包含额外字段。",
+                        "来自提供商的原始使用量信息。这是提供商的原始使用量信息，可能包含额外字段。",
                     },
                   ],
                 },
@@ -1842,7 +1851,7 @@ for await (const textPart of textStream) {
             {
               name: 'totalUsage',
               type: 'LanguageModelUsage',
-              description: '所有步骤的总 token 用量。',
+              description: '所有步骤的总 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -1850,13 +1859,13 @@ for await (const textPart of textStream) {
                     {
                       name: 'inputTokens',
                       type: 'number | undefined',
-                      description: '使用的输入（提示词）token 数量。',
+                      description: '使用的输入（提示词）token 数。',
                     },
                     {
                       name: 'outputTokens',
                       type: 'number | undefined',
                       description:
-                        '使用的输出（补全）token 数量。',
+                        '使用的输出（补全）token 数。',
                     },
                     {
                       name: 'totalTokens',
@@ -1872,7 +1881,7 @@ for await (const textPart of textStream) {
               name: 'providerMetadata',
               type: 'Record<string,JSONObject> | undefined',
               description:
-                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。细节取决于提供商。',
+                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详情取决于提供商。',
             },
             {
               name: 'text',
@@ -1883,13 +1892,13 @@ for await (const textPart of textStream) {
               name: 'reasoning',
               type: 'string | undefined',
               description:
-                '模型的推理文本（仅某些模型可用）。',
+                '模型的推理文本（仅适用于某些模型）。',
             },
             {
               name: 'reasoning',
               type: 'Array<ReasoningDetail>',
               description:
-                '模型的推理细节（仅某些模型可用）。',
+                '模型的推理详情（仅适用于某些模型）。',
               properties: [
                 {
                   type: 'ReasoningDetail',
@@ -1897,7 +1906,7 @@ for await (const textPart of textStream) {
                     {
                       name: 'type',
                       type: "'text'",
-                      description: '推理细节的类型。',
+                      description: '推理详情的类型。',
                     },
                     {
                       name: 'text',
@@ -1918,13 +1927,13 @@ for await (const textPart of textStream) {
                     {
                       name: 'type',
                       type: "'redacted'",
-                      description: '推理细节的类型。',
+                      description: '推理详情的类型。',
                     },
                     {
                       name: 'data',
                       type: 'string',
                       description:
-                        '已遮蔽的数据内容（仅适用于类型 "redacted"）。',
+                        '已脱敏的数据内容（仅适用于类型 "redacted"）。',
                     },
                   ],
                 },
@@ -1942,7 +1951,7 @@ for await (const textPart of textStream) {
                       name: 'sourceType',
                       type: "'url'",
                       description:
-                        'URL 来源。由网络搜索 RAG 模型返回。',
+                        'URL 来源。这是由网络搜索 RAG 模型返回的。',
                     },
                     {
                       name: 'id',
@@ -2027,19 +2036,19 @@ for await (const textPart of textStream) {
                       name: 'id',
                       type: 'string',
                       description:
-                        '响应标识符。AI SDK 在可用时使用来自提供商响应的 ID，否则生成一个 ID。',
+                        '响应标识符。AI SDK 在可用时使用提供商响应中的 ID，否则生成一个 ID。',
                     },
                     {
                       name: 'modelId',
                       type: 'string',
                       description:
-                        '用于生成响应的模型。AI SDK 在可用时使用来自提供商响应的响应模型，否则使用函数调用中的模型。',
+                        '用于生成响应的模型。AI SDK 在可用时使用提供商响应中的响应模型，否则使用函数调用中的模型。',
                     },
                     {
                       name: 'timestamp',
                       type: 'Date',
                       description:
-                        '响应的时间戳。AI SDK 在可用时使用来自提供商响应的响应时间戳，否则创建一个时间戳。',
+                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
                     },
                     {
                       name: 'headers',
@@ -2051,7 +2060,7 @@ for await (const textPart of textStream) {
                       name: 'messages',
                       type: 'Array<ResponseMessage>',
                       description:
-                        '此步骤中生成的响应消息。它由一条助手消息组成，可能包含工具调用。当此步骤中有工具结果时，会有一条额外的工具消息，包含可用的工具结果。如果有不具备 execute 函数的工具，它们不会包含在工具结果中，需要单独添加。',
+                        '此步骤期间生成的响应消息。它由一条助手消息组成，可能包含工具调用。当此步骤中有工具结果时，会有一条额外的工具消息，包含可用的工具结果。如果有不具备 execute 函数的工具，它们不会包含在工具结果中，需要单独添加。',
                     },
                   ],
                 },
@@ -2061,7 +2070,7 @@ for await (const textPart of textStream) {
               name: 'steps',
               type: 'Array<StepResult>',
               description:
-                '每个步骤的响应信息。你可以使用它来获取中间步骤的信息，例如工具调用或响应头。',
+                '每个步骤的响应信息。你可以使用它获取有关中间步骤的信息，例如工具调用或响应头。',
             },
             {
               name: 'finalStep',
@@ -2073,7 +2082,7 @@ for await (const textPart of textStream) {
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '流被中止时用户定义的运行时上下文对象的最终状态。',
+                '流中止时用户定义运行时上下文对象的最终状态。',
             },
           ],
         },
@@ -2090,7 +2099,7 @@ for await (const textPart of textStream) {
       type: '(event: OnAbortResult) => Promise<void> | void',
       isOptional: true,
       description:
-        '当流通过 AbortSignal 中止时调用的回调。你可以使用它来执行清理操作。',
+        '当流通过 AbortSignal 中止时调用的回调。你可以使用它执行清理操作。',
       properties: [
         {
           type: 'OnAbortResult',
@@ -2111,7 +2120,7 @@ for await (const textPart of textStream) {
               type: 'unknown',
               isOptional: true,
               description:
-                '来自 AbortSignal 的原始中止原因（当可用时）。',
+                '来自 AbortSignal 的原始中止原因（如果可用）。',
             },
           ],
         },
@@ -2137,7 +2146,7 @@ for await (const textPart of textStream) {
               name: 'modelId',
               type: 'string',
               description:
-                '具体的模型标识符（例如 "gpt-6-astra"）。',
+                '特定模型标识符（例如 "gpt-6-astra"）。',
             },
             {
               name: 'instructions',
@@ -2147,17 +2156,17 @@ for await (const textPart of textStream) {
             {
               name: 'messages',
               type: 'Array<ModelMessage>',
-              description: '此次生成的消息。',
+              description: '此生成的消息。',
             },
             {
               name: 'tools',
               type: 'TOOLS | undefined',
-              description: '此次生成可用的工具。',
+              description: '此生成可用的工具。',
             },
             {
               name: 'toolChoice',
               type: 'ToolChoice<TOOLS> | undefined',
-              description: '此次生成的工具选择策略。',
+              description: '此生成的工具选择策略。',
             },
             {
               name: 'activeTools',
@@ -2259,7 +2268,7 @@ for await (const textPart of textStream) {
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '通过 `toolsContext` 传入的按工具上下文映射，按工具名称键控。',
+                '通过 `toolsContext` 传递的按工具上下文映射，以工具名称为键。',
             },
           ],
         },
@@ -2290,7 +2299,7 @@ for await (const textPart of textStream) {
               name: 'modelId',
               type: 'string',
               description:
-                '具体的模型标识符（例如 "gpt-6-astra"）。',
+                '特定模型标识符（例如 "gpt-6-astra"）。',
             },
             {
               name: 'instructions',
@@ -2302,12 +2311,12 @@ for await (const textPart of textStream) {
               name: 'messages',
               type: 'Array<ModelMessage>',
               description:
-                '将为此步骤发送给模型的消息。使用面向用户的 ModelMessage 格式。可能被 prepareStep 覆盖。如果 prepareStep 返回 messages 覆盖，这些消息会延续到后续步骤。',
+                '将为此步骤发送给模型的消息。使用面向用户的 ModelMessage 格式。可能被 prepareStep 覆盖。如果 prepareStep 返回消息覆盖，这些消息会延续到后续步骤。',
             },
             {
               name: 'tools',
               type: 'TOOLS | undefined',
-              description: '此次生成可用的工具。',
+              description: '此生成可用的工具。',
             },
             {
               name: 'toolChoice',
@@ -2373,13 +2382,13 @@ for await (const textPart of textStream) {
               name: 'runtimeContext',
               type: 'CONTEXT',
               description:
-                '用户定义的共享运行时上下文对象。可以在步骤之间从 prepareStep 更新。',
+                '用户定义的共享运行时上下文对象。可在步骤之间从 prepareStep 更新。',
             },
             {
               name: 'toolsContext',
               type: 'InferToolSetContext<TOOLS>',
               description:
-                '按工具上下文映射。可以在步骤之间从 prepareStep 更新。',
+                '按工具上下文映射。可在步骤之间从 prepareStep 更新。',
             },
           ],
         },
@@ -2408,7 +2417,7 @@ for await (const textPart of textStream) {
             {
               name: 'modelId',
               type: 'string',
-              description: '此模型调用的具体模型标识符。',
+              description: '此模型调用的特定模型标识符。',
             },
             {
               name: 'instructions',
@@ -2435,7 +2444,7 @@ for await (const textPart of textStream) {
       type: '(event: LanguageModelCallEndEvent) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        '在模型响应已规范化并解析之后、但在任何客户端工具执行开始之前调用的回调。此回调中抛出的错误会被静默捕获，不会中断生成流程。',
+        '在模型响应已规范化并解析之后、任何客户端工具执行开始之前调用的回调。此回调中抛出的错误会被静默捕获，不会中断生成流程。',
       properties: [
         {
           type: 'LanguageModelCallEndEvent',
@@ -2464,7 +2473,7 @@ for await (const textPart of textStream) {
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '模型调用报告的 token 用量。',
+              description: '模型调用报告的 token 使用量。',
             },
             {
               name: 'content',
@@ -2496,19 +2505,19 @@ for await (const textPart of textStream) {
                       name: 'responseTimeMs',
                       type: 'number',
                       description:
-                        '等待语言模型响应所花费的时间，以毫秒为单位。',
+                        '等待语言模型响应所花费的时间（毫秒）。',
                     },
                     {
                       name: 'effectiveOutputTokensPerSecond',
                       type: 'number',
                       description:
-                        '在整个语言模型响应期间每秒的有效输出 token 数。',
+                        '整个语言模型响应期间每秒有效输出 token 数。',
                     },
                     {
                       name: 'outputTokensPerSecond',
                       type: 'number | undefined',
                       description:
-                        '收到第一个生成的输出块后每秒的输出 token 数。仅适用于流式模型调用。',
+                        '收到第一个生成的输出块后每秒输出 token 数。仅适用于流式模型调用。',
                     },
                     {
                       name: 'inputTokensPerSecond',
@@ -2520,19 +2529,19 @@ for await (const textPart of textStream) {
                       name: 'effectiveTotalTokensPerSecond',
                       type: 'number',
                       description:
-                        '在整个语言模型响应期间每秒的有效输入和输出 token 数。',
+                        '整个语言模型响应期间每秒有效输入和输出 token 数。',
                     },
                     {
                       name: 'timeToFirstOutputMs',
                       type: 'number | undefined',
                       description:
-                        '直到收到第一个生成的输出块的时间，以毫秒为单位。仅适用于流式模型调用。',
+                        '收到第一个生成的输出块之前的时间（毫秒）。仅适用于流式模型调用。',
                     },
                     {
                       name: 'timeBetweenOutputChunksMs',
                       type: 'OutputChunkTimingStats | undefined',
                       description:
-                        '生成的输出块之间间隔的计时统计信息，以毫秒为单位。仅适用于至少有两个输出块的流式模型调用。',
+                        '生成的输出块之间间隔的计时统计信息（毫秒）。仅适用于至少有两个输出块的流式模型调用。',
                     },
                   ],
                 },
@@ -2574,7 +2583,7 @@ for await (const textPart of textStream) {
               name: 'toolContext',
               type: 'InferToolContext<TOOLS[toolName]>',
               description:
-                '即将执行的工具调用的工具特定上下文对象。收窄为单个工具的上下文类型，而不是整个工具集。',
+                '即将执行的工具调用的工具特定上下文对象。缩小到单个工具的上下文类型，而不是整个工具集。',
             },
           ],
         },
@@ -2585,7 +2594,7 @@ for await (const textPart of textStream) {
       type: '(event: ToolExecutionEndEvent) => PromiseLike<void> | void',
       isOptional: true,
       description:
-        "在工具的 execute 函数完成（或出错）之后立即调用的回调。`toolOutput` 字段是一个可辨识联合：当 `toolOutput.type` 为 `'tool-result'` 时，`output` 字段包含工具结果；当 `toolOutput.type` 为 `'tool-error'` 时，`error` 字段包含错误。此回调中抛出的错误会被静默捕获，不会中断生成流程。",
+        "在工具的 execute 函数完成（或出错）之后立即调用的回调。`toolOutput` 字段是可辨识联合：当 `toolOutput.type` 为 `'tool-result'` 时，`output` 字段包含工具结果；当 `toolOutput.type` 为 `'tool-error'` 时，`error` 字段包含错误。此回调中抛出的错误会被静默捕获，不会中断生成流程。",
       properties: [
         {
           type: 'ToolExecutionEndEvent',
@@ -2606,7 +2615,7 @@ for await (const textPart of textStream) {
               name: 'toolExecutionMs',
               type: 'number',
               description:
-                '工具执行的挂钟时长，以毫秒为单位。',
+                '工具执行的挂钟持续时间（毫秒）。',
             },
             {
               name: 'messages',
@@ -2618,7 +2627,7 @@ for await (const textPart of textStream) {
               name: 'toolContext',
               type: 'InferToolContext<TOOLS[toolName]>',
               description:
-                '刚刚完成的工具调用的工具特定上下文对象。收窄为单个工具的上下文类型，而不是整个工具集。',
+                '刚刚完成的工具调用的工具特定上下文对象。缩小到单个工具的上下文类型，而不是整个工具集。',
             },
             {
               name: 'toolOutput',
@@ -2655,13 +2664,13 @@ for await (const textPart of textStream) {
       name: 'content',
       type: 'Promise<Array<ContentPart<TOOLS>>>',
       description:
-        '所有步骤中生成的内容。文本部分可以包含一个可选的 citations 数组，其中包含支持该文本的引用。会自动消费流。',
+        '所有步骤中生成的内容。文本部分可以包含一个可选的 citations 数组，其中包含支持该文本的引用。自动消费流。',
     },
     {
       name: 'finishReason',
       type: "PromiseLike<'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other'>",
       description:
-        '生成结束的原因。会自动消费流。',
+        '生成结束的原因。自动消费流。',
     },
     {
       name: 'rawFinishReason',
@@ -2673,7 +2682,7 @@ for await (const textPart of textStream) {
       name: 'usage',
       type: 'Promise<LanguageModelUsage>',
       description:
-        '生成响应的总 token 用量。当有多个步骤时，用量是所有步骤用量的总和。会自动消费流。',
+        '生成响应的总 token 使用量。当有多个步骤时，使用量是所有步骤使用量之和。自动消费流。',
       properties: [
         {
           type: 'LanguageModelUsage',
@@ -2681,12 +2690,12 @@ for await (const textPart of textStream) {
             {
               name: 'inputTokens',
               type: 'number | undefined',
-              description: '使用的输入（提示词）token 数量。',
+              description: '使用的输入（提示词）token 数。',
             },
             {
               name: 'outputTokens',
               type: 'number | undefined',
-              description: '使用的输出（补全）token 数量。',
+              description: '使用的输出（补全）token 数。',
             },
             {
               name: 'totalTokens',
@@ -2701,7 +2710,7 @@ for await (const textPart of textStream) {
     {
       name: 'totalUsage',
       type: 'Promise<LanguageModelUsage>',
-      description: '已弃用。请改用 usage。生成响应的总 token 用量。当有多个步骤时，用量是所有步骤用量的总和。会自动消费流。',
+      description: '已弃用。请改用 usage。生成响应的总 token 使用量。当有多个步骤时，使用量是所有步骤使用量之和。自动消费流。',
       properties: [
                   {
                   type: 'LanguageModelUsage',
@@ -2715,7 +2724,7 @@ for await (const textPart of textStream) {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
+                        '有关输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -2724,19 +2733,19 @@ for await (const textPart of textStream) {
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）token 数量。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）token 数量。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）token 数量。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -2751,7 +2760,7 @@ for await (const textPart of textStream) {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（补全）token 的详细信息。',
+                        '有关输出（补全）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -2759,12 +2768,12 @@ for await (const textPart of textStream) {
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本 token 数量。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理 token 数量。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -2779,7 +2788,7 @@ for await (const textPart of textStream) {
                       name: 'raw',
                       type: 'object | undefined',
                       isOptional: true,
-                      description: '来自提供商的原始用量信息。这是提供商的原始用量信息，可能包含额外字段。',
+                      description: '来自提供商的原始使用量信息。这是提供商的原始使用量信息，可能包含额外字段。',
                     },
                   ],
                 },
@@ -2789,19 +2798,19 @@ for await (const textPart of textStream) {
       name: 'providerMetadata',
       type: 'Promise<ProviderMetadata | undefined>',
       description:
-        '已弃用。请改用 `finalStep.providerMetadata`。来自最后一步的额外提供商特定元数据。元数据从提供商传递到 AI SDK，并支持可以完全封装在提供商中的提供商特定结果。',
+        '已弃用。请改用 `finalStep.providerMetadata`。来自最后一步的额外提供商特定元数据。元数据从提供商传递到 AI SDK，并支持可完全封装在提供商中的提供商特定结果。',
     },
     {
       name: 'text',
       type: 'Promise<string>',
       description:
-        '已生成的完整文本。会自动消费流。',
+        '已生成的完整文本。自动消费流。',
     },
     {
       name: 'reasoning',
       type: 'Promise<Array<ReasoningOutput | ReasoningFileOutput>>',
       description:
-        '已弃用。请改用 `finalStep.reasoning`。模型在最后一步中生成的完整推理。会自动消费流。',
+        '已弃用。请改用 `finalStep.reasoning`。模型在最后一步中生成的完整推理。自动消费流。',
       properties: [
         {
           type: 'ReasoningOutput',
@@ -2851,13 +2860,13 @@ for await (const textPart of textStream) {
       name: 'reasoningText',
       type: 'Promise<string | undefined>',
       description:
-        '已弃用。请改用 `finalStep.reasoningText`。模型在最后一步中生成的推理文本。如果模型仅生成了文本，则可能为 undefined。会自动消费流。',
+        '已弃用。请改用 `finalStep.reasoningText`。模型在最后一步中生成的推理文本。如果模型仅生成了文本，则可能为 undefined。自动消费流。',
     },
     {
       name: 'sources',
       type: 'Promise<Array<Source>>',
       description:
-        '用作生成响应输入的来源。对于多步骤生成，来源会从所有步骤中累积。会自动消费流。',
+        '用作生成响应输入的来源。对于多步骤生成，来源会从所有步骤中累积。自动消费流。',
       properties: [
         {
           type: 'Source',
@@ -2866,7 +2875,7 @@ for await (const textPart of textStream) {
               name: 'sourceType',
               type: "'url'",
               description:
-                'URL 来源。由网络搜索 RAG 模型返回。',
+                'URL 来源。这是由网络搜索 RAG 模型返回的。',
             },
             {
               name: 'id',
@@ -2898,7 +2907,7 @@ for await (const textPart of textStream) {
       name: 'files',
       type: 'Promise<Array<GeneratedFile>>',
       description:
-        '所有步骤中生成的文件。会自动消费流。',
+        '所有步骤中生成的文件。自动消费流。',
       properties: [
         {
           type: 'GeneratedFile',
@@ -2926,13 +2935,13 @@ for await (const textPart of textStream) {
       name: 'toolCalls',
       type: 'Promise<TypedToolCall<TOOLS>[]>',
       description:
-        '所有步骤中已执行的工具调用。会自动消费流。',
+        '所有步骤中已执行的工具调用。自动消费流。',
     },
     {
       name: 'toolResults',
       type: 'Promise<TypedToolResult<TOOLS>[]>',
       description:
-        '所有步骤中已生成的工具结果。当所有工具执行完成时解析。',
+        '所有步骤中已生成的工具结果。当所有工具执行完成时解决。',
     },
     {
       name: 'staticToolCalls',
@@ -2958,7 +2967,7 @@ for await (const textPart of textStream) {
       name: 'request',
       type: 'Promise<LanguageModelRequestMetadata>',
       description:
-        '已弃用。请改用 `finalStep.request`。来自最后一步的额外请求信息。会自动消费流。',
+        '已弃用。请改用 `finalStep.request`。来自最后一步的额外请求信息。自动消费流。',
       properties: [
         {
           type: 'LanguageModelRequestMetadata',
@@ -2968,7 +2977,7 @@ for await (const textPart of textStream) {
               type: 'Array<ModelMessage>',
               isOptional: true,
               description:
-                '为此步骤发送给模型的输入消息。默认情况下为 undefined，除非 requestMessages 设置为 true。',
+                '为此步骤发送给模型的输入消息。除非 requestMessages 设置为 true，否则默认为 undefined。',
             },
             {
               name: 'body',
@@ -2985,7 +2994,7 @@ for await (const textPart of textStream) {
       name: 'response',
       type: 'Promise<LanguageModelResponseMetadata>',
       description:
-        '已弃用。请改用 `finalStep.response`。来自最后一步的额外响应信息。会自动消费流。',
+        '已弃用。请改用 `finalStep.response`。来自最后一步的额外响应信息。自动消费流。',
       properties: [
         {
           type: 'LanguageModelResponseMetadata',
@@ -2994,19 +3003,19 @@ for await (const textPart of textStream) {
               name: 'id',
               type: 'string',
               description:
-                '响应标识符。AI SDK 在可用时使用来自提供商响应的 ID，否则生成一个 ID。',
+                '响应标识符。AI SDK 在可用时使用提供商响应中的 ID，否则生成一个 ID。',
             },
             {
               name: 'modelId',
               type: 'string',
               description:
-                '用于生成响应的模型。AI SDK 在可用时使用来自提供商响应的响应模型，否则使用函数调用中的模型。',
+                '用于生成响应的模型。AI SDK 在可用时使用提供商响应中的响应模型，否则使用函数调用中的模型。',
             },
             {
               name: 'timestamp',
               type: 'Date',
               description:
-                '响应的时间戳。AI SDK 在可用时使用来自提供商响应的响应时间戳，否则创建一个时间戳。',
+                '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
             },
             {
               name: 'headers',
@@ -3025,7 +3034,7 @@ for await (const textPart of textStream) {
               name: 'messages',
               type: 'Array<ResponseMessage>',
               description:
-                '最后一步中生成的响应消息。它由一条助手消息组成，可能包含工具调用。当最后一步中有工具结果时，会有一条额外的工具消息，包含可用的工具结果。如果有不具备 execute 函数的工具，它们不会包含在工具结果中，需要单独添加。',
+                '最后一步期间生成的响应消息。它由一条助手消息组成，可能包含工具调用。当最后一步中有工具结果时，会有一条额外的工具消息，包含可用的工具结果。如果有不具备 execute 函数的工具，它们不会包含在工具结果中，需要单独添加。',
             },
           ],
         },
@@ -3047,7 +3056,7 @@ for await (const textPart of textStream) {
       name: 'steps',
       type: 'Promise<Array<StepResult>>',
       description:
-        '每个步骤的响应信息。你可以使用它来获取中间步骤的信息，例如工具调用或响应头。',
+        '每个步骤的响应信息。你可以使用它获取有关中间步骤的信息，例如工具调用或响应头。',
       properties: [
         {
           type: 'StepResult',
@@ -3067,7 +3076,7 @@ for await (const textPart of textStream) {
               name: 'reasoning',
               type: 'string | undefined',
               description:
-                '模型的推理文本（仅某些模型可用）。',
+                '模型的推理文本（仅适用于某些模型）。',
             },
             {
               name: 'sources',
@@ -3081,7 +3090,7 @@ for await (const textPart of textStream) {
                       name: 'sourceType',
                       type: "'url'",
                       description:
-                        'URL 来源。由网络搜索 RAG 模型返回。',
+                        'URL 来源。这是由网络搜索 RAG 模型返回的。',
                     },
                     {
                       name: 'id',
@@ -3162,7 +3171,7 @@ for await (const textPart of textStream) {
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '生成文本的 token 用量。',
+              description: '生成文本的 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -3176,7 +3185,7 @@ for await (const textPart of textStream) {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
+                        '有关输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -3185,19 +3194,19 @@ for await (const textPart of textStream) {
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）token 数量。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）token 数量。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）token 数量。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -3212,7 +3221,7 @@ for await (const textPart of textStream) {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（补全）token 的详细信息。',
+                        '有关输出（补全）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -3220,12 +3229,12 @@ for await (const textPart of textStream) {
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本 token 数量。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理 token 数量。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -3240,7 +3249,7 @@ for await (const textPart of textStream) {
                       name: 'raw',
                       type: 'object | undefined',
                       isOptional: true,
-                      description: '来自提供商的原始用量信息。这是提供商的原始用量信息，可能包含额外字段。',
+                      description: '来自提供商的原始使用量信息。这是提供商的原始使用量信息，可能包含额外字段。',
                     },
                   ],
                 },
@@ -3260,7 +3269,7 @@ for await (const textPart of textStream) {
                       type: 'Array<ModelMessage>',
                       isOptional: true,
                       description:
-                        '为此步骤发送给模型的输入消息。默认情况下为 undefined，除非 requestMessages 设置为 true。',
+                        '为此步骤发送给模型的输入消息。除非 requestMessages 设置为 true，否则默认为 undefined。',
                     },
                     {
                       name: 'body',
@@ -3286,19 +3295,19 @@ for await (const textPart of textStream) {
                       name: 'id',
                       type: 'string',
                       description:
-                        '响应标识符。AI SDK 在可用时使用来自提供商响应的 ID，否则生成一个 ID。',
+                        '响应标识符。AI SDK 在可用时使用提供商响应中的 ID，否则生成一个 ID。',
                     },
                     {
                       name: 'modelId',
                       type: 'string',
                       description:
-                        '用于生成响应的模型。AI SDK 在可用时使用来自提供商响应的响应模型，否则使用函数调用中的模型。',
+                        '用于生成响应的模型。AI SDK 在可用时使用提供商响应中的响应模型，否则使用函数调用中的模型。',
                     },
                     {
                       name: 'timestamp',
                       type: 'Date',
                       description:
-                        '响应的时间戳。AI SDK 在可用时使用来自提供商响应的响应时间戳，否则创建一个时间戳。',
+                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
                     },
                     {
                       name: 'headers',
@@ -3310,7 +3319,7 @@ for await (const textPart of textStream) {
                       name: 'messages',
                       type: 'Array<ResponseMessage>',
                       description:
-                        '此步骤中生成的响应消息。它由一条助手消息组成，可能包含工具调用。当此步骤中有工具结果时，会有一条额外的工具消息，包含可用的工具结果。如果有不具备 execute 函数的工具，它们不会包含在工具结果中，需要单独添加。',
+                        '此步骤期间生成的响应消息。它由一条助手消息组成，可能包含工具调用。当此步骤中有工具结果时，会有一条额外的工具消息，包含可用的工具结果。如果有不具备 execute 函数的工具，它们不会包含在工具结果中，需要单独添加。',
                     },
                   ],
                 },
@@ -3326,14 +3335,14 @@ for await (const textPart of textStream) {
               name: 'isContinued',
               type: 'boolean',
               description:
-                '当将有一个带有延续文本的延续步骤时为 true。',
+                '当将有带延续文本的延续步骤时为 true。',
             },
             {
               name: 'providerMetadata',
               type: 'Record<string,JSONObject> | undefined',
               isOptional: true,
               description:
-                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。细节取决于提供商。',
+                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详情取决于提供商。',
             },
           ],
         },
@@ -3343,19 +3352,19 @@ for await (const textPart of textStream) {
       name: 'textStream',
       type: 'AsyncIterableStream<string>',
       description:
-        '仅返回生成的文本增量的文本流。你可以将其用作 AsyncIterable 或 ReadableStream。错误部分不会在此流中呈现。请使用 `onError` 回调或 `stream` 来观察它们。',
+        '仅返回生成的文本增量的文本流。你可以将其用作 AsyncIterable 或 ReadableStream。错误部分不会在此流中呈现。使用 `onError` 回调或 `stream` 来观察它们。',
     },
     {
       name: 'finalStep',
       type: 'Promise<StepResult>',
       description:
-        '最后一步。这是 `steps.at(-1)` 的快捷方式。会自动消费流。',
+        '最后一步。这是 `steps.at(-1)` 的快捷方式。自动消费流。',
     },
     {
       name: 'stream',
       type: 'AsyncIterable<TextStreamPart<TOOLS>> & ReadableStream<TextStreamPart<TOOLS>>',
       description:
-        '包含所有事件的流，包括文本增量、工具调用、工具结果和错误。格式良好的流中途提供商故障会作为 StreamProviderError 实例在错误部分中发出。你可以将其用作 AsyncIterable 或 ReadableStream。只有会停止流的错误（例如网络错误）会被抛出。',
+        '包含所有事件的流，包括文本增量、工具调用、工具结果和错误。格式正确的流中途提供商故障会以 StreamProviderError 实例的形式在错误部分中发出。你可以将其用作 AsyncIterable 或 ReadableStream。只有会停止流的错误（例如网络错误）才会被抛出。',
       properties: [
         {
           type: 'TextStreamTextEndPart',
@@ -3364,7 +3373,7 @@ for await (const textPart of textStream) {
             { name: 'type', type: "'text-end'", description: '事件类型。' },
             { name: 'id', type: 'string', description: '文本块 ID。' },
             { name: 'citations', type: 'Array<Citation>', isOptional: true, description: '支持此文本块的引用。每个引用包含 URL 或文档来源、此块中可选的 startIndex/endIndex 偏移量，以及来自来源的可选 citedText 段落。' },
-            { name: 'providerMetadata', type: 'ProviderMetadata', isOptional: true, description: '额外的提供商元数据，包括原始注解。' },
+            { name: 'providerMetadata', type: 'ProviderMetadata', isOptional: true, description: '额外的提供商元数据，包括原始注释。' },
           ],
         },
         {
@@ -3418,7 +3427,7 @@ for await (const textPart of textStream) {
             {
               name: 'sourceType',
               type: "'url'",
-              description: 'URL 来源。由网络搜索 RAG 模型返回。',
+              description: 'URL 来源。这是由网络搜索 RAG 模型返回的。',
             },
             {
               name: 'id',
@@ -3523,7 +3532,7 @@ for await (const textPart of textStream) {
               name: 'toolName',
               type: 'string',
               description:
-                '工具的名称，通常为函数的名称。',
+                '工具的名称，通常为函数名。',
             },
             {
               name: 'input',
@@ -3540,7 +3549,7 @@ for await (const textPart of textStream) {
               name: 'type',
               type: "'tool-call-streaming-start'",
               description:
-                '表示工具调用流式传输的开始。仅在流式传输工具调用时可用。',
+                '指示工具调用流式传输的开始。仅在流式传输工具调用时可用。',
             },
             {
               name: 'toolCallId',
@@ -3551,7 +3560,7 @@ for await (const textPart of textStream) {
               name: 'toolName',
               type: 'string',
               description:
-                '工具的名称，通常为函数的名称。',
+                '工具的名称，通常为函数名。',
             },
           ],
         },
@@ -3573,7 +3582,7 @@ for await (const textPart of textStream) {
               name: 'toolName',
               type: 'string',
               description:
-                '工具的名称，通常为函数的名称。',
+                '工具的名称，通常为函数名。',
             },
             {
               name: 'argsTextDelta',
@@ -3600,7 +3609,7 @@ for await (const textPart of textStream) {
               name: 'toolName',
               type: 'string',
               description:
-                '工具的名称，通常为函数的名称。',
+                '工具的名称，通常为函数名。',
             },
             {
               name: 'input',
@@ -3622,13 +3631,13 @@ for await (const textPart of textStream) {
             {
               name: 'type',
               type: "'start-step'",
-              description: '表示流中新步骤的开始。',
+              description: '指示流中新步骤的开始。',
             },
             {
               name: 'request',
               type: 'LanguageModelRequestMetadata',
               description:
-                '关于发送给语言模型提供商的请求的信息。',
+                '有关发送给语言模型提供商的请求的信息。',
               properties: [
                 {
                   type: 'LanguageModelRequestMetadata',
@@ -3665,7 +3674,7 @@ for await (const textPart of textStream) {
               name: 'type',
               type: "'finish-step'",
               description:
-                '表示流中当前步骤的结束。',
+                '指示流中当前步骤的结束。',
             },
             {
               name: 'response',
@@ -3680,19 +3689,19 @@ for await (const textPart of textStream) {
                       name: 'id',
                       type: 'string',
                       description:
-                        '响应标识符。AI SDK 在可用时使用来自提供商响应的 ID，否则生成一个 ID。',
+                        '响应标识符。AI SDK 在可用时使用提供商响应中的 ID，否则生成一个 ID。',
                     },
                     {
                       name: 'modelId',
                       type: 'string',
                       description:
-                        '用于生成响应的模型。AI SDK 在可用时使用来自提供商响应的响应模型，否则使用函数调用中的模型。',
+                        '用于生成响应的模型。AI SDK 在可用时使用提供商响应中的响应模型，否则使用函数调用中的模型。',
                     },
                     {
                       name: 'timestamp',
                       type: 'Date',
                       description:
-                        '响应的时间戳。AI SDK 在可用时使用来自提供商响应的响应时间戳，否则创建一个时间戳。',
+                        '响应的时间戳。AI SDK 在可用时使用提供商响应中的响应时间戳，否则创建一个时间戳。',
                     },
                     {
                       name: 'headers',
@@ -3706,7 +3715,7 @@ for await (const textPart of textStream) {
             {
               name: 'usage',
               type: 'LanguageModelUsage',
-              description: '生成文本的 token 用量。',
+              description: '生成文本的 token 使用量。',
               properties: [
                  {
                   type: 'LanguageModelUsage',
@@ -3720,7 +3729,7 @@ for await (const textPart of textStream) {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
+                        '有关输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -3729,19 +3738,19 @@ for await (const textPart of textStream) {
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）token 数量。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）token 数量。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）token 数量。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -3756,7 +3765,7 @@ for await (const textPart of textStream) {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（补全）token 的详细信息。',
+                        '有关输出（补全）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -3764,12 +3773,12 @@ for await (const textPart of textStream) {
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本 token 数量。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理 token 数量。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -3784,7 +3793,7 @@ for await (const textPart of textStream) {
                       name: 'raw',
                       type: 'object | undefined',
                       isOptional: true,
-                      description: '来自提供商的原始用量信息。这是提供商的原始用量信息，可能包含额外字段。',
+                      description: '来自提供商的原始使用量信息。这是提供商的原始使用量信息，可能包含额外字段。',
                     },
                   ],
                 },
@@ -3802,13 +3811,13 @@ for await (const textPart of textStream) {
               name: 'effectiveOutputTokensPerSecond',
                       type: 'number',
                       description:
-                '在整个语言模型响应期间每秒的有效输出 token 数。',
+                '整个语言模型响应期间每秒有效输出 token 数。',
             },
             {
               name: 'outputTokensPerSecond',
               type: 'number | undefined',
               description:
-                '收到第一个生成的输出块后每秒的输出 token 数。仅适用于流式步骤。',
+                '收到第一个生成的输出块后每秒输出 token 数。仅适用于流式步骤。',
             },
             {
               name: 'inputTokensPerSecond',
@@ -3820,37 +3829,37 @@ for await (const textPart of textStream) {
               name: 'effectiveTotalTokensPerSecond',
               type: 'number',
               description:
-                '在整个语言模型响应期间每秒的有效输入和输出 token 数。',
+                '整个语言模型响应期间每秒有效输入和输出 token 数。',
                     },
                     {
                       name: 'stepTimeMs',
                       type: 'number',
                       description:
-                        '该步骤花费的总时间，包括语言模型响应时间和工具执行时间，以毫秒为单位。',
+                        '该步骤花费的总时间（毫秒），包括语言模型响应时间和工具执行时间。',
                     },
                     {
                       name: 'responseTimeMs',
                       type: 'number',
                       description:
-                        '等待语言模型响应所花费的时间，以毫秒为单位。',
+                        '等待语言模型响应所花费的时间（毫秒）。',
                     },
                     {
                       name: 'toolExecutionMs',
                       type: 'Readonly<Record<string, number>>',
                       description:
-                        '该步骤中执行每个客户端工具调用所花费的时间，以毫秒为单位，按工具调用 ID 键控。',
+                        '该步骤中执行每个客户端工具调用所花费的时间（毫秒），以工具调用 ID 为键。',
                     },
                     {
                       name: 'timeToFirstOutputMs',
                       type: 'number | undefined',
                       description:
-                        '直到收到第一个生成的输出块的时间，以毫秒为单位。仅适用于流式步骤。',
+                        '收到第一个生成的输出块之前的时间（毫秒）。仅适用于流式步骤。',
                     },
                     {
                       name: 'timeBetweenOutputChunksMs',
                       type: 'OutputChunkTimingStats | undefined',
                       description:
-                        '生成的输出块之间间隔的计时统计信息，以毫秒为单位。仅适用于至少有两个输出块的流式步骤。',
+                        '生成的输出块之间间隔的计时统计信息（毫秒）。仅适用于至少有两个输出块的流式步骤。',
                     },
                   ],
                 },
@@ -3872,7 +3881,7 @@ for await (const textPart of textStream) {
               type: 'ProviderMetadata | undefined',
               isOptional: true,
               description:
-                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。细节取决于提供商。',
+                '来自提供商的可选元数据。外层键是提供商名称。内层值是元数据。详情取决于提供商。',
             },
           ],
         },
@@ -3882,7 +3891,7 @@ for await (const textPart of textStream) {
             {
               name: 'type',
               type: "'start'",
-              description: '表示流的开始。',
+              description: '指示流的开始。',
             },
           ],
         },
@@ -3892,7 +3901,7 @@ for await (const textPart of textStream) {
             {
               name: 'type',
               type: "'finish'",
-              description: '用于将对象标识为结束的类型。',
+              description: '用于将对象标识为完成的类型。',
             },
             {
               name: 'finishReason',
@@ -3908,7 +3917,7 @@ for await (const textPart of textStream) {
             {
               name: 'totalUsage',
               type: 'LanguageModelUsage',
-              description: '生成文本的总 token 用量。',
+              description: '生成文本的总 token 使用量。',
               properties: [
                 {
                   type: 'LanguageModelUsage',
@@ -3922,7 +3931,7 @@ for await (const textPart of textStream) {
                       name: 'inputTokenDetails',
                       type: 'LanguageModelInputTokenDetails',
                       description:
-                        '关于输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
+                        '有关输入（提示词）token 的详细信息。另请参阅：缓存 token 和非缓存 token。',
                       properties: [
                         {
                           type: 'LanguageModelInputTokenDetails',
@@ -3931,19 +3940,19 @@ for await (const textPart of textStream) {
                               name: 'noCacheTokens',
                               type: 'number | undefined',
                               description:
-                                '使用的非缓存输入（提示词）token 数量。',
+                                '使用的非缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheReadTokens',
                               type: 'number | undefined',
                               description:
-                                '读取的缓存输入（提示词）token 数量。',
+                                '读取的缓存输入（提示词）token 数。',
                             },
                             {
                               name: 'cacheWriteTokens',
                               type: 'number | undefined',
                               description:
-                                '写入的缓存输入（提示词）token 数量。',
+                                '写入的缓存输入（提示词）token 数。',
                             },
                           ],
                         },
@@ -3958,7 +3967,7 @@ for await (const textPart of textStream) {
                       name: 'outputTokenDetails',
                       type: 'LanguageModelOutputTokenDetails',
                       description:
-                        '关于输出（补全）token 的详细信息。',
+                        '有关输出（补全）token 的详细信息。',
                       properties: [
                         {
                           type: 'LanguageModelOutputTokenDetails',
@@ -3966,12 +3975,12 @@ for await (const textPart of textStream) {
                             {
                               name: 'textTokens',
                               type: 'number | undefined',
-                              description: '使用的文本 token 数量。',
+                              description: '使用的文本 token 数。',
                             },
                             {
                               name: 'reasoningTokens',
                               type: 'number | undefined',
-                              description: '使用的推理 token 数量。',
+                              description: '使用的推理 token 数。',
                             },
                           ],
                         },
@@ -3986,7 +3995,7 @@ for await (const textPart of textStream) {
                       name: 'raw',
                       type: 'object | undefined',
                       isOptional: true,
-                      description: '来自提供商的原始用量信息。这是提供商的原始用量信息，可能包含额外字段。',
+                      description: '来自提供商的原始使用量信息。这是提供商的原始使用量信息，可能包含额外字段。',
                     },
                   ],
                 },
@@ -4000,7 +4009,7 @@ for await (const textPart of textStream) {
             {
               name: 'type',
               type: "'reasoning-part-finish'",
-              description: '表示推理部分的结束。',
+              description: '指示推理部分的结束。',
             },
           ],
         },
@@ -4033,7 +4042,7 @@ for await (const textPart of textStream) {
               type: 'string',
               isOptional: true,
               description:
-                '流被中止时的可选序列化中止原因。',
+                '流中止时可选的序列化中止原因。',
             },
           ],
         },
@@ -4049,25 +4058,25 @@ for await (const textPart of textStream) {
       name: 'partialOutputStream',
       type: 'AsyncIterableStream<PARTIAL_OUTPUT>',
       description:
-        '部分解析输出的流。它使用 `output` 规范。AsyncIterableStream 定义为 AsyncIterable<T> & ReadableStream<T>。',
+        '部分已解析输出的流。它使用 `output` 规范。AsyncIterableStream 定义为 AsyncIterable<T> & ReadableStream<T>。',
     },
     {
       name: 'elementStream',
       type: 'AsyncIterableStream<ELEMENT_OUTPUT>',
       description:
-        '各个数组元素完成时的流。仅在使用 `output: Output.array()` 时可用。每个元素都是完整的，并已根据元素 schema 验证。当设置了 `maxItems` 时，流会在发出第一个多余元素之前报错。AsyncIterableStream 定义为 AsyncIterable<T> & ReadableStream<T>。',
+        '各个数组元素完成时的流。仅在使用 `output: Output.array()` 时可用。每个元素都是完整的，并已根据元素模式验证。当设置了 `maxItems` 时，流会在发出第一个多余元素之前报错。AsyncIterableStream 定义为 AsyncIterable<T> & ReadableStream<T>。',
     },
     {
       name: 'output',
       type: 'Promise<COMPLETE_OUTPUT>',
       description:
-        '完整的解析输出。它使用 `output` 规范。',
+        '完整的已解析输出。它使用 `output` 规范。',
     },
     {
       name: 'consumeStream',
       type: '(options?: ConsumeStreamOptions) => Promise<void>',
       description:
-        '消费流而不处理各个部分。这对于强制流完成很有用。如果发生错误，它会传递给可选的 `onError` 回调。',
+        '消费流而不处理各部分。这对于强制流完成很有用。如果发生错误，它会传递给可选的 `onError` 回调。',
       properties: [
         {
           type: 'ConsumeStreamOptions',
@@ -4086,7 +4095,7 @@ for await (const textPart of textStream) {
       name: 'toUIMessageStream',
       type: '(options?: UIMessageStreamOptions) => AsyncIterableStream<UIMessageChunk>',
       description:
-        '将结果转换为 UI 消息流。返回一个 AsyncIterableStream，可同时用作 AsyncIterable 和 ReadableStream。该流包含工具审批请求和响应块，包括可用时的自动审批元数据。',
+        '将结果转换为 UI 消息流。返回一个既可用作 AsyncIterable 又可用作 ReadableStream 的 AsyncIterableStream。该流包含工具审批请求和响应块，包括可用时的自动审批元数据。',
       properties: [
         {
           type: 'UIMessageStreamOptions',
@@ -4114,7 +4123,7 @@ for await (const textPart of textStream) {
               name: 'onEnd',
               type: '(options: { messages: UIMessage[]; isContinuation: boolean; responseMessage: UIMessage; isAborted: boolean; isCancelled?: true; outcome: UIMessageStreamOutcome; finishReason?: FinishReason; }) => PromiseLike<void> | void',
               isOptional: true,
-              description: '流结束时调用的回调函数。提供更新后的消息、延续、中止和消费者取消状态、模型结束原因以及操作级结果。',
+              description: '流结束时调用的回调函数。提供更新后的消息、延续、中止和消费者取消状态、模型完成原因以及操作级结果。',
             },
             {
               name: 'onFinish',
@@ -4126,7 +4135,7 @@ for await (const textPart of textStream) {
               name: 'messageMetadata',
               type: '(options: { part: TextStreamPart<TOOLS> & { type: "start" | "finish" | "start-step" | "finish-step"; }; }) => unknown',
               isOptional: true,
-              description: '提取将发送给客户端的消息元数据。在 start 和 finish 事件时调用。',
+              description: '提取将发送给客户端的消息元数据。在开始和完成事件时调用。',
             },
             {
               name: 'sendReasoning',
@@ -4147,21 +4156,21 @@ for await (const textPart of textStream) {
               type: 'boolean',
               isOptional: true,
               description:
-                '将 finish 事件发送给客户端。默认为 true。',
+                '将完成事件发送给客户端。默认为 true。',
             },
             {
               name: 'sendStart',
               type: 'boolean',
               isOptional: true,
               description:
-                '将消息 start 事件发送给客户端。如果你使用额外的 streamText 调用且消息 start 事件已经发送，则设置为 false。默认为 true。',
+                '将消息开始事件发送给客户端。如果你使用额外的 streamText 调用且消息开始事件已发送，请设置为 false。默认为 true。',
             },
             {
               name: 'onError',
               type: '(error: unknown) => string',
               isOptional: true,
               description:
-                '处理错误，例如记录它。返回要包含在数据流中的错误消息。默认为 () => "An error occurred."。标记为 providerExecuted: true 的工具执行错误会绕过此回调：字符串原样传递，其他值会被 JSON 字符串化，以保留提供商错误数据用于模型消息往返和 harness 运行时错误消息。流错误和无效工具调用仍使用此回调。',
+                '处理错误，例如记录错误。返回要包含在数据流中的错误消息。默认为 () => "An error occurred."。标记为 providerExecuted: true 的工具执行错误会绕过此回调：字符串原样传递，其他值会进行 JSON 字符串化，以保留提供商错误数据，用于模型消息往返和 harness 运行时错误消息。流错误和无效工具调用仍使用此回调。',
             },
             {
               name: 'consumeSseStream',
@@ -4319,21 +4328,21 @@ type ActiveTools<TOOLS extends ToolSet> =
 <ExampleLinks
   examples={[
     {
-      title: 'Learn to stream text generated by a language model in Next.js',
+      title: '学习在 Next.js 中流式传输语言模型生成的文本',
       link: '/examples/next-app/basics/streaming-text-generation',
     },
     {
       title:
-        'Learn to stream chat completions generated by a language model in Next.js',
+        '学习在 Next.js 中流式传输语言模型生成的聊天补全',
       link: '/examples/next-app/chat/stream-chat-completion',
     },
     {
-      title: 'Learn to stream text generated by a language model in Node.js',
+      title: '学习在 Node.js 中流式传输语言模型生成的文本',
       link: '/examples/node/generating-text/stream-text',
     },
     {
       title:
-        'Learn to stream chat completions generated by a language model in Node.js',
+        '学习在 Node.js 中流式传输语言模型生成的聊天补全',
       link: '/examples/node/generating-text/stream-text-with-chat-prompt',
     },
   ]}

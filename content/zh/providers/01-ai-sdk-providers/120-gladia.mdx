@@ -1,27 +1,70 @@
 ---
 title: "Gladia"
-description: "了解如何使用 Gladia 提供商进行 AI SDK。"
+description: "了解如何设置 Gladia 提供商并检查 AI Gateway 的可用性。"
 ---
 
 # Gladia 提供商
 
 [Gladia](https://gladia.io/) 提供商包含对 Gladia 转录 API 的语言模型支持。
+Gladia 模型目前无法通过 [AI Gateway](https://vercel.com/ai-gateway/models) 使用，因此开头的示例直接使用 `@ai-sdk/gladia`。支持的替代方案请参见下方的[使用 AI Gateway](#using-ai-gateway)。
 
-## 设置
+```ts
+import { transcribe } from 'ai';
+import { gladia } from '@ai-sdk/gladia';
+import { readFile } from 'node:fs/promises';
 
-Gladia 提供商位于 `@ai-sdk/gladia` 模块中。你可以使用以下命令安装：
+const { text } = await transcribe({
+  model: gladia.transcription(),
+  audio: await readFile('audio.mp3'),
+});
 
-<InstallPackages packages="@ai-sdk/gladia" />
+console.log(text);
+```
+
+该示例会转录项目中的 `audio.mp3` 文件。
+
+## 使用 AI Gateway
+
+当前的 [AI Gateway 模型目录](https://vercel.com/ai-gateway/models)未列出 Gladia 模型。本页介绍的 API 请使用 `@ai-sdk/gladia`。若要通过 Gateway 使用其他转录模型，请安装 `ai` 并配置 Gateway API 密钥：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+支持的模型和 API 请参见 [Gateway 文档](/providers/ai-sdk-providers/ai-gateway)。
+
+## 使用 `@ai-sdk/gladia`
+
+如需直接访问 Gladia，请安装 `ai` 和 `@ai-sdk/gladia`：
+
+<InstallPackages packages="ai @ai-sdk/gladia" />
+
+在 `GLADIA_API_KEY` 环境变量中设置你的 Gladia API 凭据：
+
+```bash
+export GLADIA_API_KEY=your_api_key_here
+```
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/gladia` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/gladia` 导入默认提供商实例 `gladia`：
+你可以从 `@ai-sdk/gladia` 导入默认的提供商实例 `gladia`：
 
 ```ts
 import { gladia } from '@ai-sdk/gladia';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/gladia` 导入 `createGladia` 并使用你的设置创建提供商实例：
+如果需要自定义设置，可以从 `@ai-sdk/gladia` 导入 `createGladia`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createGladia } from '@ai-sdk/gladia';
@@ -37,7 +80,7 @@ const gladia = createGladia({
 - **apiKey** _string_
 
   通过 `Authorization` 请求头发送的 API 密钥。
-  默认为 `GLADIA_API_KEY` 环境变量。
+  默认使用 `GLADIA_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -58,7 +101,7 @@ const gladia = createGladia({
 const model = gladia.transcription();
 ```
 
-你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `summarization` 选项将为内容片段启用摘要。
+你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `summarization` 选项将为内容各部分启用摘要。
 
 ```ts highlight="7"
 import { transcribe } from 'ai';
@@ -86,12 +129,12 @@ const result = await transcribe({
 
 - **contextPrompt** _string_
 
-  提供给转录模型的上下文，以获得可能更好的准确性。
+  提供给转录模型的上下文，可能有助于提高准确度。
   可选。
 
 - **customVocabulary** _boolean | any[]_
 
-  用于提高转录准确性的自定义词汇表。
+  用于提高转录准确度的自定义词汇表。
   可选。
 
 - **customVocabularyConfig** _object_
@@ -124,7 +167,7 @@ const result = await transcribe({
 
 - **callback** _boolean_
 
-  转录完成时启用回调。
+  在转录完成时启用回调。
   可选。
 
 - **callbackConfig** _object_
@@ -136,7 +179,7 @@ const result = await transcribe({
 
 - **subtitles** _boolean_
 
-  从转录生成字幕。
+  根据转录生成字幕。
   可选。
 
 - **subtitlesConfig** _object_
@@ -166,7 +209,7 @@ const result = await transcribe({
 
 - **translation** _boolean_
 
-  启用转录的翻译。
+  启用转录内容的翻译。
   可选。
 
 - **translationConfig** _object_
@@ -179,7 +222,7 @@ const result = await transcribe({
 
 - **summarization** _boolean_
 
-  启用转录的摘要。
+  启用转录内容的摘要。
   可选。
 
 - **summarizationConfig** _object_
@@ -200,12 +243,12 @@ const result = await transcribe({
 
 - **chapterization** _boolean_
 
-  启用转录的章节划分。
+  启用转录内容的章节划分。
   可选。
 
 - **nameConsistency** _boolean_
 
-  启用转录中的名称一致性。
+  启用转录内容中的名称一致性。
   可选。
 
 - **customSpelling** _boolean_
@@ -248,7 +291,7 @@ const result = await transcribe({
 
 - **customMetadata** _Record&lt;string, any&gt;_
 
-  要包含在请求中的自定义元数据。
+  随请求包含的自定义元数据。
   可选。
 
 - **sentences** _boolean_

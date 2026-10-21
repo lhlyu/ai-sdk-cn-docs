@@ -1,19 +1,61 @@
 ---
 title: "Moonshot AI"
-description: "了解如何在 AI SDK 中使用 Moonshot AI 模型。"
+description: "了解如何在 AI Gateway 和直接提供商中使用 Moonshot AI。"
 ---
 
 # Moonshot AI 提供商
 
 [Moonshot AI](https://www.moonshot.ai) 提供商通过 Moonshot API 提供对强大语言模型的访问，包括具备推理能力的 Kimi 系列模型。
+你可以通过 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（推荐）使用 Moonshot AI 模型，或使用 `@ai-sdk/moonshotai` 直接连接。
+
+```ts provider="moonshotai" model="moonshotai/kimi-k3"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+
+console.log(text);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供对跨提供商模型的访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+Gateway 的功能和提供商选项支持取决于模型以及处理请求的提供商。请参阅 [Gateway 提供商选项](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options)。
+
+## 使用 `@ai-sdk/moonshotai`
+
+如需直接访问 Moonshot AI，请安装 `ai` 和 `@ai-sdk/moonshotai`：
+
+<InstallPackages packages="ai @ai-sdk/moonshotai" />
+
+在 `MOONSHOT_API_KEY` 环境变量中设置你的 Moonshot AI API 凭据：
+
+```bash
+export MOONSHOT_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未暴露 `@ai-sdk/moonshotai` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/moonshotai` 提供商，包括其模型工厂和设置。Gateway 的模型和功能可用性可能有所不同。
+</Note>
 
 API 密钥可从 [Kimi API 平台](https://platform.kimi.ai/console/api-keys)获取。
-
-## 设置
-
-Moonshot AI 提供商通过 `@ai-sdk/moonshotai` 模块提供。你可以使用以下命令安装：
-
-<InstallPackages packages="@ai-sdk/moonshotai" />
 
 ## 提供商实例
 
@@ -23,7 +65,7 @@ Moonshot AI 提供商通过 `@ai-sdk/moonshotai` 模块提供。你可以使用�
 import { moonshotai } from '@ai-sdk/moonshotai';
 ```
 
-如需自定义配置，你可以导入 `createMoonshotAI` 并使用你的设置创建提供商实例：
+如需自定义配置，可以导入 `createMoonshotAI` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createMoonshotAI } from '@ai-sdk/moonshotai';
@@ -42,12 +84,12 @@ const moonshotai = createMoonshotAI({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  通过 `Authorization` 标头发送的 API 密钥。默认使用
   `MOONSHOT_API_KEY` 环境变量
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头
+  要包含在请求中的自定义标头
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -76,7 +118,7 @@ const model = moonshotai.languageModel('kimi-k3');
 ```
 
 Moonshot AI 语言模型可用于 `streamText` 函数
-（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+（请参阅 [AI SDK Core](/docs/ai-sdk-core)）。
 
 Moonshot V1 模型支持标准的 `temperature`、`topP`、
 `presencePenalty` 和 `frequencyPenalty` 设置。Kimi 模型使用固定的
@@ -89,9 +131,9 @@ Kimi K3 支持 `toolChoice: 'required'`。Kimi K2.6 和 Kimi K2.7 Code
 
 #### 结构化输出
 
-所有模型 ID 都启用了原生结构化输出，包括 Kimi K
+所有模型 ID 均启用原生结构化输出，包括 Kimi K
 模型、官方 Moonshot V1 文本、auto 和视觉模型，以及自定义或
-未来的模型 ID。
+未来模型 ID。
 
 提供商将 schema 规范化为 Moonshot 支持的 JSON Schema 子集，并
 默认启用严格的 schema 验证。
@@ -102,7 +144,7 @@ Kimi K3 支持 `toolChoice: 'required'`。Kimi K2.6 和 Kimi K2.7 Code
 ### 消息名称
 
 Moonshot AI 支持在 system、user 和 assistant
-消息上使用可选参与者名称。在应包含名称的每条消息上设置 `providerOptions.moonshotai.name`：
+消息上使用可选的参与者名称。在应包含名称的每条消息上设置 `providerOptions.moonshotai.name`：
 
 ```ts
 import {
@@ -127,15 +169,15 @@ const { text } = await generateText({
 });
 ```
 
-同样的选项也适用于 `streamText`。未设置时会省略名称。提供商
+同一选项也适用于 `streamText`。未设置时会省略名称。提供商
 会忽略工具消息上的名称并返回不支持警告。
 避免在消息名称中包含不必要的个人或身份识别信息。
 
 ### 部分模式
 
-Moonshot AI 的 [部分模式](https://platform.moonshot.ai/docs/api/partial)
-会续写最终 assistant 消息的内容。在该
-assistant 消息的提供商选项中设置 `partial: true`：
+Moonshot AI 的[部分模式](https://platform.moonshot.ai/docs/api/partial)
+会续写最终 assistant 消息的内容。在该 assistant 消息的提供商选项中
+设置 `partial: true`：
 
 ```ts
 import {
@@ -168,8 +210,8 @@ const { text } = await generateText({
 const completeResponse = prefix + text;
 ```
 
-部分消息必须是提示词中的最终 assistant 消息。Moonshot
-只返回续写内容，因此当你需要完整响应时，请将前缀与生成的文本
+部分消息必须是提示词中的最后一条 assistant 消息。Moonshot
+只返回续写内容，因此当你需要完整响应时，请将前缀和生成的文本
 拼接起来。
 
 <Note>
@@ -181,10 +223,10 @@ const completeResponse = prefix + text;
 
 ### Kimi K3 动态工具加载
 
-Kimi K3 可以在对话中的任意位置加载完整的函数工具定义。
-将 `tools` 添加到空 system 消息的 Moonshot 提供商选项中。提供商
-会发送不带 `content` 字段的 `{ role: 'system', tools: [...] }`，并应用与
-顶层工具相同的 Moonshot Flavored JSON Schema 规范化。
+Kimi K3 可以在对话中的任意位置加载完整的函数工具定义。在空的 system
+消息的 Moonshot 提供商选项中添加 `tools`。提供商发送
+`{ role: 'system', tools: [...] }`，不带 `content` 字段，并应用与顶层工具
+相同的 Moonshot Flavored JSON Schema 规范化。
 
 ```ts
 import {
@@ -227,12 +269,12 @@ const result = await generateText({
 ```
 
 每个条目都必须包含其完整的函数定义。顶层工具和
-动态加载的工具可以在同一请求中使用。已知不支持的
+动态加载的工具可以在同一请求中使用。已知不受支持的
 官方模型会省略动态消息并返回不支持警告；
-自定义模型 ID 会保留该消息以实现向前兼容。
+自定义模型 ID 会保留该消息以保持向前兼容。
 
 <Note>
-  请将动态 system 消息保存在受信任的服务端状态中。工具名称、
+  请将动态 system 消息保存在可信的服务器端状态中。工具名称、
   描述和 schema 会发送给 Moonshot 并消耗上下文。动态
   声明是请求局部的，因此当这些工具应保持可用时，请在后续
   请求中保留先前的声明。追加消息也比重写先前的声明
@@ -267,8 +309,8 @@ console.log(text);
 ```
 
 Kimi K2.5 和 K2.6 可以启用或禁用思考。Kimi K2.7 始终启用
-思考并保留推理。在多轮 Kimi K2.7 对话中保留推理历史。推理输出
-通过标准 AI SDK 推理部分暴露。
+思考并保留推理。在多轮 Kimi K2.7 对话中保留推理历史。
+推理输出通过标准 AI SDK 推理部分暴露。
 
 ```ts
 import {
@@ -297,13 +339,13 @@ for await (const part of result.fullStream) {
 }
 ```
 
-有关如何将推理集成到聊天机器人中的更多详细信息，请参见 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
+有关如何将推理集成到聊天机器人中的更多详细信息，请参阅 [AI SDK UI: Chatbot](/docs/ai-sdk-ui/chatbot#reasoning)。
 
 ### 对数概率
 
 Moonshot AI 可以为 Chat Completions 返回 token 对数概率。设置
-`logprobs` 以请求 token 概率，或设置 `topLogprobs` 以请求
-每个 token 位置最可能的备选项。设置 `topLogprobs`
+`logprobs` 以请求 token 概率，或设置 `topLogprobs` 以请求每个 token 位置
+最可能的备选项。设置 `topLogprobs`
 会自动启用 `logprobs`。
 
 ```ts
@@ -333,20 +375,20 @@ console.log(result.providerMetadata?.moonshotai?.logprobs);
 路径下。
 
 Moonshot 记录了请求选项和 OpenAI Chat Completions
-兼容性，但未单独指定对数概率响应
-schema。因此提供商保留 OpenAI 兼容的 `content`
+兼容性，但没有单独指定对数概率响应
+schema。因此，提供商保留 OpenAI 兼容的 `content`
 条目，包括每个 token 的 `logprob`、可为空的 `bytes` 和
 `top_logprobs`。
 
 <Note>
   Token 概率和备选项可能会显著增加响应大小。
-  仅在需要时请求它们，并且除非你的应用程序需要，
-  否则避免转发或持久记录提供商元数据。
+  仅在需要时请求它们，并避免转发或持久记录
+  提供商元数据，除非你的应用程序需要这样做。
 </Note>
 
 ### 视频输入
 
-Kimi K3、Kimi K2.7 Code、Kimi K2.6 和 Kimi K2.5 支持视频输入。将视频作为带有视频媒体类型的 `file` 内容部分传入：
+Kimi K3、Kimi K2.7 Code、Kimi K2.6 和 Kimi K2.5 支持视频输入。将视频作为 `file` 内容部分传入，并指定视频媒体类型：
 
 ```ts
 import { moonshotai } from '@ai-sdk/moonshotai';
@@ -373,7 +415,7 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-你也可以传入 URL。由于 Moonshot AI 不会获取外部 URL，AI SDK 会在发送前下载视频并将其内联为 base64：
+你也可以传入 URL。由于 Moonshot AI 不获取外部 URL，AI SDK 会在发送前下载视频并将其内联为 base64：
 
 ```ts
 {
@@ -392,9 +434,9 @@ console.log(text);
 </Note>
 
 <Note>
-  Moonshot AI 建议视频最高为 1080p。对于更大的视频，或你在许多请求中
+  Moonshot AI 建议视频最高为 1080p。对于更大的视频，或在许多请求中
   重复使用的视频，请改用 [Moonshot Files
-  API](https://platform.kimi.ai/docs/api/files) 上传它们。Moonshot AI chat completions
+  API](https://platform.kimi.ai/docs/api/files) 上传。Moonshot AI chat completions
   不支持音频和 PDF 输入。
 </Note>
 
@@ -433,8 +475,7 @@ console.log(text);
 ### 预测输出
 
 当预期响应的大部分内容已知时，你可以提供静态预测内容。
-Moonshot AI 可以使用该预测来加速响应，同时仍然生成任何
-更改的内容：
+Moonshot AI 可以使用该预测来加速响应，同时仍然生成任何变化的内容：
 
 ```ts
 import {
@@ -491,12 +532,12 @@ prediction: {
 
 ### 提供商选项
 
-以下可选提供商选项适用于 Moonshot AI 语言模型：
+Moonshot AI 语言模型提供以下可选提供商选项：
 
 - **strictJsonSchema** _boolean_
 
-  是否对结构化输出使用严格的 JSON schema 验证。默认
-  为 `true`。
+  是否对结构化输出使用严格的 JSON schema 验证。默认为
+  `true`。
 
 - **logprobs** _boolean_
 
@@ -505,7 +546,7 @@ prediction: {
 
 - **topLogprobs** _number_
 
-  每个 token 位置返回的最可能 token 数量。接受
+  在每个 token 位置返回的最可能 token 数量。接受
   从 `0` 到 `20` 的整数值，并自动启用 `logprobs`。
 
 - **reasoningEffort** _'low' | 'high' | 'max'_
@@ -520,34 +561,32 @@ prediction: {
 
 - **thinking** _object_
 
-  Kimi K2.5 和 K2.6 的配置。Kimi K2.7 只接受 `enabled`，
+  Kimi K2.5 和 K2.6 的配置。Kimi K2.7 仅接受 `enabled`，
   因为其思考无法禁用。Kimi K3 不接受此字段。
   - **type** _'enabled' | 'disabled'_
 
-    是否启用思考模式。对于 Kimi K2.7 Code，只接受
-    `'enabled'`。
+    是否启用思考模式。对于 Kimi K2.7 Code，仅接受 `'enabled'`。
 
   - **budgetTokens** _number_
 
     已弃用。Moonshot Chat Completions 不支持思考预算。
-    提供商省略此值并返回警告。为向后兼容
-    仍接受此值。
+    提供商会省略此值并返回警告。为向后兼容仍接受该值。
 
 - **reasoningHistory** _'disabled' | 'interleaved' | 'preserved'_
 
   控制多轮对话中保留推理的行为：
-  - `'disabled'` 和 `'interleaved'` 为兼容性而保留。它们
-    不会更改请求，因此会应用模型的服务器默认行为。
+  - `'disabled'` 和 `'interleaved'` 为兼容性保留。它们
+    不会改变请求，因此会应用模型的服务器默认行为。
   - `'preserved'` 对于 Kimi K2.6 映射为 `thinking.keep: 'all'`。Kimi K2.7 和
     K3 默认保留推理。
 
 ### Chat 响应元数据
 
-Moonshot AI 在 `providerMetadata.moonshotai` 中为生成和流式响应
-保留提供商特定的响应字段：
+Moonshot AI 会在
+`providerMetadata.moonshotai` 中为生成和流式响应保留提供商特定的响应字段：
 
 - `responseObject`：`chat.completion` 或 `chat.completion.chunk`
-- `choiceIndex`：所选的响应选项索引
+- `choiceIndex`：所选响应选项索引
 - `messageRole`：响应消息角色（如果提供）
 - `toolCallTypes`：每个返回调用的工具调用类型
 
@@ -557,11 +596,11 @@ Moonshot Chat Completions 响应特有的，而不是共享的 AI SDK 结果字�
 ## 模型能力
 
 Moonshot V1 系列和 Kimi K2.5 对新注册用户不可用，
-并计划于 2026 年 8 月 31 日在平台上全面停用。它们仍然
+并计划于 2026 年 8 月 31 日全面停止平台服务。它们仍被
 列出，因为它们仍是 Chat Completions API 模型范围的一部分，
 但新应用程序应使用 Kimi K3、Kimi K2.7 Code 或 Kimi K2.6。
 
-| 模型                             | 图像输入 | 视频输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| 模型                              | 图像输入 | 视频输入 | 对象生成 | 工具使用 | 工具流式传输 |
 | --------------------------------- | ----------- | ----------- | ----------------- | ---------- | -------------- |
 | `moonshot-v1-auto`                | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
 | `moonshot-v1-8k`                  | <Cross />   | <Cross />   | <Check />         | <Check />  | <Check />      |
@@ -577,7 +616,7 @@ Moonshot V1 系列和 Kimi K2.5 对新注册用户不可用，
 | `kimi-k3`                         | <Check />   | <Check />   | <Check />         | <Check />  | <Check />      |
 
 <Note>
-  有关当前可用性和模型特定约束，请参见 [Kimi 模型列表](https://platform.kimi.ai/docs/models) 和 [模型
-  参数参考](https://platform.kimi.ai/docs/api/models-overview)。你还可以在需要时以字符串形式传入自定义
-  或已停用的提供商模型 ID。
+  有关当前可用性和模型特定约束，请参阅 [Kimi 模型列表](https://platform.kimi.ai/docs/models)和[模型
+  参数参考](https://platform.kimi.ai/docs/api/models-overview)。你还可以在需要时
+  以字符串形式传入自定义或已停用的提供商模型 ID。
 </Note>

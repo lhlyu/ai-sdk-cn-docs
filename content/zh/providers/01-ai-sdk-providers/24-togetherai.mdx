@@ -1,17 +1,62 @@
 ---
 title: "Together.ai"
-description: "了解如何在 AI SDK 中使用 Together.ai 的模型。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 Together.ai。"
 ---
 
 # Together.ai 提供商
 
 [Together.ai](https://together.ai) 提供商通过 [Together.ai API](https://docs.together.ai/reference) 支持 200 多个开源模型。
+对于其目录中的模型，建议从 [AI Gateway](/providers/ai-sdk-providers/ai-gateway) 开始（推荐），或使用 `@ai-sdk/togetherai` 直接连接到 Together.ai。
 
-## 设置
+```ts provider="togetherai" model="deepseek/deepseek-v4-flash-0731"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
 
-Together.ai 提供商通过 `@ai-sdk/togetherai` 模块提供。你可以使用以下命令安装：
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  __GATEWAY_OPTIONS__,
+});
 
-<InstallPackages packages="@ai-sdk/togetherai" />
+console.log(text);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+该示例将 `providerOptions.gateway.order` 设置为 `['togetherai']`。这会首先将请求发送到 Together.ai，如果 Together.ai 不可用或请求失败，则回退到同一模型的其他可用提供商。`order` 设置的是偏好顺序，并不会将回退限制为仅 Together.ai。请参阅[提供商排序](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+下拉列表列出了通过 Gateway 由 Together.ai 提供的模型，并附有相应的直接提供商示例。提供商可用性取决于模型以及你团队的[提供商允许列表](https://vercel.com/docs/ai-gateway/models-and-providers/provider-filtering-and-ordering)。
+
+## 使用 `@ai-sdk/togetherai`
+
+如需直接访问 Together.ai，请安装 `ai` 和 `@ai-sdk/togetherai`：
+
+<InstallPackages packages="ai @ai-sdk/togetherai" />
+
+在 `TOGETHER_API_KEY` 环境变量中设置你的 Together.ai API 凭据：
+
+```bash
+export TOGETHER_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未暴露 `@ai-sdk/togetherai` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/togetherai` 提供商的内容，包括其模型工厂和设置。Gateway 的模型和功能可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
@@ -36,23 +81,23 @@ const togetherai = createTogetherAI({
 - **baseURL** _string_
 
   为 API 调用使用不同的 URL 前缀，例如使用代理服务器。
-  默认前缀是 `https://api.together.xyz/v1`。
+  默认前缀为 `https://api.together.xyz/v1`。
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。默认使用
+  通过 `Authorization` 标头发送的 API 密钥。默认使用
   `TOGETHER_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  请求中包含的自定义请求头。
+  请求中包含的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
   你可以将其用作中间件来拦截请求，
-  或提供自定义 fetch 实现，例如用于测试。
+  或为例如测试提供自定义 fetch 实现。
 
 ## 语言模型
 
@@ -64,8 +109,8 @@ const model = togetherai('google/gemma-2-9b-it');
 
 ### 推理模型
 
-Together.ai 使用 `<think>` 标签在生成的文本中暴露 `deepseek-ai/DeepSeek-R1` 的思考过程。
-你可以使用 `extractReasoningMiddleware` 提取这些推理内容，并将其作为结果上的 `reasoning` 属性暴露：
+Together.ai 会在生成的文本中使用 `<think>` 标签暴露 `deepseek-ai/DeepSeek-R1` 的思考过程。
+你可以使用 `extractReasoningMiddleware` 提取该推理内容，并将其作为结果上的 `reasoning` 属性暴露：
 
 ```ts
 import { togetherai } from '@ai-sdk/togetherai';
@@ -77,7 +122,7 @@ const enhancedModel = wrapLanguageModel({
 });
 ```
 
-然后你可以在 `generateText` 和 `streamText` 等函数中使用这个增强模型。
+然后你可以在 `generateText` 和 `streamText` 等函数中使用该增强模型。
 
 ### 示例
 
@@ -96,31 +141,31 @@ const { text } = await generateText({
 Together.ai 语言模型也可以用于 `streamText` 函数
 （参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
-Together.ai 提供商还通过（遵循上述示例代码）`togetherai.completionModel()` 支持[补全模型](https://docs.together.ai/docs/serverless-models#language-models)，并通过 `togetherai.embeddingModel()` 支持[嵌入模型](https://docs.together.ai/docs/serverless-models#embedding-models)。
+Together.ai 提供商还通过（沿用上述示例代码）`togetherai.completionModel()` 支持[补全模型](https://docs.together.ai/docs/serverless-models#language-models)，并通过 `togetherai.embeddingModel()` 支持[嵌入模型](https://docs.together.ai/docs/serverless-models#embedding-models)。
 
 ## 模型能力
 
-| 模型                                                | 图像输入    | 对象生成    | 工具使用    | 工具流式传输 |
-| --------------------------------------------------- | ----------- | ----------- | ----------- | ------------ |
-| `moonshotai/Kimi-K2.5`                              | <Check />   | <Check />   | <Check />   | <Check />    |
-| `Qwen/Qwen3.5-397B-A17B`                            | <Check />   | <Check />   | <Check />   | <Check />    |
-| `MiniMaxAI/MiniMax-M2.5`                            | <Cross />   | <Check />   | <Check />   | <Check />    |
-| `zai-org/GLM-5`                                     | <Cross />   | <Check />   | <Check />   | <Check />    |
-| `deepseek-ai/DeepSeek-V3.1`                         | <Cross />   | <Check />   | <Check />   | <Check />    |
-| `openai/gpt-oss-120b`                               | <Cross />   | <Check />   | <Check />   | <Check />    |
-| `openai/gpt-oss-20b`                                | <Cross />   | <Check />   | <Check />   | <Check />    |
-| `meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8` | <Check />   | <Check />   | <Check />   | <Check />    |
+| 模型                                                | 图像输入 | 对象生成 | 工具使用 | 工具流式传输 |
+| --------------------------------------------------- | ----------- | ----------------- | ---------- | -------------- |
+| `moonshotai/Kimi-K2.5`                              | <Check />   | <Check />         | <Check />  | <Check />      |
+| `Qwen/Qwen3.5-397B-A17B`                            | <Check />   | <Check />         | <Check />  | <Check />      |
+| `MiniMaxAI/MiniMax-M2.5`                            | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `zai-org/GLM-5`                                     | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `deepseek-ai/DeepSeek-V3.1`                         | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `openai/gpt-oss-120b`                               | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `openai/gpt-oss-20b`                                | <Cross />   | <Check />         | <Check />  | <Check />      |
+| `meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8` | <Check />   | <Check />         | <Check />  | <Check />      |
 
 <Note>
-  上表列出了热门模型。请查看 [Together.ai
-  文档](https://docs.together.ai/docs/serverless-models)获取可用模型的完整列表。
+  上表列出了热门模型。请参阅 [Together.ai
+  文档](https://docs.together.ai/docs/serverless-models)以获取可用模型的完整列表。
   如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传入。
 </Note>
 
 ## 图像模型
 
 你可以使用 `.image()` 工厂方法创建 Together.ai 图像模型。
-有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ```ts
 import { togetherai } from '@ai-sdk/togetherai';
@@ -158,7 +203,7 @@ const { images } = await generateImage({
 
 - **steps** _number_
 
-  生成步数。更高的值可以提高质量。
+  生成步数。较高的值可以提高质量。
 
 - **guidance** _number_
 
@@ -166,21 +211,20 @@ const { images } = await generateImage({
 
 - **negative_prompt** _string_
 
-  用于指导应避免内容的负面提示词。
+  用于引导应避免内容的负面提示词。
 
 - **disable_safety_checker** _boolean_
 
   禁用图像生成的安全检查器。
   当为 true 时，API 将不会拒绝被标记为可能 NSFW 的图像。
-  不适用于 Flux Schnell Free 和 Flux Pro 模型。
+  Flux Schnell Free 和 Flux Pro 模型不支持此选项。
 
 ### 图像编辑
 
 Together AI 通过 FLUX Kontext 模型支持图像编辑。通过 `prompt.images` 传入输入图像以转换或编辑现有图像。
 
 <Note>
-  Together AI 不支持基于蒙版的图像修复。请改用描述性
-  提示词来指定你想要在图像中更改的内容。
+  Together AI 不支持基于蒙版的修复。请改用描述性提示词来指定你希望在图像中更改的内容。
 </Note>
 
 #### 基本图像编辑
@@ -227,19 +271,18 @@ const { images } = await generateImage({
 
 <Note>
   输入图像可以提供为 `Buffer`、`ArrayBuffer`、`Uint8Array`、
-  base64 编码字符串或 URL。Together AI 每个请求仅支持单个输入
-  图像。
+  base64 编码字符串或 URL。Together AI 每次请求仅支持一张输入图像。
 </Note>
 
 #### 支持的图像编辑模型
 
 | 模型                                   | 描述                                             |
-| -------------------------------------- | ------------------------------------------------ |
-| `black-forest-labs/FLUX.1-kontext-pro` | 生产质量，速度均衡                               |
-| `black-forest-labs/FLUX.1-kontext-max` | 最高图像保真度                                   |
-| `black-forest-labs/FLUX.1-kontext-dev` | 用于开发和实验                                   |
-| `black-forest-labs/FLUX.2-pro`         | 高保真单图像编辑                                 |
-| `black-forest-labs/FLUX.2-flex`        | 可调节步数和引导的单图像编辑                     |
+| -------------------------------------- | ------------------------------------------------------- |
+| `black-forest-labs/FLUX.1-kontext-pro` | 生产质量，速度均衡                      |
+| `black-forest-labs/FLUX.1-kontext-max` | 最高图像保真度                                  |
+| `black-forest-labs/FLUX.1-kontext-dev` | 用于开发和实验                         |
+| `black-forest-labs/FLUX.2-pro`         | 高保真单图像编辑                      |
+| `black-forest-labs/FLUX.2-flex`        | 支持可调步数和引导的单图像编辑 |
 
 对于这些模型，`supportsFileInputs` 报告为 `true`，`supportsMaskInputs`
 报告为 `false`。提供商将第一个标准化图像输入作为
@@ -249,9 +292,9 @@ const { images } = await generateImage({
 
 ### 模型能力
 
-Together.ai 图像模型支持各种因模型而异的图像尺寸。常见尺寸包括 512x512、768x768 和 1024x1024，部分模型支持高达 1792x1792。默认尺寸为 1024x1024。
+Together.ai 图像模型支持因模型而异的各种图像尺寸。常见尺寸包括 512x512、768x768 和 1024x1024，部分模型最高支持 1792x1792。默认尺寸为 1024x1024。
 
-| 可用模型                                   |
+| 可用模型                           |
 | ------------------------------------------ |
 | `stabilityai/stable-diffusion-xl-base-1.0` |
 | `black-forest-labs/FLUX.1-dev`             |
@@ -268,15 +311,14 @@ Together.ai 图像模型支持各种因模型而异的图像尺寸。常见尺�
 | `black-forest-labs/FLUX.1-kontext-dev`     |
 
 <Note>
-  请查看 [Together.ai 模型
-  页面](https://docs.together.ai/docs/serverless-models#image-models)获取可用图像模型及其能力的完整
-  列表。
+  请参阅 [Together.ai 模型
+  页面](https://docs.together.ai/docs/serverless-models#image-models)以获取可用图像模型及其能力的完整列表。
 </Note>
 
 ## 嵌入模型
 
 你可以使用 `.embeddingModel()` 工厂方法创建 Together.ai 嵌入模型。
-有关使用 AI SDK 的嵌入模型的更多信息，请参见 [embed()](/docs/reference/ai-sdk-core/embed)。
+有关使用 AI SDK 的嵌入模型的更多信息，请参阅 [embed()](/docs/reference/ai-sdk-core/embed)。
 
 ```ts
 import { togetherai } from '@ai-sdk/togetherai';
@@ -291,20 +333,20 @@ const { embedding } = await embed({
 ### 模型能力
 
 | 模型                                      | 维度       | 最大 Token 数 |
-| ----------------------------------------- | ---------- | ------------- |
-| `BAAI/bge-large-en-v1.5`                  | 1024       | 512           |
-| `Alibaba-NLP/gte-modernbert-base`         | 768        | 8192          |
-| `intfloat/multilingual-e5-large-instruct` | 1024       | 514           |
+| ----------------------------------------- | ---------- | ---------- |
+| `BAAI/bge-large-en-v1.5`                  | 1024       | 512        |
+| `Alibaba-NLP/gte-modernbert-base`         | 768        | 8192       |
+| `intfloat/multilingual-e5-large-instruct` | 1024       | 514        |
 
 <Note>
-  有关可用嵌入模型的完整列表，请参见 [Together.ai 模型
+  有关可用嵌入模型的完整列表，请参阅 [Together.ai 模型
   页面](https://docs.together.ai/docs/serverless-models#embedding-models)。
 </Note>
 
 ## 重排序模型
 
 你可以使用 `.reranking()` 工厂方法创建 Together.ai 重排序模型。
-有关使用 AI SDK 进行重排序的更多信息，请参见 [rerank()](/docs/reference/ai-sdk-core/rerank)。
+有关使用 AI SDK 进行重排序的更多信息，请参阅 [rerank()](/docs/reference/ai-sdk-core/rerank)。
 
 ```ts
 import { togetherai } from '@ai-sdk/togetherai';

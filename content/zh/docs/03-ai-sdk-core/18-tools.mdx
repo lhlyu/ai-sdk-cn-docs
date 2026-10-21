@@ -1,0 +1,153 @@
+---
+title: "工具"
+description: "使用第一方 AI SDK 工具为智能体和应用添加能力。"
+---
+
+# 工具
+
+AI SDK 为智能体和应用提供第一方工具。每个工具都包含其输入 schema、面向模型的描述以及执行逻辑，可直接与 `generateText`、`streamText` 或 `ToolLoopAgent` 配合使用。这些工具可与任何支持函数调用的模型配合使用。
+
+从各自的 `@ai-sdk/tool-*` 包中安装工具。
+
+有关定义自己的工具和配置工具执行的信息，请参阅
+[工具与工具调用](/docs/ai-sdk-core/tools-and-tool-calling)。
+
+## Bash 工具
+
+`experimental_createBashTool` 让智能体运行 Bash 命令来搜索、分析和转换文件。
+提供一个 `Experimental_SandboxSession` 来选择命令运行的位置。使用
+`@ai-sdk/sandbox-just-bash` 获得内存环境，
+使用 `@ai-sdk/sandbox-vercel` 获得 Vercel Sandbox，或使用你自己的实现。
+该工具不直接依赖任一运行时。
+
+### 安装
+
+安装该工具以及你想使用的沙箱适配器。以下示例
+使用 just-bash：
+
+```sh
+pnpm add ai @ai-sdk/tool-bash @ai-sdk/sandbox-just-bash
+```
+
+需要 Node.js 22.13 或更高版本。
+
+### 用法
+
+```ts
+import { createJustBashNetworkSandboxSession } from '@ai-sdk/sandbox-just-bash';
+import { experimental_createBashTool as createBashTool } from '@ai-sdk/tool-bash';
+import { generateText, isStepCount } from 'ai';
+
+const session = await createJustBashNetworkSandboxSession();
+
+try {
+  const sandbox = session.restricted();
+  await sandbox.writeTextFile({
+    path: 'notes.txt',
+    content: 'Apples: 10\nPears: 20\n',
+  });
+  const bash = await createBashTool({ sandbox });
+
+  const result = await generateText({
+    model, // Your configured model with function calling support.
+    tools: { bash },
+    stopWhen: isStepCount(5),
+    prompt: 'Read notes.txt and write a summary to summary.txt.',
+  });
+
+  console.log(result.text);
+  console.log(await sandbox.readTextFile({ path: 'summary.txt' }));
+} finally {
+  await session.destroy();
+}
+```
+
+### Vercel Sandbox
+
+安装 `@ai-sdk/sandbox-vercel` 和 `@vercel/sandbox` 以使用现有的原生
+Vercel Sandbox。在将其传递给工具之前，先用适配器包装它：
+
+```ts
+import { createVercelSandboxSessionFromNativeSandbox } from '@ai-sdk/sandbox-vercel';
+import { experimental_createBashTool as createBashTool } from '@ai-sdk/tool-bash';
+import { Sandbox } from '@vercel/sandbox';
+
+const nativeSandbox = await Sandbox.create();
+
+try {
+  const sandbox = createVercelSandboxSessionFromNativeSandbox(nativeSandbox);
+  await sandbox.writeTextFile({
+    path: 'notes.txt',
+    content: 'Hello from Vercel Sandbox',
+  });
+  const bash = await createBashTool({ sandbox });
+
+  // Use bash with generateText, streamText, or ToolLoopAgent here.
+} finally {
+  await nativeSandbox.stop();
+}
+```
+
+你也可以使用 `@ai-sdk/sandbox-vercel` 中的
+`createVercelNetworkSandboxSession()` 创建托管会话，并传入
+`session.restricted()`。对于现有的原生 just-bash `Sandbox`，使用
+`@ai-sdk/sandbox-just-bash` 中的 `createJustBashSandboxSessionFromNativeSandbox()`。
+原始运行时实例需要各自的适配器；自定义的
+`Experimental_SandboxSession` 可以直接传入。
+
+### 选项
+
+`experimental_createBashTool()` 需要一个选项对象：
+
+| 选项               | 类型                          | 描述                                                                                                                          |
+| ------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `sandbox`          | `Experimental_SandboxSession` | 用于命令执行和文件操作的必需会话。                                                                                            |
+| `workingDirectory` | `string`                      | 每个命令的可选绝对起始目录，如需要则创建。省略时，使用沙箱的默认目录。                                                        |
+| `maxOutputLength`  | `number`                      | 正整数，限制每个输出流在截断提示之前保留的字符数。默认为 `30000`。                                                            |
+| `timeout`          | `number`                      | 每次命令执行的可选超时时间，以毫秒为单位（`1` 到 `2147483647` 的整数）。默认没有工具级超时。                                  |
+
+模型使用 `{ command: string }` 调用该工具，并接收
+`{ stdout, stderr, exitCode }`。非零退出码会被返回，以便模型可以
+检查失败并进行恢复。AI SDK 的取消操作会转发到会话。
+输出截断在执行之后发生，不会限制执行内存或
+持续时间。
+
+### 命令超时
+
+设置 `timeout` 以取消运行时间超过配置时长的命令：
+
+```ts
+const bash = await createBashTool({
+  sandbox,
+  timeout: 10_000,
+});
+```
+
+每个命令在其执行开始时获得一个新的超时。这不包括
+工具初始化或等待模型输出或批准的时间。
+该超时与调用方的中止信号结合使用；任一者都可以取消
+命令。沙箱必须遵守取消操作。其结果或错误会被
+传递；例如，当正在运行的命令被取消时，just-bash 返回退出码 `124`。
+省略此选项时，SDK 和沙箱超时仍然适用。
+
+### 文件与生命周期
+
+除非提供了 `workingDirectory`，否则命令使用沙箱的默认工作目录。
+在没有覆盖的情况下，创建工具不会运行任何设置命令。
+在运行工具之前，通过 `sandbox.writeTextFile({ path, content })` 预置文件。
+使用显式工作目录时，使用绝对路径将文件写入该目录。
+
+沙箱控制命令可以访问哪些文件。可用的程序、网络
+访问、shell 状态和持久性取决于所提供的沙箱。其
+描述会包含在工具的指令中。
+
+使用同一会话的工具共享文件。创建工具不会重置现有
+文件或创建新的沙箱。为独立的工作流使用单独的会话。
+调用方负责创建、重新连接和销毁沙箱。
+
+`experimental_createBashTool()` 直接返回工具，可直接用作 `tools: { bash }`。
+使用所提供沙箱的 `readTextFile({ path })` 读取生成的文本文件；
+如果文件缺失，则返回 `null`。相对读取路径取决于
+沙箱适配器；just-bash 会根据其默认目录解析它们。使用
+显式工作目录时，使用绝对路径从该目录读取文件。
+同一会话还提供其他文件操作。

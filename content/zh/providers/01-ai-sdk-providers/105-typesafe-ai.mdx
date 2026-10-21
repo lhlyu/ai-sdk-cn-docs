@@ -1,21 +1,69 @@
 ---
 title: "TypeSafe"
-description: "使用 TypeSafe System One 模型，通过 AI SDK 进行类型化决策。"
+description: "了解如何在 AI Gateway 和直接提供商中使用 TypeSafe。"
 ---
 
 # TypeSafe 提供商
 
-[TypeSafe](https://typesafe.ai) 提供商支持实验性决策 API，原生支持 Choice、Score 和 Boolean 答案。它会在一次请求中针对同一状态发送所有问题。
+[TypeSafe](https://typesafe.ai) 提供商支持实验性的决策 API，原生支持 Choice、Score 和 Boolean 答案。它针对同一状态在一个请求中发送所有问题。
+你可以通过 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（推荐）使用 TypeSafe 模型，或使用 `@ai-sdk/typesafe-ai` 直接连接。
 
-## 设置
+```ts provider="typesafe-ai" model="typesafe-ai/jev"
+import { experimental_decide } from 'ai';
+__PROVIDER_IMPORT__;
 
-安装提供商：
+const result = await experimental_decide({
+  model: __DECISION_MODEL__,
+  state: 'I was charged twice. Please refund the duplicate.',
+  questions: {
+    requestsRefund: {
+      type: 'boolean',
+      instructions: 'Is the customer requesting money back?',
+    },
+  },
+});
 
-```sh
-pnpm add @ai-sdk/typesafe-ai
+console.log(result.answers.requestsRefund.probability);
 ```
 
-设置 `TYPESAFE_AI_API_KEY` 环境变量。导入默认提供商或配置一个实例：
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供对跨提供商模型的访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+Gateway 的功能和提供商选项支持取决于模型以及处理请求的提供商。请参阅 [Gateway 提供商选项](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options)。
+
+## 使用 `@ai-sdk/typesafe-ai`
+
+如需直接访问 TypeSafe，请安装 `ai` 和 `@ai-sdk/typesafe-ai`：
+
+<InstallPackages packages="ai @ai-sdk/typesafe-ai" />
+
+在 `TYPESAFE_AI_API_KEY` 环境变量中设置你的 TypeSafe API 凭据：
+
+```bash
+export TYPESAFE_AI_API_KEY=your_api_key_here
+```
+
+如需使用自定义的 TypeSafe 兼容端点或直接进行 TypeSafe 身份验证，请使用直接提供商。两个示例都使用实验性的 `experimental_decide` API。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/typesafe-ai` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
+
+导入默认提供商或配置一个实例：
 
 ```ts
 import { createTypeSafeAi, typeSafeAi } from '@ai-sdk/typesafe-ai';
@@ -34,13 +82,16 @@ const customTypeSafe = createTypeSafeAi({
 | `headers` | 额外的请求头。                                                         |
 | `fetch`   | 自定义 fetch 实现。                                                    |
 
-使用 `TYPESAFE_AI_BASE_URL` 将默认的 `typeSafeAi` 实例路由到受信任的代理或自托管的 TypeSafe 兼容服务器：
+使用 `TYPESAFE_AI_BASE_URL` 将默认的 `typeSafeAi` 实例路由到
+受信任的代理或自托管的 TypeSafe 兼容服务器：
 
 ```sh
 TYPESAFE_AI_BASE_URL=http://127.0.0.1:8766/v1
 ```
 
-传递给 `createTypeSafeAi` 的显式 `baseURL` 优先于环境变量。配置的服务器会接收 API 密钥和决策状态，并且必须实现 TypeSafe 的 `POST /systemone` API。
+传递给 `createTypeSafeAi` 的显式 `baseURL` 优先于
+环境变量。配置的服务器会接收 API 密钥和决策
+状态，并且必须实现 TypeSafe 的 `POST /systemone` API。
 
 ## 决策
 
@@ -81,7 +132,11 @@ console.log(result.answers.requestsRefund.probability);
 console.log(result.usage);
 ```
 
-使用 `jev-latest` 或其他 TypeSafe 模型 ID。响应中包含实际的模型 ID，例如别名背后解析出的版本。使用模型实例、自定义别名或已注册的提供商。当 `typeSafeAi` 被显式配置为 `globalThis.AI_SDK_DEFAULT_PROVIDER` 时，你可以直接传入 `model: 'jev-latest'`。参见[模型别名与注册表](/docs/ai-sdk-core/decisions#model-aliases-and-registries)。
+使用 `jev-latest` 或其他 TypeSafe 模型 ID。响应中包含实际的
+模型 ID，例如别名背后解析出的版本。可以使用模型实例、
+自定义别名或已注册的提供商。当 `typeSafeAi` 被显式配置
+为 `globalThis.AI_SDK_DEFAULT_PROVIDER` 时，你可以直接传入 `model: 'jev-latest'`。
+请参阅[模型别名和注册表](/docs/ai-sdk-core/decisions#model-aliases-and-registries)。
 
 该提供商包含以下模型 ID 和别名：
 
@@ -90,19 +145,44 @@ console.log(result.usage);
 | `jev-1.13.0`  | Jev 1.13 版本。                                   |
 | `jev-1.14.0`  | Jev 1.14 版本。                                   |
 | `jev-latest`  | 最新稳定版本的别名。                              |
-| `jev-preview` | 最新版本的别名，包括预览版。                      |
+| `jev-preview` | 最新版本（包括预览版）的别名。                    |
 
-| 问题类型  | 原生 TypeSafe 原语 | 限制与语义                                                           |
-| --------- | ------------------ | -------------------------------------------------------------------- |
-| `choice`  | Choice             | 1–255 个选项；选中的选项和完整概率。                                 |
-| `score`   | Score              | 2–10 个有序评分等级；分数值和完整概率。                              |
-| `boolean` | Noul               | 必需的模型估计为 true 的概率。                                       |
+| 问题类型  | 原生 TypeSafe 原语 | 限制和语义                                                              |
+| --------- | ------------------ | ----------------------------------------------------------------------- |
+| `choice`  | Choice             | 1–255 个选项；返回所选选项和完整概率。                                  |
+| `score`   | Score              | 2–10 个有序评分等级；返回分数和完整概率。                               |
+| `box`     | Box                | 四个归一化图像边缘；需要 Jev 1.14 或更高版本以及一张图像。              |
+| `boolean` | Noul               | 必需，由模型估计为真的概率。                                            |
 
-状态、指令和描述除了字符串外，还接受 JSON 对象和数组。描述可以为 `null`。布尔 true/false 条件是可选的。SDK 使用中性名称 `boolean`，并将其映射到 TypeSafe 的 `noul` 字段。
+状态、指令和描述除了字符串外，还接受 JSON 对象和数组。
+描述可以为 `null`。布尔 true/false 条件是可选的。
+SDK 使用中性名称 `boolean`，并将其映射到 TypeSafe 的 `noul` 字段。
+
+### Box 问题
+
+Box 问题用于在图像中定位一个目标，不接受 `criteria`：
+
+```ts
+questions: {
+  target: { type: 'box', instructions: 'The cat in the image' },
+}
+```
+
+按如下所示在 `state` 中发送图像。答案具有
+`type: 'box'` 和一个包含 `top`、`bottom`、`left` 和 `right` 的 `box` 对象。
+每个边缘都是从左上角开始测量的、位于 `[0, 1]` 区间内的分数；
+`left < right` 且 `top < bottom`。置信度可通过
+`result.providerMetadata?.typesafe?.confidence` 获取，以问题 ID 为键。
+
+此功能是实验性的，即使对象不存在也会返回一个 box。
+请同时提出一个 Boolean 问题来检查可见性。请参阅
+[TypeSafe 的 Box 文档](https://docs.typesafe.ai/primitives/box)。
 
 ### 长上下文
 
-默认情况下，Jev 允许每次请求 64k token（状态加上所有问题），每个问题 32k token（状态加上一个问题）。设置 `longContext: true` 可将两个限制都提高到 262k token：
+默认情况下，Jev 允许每个请求 64k token（状态加上所有问题），每个问题 32k
+token（状态加上一个问题）。设置 `longContext: true` 可将
+两个限制都提高到 262k token：
 
 ```ts
 providerOptions: {
@@ -112,9 +192,14 @@ providerOptions: {
 },
 ```
 
-仅当启用此选项时，提供商才会发送 `TypeSafe-Danger-Zone-Long-Context: true`。默认值为 `false`。Jev 1.13 和 1.14 都支持它。TypeSafe 对长上下文收取相同的按 token 价格，但表示它比保持在默认限制内更慢且准确性更低。仅在需要时启用；提供商不会估算 token 数量或自动启用它。参见 [TypeSafe 的上下文文档](https://docs.typesafe.ai/models#context-length)。
+仅当启用此选项时，提供商才会发送 `TypeSafe-Danger-Zone-Long-Context: true`。
+该选项默认为 `false`。Jev 1.13 和 1.14 均支持它。
+TypeSafe 对长上下文收取相同的按 token 价格，但表示它
+比保持在默认限制内更慢且准确性更低。仅在需要时启用；
+提供商不会估算 token 数量或自动启用它。请参阅 [TypeSafe 的上下文文档](https://docs.typesafe.ai/models#context-length)。
 
-`TypeSafeAiDecisionModelOptions` 类型从 `@ai-sdk/typesafe-ai` 导出，用于为请求级选项提供类型。
+`TypeSafeAiDecisionModelOptions` 类型从 `@ai-sdk/typesafe-ai` 导出，
+用于为请求级选项提供类型。
 
 ### 图像输入
 
@@ -131,35 +216,94 @@ const result = await experimental_decide({
       type: 'file',
       mediaType: 'image/png',
       data: readFileSync('cat.png'),
-      providerOptions: {
-        typesafe: { reference: '[animal-photo]' },
-      },
     },
   ],
   questions: {
-    cat: { type: 'boolean', instructions: 'Does [animal-photo] show a cat?' },
+    cat: { type: 'boolean', instructions: 'Does the image show a cat?' },
   },
 });
 ```
 
-提供商将图像作为二进制文件上传到 multipart 请求中，并在存在图像时自动添加 `TypeSafe-Danger-Zone-Images: true`。TypeSafe 目前认为图像支持是实验性的。仅支持 PNG 和 JPEG；其他文件格式会被拒绝。有关图像大小和尺寸限制，参见 [TypeSafe 的图像文档](https://docs.typesafe.ai/images)。
+提供商会在 multipart 请求中将图像作为二进制文件上传，并在存在图像时
+自动添加 `TypeSafe-Danger-Zone-Images: true`。TypeSafe 目前
+将图像支持视为实验性功能。仅支持 PNG 和 JPEG；其他
+文件格式会被拒绝。有关图像大小和尺寸限制，请参阅
+[TypeSafe 的图像文档](https://docs.typesafe.ai/images)。
 
-在文件部分上设置 `providerOptions.typesafe.reference` 以选择其资源引用。你可以在状态文本、问题指令或条件中使用该引用。提供商还会将其插入到状态中文件的位置。省略时，提供商会生成一个随机引用。
+显式引用是可选的。在文件部分上设置 `providerOptions.typesafe.reference`
+以选择其资源引用。省略时，提供商会生成一个
+随机引用。如果状态中已包含该引用，提供商
+会按原样发送状态，因此 JSON 状态保持为对象。否则，它会在状态中
+文件的位置插入该引用。
 
-引用必须非空、包含非空白字符，并且在请求中的图像之间唯一。TypeSafe 会在字符串值中的任何位置替换引用，因此请选择独特的名称（如 `[animal-photo]`）以避免意外匹配。每次出现都会再次插入图像。文件的 `filename` 不影响其引用。
+对于引用在状态、指令或条件中出现的每一次，TypeSafe 都会发送
+图像的另一个副本。要针对一张图像提出多个问题，
+请将其在状态中放置一次，并用反引号按路径引用它，如下所示，
+而不是在每个问题中重复该引用。
 
-`TypeSafeAiFilePartProviderOptions` 类型从 `@ai-sdk/typesafe-ai` 导出，用于为文件级选项提供类型。
+将 `providerOptions.typesafe.insertReference` 设置为 `false`，以仅在
+问题的指令或条件中引用图像的位置发送图像，例如
+用于比较的已知图片。这需要显式的 `reference`。将其
+设置为 `true`，即使状态中已包含该引用也会插入它。
 
-### 舍入值与置信度
+```ts
+const result = await experimental_decide({
+  model: typeSafeAi.decisionModel('jev-latest'),
+  state: [
+    { type: 'json', value: { photo: '[found-dog]' } },
+    {
+      type: 'file',
+      mediaType: 'image/jpeg',
+      data: readFileSync('found-dog.jpg'),
+      providerOptions: { typesafe: { reference: '[found-dog]' } },
+    },
+    {
+      type: 'file',
+      mediaType: 'image/jpeg',
+      data: readFileSync('lost-dog-poster.jpg'),
+      providerOptions: {
+        typesafe: { reference: '[poster]', insertReference: false },
+      },
+    },
+  ],
+  questions: {
+    sameDog: {
+      type: 'boolean',
+      instructions: 'Is the dog in `photo` the same dog as in [poster]?',
+    },
+  },
+});
+```
 
-TypeSafe 返回舍入到两位小数的分数和概率。`result.rounding` 报告此精度，以便 SDK 在检查分布总和和加权平均值时考虑舍入。返回的值保持不变；舍入意味着概率可能不会精确地加起来等于一。
+引用必须非空、包含非空白字符，并且在请求中的所有
+图像之间唯一。TypeSafe 会替换字符串值中任何位置的引用，
+因此请选择独特的名称（如 `[animal-photo]`）以避免意外
+匹配。文件的 `filename` 不会影响其引用。
 
-置信度是单独的 TypeSafe 统计量，可在 `result.providerMetadata.typesafe.confidence[questionId]` 下获取，适用于 Choice 和 Score 答案。布尔概率始终表示 P(true)，而不是对任一结果的置信度。在应用程序代码中选择决策阈值。
+`TypeSafeAiFilePartProviderOptions` 类型从
+`@ai-sdk/typesafe-ai` 导出，用于为文件级选项提供类型。
 
-### 错误与重试
+### 舍入值和置信度
 
-提供商失败使用 `APICallError`，包括验证和身份验证错误。核心会根据 `maxRetries`（默认值：2）重试瞬时故障，例如 `429` 和 `529`。`abortSignal`、请求头和自定义 fetch 会被转发。没有提供商端的重试循环。
+TypeSafe 返回的分数和概率会舍入到两位小数。
+`result.rounding` 报告此精度，以便 SDK 在检查分布总和和加权均值时
+考虑舍入。返回的值保持不变；舍入意味着概率
+相加可能不恰好等于一。
 
-`providerOptions.typesafe` 下的未知请求级条目会产生不支持的选项警告。语言、嵌入和图像模型工厂会抛出 `NoSuchModelError`。
+置信度是 TypeSafe 的一项单独统计量，对于 Choice 和 Score
+答案，可通过 `result.providerMetadata.typesafe.confidence[questionId]` 获取。
+布尔概率始终表示 P(true)，而不是对任一结果的置信度。请在应用程序代码中选择
+决策阈值。
 
-决策模型支持工作流序列化。自定义 fetch 函数不会被序列化；恢复的模型使用默认 fetch 实现。
+### 错误和重试
+
+提供商故障使用 `APICallError`，包括验证和身份验证
+错误。核心会根据 `maxRetries`（默认值：2）重试 `429` 和 `529` 等瞬态故障。
+`abortSignal`、请求头和自定义 fetch 会被转发。没有提供商侧的重试循环。
+
+`providerOptions.typesafe` 下的未知请求级条目会产生
+不支持的选项警告。语言、
+嵌入和图像模型工厂会抛出 `NoSuchModelError`。
+
+决策模型支持工作流序列化。自定义 fetch 函数不会被
+序列化；恢复的模型使用默认 fetch 实现。

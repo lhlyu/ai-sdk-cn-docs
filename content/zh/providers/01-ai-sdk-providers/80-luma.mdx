@@ -1,41 +1,79 @@
 ---
 title: "Luma"
-description: "了解如何将 Luma AI 模型与 AI SDK 结合使用。"
+description: "了解如何设置 Luma 提供商并检查 AI Gateway 的可用性。"
 ---
 
 # Luma 提供商
 
-[Luma AI](https://lumalabs.ai/) 通过其 Dream Machine 平台提供最先进的图像生成模型。这些模型提供超高画质的图像生成，具有卓越的提示词理解能力以及角色一致性和多图像参考支持等独特功能。
+[Luma AI](https://lumalabs.ai/) 通过其 Dream Machine 平台提供最先进的图像生成模型。其模型提供超高质量图像生成，具备卓越的提示词理解能力以及角色一致性和多图像参考支持等独特功能。
+Luma 模型目前无法通过 [AI Gateway](https://vercel.com/ai-gateway/models) 使用，因此开头的示例直接使用 `@ai-sdk/luma`。支持的替代方案请参见下方的[使用 AI Gateway](#using-ai-gateway)。
 
-## 安装
+```ts
+import { generateImage } from 'ai';
+import { luma } from '@ai-sdk/luma';
 
-Luma 提供商可通过 `@ai-sdk/luma` 模块获取。您可以使用以下命令安装：
+const { image } = await generateImage({
+  model: luma.image('photon-1'),
+  prompt: 'A sunlit mountain village in watercolor.',
+});
 
-<InstallPackages packages="@ai-sdk/luma" />
+console.log(image.base64);
+```
+
+## 使用 AI Gateway
+
+当前的 [AI Gateway 模型目录](https://vercel.com/ai-gateway/models)未列出 Luma 模型。本页面的 API 请使用 `@ai-sdk/luma`。如需通过 Gateway 使用其他图像模型，请安装 `ai` 并配置 Gateway API 密钥：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+支持的模型和 API 请参见 [Gateway 文档](/providers/ai-sdk-providers/ai-gateway)。
+
+## 使用 `@ai-sdk/luma`
+
+如需直接访问 Luma，请安装 `ai` 和 `@ai-sdk/luma`：
+
+<InstallPackages packages="ai @ai-sdk/luma" />
+
+在 `LUMA_API_KEY` 环境变量中设置你的 Luma API 凭据：
+
+```bash
+export LUMA_API_KEY=your_api_key_here
+```
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/luma` 提供商的内容，包括其模型工厂和设置。Gateway 的模型和功能可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
-您可以从 `@ai-sdk/luma` 导入默认的提供商实例 `luma`：
+你可以从 `@ai-sdk/luma` 导入默认提供商实例 `luma`：
 
 ```ts
 import { luma } from '@ai-sdk/luma';
 ```
 
-如果您需要自定义设置，可以导入 `createLuma` 并使用您的设置创建提供商实例：
+如果你需要自定义设置，可以导入 `createLuma` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createLuma } from '@ai-sdk/luma';
 
 const luma = createLuma({
-  apiKey: 'your-api-key', // 可选，默认为 LUMA_API_KEY 环境变量
-  baseURL: 'custom-url', // 可选
+  apiKey: 'your-api-key', // optional, defaults to LUMA_API_KEY environment variable
+  baseURL: 'custom-url', // optional
   headers: {
-    /* 自定义请求头 */
-  }, // 可选
+    /* custom headers */
+  }, // optional
 });
 ```
 
-您可以使用以下可选设置来自定义 Luma 提供商实例：
+你可以使用以下可选设置来自定义 Luma 提供商实例：
 
 - **baseURL** _string_
 
@@ -49,18 +87,18 @@ const luma = createLuma({
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  请求中包含的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
-  您可以将其用作中间件来拦截请求，
-  或为测试等场景提供自定义的 fetch 实现。
+  你可以将其用作中间件来拦截请求，
+  或提供自定义 fetch 实现，例如用于测试。
 
 ## 图像模型
 
-您可以使用 `.image()` 工厂方法创建 Luma 图像模型。
-有关使用 AI SDK 进行图像生成的更多信息，请参阅 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
+你可以使用 `.image()` 工厂方法创建 Luma 图像模型。
+有关使用 AI SDK 进行图像生成的更多信息，请参见 [generateImage()](/docs/reference/ai-sdk-core/generate-image)。
 
 ### 基本用法
 
@@ -82,24 +120,24 @@ console.log(`Image saved to ${filename}`);
 
 ### 图像模型设置
 
-您可以使用可选设置自定义生成行为：
+你可以使用可选设置来自定义生成行为：
 
 ```ts
 const { image } = await generateImage({
   model: luma.image('photon-1'),
   prompt: 'A serene mountain landscape at sunset',
   aspectRatio: '16:9',
-  maxImagesPerCall: 1, // 每次 API 调用生成的最大图像数量
+  maxImagesPerCall: 1, // Maximum number of images to generate per API call
   providerOptions: {
     luma: {
-      pollIntervalMillis: 5000, // 检查已完成图像的频率（毫秒）
-      maxPollAttempts: 10, // 超时前的最大轮询尝试次数
+      pollIntervalMillis: 5000, // How often to check for completed images (in ms)
+      maxPollAttempts: 10, // Maximum number of polling attempts before timeout
     },
   } satisfies LumaImageModelOptions,
 });
 ```
 
-由于 Luma 通过异步队列系统处理图像，这些设置允许您调整轮询行为：
+由于 Luma 通过异步队列系统处理图像，这些设置允许你调整轮询行为：
 
 - **maxImagesPerCall** _number_
 
@@ -107,20 +145,20 @@ const { image } = await generateImage({
 
 - **pollIntervalMillis** _number_
 
-  控制图像处理过程中检查 API 以获取已完成图像的频率。默认为 500 毫秒。
+  控制图像处理期间检查 API 以获取已完成图像的频率。默认为 500ms。
 
 - **maxPollAttempts** _number_
 
-  限制等待结果的时间，超时后停止，因为图像生成是异步排队的。默认为 120 次尝试。
+  限制超时前等待结果的时间，因为图像生成是异步排队的。默认为 120 次尝试。
 
 ### 模型能力
 
 Luma 提供两种主要模型：
 
-| 模型               | 描述                                 |
-| ------------------ | ------------------------------------ |
-| `photon-1`         | 高质量图像生成，具有卓越的提示词理解能力 |
-| `photon-flash-1`   | 更快的生成速度，优化速度同时保持质量     |
+| 模型             | 描述                                 |
+| ---------------- | ------------------------------------ |
+| `photon-1`       | 高质量图像生成，具备卓越的提示词理解 |
+| `photon-flash-1` | 更快的生成速度，针对速度优化并保持质量 |
 
 两种模型均支持以下宽高比：
 
@@ -132,23 +170,23 @@ Luma 提供两种主要模型：
 - 9:21
 - 21:9
 
-有关支持宽高比的更多详细信息，请参阅 [Luma 图像生成文档](https://docs.lumalabs.ai/docs/image-generation)。
+有关支持的宽高比的更多详细信息，请参见 [Luma 图像生成文档](https://docs.lumalabs.ai/docs/image-generation)。
 
 Luma 模型的主要功能包括：
 
-- 超高画质图像生成
-- 与同类模型相比，成本效率提高 10 倍
-- 卓越的提示词理解和遵循能力
+- 超高质量图像生成
+- 与同类模型相比，成本效率高 10 倍
+- 卓越的提示词理解与遵循能力
 - 基于单张参考图像的独特角色一致性能力
 - 多图像参考支持，实现精确的风格匹配
 
 ### 图像编辑
 
-Luma 支持多种引用其他图像的生成模式。
+Luma 支持引用其他图像的不同图像生成模式。
 
 #### 修改图像
 
-图像必须以 URL 形式传递。可以在 `providerOptions.luma.images` 数组中为每个图像配置 `weight`。
+图像必须以 URL 形式传递。可以在 `providerOptions.luma.images` 数组中为每张图像配置 `weight`。
 
 ```ts
 await generateImage({
@@ -168,11 +206,11 @@ await generateImage({
 });
 ```
 
-了解更多：https://docs.lumalabs.ai/docs/image-generation#modify-image
+了解更多：https://docs.lumalabs.ai/docs/image-generation#modify-image。
 
-#### 参考图像
+#### 引用图像
 
-使用最多 4 张参考图像来指导生成。适用于创建变体或可视化复杂概念。调整每张图像的 `weight`（0-1）以控制参考图像的影响。
+最多使用 4 张参考图像来引导生成。适用于创建变体或可视化复杂概念。调整每张图像的 `weight`（0-1）以控制参考图像的影响。
 
 ```ts
 await generateImage({
@@ -197,7 +235,7 @@ await generateImage({
 
 #### 风格参考
 
-使用参考图像将特定的视觉风格应用于您的生成。使用 `weight` 参数控制风格影响。
+使用参考图像将特定的视觉风格应用于你的生成结果。使用 `weight` 参数控制风格影响。
 
 ```ts
 await generateImage({
@@ -222,7 +260,7 @@ await generateImage({
 
 #### 角色参考
 
-使用同一主题的最多 4 张参考图像创建一致且个性化的角色。更多参考图像可改善角色表现。
+使用最多 4 张同一主体的参考图像创建一致且个性化的角色。更多参考图像可改善角色表现。
 
 ```ts
 await generateImage({

@@ -8,17 +8,18 @@ description: "了解如何使用 AI SDK 生成结构化数据。"
 虽然文本生成很有用，但你的用例很可能需要生成结构化数据。
 例如，你可能想从文本中提取信息、对数据进行分类，或生成合成数据。
 
-许多语言模型都能够生成结构化数据，通常通过使用 "JSON 模式" 或 "工具" 来实现。
-然而，你需要手动提供 schema，然后验证生成的数据，因为 LLM 可能会产生不正确或不完整的结构化数据。
+许多语言模型能够生成结构化数据，通常通过“JSON 模式”或“工具”来定义。
+但是，你需要手动提供 schema，然后验证生成的数据，因为 LLM 可能会生成不正确或不完整的结构化数据。
 
 AI SDK 通过 [`generateText`](/docs/reference/ai-sdk-core/generate-text)
 和 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 上的 `output` 属性，
-统一了跨模型提供商的结构化对象生成。
-你可以使用 [Zod schema](/docs/reference/ai-sdk-core/zod-schema)、[Valibot](/docs/reference/ai-sdk-core/valibot-schema) 或 [JSON schema](/docs/reference/ai-sdk-core/json-schema) 来指定你想要的数据结构，
+统一了各模型提供商的结构化对象生成方式。
+你可以使用 [Zod schema](/docs/reference/ai-sdk-core/zod-schema)、[Valibot](/docs/reference/ai-sdk-core/valibot-schema) 或 [JSON schema](/docs/reference/ai-sdk-core/json-schema) 来指定所需数据的结构，
 AI 模型将生成符合该结构的数据。
 
 <Note>
-  结构化输出生成是 `generateText` 和 `streamText` 流程的一部分。这意味着你可以在同一个请求中将其与工具调用结合使用。
+  结构化输出生成是 `generateText` 和 `streamText`
+  流程的一部分。这意味着你可以在同一个请求中将其与工具调用结合使用。
 </Note>
 
 ## 生成结构化输出
@@ -49,12 +50,13 @@ const { output } = await generateText({
 ```
 
 <Note>
-  结构化输出生成在 AI SDK 的多轮执行模型中算作一个步骤（其中每次模型调用或工具执行都是一个步骤）。当与工具结合使用时，请在 `stopWhen` 配置中考虑这一点。
+  结构化输出生成在 AI SDK 的多轮执行模型中算作一个步骤（其中每次模型调用或工具执行都是一个步骤）。当
+  与工具结合使用时，请在 `stopWhen` 配置中考虑这一点。
 </Note>
 
 ### 访问响应头和响应体
 
-有时你需要访问来自模型提供商的完整响应，
+有时你需要访问模型提供商的完整响应，
 例如访问某些提供商特定的响应头或响应体内容。
 
 你可以使用 `response` 属性访问原始响应头和响应体：
@@ -73,8 +75,8 @@ console.log(JSON.stringify(result.response.body, null, 2));
 
 ## 流式传输结构化输出
 
-考虑到返回结构化数据的额外复杂性，模型响应时间对于你的交互式用例来说可能难以接受。
-使用 `streamText` 和 `output`，你可以在模型生成结构化响应时对其进行流式传输。
+考虑到返回结构化数据带来的额外复杂性，模型响应时间对于你的交互式用例来说可能无法接受。
+使用 `streamText` 和 `output`，你可以在模型生成结构化响应的同时进行流式传输。
 
 ```ts
 import { streamText, Output } from 'ai';
@@ -107,9 +109,9 @@ for await (const partialObject of partialOutputStream) {
 
 ### 流中的错误处理
 
-`streamText` 会立即开始流式传输。当流式传输过程中发生错误时，它们会成为流的一部分，而不是抛出异常（以防止流崩溃）。
+`streamText` 会立即开始流式传输。当流式传输过程中发生错误时，错误会成为流的一部分，而不是抛出异常（以防止流崩溃）。
 
-要处理错误，请提供一个 `onError` 回调：
+要处理错误，请提供 `onError` 回调：
 
 ```tsx highlight="6-8"
 import { streamText, Output } from 'ai';
@@ -123,7 +125,7 @@ const result = streamText({
 });
 ```
 
-有关 `generateText` 的非流式错误处理，请参阅下面的[错误处理](#error-handling)部分。
+有关 `generateText` 的非流式错误处理，请参阅下方的[错误处理](#error-handling)部分。
 
 ## 输出类型
 
@@ -131,7 +133,7 @@ AI SDK 支持通过 `Output` 对象以多种方式指定生成数据的预期结
 
 ### `Output.text()`
 
-使用 `Output.text()` 从模型生成纯文本。此选项不对结果强制执行任何 schema：你只会收到模型输出的字符串文本。这是未指定 `output` 时的默认行为。
+使用 `Output.text()` 从模型生成纯文本。此选项不会对结果强制任何 schema：你只会收到模型输出的字符串文本。这是未指定 `output` 时的默认行为。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -167,12 +169,13 @@ const { output } = await generateText({
 ```
 
 <Note>
-  通过 `streamText` 流式传输的部分输出无法根据你提供的 schema 进行验证，因为不完整的数据可能尚不符合预期的结构。
+  通过 `streamText` 流式传输的部分输出无法根据你提供的 schema 进行验证，
+  因为不完整的数据可能尚不符合预期结构。
 </Note>
 
 ### `Output.array()`
 
-使用 `Output.array({ element, minItems, maxItems })` 来指定你期望从模型获得一个类型化对象数组。每个元素必须符合 `element` schema，可选的边界约束元素的数量。
+使用 `Output.array({ element, minItems, maxItems })` 指定你期望从模型获得一个类型化对象数组。每个元素必须符合 `element` schema，可选的边界用于约束元素数量。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -198,7 +201,7 @@ const { output } = await generateText({
 // ]
 ```
 
-`minItems` 和 `maxItems` 必须是非负整数，且 `minItems` 不能大于 `maxItems`。对两个选项使用相同的值来要求精确的长度。在支持的情况下，这些边界会作为结构化输出 schema 的一部分发送给提供商，AI SDK 会独立验证最终输出。
+`minItems` 和 `maxItems` 必须是非负整数，且 `minItems` 不能大于 `maxItems`。将两个选项设为相同的值可要求精确长度。在支持的情况下，这些边界会作为结构化输出 schema 的一部分发送给提供商，AI SDK 会独立验证最终输出。
 
 使用 `streamText` 流式传输数组时，你可以使用 `elementStream` 在生成每个完整元素时接收它：
 
@@ -224,12 +227,13 @@ for await (const hero of elementStream) {
 ```
 
 <Note>
-  `elementStream` 发出的每个元素都是完整的，并已根据你的元素 schema 进行验证。这与 `partialOutputStream` 不同，后者流式传输整个部分数组，包括不完整的元素。如果模型生成的元素超过 `maxItems`，`elementStream` 会在发出第一个多余元素之前报错。这不会自动中止提供商的生成，最终的 `output` promise 会被拒绝。
+  `elementStream` 发出的每个元素都是完整的，并已根据你的元素 schema 进行验证。
+  这与 `partialOutputStream` 不同，后者流式传输整个部分数组，包括不完整的元素。如果模型生成的元素超过 `maxItems`，`elementStream` 会在发出第一个多余元素之前报错。这不会自动中止提供商生成，并且最终的 `output` promise 会被拒绝。
 </Note>
 
 ### `Output.choice()`
 
-当你期望模型从一组特定的字符串选项中进行选择时（例如用于分类或固定枚举答案），使用 `Output.choice({ options })`。
+当你期望模型从一组特定的字符串选项中进行选择时（例如用于分类或固定枚举答案），请使用 `Output.choice({ options })`。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -244,13 +248,13 @@ const { output } = await generateText({
 // output will be one of: 'sunny', 'rainy', or 'snowy'
 ```
 
-你可以提供任意一组字符串选项，输出将始终是匹配指定选项之一的单个字符串值。AI SDK 会验证结果是否匹配你的某个选项，如果模型返回无效内容则会抛出错误。
+你可以提供任意一组字符串选项，输出将始终是匹配其中一个指定选项的单个字符串值。AI SDK 会验证结果是否匹配你的某个选项，如果模型返回无效内容则会抛出错误。
 
 这对于进行分类式生成或为 API 兼容性强制使用有效值特别有用。
 
 ### `Output.json()`
 
-当你想要从模型生成并解析非结构化 JSON 值而不强制执行特定 schema 时，使用 `Output.json()`。如果你想捕获任意对象、灵活的结构，或者想依赖模型的自然输出而不是严格的验证，这会很有用。
+当你希望从模型生成并解析非结构化 JSON 值而不强制特定 schema 时，请使用 `Output.json()`。如果你想要捕获任意对象、灵活结构，或者希望依赖模型的自然输出而不是严格验证，这会很有用。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -269,9 +273,9 @@ const { output } = await generateText({
 // }
 ```
 
-使用 `Output.json` 时，AI SDK 只检查响应是否为有效的 JSON；它不会验证值的结构或类型。如果你需要 schema 验证，请改用 `.object` 或 `.array` 输出。
+使用 `Output.json` 时，AI SDK 仅检查响应是否为有效 JSON；它不会验证值的结构或类型。如果你需要 schema 验证，请改用 `.object` 或 `.array` 输出。
 
-有关更高级的验证或不同的结构，请参阅 [Output API 参考](/docs/reference/ai-sdk-core/output)。
+有关更高级的验证或其他结构，请参阅 [Output API 参考](/docs/reference/ai-sdk-core/output)。
 
 ## 使用工具生成结构化输出
 
@@ -306,12 +310,13 @@ const { output } = await generateText({
 ```
 
 <Note>
-  在将工具与结构化输出结合使用时，请记住生成结构化输出算作一个步骤。配置 `stopWhen` 以允许足够的步骤用于工具执行和输出生成。
+  将工具与结构化输出结合使用时，请记住生成结构化输出算作一个步骤。请配置 `stopWhen` 以允许足够的步骤
+  用于工具执行和输出生成。
 </Note>
 
 ## 属性描述
 
-你可以为单个 schema 属性添加 `.describe("...")`，为模型提供关于每个属性用途的提示。这有助于提高生成的结构化数据的质量和准确性：
+你可以为单个 schema 属性添加 `.describe("...")`，向模型提示每个属性的用途。这有助于提高生成结构化数据的质量和准确性：
 
 ```ts highlight="9,16,19-20"
 import { generateText, Output } from 'ai';
@@ -342,8 +347,8 @@ const { output } = await generateText({
 
 属性描述特别适用于：
 
-- 澄清模糊的属性名称
-- 指定预期的格式或约定
+- 澄清有歧义的属性名称
+- 指定预期格式或约定
 - 为复杂的嵌套结构提供上下文
 
 ## 输出名称和描述
@@ -379,7 +384,7 @@ const { output } = await generateText({
 
 ## 访问推理过程
 
-你可以通过结果上的 `reasoningText` 属性访问语言模型用于生成对象的推理过程。如果可用，该属性包含模型思维过程的字符串。
+你可以通过结果上的 `reasoningText` 属性访问语言模型用于生成对象的推理过程。如果可用，该属性包含模型思考过程的字符串。
 
 ```ts
 import { generateText, Output } from 'ai';
@@ -426,7 +431,7 @@ console.log(result.reasoningText);
 
 - `text`：模型生成的文本。根据对象生成模式，这可能是原始文本或工具调用文本。
 - `response`：关于语言模型响应的元数据，包括响应 id、时间戳和模型。
-- `usage`：请求 token 使用量。
+- `usage`：请求 token 用量。
 - `cause`：错误的原因（例如 JSON 解析错误）。你可以使用它进行更详细的错误处理。
 
 ```ts

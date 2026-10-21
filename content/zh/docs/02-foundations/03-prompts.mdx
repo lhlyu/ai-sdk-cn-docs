@@ -5,7 +5,7 @@ description: "了解 AI SDK 中使用的提示词结构。"
 
 # 提示词
 
-提示词是你提供给[大语言模型（LLM）](/docs/foundations/overview#large-language-models)的指令，用来告诉它该做什么。
+提示词是你提供给[大语言模型（LLM）](/docs/foundations/overview#large-language-models)的指令，用于告诉它该做什么。
 这就像你向别人问路一样；你的问题越清晰，得到的指引就越好。
 
 许多 LLM 提供商提供了用于指定提示词的复杂接口。它们涉及不同的角色和消息类型。
@@ -20,7 +20,7 @@ description: "了解 AI SDK 中使用的提示词结构。"
 例如为同一提示词文本的多个变体重复生成内容。
 
 你可以使用 AI SDK 函数（如 [`streamText`](/docs/reference/ai-sdk-core/stream-text) 或 [`generateText`](/docs/reference/ai-sdk-core/generate-text)）提供的 `prompt` 属性来设置文本提示词。
-你可以以任何方式组织文本并注入变量，例如使用模板字面量。
+你可以用任何方式组织文本并注入变量，例如使用模板字面量。
 
 ```ts highlight="3"
 const result = await generateText({
@@ -29,7 +29,7 @@ const result = await generateText({
 });
 ```
 
-你也可以使用模板字面量为提示词提供动态数据。
+你也可以使用模板字面量向提示词提供动态数据。
 
 ```ts highlight="3-5"
 const result = await generateText({
@@ -43,9 +43,9 @@ const result = await generateText({
 ## 系统提示词
 
 系统提示词是提供给模型的初始指令集，用于帮助引导和约束模型的行为与响应。
-你可以使用 `instructions` 属性来设置系统提示词。
+你可以使用 `instructions` 属性设置系统提示词。
 系统提示词可与 `prompt` 和 `messages` 属性一起使用。
-默认情况下，`prompt` 或 `messages` 中的系统消息会被拒绝；请使用 `instructions` 属性来设置系统指令，或者当你需要发送包含系统消息的现有消息历史时，设置 `allowSystemInMessages: true`。
+默认情况下，`prompt` 或 `messages` 中的系统消息会被拒绝；请使用 `instructions` 属性提供系统指令，或者在需要发送包含系统消息的现有消息历史时设置 `allowSystemInMessages: true`。
 
 <Note type="warning">
   通过 `allowSystemInMessages` 选择启用可能会带来提示词注入风险，
@@ -57,7 +57,7 @@ const result = await generateText({
 const result = await generateText({
   model: __MODEL__,
   instructions:
-    `You help planning travel itineraries. ` +
+    `You help plan travel itineraries. ` +
     `Respond to the users' request with a list ` +
     `of the best stops to make in their destination.`,
   prompt:
@@ -68,11 +68,11 @@ const result = await generateText({
 
 ## 消息提示词
 
-消息提示词是用户、助手和工具消息组成的数组。
+消息提示词是由用户、助手和工具消息组成的数组。
 它们非常适合聊天界面以及更复杂的多模态提示词。
-你可以使用 `messages` 属性来设置消息提示词。
+你可以使用 `messages` 属性设置消息提示词。
 
-每条消息都有一个 `role` 和一个 `content` 属性。content 可以是文本（用于用户和助手消息），也可以是该消息类型相关部分（数据）组成的数组。
+每条消息都有一个 `role` 和一个 `content` 属性。内容可以是文本（用于用户和助手消息），也可以是该消息类型对应的相关部分（数据）数组。
 
 ```ts highlight="3-7"
 const result = await generateText({
@@ -85,17 +85,17 @@ const result = await generateText({
 });
 ```
 
-除了在 `content` 属性中发送文本之外，你还可以发送一个包含文本和其他内容部分混合的数组。
+除了在 `content` 属性中发送文本，你还可以发送一个包含文本和其他内容部分混合的数组。
 
 <Note type="warning">
   并非所有语言模型都支持所有消息和内容类型。例如，
   某些模型可能无法处理多模态输入或工具消息。
-  [了解特定模型的能力](./providers-and-models#model-capabilities)。
+  [了解部分模型的能力](./providers-and-models#model-capabilities)。
 </Note>
 
 ### 提供商选项
 
-你可以传递额外的提供商特定元数据，以在 3 个层级启用提供商特定功能。
+你可以在 3 个层级传递额外的提供商特定元数据，以启用提供商特定功能。
 
 #### 函数调用层级
 
@@ -116,7 +116,7 @@ const { text } = await generateText({
 
 #### 消息层级
 
-要对提供商选项在消息层级的应用进行细粒度控制，你可以将 `providerOptions` 传递给消息对象：
+为了在消息层级细粒度地控制提供商选项的应用，你可以将 `providerOptions` 传递给消息对象：
 
 ```ts
 const result = await generateText({
@@ -167,22 +167,21 @@ const messages: ModelMessage[] = [
 
 <Note type="warning">
   [`useChat`](/docs/reference/ai-sdk-ui/use-chat) 等 AI SDK UI Hook 会返回
-  `UIMessage` 对象数组，它们不支持提供商选项。我们
-  建议使用
+  `UIMessage` 对象数组，这些对象不支持提供商选项。我们建议使用
   [`convertToModelMessages`](/docs/reference/ai-sdk-ui/convert-to-model-messages)
   函数将 `UIMessage` 对象转换为
   [`ModelMessage`](/docs/reference/ai-sdk-core/model-message) 对象，然后再
-  应用或附加带有 `providerOptions` 的消息或消息部分。
+  应用或追加带有 `providerOptions` 的消息或消息部分。
 </Note>
 
 ### 用户消息
 
 #### 文本部分
 
-文本内容是最常见的内容类型。它是传递给模型的字符串。
+文本内容是最常见的内容类型。它是一个传递给模型的字符串。
 
 如果你只需要在消息中发送文本内容，`content` 属性可以是一个字符串，
-但你也可以使用它来发送多个内容部分。
+但你也可以用它发送多个内容部分。
 
 ```ts highlight="7-10"
 const result = await generateText({
@@ -205,9 +204,9 @@ const result = await generateText({
 
 用户消息可以包含图像部分。图像可以是以下之一：
 
-- base64 编码图像：
-  - 包含 base-64 编码内容的 `string`
-  - data URL `string`，例如 `data:image/png;base64,...`
+- base64 编码的图像：
+  - 包含 base64 编码内容的 `string`
+  - 数据 URL `string`，例如 `data:image/png;base64,...`
 - 二进制图像：
   - `ArrayBuffer`
   - `Uint8Array`
@@ -237,7 +236,7 @@ const result = await generateText({
 });
 ```
 
-##### 示例：Base-64 编码图像（字符串）
+##### 示例：Base64 编码的图像（字符串）
 
 ```ts highlight="8-11"
 const result = await generateText({
@@ -285,16 +284,16 @@ const result = await generateText({
   目前只有少数提供商和模型支持文件部分：[Google
   Generative AI](/providers/ai-sdk-providers/google)、[Google Vertex
   AI](/providers/ai-sdk-providers/google-vertex)、
-  [OpenAI](/providers/ai-sdk-providers/openai)（用于 `wav` 和 `mp3` 音频，配合
-  `gpt-4o-audio-preview`）、[Anthropic](/providers/ai-sdk-providers/anthropic)、
+  [OpenAI](/providers/ai-sdk-providers/openai)（用于 `gpt-4o-audio-preview` 的
+  `wav` 和 `mp3` 音频）、[Anthropic](/providers/ai-sdk-providers/anthropic)、
   [OpenAI](/providers/ai-sdk-providers/openai)（用于 `pdf`）。
 </Note>
 
 用户消息可以包含文件部分。文件可以是以下之一：
 
-- base64 编码文件：
-  - 包含 base-64 编码内容的 `string`
-  - data URL `string`，例如 `data:image/png;base64,...`
+- base64 编码的文件：
+  - 包含 base64 编码内容的 `string`
+  - 数据 URL `string`，例如 `data:image/png;base64,...`
 - 二进制数据：
   - `ArrayBuffer`
   - `Uint8Array`
@@ -356,7 +355,7 @@ const result = await generateText({
 
 #### 自定义下载函数（实验性）
 
-你可以使用自定义下载函数来实现限流、重试、身份验证、缓存等功能。
+你可以使用自定义下载函数来实现限流、重试、身份验证、缓存等。
 
 当模型不支持文件时，默认下载实现会自动并行下载文件。
 
@@ -394,7 +393,7 @@ const result = await generateText({
 ```
 
 <Note>
-  `experimental_download` 选项是实验性的，可能会在未来版本中发生变化。
+  `experimental_download` 选项是实验性的，可能会在未来的版本中发生变化。
 </Note>
 
 ### 助手消息
@@ -455,8 +454,8 @@ const result = await generateText({
 #### 示例：包含文件内容的助手消息
 
 <Note>
-  此内容部分用于模型生成的文件。只有少数模型支持
-  此功能，且仅限它们能够生成的文件类型。
+  此内容部分用于模型生成的文件。只有少数模型支持此功能，
+  并且仅支持它们能够生成的文件类型。
 </Note>
 
 ```ts highlight="9-11"
@@ -482,8 +481,8 @@ const result = await generateText({
 
 <Note>
   [工具](/docs/foundations/tools)（也称为函数调用）是你可以提供给 LLM
-  以扩展其内置功能的程序。这可以是任何内容，从调用外部 API 到调用
-  UI 内的函数。在[下一节](/docs/foundations/tools)中了解更多关于工具的信息。
+  以扩展其内置功能的程序。这可以是从调用外部 API 到调用 UI 内函数的任何内容。
+  在[下一节](/docs/foundations/tools)中了解更多关于工具的信息。
 </Note>
 
 对于支持[工具](/docs/foundations/tools)调用的模型，助手消息可以包含工具调用部分，工具消息可以包含工具输出部分。
@@ -604,7 +603,7 @@ const result = await generateText({
 ### 系统消息
 
 系统消息是在用户消息之前发送给模型的消息，用于引导助手的行为。
-在 `messages` 中发送系统消息需要 `allowSystemInMessages: true`。
+在 `messages` 中发送系统消息需要设置 `allowSystemInMessages: true`。
 你也可以改用 `instructions` 属性。
 
 ```ts highlight="3,5"
@@ -612,7 +611,7 @@ const result = await generateText({
   model: __MODEL__,
   allowSystemInMessages: true,
   messages: [
-    { role: 'system', content: 'You help planning travel itineraries.' },
+    { role: 'system', content: 'You help plan travel itineraries.' },
     {
       role: 'user',
       content:

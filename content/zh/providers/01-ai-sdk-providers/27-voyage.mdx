@@ -1,17 +1,61 @@
 ---
 title: "Voyage AI"
-description: "了解如何使用 Voyage AI 提供商，通过 AI SDK 进行嵌入和重排序。"
+description: "了解如何将 Voyage AI 与 AI Gateway 以及直接提供商配合使用。"
 ---
 
 # Voyage AI 提供商
 
 [Voyage AI](https://www.voyageai.com/) 提供商包含对 Voyage AI API 的嵌入和重排序模型支持。
+你可以通过 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（推荐）使用 Voyage AI 模型，或使用 `@ai-sdk/voyage` 直接连接。
 
-## 设置
+```ts provider="voyage" model="voyage/voyage-4"
+import { embed } from 'ai';
+__PROVIDER_IMPORT__;
 
-Voyage AI 提供商位于 `@ai-sdk/voyage` 模块中。你可以使用以下命令安装：
+const { embedding } = await embed({
+  model: __EMBEDDING_MODEL__,
+  value: 'A vegetarian lasagna recipe.',
+});
 
-<InstallPackages packages="@ai-sdk/voyage" />
+console.log(embedding);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+Gateway 的功能和提供商选项支持取决于模型以及处理请求的提供商。请参阅 [Gateway 提供商选项](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options)。
+
+## 使用 `@ai-sdk/voyage`
+
+如需直接访问 Voyage AI，请安装 `ai` 和 `@ai-sdk/voyage`：
+
+<InstallPackages packages="ai @ai-sdk/voyage" />
+
+在 `VOYAGE_API_KEY` 环境变量中设置你的 Voyage AI API 凭据：
+
+```bash
+export VOYAGE_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未公开 `@ai-sdk/voyage` 中的每一个 API。如需使用提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/voyage` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
@@ -42,7 +86,7 @@ const voyage = createVoyage({
 - **apiKey** _string_
 
   通过 `Authorization` 请求头发送的 API 密钥。
-  默认为 `VOYAGE_API_KEY` 环境变量。
+  默认使用 `VOYAGE_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
@@ -53,7 +97,7 @@ const voyage = createVoyage({
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
   你可以将其用作中间件来拦截请求，
-  或提供自定义 fetch 实现，例如用于测试。
+  或为例如测试提供自定义 fetch 实现。
 
 ## 嵌入模型
 
@@ -75,7 +119,7 @@ const { embedding } = await embed({
 });
 ```
 
-Voyage AI 嵌入模型支持额外的提供商选项，可通过 `providerOptions.voyage` 传入：
+Voyage AI 嵌入模型支持可通过 `providerOptions.voyage` 传递的额外提供商选项：
 
 ```ts
 import { voyage, type VoyageEmbeddingModelOptions } from '@ai-sdk/voyage';
@@ -100,7 +144,7 @@ const { embedding } = await embed({
   指定传递给模型的输入类型。默认为 `null`。
   - `null`：嵌入模型直接将输入转换为数值向量。
   - `'query'`：用于对向量数据库执行搜索查询的嵌入，以查找相关文档。
-  - `'document'`：用于存储在向量数据库中、供搜索用例使用的嵌入。
+  - `'document'`：用于存储在向量数据库中供搜索场景使用的嵌入。
 
 - **truncation** _boolean_
 
@@ -121,27 +165,27 @@ const { embedding } = await embed({
 
 ### 模型能力
 
-| 模型                    | 默认维度           | 上下文长度     |
-| ----------------------- | ------------------ | -------------- |
-| `voyage-4-large`        | 1024               | 32,000         |
-| `voyage-4`              | 1024               | 32,000         |
-| `voyage-4-lite`         | 1024               | 32,000         |
-| `voyage-4-nano`         | 1024               | 32,000         |
-| `voyage-code-3.5`       | 1024               | 32,000         |
-| `voyage-code-3`         | 1024               | 32,000         |
-| `voyage-3-large`        | 1024               | 32,000         |
-| `voyage-3.5`            | 1024               | 32,000         |
-| `voyage-3.5-lite`       | 1024               | 32,000         |
-| `voyage-3`              | 1024               | 32,000         |
-| `voyage-3-lite`         | 512                | 32,000         |
-| `voyage-finance-2`      | 1024               | 32,000         |
-| `voyage-multilingual-2` | 1024               | 32,000         |
-| `voyage-law-2`          | 1024               | 16,000         |
-| `voyage-code-2`         | 1536               | 16,000         |
+| 模型                    | 默认维度 | 上下文长度 |
+| ----------------------- | -------- | ---------- |
+| `voyage-4-large`        | 1024     | 32,000     |
+| `voyage-4`              | 1024     | 32,000     |
+| `voyage-4-lite`         | 1024     | 32,000     |
+| `voyage-4-nano`         | 1024     | 32,000     |
+| `voyage-code-3.5`       | 1024     | 32,000     |
+| `voyage-code-3`         | 1024     | 32,000     |
+| `voyage-3-large`        | 1024     | 32,000     |
+| `voyage-3.5`            | 1024     | 32,000     |
+| `voyage-3.5-lite`       | 1024     | 32,000     |
+| `voyage-3`              | 1024     | 32,000     |
+| `voyage-3-lite`         | 512      | 32,000     |
+| `voyage-finance-2`      | 1024     | 32,000     |
+| `voyage-multilingual-2` | 1024     | 32,000     |
+| `voyage-law-2`          | 1024     | 16,000     |
+| `voyage-code-2`         | 1536     | 16,000     |
 
 <Note>
   上表列出了常用模型。请参阅 [Voyage AI
-  文档](https://docs.voyageai.com/docs/embeddings) 获取可用模型的完整列表。
+  文档](https://docs.voyageai.com/docs/embeddings)以获取可用模型的完整列表。
   如有需要，你也可以将任何可用的提供商模型 ID 作为字符串传入。
 </Note>
 
@@ -175,7 +219,7 @@ const { ranking } = await rerank({
 console.log(ranking);
 ```
 
-Voyage AI 重排序模型支持额外的提供商选项，可通过 `providerOptions.voyage` 传入：
+Voyage AI 重排序模型支持可通过 `providerOptions.voyage` 传递的额外提供商选项：
 
 ```ts
 import { voyage, type VoyageRerankingModelOptions } from '@ai-sdk/voyage';
@@ -206,11 +250,11 @@ const { ranking } = await rerank({
 
 ### 模型能力
 
-| 模型              | 上下文长度     |
-| ----------------- | -------------- |
-| `rerank-2.5`      | 32,000         |
-| `rerank-2.5-lite` | 32,000         |
-| `rerank-2`        | 16,000         |
-| `rerank-2-lite`   | 8,000          |
-| `rerank-1`        | 8,000          |
-| `rerank-lite-1`   | 4,000          |
+| 模型              | 上下文长度 |
+| ----------------- | ---------- |
+| `rerank-2.5`      | 32,000     |
+| `rerank-2.5-lite` | 32,000     |
+| `rerank-2`        | 16,000     |
+| `rerank-2-lite`   | 8,000      |
+| `rerank-1`        | 8,000      |
+| `rerank-lite-1`   | 4,000      |

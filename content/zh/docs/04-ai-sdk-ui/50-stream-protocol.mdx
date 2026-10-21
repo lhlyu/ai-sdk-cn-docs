@@ -5,10 +5,10 @@ description: "进一步了解 AI SDK 中支持的流协议。"
 
 # 流协议
 
-AI SDK UI 函数（例如 `useChat` 和 `useCompletion`）同时支持文本流和数据流。
+AI SDK UI 函数（如 `useChat` 和 `useCompletion`）同时支持文本流和数据流。
 流协议定义了数据如何在 HTTP 协议之上流式传输到前端。
 
-本页介绍了这两种协议，以及如何在后端和前端中使用它们。
+本页介绍这两种协议，以及如何在后端和前端中使用它们。
 
 你可以利用这些信息为你的用例开发自定义后端和前端，例如，
 提供用其他语言（如 Python）实现的兼容 API 端点。
@@ -20,22 +20,22 @@ AI SDK UI 函数（例如 `useChat` 和 `useCompletion`）同时支持文本流�
 文本流包含纯文本形式的块，这些块会被流式传输到前端。
 每个块随后被拼接在一起，形成完整的文本响应。
 
-文本流由 `useChat`、`useCompletion` 和 `useObject` 支持。
-要启用文本流式传输，请在 `useChat` 中使用 `TextStreamChatTransport`，或在
-`useCompletion` 中将 `streamProtocol` 选项设置为 `text`。
+`useChat`、`useCompletion` 和 `useObject` 均支持文本流。
+要启用文本流式传输，请在 `useChat` 中使用 `TextStreamChatTransport`，或在 `useCompletion` 中将
+`streamProtocol` 选项设置为 `text`。
 
 你可以在后端使用 `streamText` 生成文本流。
-将结果的 `stream` 传递给 `toTextStream`，并使用
-`createTextStreamResponse` 返回它，以创建流式 HTTP 响应。
+将结果的 `stream` 传给 `toTextStream`，并通过
+`createTextStreamResponse` 返回，以创建流式 HTTP 响应。
 
 <Note>
-  文本流仅支持基本的文本数据。如果你需要流式传输其他类型的
-  数据（例如工具调用），请使用数据流。
+  文本流仅支持基本的文本数据。如果你需要流式传输其他类型
+  的数据（例如工具调用），请使用数据流。
 </Note>
 
 ### 文本流示例
 
-下面是一个使用文本流协议的 Next.js 示例：
+以下是一个使用文本流协议的 Next.js 示例：
 
 ```tsx filename='app/page.tsx'
 'use client';
@@ -114,20 +114,20 @@ export async function POST(req: Request) {
 
 数据流遵循 AI SDK 提供的特殊协议，用于向前端发送信息。
 
-数据流协议使用 Server-Sent Events (SSE) 格式，以实现更好的标准化、通过 ping 保持连接、重连能力以及更好的缓存处理。
+数据流协议使用 Server-Sent Events (SSE) 格式，以提高标准化程度、通过 ping 实现保活、支持重连能力，并改善缓存处理。
 
 <Note>
   当你从自定义后端提供数据流时，需要将
   `x-vercel-ai-ui-message-stream` 请求头设置为 `v1`。
 </Note>
 
-目前支持以下流部分：
+目前支持以下流部件：
 
-### 消息开始部分
+### 消息开始部件
 
-表示带有元数据的新消息的开始。
+表示一条带有元数据的新消息的开始。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -136,15 +136,15 @@ data: {"type":"start","messageId":"..."}
 
 ```
 
-### 文本部分
+### 文本部件
 
-文本内容使用 start/delta/end 模式进行流式传输，每个文本块都有唯一的 ID。
+文本内容使用 start/delta/end 模式进行流式传输，每个文本块都有唯一 ID。
 
-#### 文本开始部分
+#### 文本开始部件
 
-表示文本块的开始。
+表示一个文本块的开始。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -153,11 +153,11 @@ data: {"type":"text-start","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb7230
 
 ```
 
-#### 文本增量部分
+#### 文本增量部件
 
-包含文本块的增量文本内容。
+包含该文本块的增量文本内容。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -166,11 +166,11 @@ data: {"type":"text-delta","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb7230
 
 ```
 
-#### 文本结束部分
+#### 文本结束部件
 
-表示文本块的完成。
+表示一个文本块的完成。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -179,15 +179,15 @@ data: {"type":"text-end","id":"msg_68679a454370819ca74c8eb3d04379630dd1afb72306c
 
 ```
 
-### 推理部分
+### 推理部件
 
-推理内容使用 start/delta/end 模式进行流式传输，每个推理块都有唯一的 ID。
+推理内容使用 start/delta/end 模式进行流式传输，每个推理块都有唯一 ID。
 
-#### 推理开始部分
+#### 推理开始部件
 
-表示推理块的开始。
+表示一个推理块的开始。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -196,11 +196,11 @@ data: {"type":"reasoning-start","id":"reasoning_123"}
 
 ```
 
-#### 推理增量部分
+#### 推理增量部件
 
-包含推理块的增量推理内容。
+包含该推理块的增量推理内容。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -209,11 +209,11 @@ data: {"type":"reasoning-delta","id":"reasoning_123","delta":"This is some reaso
 
 ```
 
-#### 推理结束部分
+#### 推理结束部件
 
-表示推理块的完成。
+表示一个推理块的完成。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -222,11 +222,11 @@ data: {"type":"reasoning-end","id":"reasoning_123"}
 
 ```
 
-### 推理文件部分
+### 推理文件部件
 
-推理文件部分包含对推理过程中生成的文件（例如推理过程中产生的图像）的引用。
+推理文件部件包含对推理过程中生成的文件（例如推理过程中产生的图像）的引用。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -235,15 +235,15 @@ data: {"type":"reasoning-file","url":"data:image/png;base64,iVBOR...","mediaType
 
 ```
 
-### 来源部分
+### 来源部件
 
-来源部分提供对外部内容来源的引用。
+来源部件提供对外部内容来源的引用。
 
-#### 来源 URL 部分
+#### 来源 URL 部件
 
 对外部 URL 的引用。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -252,11 +252,11 @@ data: {"type":"source-url","sourceId":"https://example.com","url":"https://examp
 
 ```
 
-#### 来源文档部分
+#### 来源文档部件
 
 对文档或文件的引用。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -265,11 +265,11 @@ data: {"type":"source-document","sourceId":"https://example.com","mediaType":"fi
 
 ```
 
-### 文件部分
+### 文件部件
 
-文件部分包含对其媒体类型的文件的引用。
+文件部件包含对文件及其媒体类型的引用。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -278,11 +278,11 @@ data: {"type":"file","url":"https://example.com/file.png","mediaType":"image/png
 
 ```
 
-### 自定义部分
+### 自定义部件
 
-自定义部分表示不符合标准部分类型的提供商特定内容。`kind` 字段以 `{provider}.{provider-type}` 格式标识特定的自定义内容类型。
+自定义部件表示无法归入标准部件类型的提供商特定内容。`kind` 字段以 `{provider}.{provider-type}` 格式标识具体的自定义内容类型。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -291,11 +291,11 @@ data: {"type":"custom","kind":"openai.compaction","providerMetadata":{"openai":{
 
 ```
 
-### 数据部分
+### 数据部件
 
-自定义数据部分允许以类型特定的处理方式流式传输任意结构化数据。
+自定义数据部件允许流式传输任意结构化数据，并进行类型特定处理。
 
-格式：带 JSON 对象的 Server-Sent Event，其中类型包含自定义后缀
+格式：包含 JSON 对象的 Server-Sent Event，其中类型包含自定义后缀
 
 示例：
 
@@ -306,11 +306,11 @@ data: {"type":"data-weather","data":{"location":"SF","temperature":100}}
 
 `data-*` 类型模式允许你定义前端可以专门处理的自定义数据类型。
 
-### 错误部分
+### 错误部件
 
-错误部分在收到时会被追加到消息中。
+错误部件在收到时会被追加到消息中。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -319,11 +319,18 @@ data: {"type":"error","errorText":"error message"}
 
 ```
 
-### 工具输入开始部分
+### 工具输入开始部件
 
 表示工具输入流式传输的开始。
 
-格式：带 JSON 对象的 Server-Sent Event
+可选的 `inputEncoding` 字段指定如何解释后续的输入
+增量。当省略或设置为 `'json'` 时，UI 会将累积的文本解析为
+部分 JSON。设置为 `'text'` 时，UI 会直接将累积的文本用作
+字符串输入。对于原始自定义工具输入（如代码或 HTML），请使用 `'text'`。
+该编码也会保留在持久化的 `input-streaming` 工具部件上，以便
+流式传输能够正确恢复。
+
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -332,11 +339,11 @@ data: {"type":"tool-input-start","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","t
 
 ```
 
-### 工具输入增量部分
+### 工具输入增量部件
 
 工具输入生成过程中的增量块。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -345,11 +352,11 @@ data: {"type":"tool-input-delta","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar","i
 
 ```
 
-### 工具输入可用部分
+### 工具输入可用部件
 
-表示工具输入已完成并准备好执行。
+表示工具输入已完成，可以执行。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -358,11 +365,11 @@ data: {"type":"tool-input-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar
 
 ```
 
-### 工具审批请求部分
+### 工具审批请求部件
 
 表示工具调用需要审批，或记录审批决定是自动做出的。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -372,16 +379,16 @@ data: {"type":"tool-approval-request","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7A
 ```
 
 当省略 `isAutomatic` 时，该请求期望客户端给出明确的审批响应。
-`reason` 是可选的，用于解释为什么该工具调用需要
-审批。`approvalDescriptor` 是可选的、用于审批的不透明元数据。
-当流被处理为 UI 消息时，它可作为
-`part.approval.descriptor` 使用，并在后续的审批状态中保留。
+`reason` 是可选的，用于解释工具调用为什么需要审批。
+`approvalDescriptor` 是可选的审批不透明元数据。
+当流被处理为 UI 消息时，它可通过
+`part.approval.descriptor` 访问，并在后续审批状态中保留。
 
-### 工具审批响应部分
+### 工具审批响应部件
 
 记录工具调用的审批决定。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -392,11 +399,11 @@ data: {"type":"tool-approval-response","approvalId":"approval_123","approved":fa
 
 对于由提供商执行的工具，响应还可以包含 `providerExecuted: true`。
 
-### 工具输出可用部分
+### 工具输出可用部件
 
 包含工具执行的结果。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -405,11 +412,11 @@ data: {"type":"tool-output-available","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7A
 
 ```
 
-### 工具输出被拒绝部分
+### 工具输出被拒绝部件
 
 表示在审批流程完成后工具执行被拒绝。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -418,11 +425,11 @@ data: {"type":"tool-output-denied","toolCallId":"call_fJdQDqnXeGxTmr4E3YPSR7Ar"}
 
 ```
 
-### 开始步骤部分
+### 开始步骤部件
 
-表示步骤开始的部分。
+表示一个步骤开始的部件。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -431,14 +438,14 @@ data: {"type":"start-step"}
 
 ```
 
-### 完成步骤部分
+### 完成步骤部件
 
-表示步骤（即后端中的一次 LLM API 调用）已完成的部分。
+表示一个步骤（即后端中的一次 LLM API 调用）已完成的部件。
 
-该部分对于正确处理多个拼接的助手调用是必要的，例如在后端调用工具，
+该部件对于正确处理多个拼接的助手调用是必要的，例如在后端调用工具，
 同时在 `useChat` 中使用步骤时。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -447,14 +454,13 @@ data: {"type":"finish-step"}
 
 ```
 
-### 重置步骤部分
+### 重置步骤部件
 
-移除自最近一次 `start-step` 部分以来收到的所有消息部分。如果
-没有步骤边界，则移除当前消息中的所有部分。当
-流式传输的步骤被重试，且失败尝试的部分输出必须在发送替换输出之前
-被作废时，这很有用。
+移除自最近一次 `start-step` 部件以来收到的所有消息部件。如果
+没有步骤边界，则移除当前消息中的所有部件。当流式步骤被重试，
+且失败尝试的部分输出必须在发送替换输出之前失效时，这很有用。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -463,11 +469,11 @@ data: {"type":"reset-step"}
 
 ```
 
-### 完成消息部分
+### 完成消息部件
 
-表示消息完成的部分。
+表示一条消息完成的部件。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -476,11 +482,11 @@ data: {"type":"finish"}
 
 ```
 
-### 中止部分
+### 中止部件
 
 表示流已被中止。
 
-格式：带 JSON 对象的 Server-Sent Event
+格式：包含 JSON 对象的 Server-Sent Event
 
 示例：
 
@@ -491,9 +497,9 @@ data: {"type":"abort","reason":"user cancelled"}
 
 ### 流终止
 
-流以特殊的 `[DONE]` 标记结束。
+流以一个特殊的 `[DONE]` 标记结束。
 
-格式：带字面量 `[DONE]` 的 Server-Sent Event
+格式：包含字面量 `[DONE]` 的 Server-Sent Event
 
 示例：
 
@@ -502,14 +508,14 @@ data: [DONE]
 
 ```
 
-数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并默认使用。
-`useCompletion` 仅支持 `text` 和 `data` 流部分。
+数据流协议在前端由 `useChat` 和 `useCompletion` 支持，并且默认使用。
+`useCompletion` 仅支持 `text` 和 `data` 流部件。
 
-在后端，你可以将 `streamText` 结果流传递给 `toUIMessageStream`，并使用 `createUIMessageStreamResponse` 返回它。
+在后端，你可以将 `streamText` 结果流传给 `toUIMessageStream`，并通过 `createUIMessageStreamResponse` 返回。
 
 ### UI 消息流示例
 
-下面是一个使用 UI 消息流协议的 Next.js 示例：
+以下是一个使用 UI 消息流协议的 Next.js 示例：
 
 ```tsx filename='app/page.tsx'
 'use client';

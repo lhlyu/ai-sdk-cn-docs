@@ -1,33 +1,76 @@
 ---
 title: "AssemblyAI"
-description: "了解如何在 AI SDK 中使用 AssemblyAI 提供商。"
+description: "了解如何设置 AssemblyAI 提供商并检查 AI Gateway 可用性。"
 ---
 
 # AssemblyAI 提供商
 
-[AssemblyAI](https://assemblyai.com/) 提供商为 AssemblyAI 转录 API 提供转录模型支持。
+[AssemblyAI](https://assemblyai.com/) 提供商包含对 AssemblyAI 转录 API 的转录模型支持。
+AssemblyAI 模型目前无法通过 [AI Gateway](https://vercel.com/ai-gateway/models) 使用，因此开头的示例直接使用 `@ai-sdk/assemblyai`。支持的替代方案请参见下方的[使用 AI Gateway](#using-ai-gateway)。
 
-## 安装
+```ts
+import { transcribe } from 'ai';
+import { assemblyai } from '@ai-sdk/assemblyai';
+import { readFile } from 'node:fs/promises';
 
-AssemblyAI 提供商位于 `@ai-sdk/assemblyai` 模块中。你可以通过以下方式安装：
+const { text } = await transcribe({
+  model: assemblyai.transcription('universal-3-5-pro'),
+  audio: await readFile('audio.mp3'),
+});
 
-<InstallPackages packages="@ai-sdk/assemblyai" />
+console.log(text);
+```
+
+该示例会转录你项目中的 `audio.mp3` 文件。
+
+## 使用 AI Gateway
+
+当前的 [AI Gateway 模型目录](https://vercel.com/ai-gateway/models)未列出 AssemblyAI 模型。本页介绍的 API 请使用 `@ai-sdk/assemblyai`。如需通过 Gateway 使用其他转录模型，请安装 `ai` 并配置 Gateway API 密钥：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+支持的模型和 API 请参见 [Gateway 文档](/providers/ai-sdk-providers/ai-gateway)。
+
+## 使用 `@ai-sdk/assemblyai`
+
+如需直接访问 AssemblyAI，请安装 `ai` 和 `@ai-sdk/assemblyai`：
+
+<InstallPackages packages="ai @ai-sdk/assemblyai" />
+
+在 `ASSEMBLYAI_API_KEY` 环境变量中设置你的 AssemblyAI API 凭据：
+
+```bash
+export ASSEMBLYAI_API_KEY=your_api_key_here
+```
+
+<Note>
+  以下各节介绍直接使用 `@ai-sdk/assemblyai` 提供商的内容，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
-你可以从 `@ai-sdk/assemblyai` 导入默认的提供商实例 `assemblyai`：
+你可以从 `@ai-sdk/assemblyai` 导入默认提供商实例 `assemblyai`：
 
 ```ts
 import { assemblyai } from '@ai-sdk/assemblyai';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/assemblyai` 导入 `createAssemblyAI`，并使用你的设置创建提供商实例：
+如果需要自定义设置，可以从 `@ai-sdk/assemblyai` 导入 `createAssemblyAI`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createAssemblyAI } from '@ai-sdk/assemblyai';
 
 const assemblyai = createAssemblyAI({
-  // 自定义设置，例如
+  // custom settings, e.g.
   fetch: customFetch,
 });
 ```
@@ -36,23 +79,24 @@ const assemblyai = createAssemblyAI({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。
+  通过 `Authorization` 请求头发送的 API 密钥。
   默认使用 `ASSEMBLYAI_API_KEY` 环境变量。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
-  你可以将其用作拦截请求的中间件，
+  你可以将其用作中间件来拦截请求，
   或为测试等场景提供自定义 fetch 实现。
 
 ## 转录模型
 
-你可以使用 `.transcription()` 工厂方法创建调用 [AssemblyAI 转录 API](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file/typescript) 的模型。
+你可以使用 `.transcription()` 工厂方法创建调用 [AssemblyAI 转录 API](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file/typescript)
+的模型。
 
 第一个参数是模型 ID，例如 `universal-3-5-pro`。
 
@@ -60,9 +104,16 @@ const assemblyai = createAssemblyAI({
 const model = assemblyai.transcription('universal-3-5-pro');
 ```
 
-`best` 模型是一个**已弃用**的旧版模型，通过 AssemblyAI 已弃用的 `speech_model` 请求参数发送。它仍然有效，但使用时会发出弃用警告——建议使用 `universal-3-5-pro`。较旧的 `nano` 模型已被 AssemblyAI 移除，不再可用。所有较新的模型都使用 [`speech_models`](https://www.assemblyai.com/docs/pre-recorded-audio/select-the-speech-model) 请求参数发送，提供商将根据模型 ID 自动选择。
+`best` 模型是一个**已弃用**的旧版模型，通过 AssemblyAI 已弃用的
+`speech_model` 请求参数发送。它仍然可用，但使用时会发出
+弃用警告——建议改用 `universal-3-5-pro`。较旧的 `nano` 模型已被
+AssemblyAI 移除，不再可用。所有较新的模型都通过
+[`speech_models`](https://www.assemblyai.com/docs/pre-recorded-audio/select-the-speech-model)
+请求参数发送，提供商会根据模型 ID 自动选择该参数。
 
-`universal-3-pro` 和 `universal-2` 完全受支持并继续工作，但使用它们时会发出信息性警告（非弃用），建议使用 AssemblyAI 最新的旗舰模型 `universal-3-5-pro`。
+`universal-3-pro` 和 `universal-2` 完全受支持并可继续使用，但
+使用它们会发出信息性警告（并非弃用警告），建议改用
+`universal-3-5-pro`，即 AssemblyAI 最新的旗舰模型。
 
 你还可以使用 `providerOptions` 参数传递额外的提供商特定选项。例如，提供 `contentSafety` 选项将启用内容安全过滤。
 
@@ -87,22 +138,22 @@ const result = await transcribe({
 
 - **audioEndAt** _number_
 
-  音频的结束时间（毫秒）。
+  音频的结束时间，单位为毫秒。
   可选。
 
 - **audioStartFrom** _number_
 
-  音频的开始时间（毫秒）。
+  音频的开始时间，单位为毫秒。
   可选。
 
 - **autoChapters** _boolean_
 
-  是否自动为转录生成章节。
+  是否为转录自动生成章节。
   可选。
 
 - **autoHighlights** _boolean_
 
-  是否自动为转录生成高亮。
+  是否为转录自动生成亮点。
   可选。
 
 - **boostParam** _enum_
@@ -122,7 +173,7 @@ const result = await transcribe({
   内容安全过滤的置信度阈值（25-100）。
   可选。
 
-- **customSpelling** _对象数组_
+- **customSpelling** _array of objects_
 
   转录的自定义拼写规则。
   每个对象具有 `from`（字符串数组）和 `to`（字符串）属性。
@@ -130,18 +181,18 @@ const result = await transcribe({
 
 - **disfluencies** _boolean_
 
-  是否在转录中包含不流畅部分（如“嗯”、“呃”等）。
+  是否在转录中包含不流畅词（um、uh 等）。
   可选。
 
 - **domain** _string_
 
-  启用特定领域的模型以处理专业术语。
+  启用针对专业术语的领域特定模型。
   目前支持 `'medical-v1'`（医疗模式）。
   可选。
 
 - **entityDetection** _boolean_
 
-  是否检测转录中的实体。
+  是否在转录中检测实体。
   可选。
 
 - **filterProfanity** _boolean_
@@ -159,16 +210,17 @@ const result = await transcribe({
   是否在转录中包含 IAB 类别。
   可选。
 
-- **keytermsPrompt** _字符串数组_
+- **keytermsPrompt** _array of strings_
 
-  用于增强识别的领域特定关键词（每个短语最多 6 个词）。
-  替代较新模型中的 `wordBoost`——受 `universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 支持（启用时也支持 `universal-2`）。
+  用于提升识别效果的领域特定关键词（每个短语最多 6 个词）。
+  替代较新模型中的 `wordBoost`——受 `universal-3-pro`、
+  `universal-3-5-pro` 和 `slam-1` 支持（`universal-2` 在启用时也支持）。
   可选。
 
 - **languageCode** _string_
 
   音频的语言代码。
-  支持多种 ISO-639-1 和 ISO-639-3 语言代码。
+  支持众多 ISO-639-1 和 ISO-639-3 语言代码。
   可选。
 
 - **languageConfidenceThreshold** _number_
@@ -183,95 +235,100 @@ const result = await transcribe({
 
 - **languageDetectionOptions** _object_
 
-  自动语言检测的选项：`expectedLanguages`（字符串数组）、`fallbackLanguage`（字符串）、`codeSwitching`（布尔值）、`codeSwitchingConfidenceThreshold`（数字，0-1）。
+  自动语言检测的选项：`expectedLanguages`（字符串数组）、
+  `fallbackLanguage`（字符串）、`codeSwitching`（布尔值）、
+  `codeSwitchingConfidenceThreshold`（数字，0-1）。
   可选。
 
 - **multichannel** _boolean_
 
-  是否分别处理多个音频通道。
+  是否分别处理多个音频声道。
   可选。
 
 - **prompt** _string_
 
-  用于引导模型的自然语言上下文（最多 1500 个词）。
+  用于引导模型的自然语言上下文（最多 1,500 个词）。
   仅受 `universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 支持。
   可选。
 
 - **punctuate** _boolean_
 
-  是否在转录中添加标点符号。
+  是否为转录添加标点符号。
   可选。
 
 - **redactPii** _boolean_
 
-  是否编辑个人身份信息。
+  是否遮盖个人身份信息。
   可选。
 
 - **redactPiiAudio** _boolean_
 
-  是否在音频文件中编辑 PII。
+  是否遮盖音频文件中的 PII。
   可选。
 
 - **redactPiiAudioOptions** _object_
 
-  PII 编辑音频的选项：`returnRedactedNoSpeechAudio`（布尔值）、`overrideAudioRedactionMethod`（`'silence'`）。需要 `redactPiiAudio`。
+  PII 遮盖音频的选项：`returnRedactedNoSpeechAudio`（布尔值）、
+  `overrideAudioRedactionMethod`（`'silence'`）。需要 `redactPiiAudio`。
   可选。
 
 - **redactPiiAudioQuality** _enum_
 
-  编辑后音频文件的质量。
+  遮盖后音频文件的质量。
   允许值：`'mp3'`、`'wav'`。
   可选。
 
-- **redactPiiPolicies** _枚举数组_
+- **redactPiiPolicies** _array of enums_
 
-  PII 编辑的策略，指定要编辑的信息类型。
+  PII 遮盖策略，指定要遮盖的信息类型。
   支持多种类型，如 `'person_name'`、`'phone_number'` 等。
   可选。
 
 - **redactPiiReturnUnredacted** _boolean_
 
-  返回原始未编辑的转录文本以及编辑后的版本。
+  在返回遮盖后转录的同时返回原始未遮盖转录。
   需要 `redactPii`。
   可选。
 
 - **redactPiiSub** _enum_
 
-  编辑 PII 的替换方法。
+  遮盖 PII 的替换方法。
   允许值：`'entity_name'`、`'hash'`。
   可选。
 
 - **redactStaticEntities** _object_
 
-  用户定义标签到要编辑的确切术语的映射，例如 `{ INTERNAL_TOOL: ['Bearclaw'] }`。在标准 PII 编辑之上应用。
+  用户定义标签到要遮盖的确切术语的映射，例如
+  `{ INTERNAL_TOOL: ['Bearclaw'] }`。在标准 PII 遮盖基础上应用。
   需要 `redactPii`。
   可选。
 
 - **removeAudioTags** _enum_
 
   从富转录中移除内联注释。
-  允许值：`'all'`（所有注释）、`'speaker'`（仅说话者提示）。
+  允许值：`'all'`（所有注释）、`'speaker'`（仅说话人提示）。
   Universal-3 Pro 模型。
   可选。
 
 - **sentimentAnalysis** _boolean_
 
-  是否对转录进行情感分析。
+  是否对转录执行情感分析。
   可选。
 
 - **speakerLabels** _boolean_
 
-  是否在转录中标记不同的说话者。
+  是否在转录中标记不同的说话人。
   可选。
 
 - **speakerOptions** _object_
 
-  说话者分离的选项：`minSpeakersExpected`（数字）、`maxSpeakersExpected`（数字）。
+  说话人分离的选项：`minSpeakersExpected`（数字）、
+  `maxSpeakersExpected`（数字）。
   可选。
 
 - **speakersExpected** _number_
 
-  音频中预期的说话者数量。
+  音频中预期的说话人数量。
   可选。
 
 - **speechThreshold** _number_
@@ -304,33 +361,44 @@ const result = await transcribe({
 
 - **webhookAuthHeaderName** _string_
 
-  Webhook 请求的身份验证标头名称。
+  webhook 请求的身份验证请求头名称。
   可选。
 
 - **webhookAuthHeaderValue** _string_
 
-  Webhook 请求的身份验证标头值。
+  webhook 请求的身份验证请求头值。
   可选。
 
 - **webhookUrl** _string_
 
-  用于发送 Webhook 通知的 URL。
+  用于发送 webhook 通知的 URL。
   可选。
 
-- **wordBoost** _字符串数组_
+- **wordBoost** _array of strings_
 
   要在转录中增强的单词列表。
-  **已弃用**——被 `universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 拒绝（仅适用于 `universal-2`/`best`）；请改用 `keytermsPrompt`。
+  **已弃用**——`universal-3-pro`、`universal-3-5-pro` 和 `slam-1` 会拒绝该选项
+  （仅适用于 `universal-2`/`best`）；请改用 `keytermsPrompt`。
   可选。
 
-### 说话者分离和音频智能结果
+### 说话人分离和音频智能结果
 
-AI SDK 的 `transcribe` 结果公开了 `text`、`segments`、`language` 和 `durationInSeconds`。AssemblyAI 更丰富的结果——说话者分离和音频智能功能——不符合该结构，因此它们出现在两个位置：
+AI SDK 的 `transcribe` 结果会暴露 `text`、`segments`、`language` 和
+`durationInSeconds`。AssemblyAI 更丰富的结果——说话人分离和
+音频智能功能——不符合该结构，因此它们会在两个
+位置呈现：
 
-- **`providerMetadata.assemblyai`**——你启用的功能的结构化结果：`utterances`（说话者分离的片段，当设置 `speakerLabels` 时）、`entities`、`sentimentAnalysisResults`、`contentSafetyLabels`、`iabCategoriesResult` 和 `autoHighlightsResult`。
-- **`response.body`**——完整的原始 AssemblyAI 转录响应，因此任何未在上面公开的字段（例如 `chapters`、词级别的 `speaker` 标签）仍然可用。
+- **`providerMetadata.assemblyai`**——你启用的功能的结构化结果：
+  `utterances`（说话人分离的片段，当设置了 `speakerLabels` 时）、
+  `entities`、`sentimentAnalysisResults`、`contentSafetyLabels`、
+  `iabCategoriesResult` 和 `autoHighlightsResult`。
+- **`response.body`**——完整的原始 AssemblyAI 转录响应，因此任何
+  未在上述位置呈现的字段（例如 `chapters`、词级 `speaker` 标签）
+  仍然可用。
 
-注意：`providerMetadata` 和 `response.body` 中的时间（例如 `utterances[].start`）以**毫秒**为单位，与 AssemblyAI API 一致——而顶层的 `segments` 使用**秒**。
+注意：`providerMetadata` 和 `response.body` 中的时间（例如
+`utterances[].start`）以**毫秒**为单位，与 AssemblyAI API 一致——
+而顶层 `segments` 使用**秒**。
 
 ```ts
 import { transcribe } from 'ai';
@@ -349,16 +417,20 @@ const result = await transcribe({
 });
 
 const { utterances, entities } = result.providerMetadata?.assemblyai ?? {};
-// utterances: [{ speaker: 'A', text: '…', start, end, … }, …]  (start/end 以毫秒为单位)
+// utterances: [{ speaker: 'A', text: '…', start, end, … }, …]  (start/end in ms)
 ```
 
-以下 AssemblyAI 功能已被 API **弃用**，不会在 `providerMetadata` 中公开（如果启用，其输出仍保留在原始 `response.body` 上）：摘要、自动章节和自定义主题。另请注意，某些功能受语言限制（例如，情感分析以英语为中心）；请参阅 AssemblyAI 的文档以了解每种语言的可用性。
+以下 AssemblyAI 功能已被 API **弃用**，且不会在
+`providerMetadata` 中呈现（如果启用，其输出仍保留在原始 `response.body` 中）：
+摘要、自动章节和自定义主题。另请注意，某些
+功能受语言限制（例如情感分析以英语为中心）；每种语言的可用性请参见
+AssemblyAI 的文档。
 
 ### 模型能力
 
-| 模型               | 转录       | 时长       | 片段       | 语言       |
-| ------------------- | ---------- | ---------- | ---------- | ---------- |
-| `universal-3-5-pro` | <Check />  | <Check />  | <Check />  | <Check />  |
-| `universal-3-pro`   | <Check />  | <Check />  | <Check />  | <Check />  |
-| `universal-2`       | <Check />  | <Check />  | <Check />  | <Check />  |
-| `best`              | <Check />  | <Check />  | <Check />  | <Check />  |
+| 模型                | 转录      | 时长      | 片段      | 语言      |
+| ------------------- | ------------- | --------- | --------- | --------- |
+| `universal-3-5-pro` | <Check />     | <Check /> | <Check /> | <Check /> |
+| `universal-3-pro`   | <Check />     | <Check /> | <Check /> | <Check /> |
+| `universal-2`       | <Check />     | <Check /> | <Check /> | <Check /> |
+| `best`              | <Check />     | <Check /> | <Check /> | <Check /> |

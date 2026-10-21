@@ -1,19 +1,21 @@
 ---
 title: "Patronus"
-description: "使用 Patronus 监控、评估和调试你的 AI SDK 应用"
+description: "配置 Patronus 与 AI SDK 的集成。"
 ---
 
-# Patronus 可观测性
+# Patronus 集成
 
-[Patronus AI](https://patronus.ai) 提供了一套端到端系统，用于评估、监控和改进 LLM 系统的性能，帮助开发者安全、自信地交付 AI 产品。在[此处](https://docs.patronus.ai/docs)了解更多。
+[Patronus AI](https://patronus.ai) 是一家研究实验室，为前沿 AI 开发训练数据和模拟环境。其工作涵盖强化学习环境以及面向在软件中运行的智能体的数字世界模型。
 
-当你使用 AI SDK 构建应用时，可以将 OpenTelemetry (OTEL) 追踪数据直接流式传输到 Patronus，并为每次生成配上丰富的自动评估。
+本指南介绍 OpenTelemetry 集成及其追踪与评估能力。
+
+使用 AI SDK 构建时，你可以将 OpenTelemetry (OTEL) 追踪数据直接流式传输到 Patronus，并为每次生成配上丰富的自动评估。
 
 ## 设置
 
 ### 1. OpenTelemetry
 
-Patronus 提供了一个完全托管的 OTEL 端点。配置一个 **OTLP exporter** 指向该端点，传入你的 API key，就完成了——Patronus 会自动将 LLM span 转换为可探索和评估的提示词/响应记录。
+Patronus 提供完全托管的 OTEL 端点。配置一个指向该端点的 **OTLP exporter**，传入你的 API key，就完成了——Patronus 会自动将 LLM span 转换为可探索和评估的提示词/响应记录。
 
 #### 环境变量（推荐）
 
@@ -58,7 +60,7 @@ registerTelemetry(new LegacyOpenTelemetry());
 
 ### 2. 注册集成并启用遥测
 
-安装 `@ai-sdk/otel` 并将 `registerTelemetry` 添加到你的 `instrumentation.ts` 后，遥测数据会自动捕获。传入 `telemetry` 以附加元数据：
+安装 `@ai-sdk/otel` 并将 `registerTelemetry` 添加到 `instrumentation.ts` 后，遥测数据会自动采集。传入 `telemetry` 以附加元数据：
 
 ```ts
 import { generateText } from 'ai';
@@ -76,9 +78,9 @@ const result = await generateText({
 });
 ```
 
-`metadata` 中的每个属性都会成为一个 OTEL 属性，并由 Patronus 建立索引以供筛选。
+`metadata` 中的每个属性都会成为 OTEL 属性，并由 Patronus 建立索引以用于过滤。
 
-## 示例 — 追踪与自动评估
+## 示例——追踪与自动评估
 
 ```ts filename="app/api/chat/route.ts"
 import { trace } from '@opentelemetry/api';
@@ -124,14 +126,13 @@ export async function POST(req: Request) {
 }
 ```
 
-结果：一个包含根 HTTP 请求、LLM 生成 span 和你的评估 span 的单一追踪——**全部在 Patronus 中可见**，并附有幻觉评分。
+结果：一个包含根 HTTP 请求、LLM 生成 span 和评估 span 的单一追踪——**全部在 Patronus 中可见**，并附带幻觉评分。
 
 ## 完成追踪之后
 
-- 如果你正在追踪一个智能体，Patronus 的 AI 助手 Percival 将协助进行错误分析和提示词优化。在[此处](https://docs.patronus.ai/docs/percival/percival)了解更多
-- 通过在 Patronus 上查看日志和追踪，并配置 webhook 进行告警，来设置生产监控和告警。在[此处](https://docs.patronus.ai/docs/real_time_monitoring/webhooks)了解更多
+- 如果你正在追踪智能体，Patronus 的 AI 助手 Percival 将协助进行错误分析和提示词优化。
+- 通过在 Patronus 上查看日志和追踪，并配置用于告警的 webhook，来设置生产监控和告警。
 
 ## 资源
 
-- [Patronus 文档](https://docs.patronus.ai)
 - [OpenTelemetry SDK (JS)](https://opentelemetry.io/docs/instrumentation/js/)

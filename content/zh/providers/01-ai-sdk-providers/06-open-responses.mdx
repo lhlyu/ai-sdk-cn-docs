@@ -1,19 +1,92 @@
 ---
 title: "Open Responses"
-description: "了解如何使用 Open Responses 提供商进行 AI SDK 开发。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 Open Responses。"
 ---
 
 # Open Responses 提供商
 
-[Open Responses](https://www.openresponses.org/) 提供商将 AI SDK Core 连接到实现了 Open Responses 兼容 `POST` 端点的语言模型服务器。Open Responses 是一个基于 OpenAI Responses API 的开放规范。
+[Open Responses](https://www.openresponses.org/) 提供商将 AI SDK
+Core 连接到实现了 Open Responses 兼容 `POST` 端点的语言模型服务器。Open Responses 是一个基于 OpenAI
+Responses API 的开放规范。
+对于托管模型，请从 [AI Gateway](/providers/ai-sdk-providers/ai-gateway) 开始（推荐）。Gateway 还提供了一个 [OpenResponses 兼容端点](https://vercel.com/docs/ai-gateway/sdks-and-apis/openresponses)，你可以使用 `@ai-sdk/open-responses` 调用它。对于第三方或自托管服务器，请使用直接提供商标签页。
 
-对于实现此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果你直接调用 OpenAI 并需要 OpenAI 特有的提供商选项或内置工具，请改用 [`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
+```ts provider="open-responses" model="openai/gpt-6-astra"
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
 
-## 设置
+const { text } = await generateText({
+  model: __MODEL__,
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
 
-Open Responses 提供商位于 `@ai-sdk/open-responses` 模块中。你可以使用以下命令安装它
+console.log(text);
+```
 
-<InstallPackages packages="@ai-sdk/open-responses" />
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+开头的 Gateway 标签页使用 AI SDK 原生的 Gateway 集成。要通过 OpenResponses 协议使用 `@ai-sdk/open-responses` 调用 Gateway，请安装这两个包：
+
+<InstallPackages packages="ai @ai-sdk/open-responses" />
+
+使用相同的 `AI_GATEWAY_API_KEY` 和 Gateway 的完整 `POST` 端点 URL：
+
+```ts
+import { generateText } from 'ai';
+import { createOpenResponses } from '@ai-sdk/open-responses';
+
+const gatewayResponses = createOpenResponses({
+  name: 'gateway',
+  url: 'https://ai-gateway.vercel.sh/v1/responses',
+  apiKey: process.env.AI_GATEWAY_API_KEY,
+});
+
+const { text } = await generateText({
+  model: gatewayResponses('openai/gpt-6-astra'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+
+console.log(text);
+```
+
+这会使用目录模型 ID 调用 Gateway 的托管端点。Gateway 不会代理任意的 `OPEN_RESPONSES_URL`，也不会连接到你的本地 LM Studio 服务器。
+
+## 使用 `@ai-sdk/open-responses`
+
+要直接访问 Open Responses，请安装 `ai` 和 `@ai-sdk/open-responses`：
+
+<InstallPackages packages="ai @ai-sdk/open-responses" />
+
+设置 Open Responses 端点的 URL：
+
+```bash
+export OPEN_RESPONSES_URL=http://localhost:1234/v1/responses
+```
+
+如果你的端点需要身份验证，还需设置 `OPEN_RESPONSES_API_KEY`；示例会将其传递给 `createOpenResponses`。本地 LM Studio 服务器可以在没有 API 密钥的情况下运行。将 `your-model-id` 替换为服务器上已加载的模型。
+
+对于自托管或第三方 Open Responses 端点，请使用直接提供商。Gateway 示例使用托管的 OpenAI 模型；直接示例需要你的端点上可用的模型 ID。
+
+<Note>
+  以下各节介绍直接的 `@ai-sdk/open-responses` 提供商，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
+
+对于实现此协议的第三方或自托管端点（例如 LM Studio），请使用 `@ai-sdk/open-responses`。如果你直接调用 OpenAI，并且需要 OpenAI 特有的提供商选项或内置工具，请改用
+[`@ai-sdk/openai` 提供商](/providers/ai-sdk-providers/openai)。
 
 ## 提供商实例
 
@@ -32,21 +105,24 @@ const openResponses = createOpenResponses({
 
 - **name** _string_
 
-  提供商名称。用于模型的提供商标识符，并作为提供商选项的键。
+  提供商名称。用于模型的提供商标识符，并作为
+  提供商选项的键。
 
 - **url** _string_
 
-  Open Responses API `POST` 端点的完整 URL。传入端点 URL，例如 `http://localhost:1234/v1/responses`，而不仅仅是其基础 URL。
+  Open Responses API `POST` 端点的完整 URL。请传入端点 URL，
+  例如 `http://localhost:1234/v1/responses`，而不仅仅是其基础 URL。
 
 你可以使用以下可选设置来自定义 Open Responses 提供商实例：
 
 - **apiKey** _string_
 
-  作为 bearer token 在 `Authorization` 请求头中发送的 API 密钥。
+  作为 bearer token 在 `Authorization` 头中发送的 API 密钥。
 
 - **headers** _Record&lt;string,string&gt; | () => Record&lt;string,string&gt;_
 
-  请求中包含的自定义请求头。当请求头需要针对每个请求延迟解析时，传入一个函数。
+  请求中包含的自定义头。当需要为每个请求延迟解析头时，
+  请传入函数。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
@@ -55,23 +131,36 @@ const openResponses = createOpenResponses({
 
 - **failedResponseHandler** _ResponseHandler&lt;APICallError&gt;_
 
-  针对非成功 HTTP 响应的自定义处理器。当端点返回的错误封装与默认的 OpenAI 兼容 `{ error: { message, type, param, code } }` 结构不同时，请使用此选项。
+  用于非成功 HTTP 响应的自定义处理器。当端点返回的错误封装
+  与默认的 OpenAI 兼容
+  `{ error: { message, type, param, code } }` 结构不同时，请使用此项。
 
 - **getResponseErrorMetadata** _function_
 
-  从响应错误对象中提取可选的 `statusCode` 和 `isRetryable` 元数据，包括端点特有的字段。适用于生成失败以及流式传输的 `response.failed` 和 `error` 事件。标准的 Open Responses 错误字段是 `code` 和 `message`；端点特有的状态字段需要此回调。当仅提供状态码时，SDK 会根据它推断可重试性。HTTP 失败由 `failedResponseHandler` 单独处理。
+  从响应错误对象中提取可选的 `statusCode` 和 `isRetryable` 元数据，
+  包括端点特有的字段。适用于生成失败以及
+  流式 `response.failed` 和 `error` 事件。标准 Open Responses
+  错误字段为 `code` 和 `message`；端点特有的状态字段需要
+  此回调。当仅提供状态码时，SDK 会根据它推导可重试性。
+  HTTP 失败由 `failedResponseHandler` 单独处理。
 
 - **strictResponseInput** _boolean_
 
-  使用严格的 OpenAI Responses 输入 schema 序列化助手历史记录。没有 item ID 的助手消息作为简单输入消息发送，而具有真实提供商 item ID 的消息作为完整输出项发送。默认为 `false`。
+  使用严格的 OpenAI Responses 输入 schema 序列化助手历史记录。
+  没有 item ID 的助手消息会作为简单输入消息发送，而
+  具有真实提供商 item ID 的消息会作为完整输出项发送。
+  默认为 `false`。
 
 - **customToolId** _`${string}.${string}`_
 
-  `provider.tools.customTool` 使用的提供商工具 ID。默认为 `open-responses.custom`。
+  `provider.tools.customTool` 使用的提供商工具 ID。默认为
+  `open-responses.custom`。
 
 - **structuredOutputs** _boolean_
 
-  是否将 JSON 响应格式发送到端点。当为 `false` 时，结构化输出请求会被省略并给出不支持警告。默认为 `true`。
+  是否将 JSON 响应格式发送到端点。当为 `false` 时，
+  结构化输出请求会被省略，并给出不支持警告。
+  默认为 `true`。
 
 - **userAgentSuffix** _string_
 
@@ -102,7 +191,8 @@ const openAIResponses = createOpenResponses({
 });
 ```
 
-你可以通过更改 `name`、`url`、身份验证和模型 ID，对另一个兼容服务使用相同的设置。
+你可以通过更改 `name`、`url`、身份验证和模型 ID，将相同的设置
+用于另一个兼容服务。
 
 ## 语言模型
 
@@ -114,7 +204,9 @@ const model = openResponses('your-model-id');
 
 模型 ID 会原样传递给端点。
 
-你可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，它们支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据（参见 [AI SDK Core](/docs/ai-sdk-core)）。
+你可以将 Open Responses 模型与 `generateText` 和 `streamText` 函数一起使用，
+它们支持使用 [`Output`](/docs/reference/ai-sdk-core/output) 生成结构化数据
+（参见 [AI SDK Core](/docs/ai-sdk-core)）。
 
 ### 生成文本
 
@@ -158,9 +250,13 @@ for await (const textPart of result.textStream) {
 
 ## 推理与提供商选项
 
-使用顶层的 [`reasoning`](/docs/ai-sdk-core/reasoning) 设置来控制推理强度。提供商会将支持的值映射到 Open Responses 的 `reasoning.effort` 字段。
+使用顶层 [`reasoning`](/docs/ai-sdk-core/reasoning) 设置来控制
+推理力度。提供商会将支持的值映射到 Open Responses
+`reasoning.effort` 字段。
 
-提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。提供商选项键必须与传递给 `createOpenResponses` 的 `name` 匹配：
+提供商还通过 `providerOptions` 支持 `reasoningEffort` 和 `reasoningSummary`。
+提供商选项键必须与传递给
+`createOpenResponses` 的 `name` 匹配：
 
 ```ts
 import {
@@ -190,13 +286,22 @@ console.log(reasoningText);
 console.log(text);
 ```
 
-`reasoningEffort` 接受任意字符串，并原样传递给端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的端点原生值（例如 `'max'`），请使用它。当两者都设置时，`providerOptions` 的 `reasoningEffort` 优先于顶层 `reasoning` 值。
+`reasoningEffort` 接受任意字符串，并会原样传递给
+端点的 `reasoning.effort` 字段。对于不属于顶层 `reasoning` 设置的
+端点原生值（例如 `'max'`），请使用它。当两者都设置时，
+`providerOptions` 的 `reasoningEffort` 优先于顶层
+`reasoning` 值。
 
-`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`，并且可以与任一推理强度设置组合使用。推理支持情况和接受的强度值取决于端点和模型；不支持的值可能会被端点拒绝或忽略。
+`reasoningSummary` 接受 `'auto'`、`'concise'` 或 `'detailed'`，并且可以
+与任一推理力度设置组合使用。推理支持情况和可接受的
+力度值取决于端点和模型；不支持的值可能会被端点
+拒绝或忽略。
 
 ## 自定义工具
 
-具有 OpenAI 兼容自定义工具支持的端点可以调用接受原始字符串输入的工具，并可选地受正则表达式或 Lark 语法约束。这些工具在你的应用程序中执行：
+支持 OpenAI 兼容自定义工具的端点可以调用具有原始
+字符串输入的工具，并可选地受正则表达式或 Lark 语法约束。这些工具
+在你的应用程序中执行：
 
 ```ts
 import { generateText, isStepCount } from 'ai';
@@ -219,11 +324,16 @@ const result = await generateText({
 });
 ```
 
-端点必须支持 OpenAI 兼容的 `custom` 工具、`custom_tool_call` 和 `custom_tool_call_output` 传输类型，正如 OpenAI 和 QuiverAI 所做的那样。这些是兼容性扩展，不属于 Open Responses 2026-04-24 规范。在端点支持的情况下，自定义工具结果可以包含文本、图像和文件。
+端点必须支持 OpenAI 兼容的 `custom` 工具、
+`custom_tool_call` 和 `custom_tool_call_output` 传输类型，正如 OpenAI 和
+QuiverAI 所做的那样。这些是兼容性扩展，不属于 Open Responses
+2026-04-24 规范。在端点支持的情况下，自定义工具结果可以包含文本、图像和文件。
 
 ## 文件输入
 
-提供商支持用户消息中的图像和非图像文件输入。图像作为 `input_image` 部分发送，而其他媒体类型（例如 PDF）作为 `input_file` 部分发送。
+提供商支持用户消息中的图像和非图像文件输入。图像
+会作为 `input_image` 部分发送，而其他媒体类型（例如 PDF）会
+作为 `input_file` 部分发送。
 
 你可以以内联数据形式提供文件：
 
@@ -261,15 +371,22 @@ const { text } = await generateText({
 console.log(text);
 ```
 
-你也可以将 `data` 设置为 `URL`。端点和模型必须支持该文件的媒体类型。此提供商不支持提供商文件引用（例如 OpenAI 文件 ID）以及 `{ type: 'text', text: '...' }` 格式的文件数据。
+你也可以将 `data` 设置为 `URL`。端点和模型必须支持
+文件的媒体类型。此提供商不支持提供商文件引用（例如 OpenAI 文件 ID）
+以及 `{ type: 'text', text: '...' }` 格式的文件数据。
 
 ## 实验性扩展
 
-Open Responses 实现可以添加带命名空间的工具、项和流式传输事件。使用 `Experimental_OpenResponsesExtension` 来编码和解码实现的扩展传输格式。未注册的提供商工具会从请求中省略，并给出 `unsupported` 警告。
+Open Responses 实现可以添加带命名空间的工具、项和流式
+事件。使用 `Experimental_OpenResponsesExtension` 来编码和解码
+实现的扩展传输格式。未注册的提供商工具
+会从请求中省略，并给出 `unsupported` 警告。
 
-此 API 是实验性的，可能会在未来的版本中发生变化。
+此 API 是实验性的，可能会在未来的版本中更改。
 
-AI SDK 提供商工具 ID 使用点号表示法（`acme.document_search`），而 Open Responses 传输类型使用冒号表示法（`acme:document_search`）。`id` 中的命名空间必须与每个已注册传输类型中的命名空间匹配。
+AI SDK 提供商工具 ID 使用点号表示法（`acme.document_search`），而
+Open Responses 传输类型使用冒号表示法（`acme:document_search`）。
+`id` 中的命名空间必须与每个已注册传输类型中的命名空间匹配。
 
 ```ts
 import {
@@ -334,7 +451,10 @@ const result = await generateText({
 });
 ```
 
-一些 Responses 兼容实现记录了非命名空间的扩展判别符，例如 `web_search`、`web_search_call` 或 `response.custom_tool_call_input.delta`。这些不是可移植的 Open Responses 类型。通过专用的裸字段注册每个确切值以选择启用：
+一些 Responses 兼容实现记录了非命名空间的扩展
+判别符，例如 `web_search`、`web_search_call` 或
+`response.custom_tool_call_input.delta`。这些不是可移植的 Open Responses
+类型。通过专用的裸字段注册每个确切值以选择启用：
 
 ```ts
 import type { Experimental_OpenResponsesBareExtension } from '@ai-sdk/open-responses';
@@ -372,30 +492,56 @@ const webSearchExtension: Experimental_OpenResponsesBareExtension = {
 };
 ```
 
-在使用 `bareToolType`、`bareItemTypes` 或 `bareEventTypes` 时，设置 `allowBareTypes: true`。这些字段只接受非命名空间的值。它们不会启用未知 JSON 透传：裸判别符只有在与已注册值完全匹配时才会被处理。核心 Open Responses 判别符和重复注册会被拒绝。
-只要实现支持，就使用正常的命名空间字段。
-`Experimental_OpenResponsesExtension` 仍然是命名空间接口；仅在此兼容模式下使用 `Experimental_OpenResponsesBareExtension`。
+使用 `bareToolType`、`bareItemTypes` 或
+`bareEventTypes` 时，请设置 `allowBareTypes: true`。这些字段仅接受非命名空间值。它们不会
+启用未知 JSON 透传：裸判别符仅在
+与已注册值完全匹配时才会被处理。核心 Open Responses 判别符和
+重复注册会被拒绝。
+只要实现支持，就应使用正常的命名空间字段。
+`Experimental_OpenResponsesExtension` 仍然是命名空间接口；
+仅在此兼容模式下使用 `Experimental_OpenResponsesBareExtension`。
 
-在每个解码后的 `tool-call` 或 `tool-input-start` 部分上设置 `providerExecuted`。它可以因项或事件而异。
+在每个解码后的 `tool-call` 或 `tool-input-start` 部分上设置 `providerExecuted`。
+它可以因项或事件而异。
 
 扩展编解码器可以定义：
 
-- `encodeTool`：编码提供商工具。返回 `undefined` 会省略该工具并给出 `unsupported` 警告。选择被省略工具的 `toolChoice` 也会被省略。
-- `encodeToolChoice`：编码特定的 `toolChoice`。默认是包含已注册 `toolType` 或 `bareToolType` 的对象。
-- `decodeItem`：将已完成的项映射到 AI SDK 内容部分。`mode` 为 `'generate'` 或 `'stream'`。
-- `encodeInputItem`：当原始传输项不可用时，编码工具调用或工具结果历史记录。返回的项必须包含 `id`、`status` 以及通过 `itemTypes` 或 `bareItemTypes` 注册的 `type`。
-- `decodeEvent`：将流式传输事件映射到 AI SDK 流部分。其 `state` 映射在单个响应流期间持续存在。
+- `encodeTool`：编码提供商工具。返回 `undefined` 会省略该工具，
+  并给出 `unsupported` 警告。选择被省略工具的 `toolChoice` 也会
+  被省略。
+- `encodeToolChoice`：编码特定的 `toolChoice`。默认是
+  一个包含已注册 `toolType` 或 `bareToolType` 的对象。
+- `decodeItem`：将已完成的项映射到 AI SDK 内容部分。`mode` 为
+  `'generate'` 或 `'stream'`。
+- `encodeInputItem`：当原始传输项不可用时，编码工具调用或工具结果历史记录。
+  返回的项必须包含 `id`、`status` 以及通过 `itemTypes` 或 `bareItemTypes`
+  注册的 `type`。
+- `decodeEvent`：将流式事件映射到 AI SDK 流部分。其 `state` 映射
+  在一个响应流期间持续存在。
 
-工具、项和事件能力是相互独立的。例如，仅项的扩展定义 `itemTypes`（或 `bareItemTypes`）和 `decodeItem`，而不定义工具类型或 `encodeTool`。能力字段必须成对提供。
+工具、项和事件能力是独立的。例如，仅项扩展
+定义 `itemTypes`（或 `bareItemTypes`）和 `decodeItem`，而不定义
+工具类型或 `encodeTool`。能力字段必须成对提供。
 
-每个解码后的项都会添加一个 `open-responses.extension-replay` 自定义部分，将原始 JSON 存储在提供商元数据中。其他解码部分引用该自定义部分，而不是复制该项。将 `result.response.messages` 传递给后续调用会重放原始项一次，包括不透明字段。这也会保留仅解码为仅响应源部分的项。
+每个解码后的项都会添加一个 `open-responses.extension-replay` 自定义部分，
+该部分将原始 JSON 存储在提供商元数据中。其他解码部分会引用
+该自定义部分，而不是复制该项。将 `result.response.messages`
+传递给后续调用时，会重放原始项一次，包括不透明字段。这
+还会保留仅解码为仅响应源部分的项。
 
-适配器仅验证扩展判别符字段。在返回 AI SDK 部分之前，请在编解码器中验证其他项和事件字段。原始项存储在提供商元数据中，可能会出现在持久化消息、遥测、日志或 UI 负载中。
+适配器仅验证扩展判别符字段。在返回 AI SDK 部分之前，请在编解码器中验证其他
+项和事件字段。原始项存储在提供商元数据中，可能会出现在持久化消息、
+遥测、日志或 UI 负载中。
 
-扩展回调无法跨工作流步骤边界序列化。请在工作流步骤内创建提供商。序列化配置了扩展的模型会抛出 `SerializationError`。
+扩展回调无法跨工作流步骤边界序列化。
+请在工作流步骤内创建提供商。序列化配置了扩展的模型
+会抛出 `SerializationError`。
 
 ## 限制
 
 - 不支持停止序列、`topK` 和 `seed`，它们会被忽略并给出警告。
-- 提供商仅支持语言模型。它不提供嵌入或图像生成模型。
-- 支持 AI SDK 函数工具和已注册的 Open Responses 扩展。其他提供商特有的工具和选项需要专用的提供商实现。
+- 提供商仅支持语言模型。它不提供嵌入或
+  图像生成模型。
+- 支持 AI SDK 函数工具和已注册的 Open Responses 扩展。
+  其他提供商特有的工具和选项需要专用的提供商
+  实现。

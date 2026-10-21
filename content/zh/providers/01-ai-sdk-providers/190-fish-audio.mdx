@@ -1,31 +1,63 @@
 ---
 title: "Fish Audio"
-description: "了解如何将 Fish Audio 提供商用于 AI SDK。"
+description: "了解如何在 AI Gateway 和直接提供商中使用 Fish Audio。"
 ---
 
 # Fish Audio 提供商
 
-[Fish Audio](https://fish.audio/) 提供商支持语音生成（S1 和 S2 模型）以及语音转文字转录功能。
+[Fish Audio](https://fish.audio/) 提供商包含语音生成（S1 和 S2 模型）以及语音转文字转录支持。
+你可以通过 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（推荐）使用 Fish Audio 模型，或使用 `@ai-sdk/fish-audio` 直接连接。
 
-## 设置
+```ts provider="fish-audio" model="fish-audio/s2.1-pro"
+import { generateSpeech } from 'ai';
+__PROVIDER_IMPORT__;
+import { writeFile } from 'node:fs/promises';
 
-Fish Audio 提供商位于 `@ai-sdk/fish-audio` 模块中。你可以通过以下方式安装：
+const { audio } = await generateSpeech({
+  model: __SPEECH_MODEL__,
+  text: 'Hello, world!',
+  outputFormat: 'mp3',
+});
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab>
-    <Snippet text="pnpm add @ai-sdk/fish-audio" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="npm install @ai-sdk/fish-audio" dark />
-  </Tab>
-  <Tab>
-    <Snippet text="yarn add @ai-sdk/fish-audio" dark />
-  </Tab>
+await writeFile('speech.mp3', audio.uint8Array);
+```
 
-  <Tab>
-    <Snippet text="bun add @ai-sdk/fish-audio" dark />
-  </Tab>
-</Tabs>
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供对跨提供商模型的访问，并支持用量和成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 认证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+Gateway 的功能和提供商选项支持取决于模型以及处理请求的提供商。请参阅 [Gateway 提供商选项](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options)。
+
+## 使用 `@ai-sdk/fish-audio`
+
+要直接访问 Fish Audio，请安装 `ai` 和 `@ai-sdk/fish-audio`：
+
+<InstallPackages packages="ai @ai-sdk/fish-audio" />
+
+在 `FISH_AUDIO_API_KEY` 环境变量中设置你的 Fish Audio API 凭据：
+
+```bash
+export FISH_AUDIO_API_KEY=your_api_key_here
+```
+
+AI Gateway 并未暴露 `@ai-sdk/fish-audio` 中的每一个 API。对于提供商特定的 API 或自定义连接设置，请使用直接提供商。
+
+<Note>
+  以下各节记录直接 `@ai-sdk/fish-audio` 提供商，
+  包括其模型工厂和设置。Gateway 的模型和功能
+  可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
@@ -35,13 +67,13 @@ Fish Audio 提供商位于 `@ai-sdk/fish-audio` 模块中。你可以通过以�
 import { fishAudio } from '@ai-sdk/fish-audio';
 ```
 
-如果你需要自定义设置，可以从 `@ai-sdk/fish-audio` 导入 `createFishAudio` 并使用你的设置创建提供商实例：
+如果你需要自定义设置，可以从 `@ai-sdk/fish-audio` 导入 `createFishAudio`，并使用你的设置创建提供商实例：
 
 ```ts
 import { createFishAudio } from '@ai-sdk/fish-audio';
 
 const fishAudio = createFishAudio({
-  // 自定义设置，例如
+  // custom settings, e.g.
   fetch: customFetch,
 });
 ```
@@ -50,8 +82,8 @@ const fishAudio = createFishAudio({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 标头发送的 API 密钥。
-  默认为 `FISH_AUDIO_API_KEY` 环境变量。
+  通过 `Authorization` 请求头发送的 API 密钥。
+  默认使用 `FISH_AUDIO_API_KEY` 环境变量。
 
 - **baseURL** _string_
 
@@ -60,13 +92,14 @@ const fishAudio = createFishAudio({
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义标头。
+  要包含在请求中的自定义请求头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   默认为全局 `fetch` 函数。
-  你可以将其用作中间件来拦截请求，或提供自定义的 fetch 实现，例如用于测试。
+  你可以将其用作中间件来拦截请求，
+  或为例如测试提供自定义 fetch 实现。
 
 ## 语音模型
 
@@ -82,7 +115,8 @@ const { audio } = await generateSpeech({
 });
 ```
 
-`voice` 选项用于选择 Fish Audio 语音模型 ID（`reference_id`），可以从 [Fish Audio 语音库](https://fish.audio/) 中选择，也可以使用你自己上传的模型。省略该选项则使用默认语音。
+`voice` 选项用于选择 Fish Audio 语音模型 ID（`reference_id`），可以来自
+[Fish Audio 语音库](https://fish.audio/)，也可以是你自己上传的模型。省略该选项则使用默认语音。
 
 ```ts
 const { audio } = await generateSpeech({
@@ -94,7 +128,9 @@ const { audio } = await generateSpeech({
 });
 ```
 
-语音列表不属于 AI SDK 语音模型规范的一部分，因此请直接通过 [Fish Audio 模型列表端点](https://docs.fish.audio/api-reference/endpoint/openapi-v1/list-models) 浏览语音：
+语音列表不属于 AI SDK 语音模型规范，因此请直接使用 [Fish Audio 列出模型
+端点](https://docs.fish.audio/api-reference/endpoint/openapi-v1/list-models)
+浏览语音：
 
 ```ts
 const response = await fetch(
@@ -102,53 +138,60 @@ const response = await fetch(
   { headers: { Authorization: `Bearer ${process.env.FISH_AUDIO_API_KEY}` } },
 );
 const { items } = await response.json();
-// 每个项目的 `_id` 都是可以传递给 `voice` 的值。
+// Each item's `_id` is a value you can pass as `voice`.
 ```
 
-添加 `self=true` 仅列出你自己上传的模型，或添加 `language=en` / `tag=narration` 进行筛选。
+添加 `self=true` 可仅列出你自己上传的模型，或使用 `language=en` / `tag=narration` 进行筛选。
 
 ### 提供商选项
 
 以下提供商选项可用：
 
-- **referenceId** _string | 字符串数组_
+- **referenceId** _string | array of strings_
 
-  语音模型 ID。单个 ID 选择一个说话人；数组支持多说话人对话（S2-Pro 模型）。优先于顶层 `voice` 选项。
+  语音模型 ID。单个 ID 选择一个说话人；数组可启用
+  多说话人对话（S2-Pro 模型）。优先于顶层
+  `voice` 选项。
   可选。
 
 - **sampleRate** _number_
 
-  输出采样率（Hz）。未设置时回退到格式默认值（`wav`/`pcm`/`mp3` 为 44100 Hz，`opus` 为 48000 Hz）。
+  输出采样率，单位为 Hz。未设置时回退到格式默认值
+  （`wav`/`pcm`/`mp3` 为 44100 Hz，`opus` 为 48000 Hz）。
   可选。
 
 - **mp3Bitrate** _64 | 128 | 192_
 
-  `mp3` 输出的比特率（kbps）。其他格式忽略。
+  `mp3` 输出的比特率，单位为 kbps。对其他格式忽略。
   可选。
 
 - **opusBitrate** _-1000 | 24000 | 32000 | 48000 | 64000_
 
-  `opus` 输出的比特率（bps），其中 `-1000` 表示自动选择。其他格式忽略。
+  `opus` 输出的比特率，单位为 bps，其中 `-1000` 表示自动选择。对其他格式
+  忽略。
   可选。
 
 - **latency** _'low' | 'normal' | 'balanced'_
 
-  延迟/质量权衡。`normal` 提供最佳质量，`balanced` 降低延迟，`low` 最快。
+  延迟/质量权衡。`normal` 提供最佳质量，`balanced` 降低
+  延迟，`low` 最快。
   可选。
 
 - **volume** _number_
 
-  音量偏移（dB）。负值更安静。
+  音量偏移，单位为 dB。负值表示更安静。
   可选。
 
 - **normalizeLoudness** _boolean_
 
-  响度归一化。S2 系列（`s2-pro` 和 `s2.1-pro`）支持。Fish Audio 在 `s1` 上接受但忽略此参数，因此提供商会在这种情况下丢弃它并发出警告。
+  响度归一化。由 S2 系列（`s2-pro` 和
+  `s2.1-pro`）支持。Fish Audio 在 `s1` 上接受该参数但会忽略它，因此提供商
+  在这种情况下会丢弃该参数并发出警告。
   可选。
 
 - **temperature** _number_
 
-  控制表现力（0 到 1）。值越高变化越多。
+  控制表现力（0 到 1）。值越高变化越大。
   可选。
 
 - **topP** _number_
@@ -158,17 +201,17 @@ const { items } = await response.json();
 
 - **chunkLength** _number_
 
-  处理的文本段大小（100 到 300）。
+  用于处理的文本段大小（100 到 300）。
   可选。
 
 - **minChunkLength** _number_
 
-  拆分为新块之前的最小字符数（0 到 100）。
+  拆分到新块之前的最小字符数（0 到 100）。
   可选。
 
 - **normalize** _boolean_
 
-  英文和中文的文本归一化。有助于数字的稳定性。
+  针对英文和中文的文本归一化。有助于数字的稳定性。
   可选。
 
 - **maxNewTokens** _number_
@@ -178,12 +221,12 @@ const { items } = await response.json();
 
 - **repetitionPenalty** _number_
 
-  高于 1.0 的值会抑制重复的音频模式。
+  大于 1.0 的值会抑制重复的音频模式。
   可选。
 
 - **conditionOnPreviousChunks** _boolean_
 
-  重用先前的音频作为上下文，以保持跨块的语音一致性。
+  复用先前的音频作为上下文，以保持跨块的语音一致性。
   可选。
 
 - **earlyStopThreshold** _number_
@@ -191,14 +234,17 @@ const { items } = await response.json();
   批处理中使用的提前停止阈值（0 到 1）。
   可选。
 
-- **features** _字符串数组_
+- **features** _array of strings_
 
-  传递给推理后端的请求级标志，例如 `['quality-guard']`。
+  传递给推理后端的请求级标志，例如
+  `['quality-guard']`。
   可选。
 
 ### 多说话人对话
 
-S2-Pro 模型支持多说话人对话。通过 `referenceId` 传递语音模型 ID 数组，并在文本中使用 `<|speaker:N|>` 标记轮次，其中 `N` 是该数组的索引。
+S2-Pro 模型支持多说话人对话。通过 `referenceId` 传入语音模型 ID 数组，
+并在文本中用 `<|speaker:N|>` 标记轮次，其中 `N`
+是该数组的索引。
 
 ```ts
 const { audio } = await generateSpeech({
@@ -217,23 +263,30 @@ const { audio } = await generateSpeech({
 
 ### 输出格式
 
-Fish Audio 支持 `wav`、`pcm`、`mp3` 和 `opus` 输出格式。任何其他值都会回退到 `mp3` 并产生警告。
+Fish Audio 支持 `wav`、`pcm`、`mp3` 和 `opus` 输出格式。任何其他
+值都会回退到 `mp3` 并产生警告。
 
 <Note>
-  Fish Audio 根据输入文本和所选语音推断语言，没有语言参数。不支持 `language` 和 `instructions` 选项，并会产生警告。
+  Fish Audio 从输入文本和所选语音推断语言，
+  没有语言参数。`language` 和 `instructions` 选项不受
+  支持，并会产生警告。
 </Note>
 
 ### 模型能力
 
-| 模型             | 多说话人           | 备注                                                                       |
+| 模型            | 多说话人            | 备注                                                                      |
 | --------------- | ------------------- | ------------------------------------------------------------------------- |
 | `s1`            |                     | 忽略 `normalizeLoudness`                                                  |
 | `s2-pro`        | <Check size={18} /> | 支持 `normalizeLoudness`                                                  |
-| `s2.1-pro`      | <Check size={18} /> | 推荐的默认模型；支持 `normalizeLoudness`                                   |
-| `s2.1-pro-free` |                     | 免费开发者层级；不保证首音频时间或数据处理                                  |
+| `s2.1-pro`      | <Check size={18} /> | 推荐的默认模型；支持 `normalizeLoudness`                                  |
+| `s2.1-pro-free` |                     | 免费开发者层级；不保证首音频时间或数据处理                                |
 
 <Note>
-  目前不支持流式文本转语音（Fish Audio 的 TTS-live WebSocket 和带时间戳的流式端点），也不支持通过 `references` 进行内联零样本语音克隆，后者需要 MessagePack 请求体。请将参考音频上传到 Fish Audio，并通过 `voice` 或 `referenceId` 传递其 `reference_id`。
+  目前不支持流式文本转语音（Fish Audio 的 TTS-live WebSocket 和带时间戳的
+  流式端点），也不支持通过 `references` 进行内联
+  零样本语音克隆，后者需要 MessagePack 请求
+  体。请改为将参考音频上传到 Fish Audio，并通过
+  `voice` 或 `referenceId` 传入其 `reference_id`。
 </Note>
 
 ## 转录模型
@@ -251,7 +304,11 @@ const result = await transcribe({
 });
 ```
 
-Fish Audio 语音转文字端点目前不提供模型选择器，仅提供单一模型，因此模型 ID 是可选的，默认为 `'transcribe-1'`。它是一个路由标签，不会发送到 API。Fish Audio 预计会增加更多 ASR 模型，并通过 `model` HTTP 标头进行选择，与文本转语音端点保持一致。
+Fish Audio 语音转文字端点目前不提供模型选择器，仅
+提供单一模型，因此模型 ID 是可选的，默认为
+`'transcribe-1'`。它是一个路由标签，不会发送到 API。Fish Audio
+预计将添加更多 ASR 模型，并通过 `model` HTTP 请求头选择它们，
+与文本转语音端点一致。
 
 ### 提供商选项
 
@@ -259,12 +316,18 @@ Fish Audio 语音转文字端点目前不提供模型选择器，仅提供单一
 
 - **language** _string_
 
-  音频的语言。仅作为提示：Fish Audio 会将其传递给模型，但自动检测具有权威性并会覆盖它，因此它不会改变转录文本或报告的语言。
+  音频的语言。仅为提示：Fish Audio 会将其传递给模型，但
+  自动检测具有权威性并会覆盖它，因此它既不会改变
+  转录文本，也不会改变报告的语言。
   可选。
 
 - **ignoreTimestamps** _boolean_
 
-  是否跳过精确时间戳。对应 Fish Audio 的 `ignore_timestamps` 参数，其 API 默认值为 `true`。此提供商将其默认值设为 `false`，以便填充 `segments`。Fish Audio 文档说明，对于短于 30 秒的音频会增加延迟成本；将此设置为 `true` 可以用 `segments` 换取该延迟。
+  是否跳过精确时间戳。对应 Fish Audio
+  `ignore_timestamps` 参数，其 API 默认值为 `true`。此提供商
+  将其默认值设为 `false`，以便填充 `segments`。Fish Audio 文档
+  说明对于短于 30 秒的音频会增加延迟成本；将其设为 `true` 可
+  用 segments 换取该延迟。
   可选。
 
 ```ts
@@ -280,9 +343,12 @@ const result = await transcribe({
 });
 ```
 
-`result.language` 以 ISO-639-1 代码（例如 `en`）报告检测到的语言。它始终是两位字母代码，绝不会是诸如 `en-US` 之类的区域设置，并且当 Fish Audio 未检测到语言时为 `undefined`。
+`result.language` 以 ISO-639-1 代码（例如 `en`）报告检测到的语言。
+它始终是两字母代码，绝不会是诸如 `en-US` 这样的区域设置，并且当
+Fish Audio 未检测到语言时为 `undefined`。
 
-人类可读的语言名称（例如 `English`）可作为提供商元数据使用：
+人类可读的语言名称（例如 `English`）可通过提供商
+元数据获取：
 
 ```ts
 console.log(result.language); // 'en'
@@ -290,15 +356,18 @@ console.log(result.providerMetadata?.fishAudio?.language); // 'English'
 ```
 
 <Note>
-  提供商元数据 `language` 是用于展示的显示名称。其确切形式不保证，因此避免基于它进行匹配或分支——任何程序化操作请使用 `result.language`。
+  提供商元数据 `language` 是用于展示的显示名称。
+  其确切形式不作保证，因此避免对其进行匹配或分支判断——对于任何程序化用途，
+  请使用 `result.language`。
 </Note>
 
 <Note>
-  将 `ignoreTimestamps` 设置为 `true` 会使 Fish Audio 返回空的 `segments` 数组。因此，提供商默认请求时间戳。
+  将 `ignoreTimestamps` 设为 `true` 会使 Fish Audio 返回空的
+  `segments` 数组。因此，提供商默认请求时间戳。
 </Note>
 
 ### 模型能力
 
-| 模型            | 转录               | 时长               | 分段               | 语言               |
+| 模型           | 转录                | 时长                | 分段                | 语言                |
 | -------------- | ------------------- | ------------------- | ------------------- | ------------------- |
 | `transcribe-1` | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> | <Check size={18} /> |

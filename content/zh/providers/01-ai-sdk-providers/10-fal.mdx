@@ -1,17 +1,59 @@
 ---
 title: "Fal"
-description: "了解如何在 AI SDK 中使用 Fal AI 模型。"
+description: "了解如何通过 AI Gateway 和直接提供商使用 Fal。"
 ---
 
 # Fal 提供商
 
-[Fal AI](https://fal.ai/) 为开发者提供了一个生成式媒体平台，具备极快的推理能力。其平台针对扩散模型的运行进行了性能优化，速度最高可达其他方案的 4 倍。
+[Fal AI](https://fal.ai/) 为开发者提供生成式媒体平台，具备极快的推理能力。其平台针对扩散模型运行进行了性能优化，速度最高可达其他方案的 4 倍。
+对于下方展示的共享模型，可使用 [AI Gateway](/providers/ai-sdk-providers/ai-gateway)（由 Gateway 支持的提供商提供服务），或使用 `@ai-sdk/fal` 将请求直接发送至 Fal。Gateway 目前不会将请求路由到 Fal。
 
-## 设置
+```ts provider="fal" model="bfl/flux-pro-1.1"
+import { generateImage } from 'ai';
+__PROVIDER_IMPORT__;
 
-Fal 提供商通过 `@ai-sdk/fal` 模块提供。你可以使用以下命令安装
+const { image } = await generateImage({
+  model: __IMAGE_MODEL__,
+  prompt: 'A sunlit mountain village in watercolor.',
+});
 
-<InstallPackages packages="@ai-sdk/fal" />
+console.log(image.base64);
+```
+
+## 使用 AI Gateway
+
+AI SDK 默认对模型字符串使用 AI Gateway。Gateway 通过单个 API 密钥提供跨提供商的模型访问，并支持用量与成本跟踪。安装 `ai`：
+
+<InstallPackages packages="ai" />
+
+在环境中设置 [AI Gateway API 密钥](https://vercel.com/docs/ai-gateway/getting-started)：
+
+```bash
+export AI_GATEWAY_API_KEY=your_api_key_here
+```
+
+Vercel 部署还可以使用 [OIDC 身份验证](/providers/ai-sdk-providers/ai-gateway#oidc-authentication-vercel-deployments)。
+有关配置信息，请参阅 [AI Gateway 提供商文档](/providers/ai-sdk-providers/ai-gateway)；有关可用模型，请参阅[模型目录](https://vercel.com/ai-gateway/models)。
+
+当前的 [Gateway 提供商列表](https://vercel.com/docs/ai-gateway/models-and-providers/provider-options#available-providers)不包含 Fal 作为推理提供商。Gateway 标签页会调用 Fal 也提供的模型，但 Gateway 会通过其支持的推理提供商路由这些请求，而不会将请求发送至 Fal。请使用直接标签页调用 Fal；不要将 `providerOptions.gateway.order` 设置为不受支持的提供商 slug。
+
+## 使用 `@ai-sdk/fal`
+
+如需直接访问 Fal，请安装 `ai` 和 `@ai-sdk/fal`：
+
+<InstallPackages packages="ai @ai-sdk/fal" />
+
+在 `FAL_API_KEY` 环境变量中设置你的 Fal API 凭据：
+
+```bash
+export FAL_API_KEY=your_api_key_here
+```
+
+使用 `@ai-sdk/fal` 通过你的 Fal 账户进行身份验证，并直接调用其平台 API。上文的 Gateway 替代方案则使用受支持的推理提供商。
+
+<Note>
+  以下章节介绍直接使用 `@ai-sdk/fal` 提供商，包括其模型工厂和设置。Gateway 的模型与功能可用性可能有所不同。
+</Note>
 
 ## 提供商实例
 
@@ -21,7 +63,7 @@ Fal 提供商通过 `@ai-sdk/fal` 模块提供。你可以使用以下命令安�
 import { fal } from '@ai-sdk/fal';
 ```
 
-如果你需要自定义设置，可以导入 `createFal` 并使用你的配置创建提供商实例：
+如果需要自定义设置，可以导入 `createFal` 并使用你的设置创建提供商实例：
 
 ```ts
 import { createFal } from '@ai-sdk/fal';
@@ -44,18 +86,18 @@ const fal = createFal({
 
 - **apiKey** _string_
 
-  通过 `Authorization` 请求头发送的 API 密钥。
-  默认使用 `FAL_API_KEY` 环境变量，若未设置则回退到 `FAL_KEY`。
+  通过 `Authorization` 标头发送的 API 密钥。
+  默认使用 `FAL_API_KEY` 环境变量，回退到 `FAL_KEY`。
 
 - **headers** _Record&lt;string,string&gt;_
 
-  要包含在请求中的自定义请求头。
+  请求中包含的自定义标头。
 
 - **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
 
   自定义 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) 实现。
   你可以将其用作中间件来拦截请求，
-  或为测试等场景提供自定义 fetch 实现。
+  或为例如测试提供自定义 fetch 实现。
 
 ## 图像模型
 
@@ -79,7 +121,7 @@ fs.writeFileSync(filename, image.uint8Array);
 console.log(`Image saved to ${filename}`);
 ```
 
-Fal 图像模型可能会返回图像和请求的额外信息。
+Fal 图像模型可能会返回有关图像和请求的额外信息。
 
 以下是为每张图像可能设置的一些属性示例
 
@@ -92,20 +134,20 @@ providerMetadata.fal.images[0].contentType; // string, mime type of the image
 
 ### 模型能力
 
-Fal 提供了许多针对不同用例优化的模型。以下是一些热门示例。完整模型列表请参阅 [Fal AI 搜索页面](https://fal.ai/explore/search)。
+Fal 提供许多针对不同用例优化的模型。以下是一些热门示例。有关完整模型列表，请参阅 [Fal AI 搜索页面](https://fal.ai/explore/search)。
 
-| 模型                                           | 描述                                                                                                                              |
+| 模型                                           | 描述                                                                                                                       |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `fal-ai/flux/dev`                              | FLUX.1 [dev] 模型，用于高质量图像生成                                                                                             |
-| `fal-ai/flux-pro/kontext`                      | FLUX.1 Kontext [pro] 同时处理文本和参考图像作为输入，支持定向编辑和复杂变换                                                       |
-| `fal-ai/flux-pro/kontext/max`                  | FLUX.1 Kontext [max]，具有改进的提示词遵循度和排版生成能力                                                                        |
-| `fal-ai/flux-lora`                             | 支持 LoRA 的 FLUX.1 超快端点                                                                                                      |
-| `fal-ai/ideogram/character`                    | 在多张图像中生成一致的角色外观。保持面部特征、比例和独特特征                                                                      |
-| `fal-ai/qwen-image`                            | Qwen-Image 基础模型，在复杂文本渲染和精确图像编辑方面有显著进步                                                                   |
-| `fal-ai/omnigen-v2`                            | 统一图像生成模型，支持图像编辑、个性化图像生成、虚拟试穿、多人生成等                                                              |
-| `fal-ai/bytedance/dreamina/v3.1/text-to-image` | Dreamina 展现出卓越的画面效果，在美学、精确多样的风格和丰富细节方面有所提升                                                       |
-| `fal-ai/recraft/v3/text-to-image`              | 图像生成领域的 SOTA，具备矢量艺术和品牌风格能力                                                                                   |
-| `fal-ai/wan/v2.2-a14b/text-to-image`           | 高分辨率、照片级真实感的图像，具有精细细节                                                                                        |
+| `fal-ai/flux/dev`                              | FLUX.1 [dev] 模型，用于高质量图像生成                                                                              |
+| `fal-ai/flux-pro/kontext`                      | FLUX.1 Kontext [pro] 可同时处理文本和参考图像作为输入，支持定向编辑和复杂变换        |
+| `fal-ai/flux-pro/kontext/max`                  | FLUX.1 Kontext [max]，具有更好的提示词遵循度和排版生成能力                                                     |
+| `fal-ai/flux-lora`                             | 支持 LoRA 的 FLUX.1 超快端点                                                                                  |
+| `fal-ai/ideogram/character`                    | 在多张图像中生成一致的角色外观。保持面部特征、比例和显著特征   |
+| `fal-ai/qwen-image`                            | Qwen-Image 基础模型，在复杂文本渲染和精确图像编辑方面有显著进步                         |
+| `fal-ai/omnigen-v2`                            | 统一图像生成模型，适用于图像编辑、个性化图像生成、虚拟试穿、多人生成等 |
+| `fal-ai/bytedance/dreamina/v3.1/text-to-image` | Dreamina 在美学、精确多样风格和丰富细节方面展现出卓越的图片效果         |
+| `fal-ai/recraft/v3/text-to-image`              | 图像生成领域的 SOTA，具备矢量艺术和品牌风格能力                                                             |
+| `fal-ai/wan/v2.2-a14b/text-to-image`           | 高分辨率、照片级真实感图像，细节精细                                                                   |
 
 Fal 模型支持以下宽高比：
 
@@ -121,10 +163,10 @@ Fal 模型支持以下宽高比：
 
 Fal 模型的主要特性包括：
 
-- 相比其他方案，推理速度最高快 4 倍
+- 推理速度最高可达其他方案的 4 倍
 - 由 Fal Inference Engine™ 优化
 - 支持实时基础设施
-- 按使用量计费，具有成本效益的扩展能力
+- 按使用量计费，可经济高效地扩展
 - 支持 LoRA 训练以实现模型个性化
 
 #### 修改图像
@@ -144,7 +186,7 @@ await generateImage({
 ```
 
 图像也可以作为 base64 编码字符串、`Uint8Array`、`ArrayBuffer` 或 `Buffer` 传入。
-还可以传入遮罩
+还可以传入蒙版
 
 ```ts
 await generateImage({
@@ -161,7 +203,7 @@ await generateImage({
 
 Fal 图像模型通过 `providerOptions.fal` 对象支持灵活的提供商选项。你可以传入特定 Fal 模型 API 支持的任何参数。常见选项包括：
 
-- **imageUrl** - 用于图像到图像生成的参考图像 URL（已弃用，请改用 `prompt.images`）
+- **imageUrl** - 用于图生图的参考图像 URL（已弃用，请改用 `prompt.images`）
 - **strength** - 控制输出与输入图像的差异程度
 - **guidanceScale** - 控制对提示词的遵循程度（范围：1-20）
 - **numInferenceSteps** - 去噪步数（范围：1-50）
@@ -170,7 +212,7 @@ Fal 图像模型通过 `providerOptions.fal` 对象支持灵活的提供商选�
 - **syncMode** - 在返回响应前等待完成
 - **acceleration** - 生成速度：'none'、'regular' 或 'high'
 - **safetyTolerance** - 内容安全过滤级别（1-6，其中 1 最严格）
-- **useMultipleImages** - 当为 true 时，将多个输入图像转换为 `image_urls` 数组，适用于支持多图像的模型（例如 fal-ai/flux-2/edit）
+- **useMultipleImages** - 为 true 时，将多个输入图像转换为 `image_urls` 数组，适用于支持多图像的模型（例如 fal-ai/flux-2/edit）
 
 <Note type="warning">
   **弃用通知**：snake_case 参数名（例如 `image_url`、
@@ -178,24 +220,24 @@ Fal 图像模型通过 `providerOptions.fal` 对象支持灵活的提供商选�
   请改用 camelCase 名称（例如 `imageUrl`、`guidanceScale`）。
 </Note>
 
-有关模型特定的参数，请参阅 [Fal AI 模型文档](https://fal.ai/models)。
+有关模型特定参数，请参阅 [Fal AI 模型文档](https://fal.ai/models)。
 
 ### 高级功能
 
-Fal 的平台提供了多项高级能力：
+Fal 平台提供多项高级能力：
 
-- **私有模型推理**：运行你自己的扩散 transformer 模型，推理速度最高快 50%
-- **LoRA 训练**：在 5 分钟内训练和个性化模型
+- **私有模型推理**：运行你自己的扩散变换器模型，推理速度最高提升 50%
+- **LoRA 训练**：在 5 分钟内训练并个性化模型
 - **实时基础设施**：通过快速推理时间实现新的用户体验
-- **可扩展架构**：在需要时扩展到数千个 GPU
+- **可扩展架构**：需要时可扩展至数千个 GPU
 
-有关 Fal 能力和功能的更多详情，请访问 [Fal AI 文档](https://fal.ai/docs)。
+有关 Fal 能力和功能的更多详细信息，请访问 [Fal AI 文档](https://fal.ai/docs)。
 
 ## 转录模型
 
-你可以使用 `.transcription()` 工厂方法创建调用 [Fal 转录 API](https://docs.fal.ai/guides/convert-speech-to-text) 的模型。
+你可以使用 `.transcription()` 工厂方法创建调用 [Fal 转录 API](https://docs.fal.ai/guides/convert-speech-to-text)的模型。
 
-第一个参数是模型 id，不带 `fal-ai/` 前缀，例如 `wizper`。
+第一个参数是模型 ID，不带 `fal-ai/` 前缀，例如 `wizper`。
 
 ```ts
 const model = fal.transcription('wizper');
@@ -225,7 +267,7 @@ const result = await transcribe({
   可选。
 
 - **diarize** _boolean_
-  是否对音频文件进行说话人分离（识别不同的说话人）。
+  是否对音频文件进行说话人分离（识别不同说话人）。
   默认为 true。
   可选。
 
@@ -235,12 +277,12 @@ const result = await transcribe({
   可选。
 
 - **version** _string_
-  要使用的模型版本。所有模型都是 Whisper large 变体。
+  要使用的模型版本。所有模型都是 Whisper 大型变体。
   默认值："3"
   可选。
 
 - **batchSize** _number_
-  处理的批大小。
+  处理批大小。
   默认值：64
   可选。
 
@@ -250,7 +292,7 @@ const result = await transcribe({
 
 ### 模型能力
 
-| 模型      | 转录      | 时长      | 分段      | 语言      |
+| 模型     | 转录 | 时长  | 分段  | 语言  |
 | --------- | ------------- | --------- | --------- | --------- |
 | `whisper` | <Check />     | <Check /> | <Check /> | <Check /> |
 | `wizper`  | <Check />     | <Check /> | <Check /> | <Check /> |
@@ -273,22 +315,22 @@ const result = await generateSpeech({
 
 ### 模型能力
 
-| 模型                                      | 描述                                                                                                                                                                  |
+| 模型                                     | 描述                                                                                                                                                           |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fal-ai/minimax/voice-clone`              | 从样本音频克隆声音，并根据文本提示词生成语音                                                                                                                          |
-| `fal-ai/minimax/voice-design`             | 根据文本描述设计个性化声音，并根据文本提示词生成语音                                                                                                                  |
-| `fal-ai/dia-tts/voice-clone`              | 从样本音频克隆对话声音，并根据文本提示词生成对话                                                                                                                      |
-| `fal-ai/minimax/speech-02-hd`             | 根据文本提示词和不同声音生成语音                                                                                                                                      |
-| `fal-ai/minimax/speech-02-turbo`          | 根据文本提示词和不同声音快速生成语音                                                                                                                                  |
-| `fal-ai/dia-tts`                          | 直接从转录文本生成逼真的对话，并通过音频条件控制情绪。产生自然的非语言声音，如笑声和清嗓子                                                                             |
-| `resemble-ai/chatterboxhd/text-to-speech` | 使用 Resemble AI 的 Chatterbox 生成富有表现力的自然语音。具有独特的情绪控制、从短音频即时克隆声音以及内置水印功能                                                       |
+| `fal-ai/minimax/voice-clone`              | 从示例音频克隆声音，并根据文本提示词生成语音                                                                                               |
+| `fal-ai/minimax/voice-design`             | 根据文本描述设计个性化声音，并根据文本提示词生成语音                                                                             |
+| `fal-ai/dia-tts/voice-clone`              | 从示例音频克隆对话声音，并根据文本提示词生成对话                                                                                        |
+| `fal-ai/minimax/speech-02-hd`             | 根据文本提示词和不同声音生成语音                                                                                                                |
+| `fal-ai/minimax/speech-02-turbo`          | 根据文本提示词和不同声音快速生成语音                                                                                                           |
+| `fal-ai/dia-tts`                          | 直接从转录文本生成逼真的对话，并通过音频条件控制情绪。产生笑声和清嗓子等自然非语言声音     |
+| `resemble-ai/chatterboxhd/text-to-speech` | 使用 Resemble AI 的 Chatterbox 生成富有表现力的自然语音。具有独特的情绪控制、从短音频即时克隆声音以及内置水印功能 |
 
 ### 提供商选项
 
-根据模型通过 `providerOptions.fal` 传入提供商特定选项：
+根据模型不同，通过 `providerOptions.fal` 传入提供商特定选项：
 
 - **voice_setting** _object_
-  - `voice_id`（string）：预定义的声音 ID
+  - `voice_id`（string）：预定义声音 ID
   - `speed`（number）：0.5–2.0
   - `vol`（number）：0–10
   - `pitch`（number）：-12–12
@@ -302,6 +344,6 @@ const result = await generateSpeech({
   Chinese | Chinese,Yue | English | Arabic | Russian | Spanish | French | Portuguese | German | Turkish | Dutch | Ukrainian | Vietnamese | Indonesian | Japanese | Italian | Korean | Thai | Polish | Romanian | Greek | Czech | Finnish | Hindi | auto
 
 - **pronunciation_dict** _object_
-  针对特定单词的自定义发音词典。
+  特定单词的自定义发音词典。
 
 模型特定参数（例如 `audio_url`、`prompt`、`preview_text`、`ref_audio_url`、`ref_text`）可以直接在 `providerOptions.fal` 下传入，并将转发到 Fal API。
